@@ -74,12 +74,8 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD = True, saveAl
         rates_exc_return    = rates_exc_chunk[:,int(delay_Ndt):] # cut off initial condition transient, otherwise it would repeat
         del rates_exc_chunk
 
-        if returnAllRates:
+        if saveAllActivity:
             all_Rates = np.hstack((all_Rates, rates_exc_return))
-            #if all_Rates.shape[1] == 0: # first time?
-            #    all_Rates = rates_exc_return
-            #else:
-            #    all_Rates = np.hstack((all_Rates, rates_exc_return))
 
         if simulateBOLD:
             # Run BOLD model
