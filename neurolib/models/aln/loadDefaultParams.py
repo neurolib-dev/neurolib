@@ -1,3 +1,4 @@
+import os
 import scipy.io
 import h5py
 import numpy as np
@@ -12,7 +13,7 @@ def loadDefaultParams(Cmat = [], Dmat = [], lookupTableFileName = None, seed=Non
     Parameters:
         :param Cmat: Structural connectivity matrix
         :param Dmat: Distance matrix in mm
-        :param lookUpTableFileName:     Matlab filename where to find the lookup table. Default: neurolib/models/aln/aln-precalc/quantities_cascade.h5'
+        :param lookUpTableFileName:     Matlab filename where to find the lookup table. Default: aln-precalc/quantities_cascade.h5'
         :param seed: Seed for the RNG
     :returns:   A dictionary of default parameters
     '''
@@ -145,7 +146,8 @@ def loadDefaultParams(Cmat = [], Dmat = [], lookupTableFileName = None, seed=Non
 
     # load precomputed aLN transfer functions from hdfs
     if lookupTableFileName is None:
-        lookupTableFileName = 'neurolib/models/aln/aln-precalc/quantities_cascade.h5' # aLN transfer functions    
+        lookupTableFileName = os.path.join(os.path.dirname(__file__), 'aln-precalc', 'quantities_cascade.h5')
+        
     hf = h5py.File(lookupTableFileName, 'r')
     params.Irange = hf.get('mu_vals')[()]
     params.sigmarange = hf.get('sigma_vals')[()]
