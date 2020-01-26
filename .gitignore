@@ -6,8 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# ipython notebook
+.ipynb_checkpoints/
+
 # Mac
-.DS_Store
+.DS_Store/
 
 # Distribution / packaging
 .Python
