@@ -1,3 +1,4 @@
+![](https://api.travis-ci.com/neurolib-dev/neurolib.png?branch=master)
 # neurolib
 *Easy whole-brain neural mass modeling 👩‍🔬💻🧠*
 
@@ -57,7 +58,7 @@ plt.plot(alnModel.t, alnModel.rates_exc.T)
 
 ### Whole-brain network
 
-To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (an example dataset is provided in the `neurolib/data/datasets/` directory).
+To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (an example dataset called `gw` is provided in the `neurolib/data/datasets/` directory).
 
 ```python
 from neurolib.utils.loadData import Dataset
@@ -78,7 +79,7 @@ alnModel.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
 
 alnModel.run()
 ```
-This created a network model in which each brain area is an `aln` node. Note that we specified `simulateBOLD=True`, which simulates the BOLD model in parallel to the firing rate model. The resulting firing rates and BOLD functional connectivity looks like this:
+This can take several minutes to compute, since we are simulating 90 nodes for 5 minutes realtime. Here, we have created a network model in which each brain area is an `aln` node. Note that we specified `simulateBOLD=True`, which simulates the BOLD model in parallel to the firing rate model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
   <img src="resources/gw_simulated.png">
 </p>
