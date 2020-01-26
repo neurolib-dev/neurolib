@@ -1,9 +1,9 @@
 # neurolib
 *Easy whole-brain neural mass modeling 👩‍🔬💻🧠*
 
-Neurolib allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model called `aln` which consists of two populations of excitatory and a inhibitory neurons. This `aln` model is a mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx). An extensive study and analysis of the model can be found in the [stimulus\_neural\_populations](https://github.com/caglarcakan/stimulus_neural_populations) project's github page and in the associated paper.
+Neurolib allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model called `aln` which consists of two populations of excitatory and a inhibitory neurons. This `aln` model is a mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx). An extensive study and analysis of the model can be found in the [stimulus\_neural\_populations](https://github.com/caglarcakan/stimulus_neural_populations) project's github page and in the associated paper on [ArXiv](https://arxiv.org/abs/1906.00676).
 
-# Whole-brain modeling
+### Whole-brain modeling
 
 In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, represented for example by the number of axonal fibers between each two brain areas and 2) the signal transmission delays measured from the length of the axonal fibers. 
 
@@ -14,6 +14,20 @@ Below is an animation in which the neural activity from such a model is plotted 
 <p align="center">
   <img src="resources/brain_slow_waves_small.gif">
 </p>
+
+## Installation
+The easiest way to get going is to install the pypi release of `neurolib` using
+
+```
+pip install neurolib
+```
+Alternatively, you can also clone this repository and install all dependencies with
+
+```
+git clone https://github.com/neurolib-dev/neurolib.git
+cd neurolib/
+pip install -r requirements.txt
+```
 
 ## Usage
 Example iPython notebooks on how to use the library can be found in the `./examples/` directory. A basic overview is given here. 
