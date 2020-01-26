@@ -16,7 +16,7 @@ end = time.time()
 print("\t > Done in {:.2f} s".format(end - start))
 
 # ----------------------------------------
-print("\t > ALN: Testing brain network ...")
+print("\t > ALN: Testing brain network (chunkwise integration and BOLD simulation) ...")
 start = time.time()
 from neurolib.utils.loadData import Dataset
 
@@ -43,9 +43,9 @@ end = time.time()
 print("\t > Done in {:.2f} s".format(end - start))
 
 # ----------------------------------------
-print("\t > Hopf: Testing brain network ...")
+print("\t > Hopf: Testing brain network (chunkwise integration and BOLD simulation) ...")
 start = time.time()
-hopfModel = hopf.HopfModel(Cmat = ds.Cmat, Dmat = ds.Dmat, simulateChunkwise=False)
+hopfModel = hopf.HopfModel(Cmat = ds.Cmat, Dmat = ds.Dmat, simulateBOLD=True)
 hopfModel.params['w'] = 1.0
 hopfModel.params['signalV'] = 0
 hopfModel.params['duration'] = 10 * 1000 
