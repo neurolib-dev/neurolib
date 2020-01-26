@@ -9,7 +9,7 @@ from neurolib.models import bold
 
 import neurolib.models.aln.loadDefaultParams as dp
 
-def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD = True, returnAllRates = False):
+def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD = True, saveAllActivity = False):
     '''
     Run the interareal network simulation with the parametrization params, compute the corresponding BOLD signal
     and store the result ( currently only BOLD signal ) in the hdf5 file fname_out
@@ -80,10 +80,12 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD = True, return
             else:
                 all_Rates = np.hstack((all_Rates, rates_exc_return))
 
-        # Run BOLD model
-        boldModel.run(rates_exc_return*1e3)
-        BOLD_return = boldModel.BOLD
-        t_BOLD_return = boldModel.t_BOLD
+        if simulateBOLD:
+            # Run BOLD model
+            boldModel.run(rates_exc_return*1e3)
+            BOLD_return = boldModel.BOLD
+            t_BOLD_return = boldModel.t_BOLD
+
         # in crement time counter
         idxLastT = idxLastT + rates_exc_return.shape[1]
     
