@@ -57,7 +57,7 @@ plt.plot(alnModel.t, alnModel.rates_exc.T)
 
 ### Whole-brain network
 
-To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (an example dataset is provided in the `./data/datasets/` directory).
+To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (an example dataset is provided in the `neurolib/data/datasets/` directory).
 
 ```python
 from neurolib.utils.loadData import Dataset
