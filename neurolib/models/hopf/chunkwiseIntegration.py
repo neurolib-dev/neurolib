@@ -5,9 +5,11 @@ import time
 from numpy import dtype
 
 from neurolib.models.hopf.timeIntegration import timeIntegration
+from neurolib.models import bold
+
 import neurolib.models.hopf.loadDefaultParams as dp
 
-def chunkwiseTimeIntegration(params, chunkSize=10000, saveAllActivity = False):
+def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD = True, saveAllActivity = False):
     totalDuration = params["duration"]
 
     dt = params["dt"]
@@ -21,11 +23,14 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, saveAllActivity = False):
     paramsChunk = cp.deepcopy(params)
     
     N = params["Cmat"].shape[0]
-        
+    
+    if simulateBOLD:
+        boldModel = bold.BOLDModel(N, dt)    
+
     t_BOLD_return = np.array([], dtype = 'f', ndmin = 2)
     BOLD_return = np.array([], dtype = 'f', ndmin = 2)
     all_xs = np.array([], dtype = 'f', ndmin = 2)
-    
+    xs_return = np.array([], dtype = 'f', ndmin = 2)
     
     idxLastT = 0    # Index of the last computed t
 
@@ -42,21 +47,30 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, saveAllActivity = False):
         paramsChunk["xs_init"]    = xs_chunk[:,-int(delay_Ndt):]
         paramsChunk["ys_init"]    = ys_chunk[:,-int(delay_Ndt):]
 
-
-
-        if nround == 0:
-            xs_return = xs_chunk
-        else:
-            xs_return = xs_chunk[:,int(delay_Ndt):]
+        xs_return    = xs_chunk[:,int(delay_Ndt):]
+        del xs_chunk
             
         if saveAllActivity:
-            if all_xs.shape[1] == 0: # first time?
-                all_xs = xs_return
-            else:
-                all_xs = np.hstack((all_xs, xs_return))
+            all_xs = np.hstack((all_xs, xs_return))
+            #if all_xs.shape[1] == 0: # first time?
+            #    all_xs = xs_return
+            #else:
+            #    all_xs = np.hstack((all_xs, xs_return))
 
-        del xs_chunk
-        
+        # BOLD model
+        xsNormalized = xs_return
+        xsNormalized = np.abs(xsNormalized)
+        xsNormalized /= np.max(xsNormalized)
+        xsNormalized *= 80.0
+        #import matplotlib.pyplot as plt
+        #plt.plot(xsNormalized.T)
+        #plt.show()
+        if simulateBOLD:
+            boldModel.run(xsNormalized)
+            BOLD_return = boldModel.BOLD
+            t_BOLD_return = boldModel.t_BOLD
+
+
         idxLastT = idxLastT + xs_return.shape[1]
         t_return = np.dot(range(xs_return.shape[1], idxLastT + xs_return.shape[1]), dt)    
 
@@ -65,4 +79,4 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, saveAllActivity = False):
     if saveAllActivity:
         xs_return = all_xs
             
-    return t_return, xs_return, ys_chunk
+    return t_return, xs_return, ys_chunk, t_BOLD_return, BOLD_return
