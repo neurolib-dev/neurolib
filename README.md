@@ -25,6 +25,8 @@ To run a single node with the default parameters, simply run
 from neurolib.models import aln
 
 alnModel = aln.ALNModel()
+alnModel.params['sigma_ou'] = 0.1 # add some noise
+
 alnModel.run()
 ```
 
@@ -32,10 +34,12 @@ The results of this small simulation can be plotted easily
 
 ```python
 import matplotlib.pyplot as plt
-
-plt.plot(alnModel.t, alnModel.rates_exc.T, lw=2, c='k')
+plt.plot(alnModel.t, alnModel.rates_exc.T)
 
 ```
+<p align="left">
+  <img src="resources/single_timeseries.png">
+</p>
 
 ### Whole-brain network
 
