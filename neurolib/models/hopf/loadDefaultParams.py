@@ -42,25 +42,20 @@ def loadDefaultParams(Cmat = [], Dmat = [], seed=None):
         params.Cmat = Cmat  / np.max(Cmat) # normalize matrix
         params.N = len(params.Cmat) # number of nodes                  
         params.lengthMat = Dmat
-        #params.Dmat = computeDelayMatrix(Dmat,params.signalV) # delay matrix
 
-    
-    
-    
-    
     # ------------------------------------------------------------------------
     # local node parameters
     # ------------------------------------------------------------------------
 
     # external input parameters:
-    params.tau_ou       = 5.0   # ms
-    params.sigma_ou     = 0.05  # mV/ms/sqrt(ms)
-    params.x_ext_mean = 0.0   # mV/ms (OU process) [0-5]
-    params.y_ext_mean = 0.0   # mV/ms (OU process) [0-5]
+    params.tau_ou       = 5.0   # ms Timescale of the Ornstein-Uhlenbeck noise process
+    params.sigma_ou     = 0.0   # mV/ms/sqrt(ms) noise intensity
+    params.x_ext_mean = 0.0     # mV/ms (OU process) [0-5]
+    params.y_ext_mean = 0.0     # mV/ms (OU process) [0-5]
 
     # neuron model parameters
     params.a            = 0.25  # Hopf bifurcation parameter
-    params.w            = 1.0   # Oscillator frequency
+    params.w            = 0.2   # Oscillator frequency, 32 Hz at w = 0.2
 
     # ------------------------------------------------------------------------
 
