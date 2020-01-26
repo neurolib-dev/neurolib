@@ -1,6 +1,7 @@
-![](https://api.travis-ci.com/neurolib-dev/neurolib.png?branch=master)
-# neurolib
-*Easy whole-brain neural mass modeling 👩‍🔬💻🧠*
+![](https://img.shields.io/travis/neurolib-dev/neurolib) ![](https://img.shields.io/github/v/release/neurolib-dev/neurolib)
+
+# Neurolib
+*Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
 Neurolib allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model called `aln` which consists of two populations of excitatory and a inhibitory neurons. This `aln` model is a mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx). An extensive analysis of the model can be found in the paper *Biophysically grounded mean-field models of neural populations under electrical stimulation*, Cakan et al. 2020 ([ArXiv](https://arxiv.org/abs/1906.00676)), and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
