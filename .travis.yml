@@ -6,7 +6,8 @@ python:
 
 install:
   - pip install -r requirements.txt
-  - python setup.py sdist bdist_wheel && pip install --upgrade dist/*
+  - python setup.py sdist bdist_wheel
+  - pip install --upgrade dist/*
   
 script:
   - python tests/test.py
