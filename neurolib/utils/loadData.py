@@ -1,10 +1,8 @@
-# utility functions
-
 import h5py
 import numpy as np
 import scipy.io
 
-def loadDataset(matrixFileNames, average = True, filter_subcortical = True, key = '', \
+def loadDataset(matrixFileNames, average = False, filter_subcortical = True, key = '', \
                 apply_function = None, apply_function_kwargs = {}):
     """
     Loads brain matrices provided filenames.
@@ -18,6 +16,10 @@ def loadDataset(matrixFileNames, average = True, filter_subcortical = True, key 
     Returns:
     numpy.array: Single average matrix _or_ list of matrices
     """
+    # Handler if matrixFileNames is not a list but a str
+    if isinstance(matrixFileNames, str):
+        matrixFileNames = [matrixFileNames]
+
     matrices = []
     for matrixFileName in matrixFileNames:
         thisMat = loadMatrix(matrixFileName, key=key)
@@ -26,14 +28,18 @@ def loadDataset(matrixFileNames, average = True, filter_subcortical = True, key 
         if apply_function:
             thisMat = apply_function(thisMat, **apply_function_kwargs)
         matrices.append(thisMat)
-    if average:
-        avgMatrix = np.zeros(matrices[0].shape)
-        for cm in matrices:
-            avgMatrix += cm
-        avgMatrix /= len(matrices)  
-        return avgMatrix
+
+    if len(matrices) > 1:
+        if average:
+            avgMatrix = np.zeros(matrices[0].shape)
+            for cm in matrices:
+                avgMatrix += cm
+            avgMatrix /= len(matrices)  
+            return avgMatrix
+        else:
+            return matrices
     else:
-        return matrices
+        return matrices[0]
     
 
 # begin of function
