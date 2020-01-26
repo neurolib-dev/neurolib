@@ -28,8 +28,8 @@ def loadDefaultParams(Cmat = [], Dmat = [], seed=None):
     # global whole-brain network parameters
     # ------------------------------------------------------------------------
 
-    params.signalV      = 25.0
-    params.K_gl        = 250.   # global coupling strength
+    params.signalV      = 20.0
+    params.K_gl        = 250.0   # global coupling strength
 
     if len(Cmat) == 0:
         params.N = 1

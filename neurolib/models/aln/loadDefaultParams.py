@@ -4,13 +4,16 @@ import numpy as np
 
 def loadDefaultParams(Cmat = [], Dmat = [], lookupTableFileName = None, seed=None):
     '''
-    Load default parameters for the for a whole network of aLN nodes. 
+    Load default parameters for a network of aLN nodes. 
+    if Cmat is an empty list, only a single node (consisting of E and I) will be simulated.
     A lot of the code which deals with loading structural connectivity 
-    and delay matrices for an interareal whole-brain network simulation 
-    can be ignored if only a single E-I module is to be simulated (set singleNode=1 then)
+    and delay matrices for an interareal whole-brain network simulation.
 
     Parameters:
+        :param Cmat: Structural connectivity matrix
+        :param Dmat: Distance matrix in mm
         :param lookUpTableFileName:     Matlab filename where to find the lookup table. Default: neurolib/models/aln/aln-precalc/quantities_cascade.h5'
+        :param seed: Seed for the RNG
     :returns:   A dictionary of default parameters
     '''
     class struct(object):
@@ -53,10 +56,10 @@ def loadDefaultParams(Cmat = [], Dmat = [], lookupTableFileName = None, seed=Non
         params.N = len(params.Cmat) # number of nodes                  
         params.lengthMat = Dmat # delay matrix
 
-    params.global_delay = 1      # if 1, use INTER-areal delay (from lengthMat) NOTE: value 0 doesn't work yet, don't change!!!
-    params.signalV      = 25.0
-    params.c_gl         = 0.3    # Postsynaptic potential amplitude for global connections between areas(unitless)
-    params.Ke_gl        = 250.   # number of incoming E connections (to E population) from each area
+    params.global_delay = 1     # if 1, use INTER-areal delay (from lengthMat) NOTE: value 0 doesn't work yet, don't change!!!
+    params.signalV      = 20.0  # Signal transmission speed in mm/ms
+    params.c_gl         = 0.4   # PSP current amplitude in (mV/ms) (or nA/[C]) for global coupling connections between areas
+    params.Ke_gl        = 250.0 # number of incoming E connections (to E population) from each area
     
     
     # ------------------------------------------------------------------------
@@ -65,9 +68,9 @@ def loadDefaultParams(Cmat = [], Dmat = [], lookupTableFileName = None, seed=Non
 
     # external input parameters:
     params.tau_ou       = 5.0   # ms
-    params.sigma_ou     = 0.05  # mV/ms/sqrt(ms)
-    params.mue_ext_mean = 3.0   # mV/ms (OU process) [0-5]
-    params.mui_ext_mean = 1.0   # mV/ms (OU process) [0-5]
+    params.sigma_ou     = 0.0  # mV/ms/sqrt(ms)
+    params.mue_ext_mean = 1.6   # mV/ms (OU process) [0-5]
+    params.mui_ext_mean = 0.3   # mV/ms (OU process) [0-5]
     params.ext_exc_rate = 0.0   # external excitatory rate drive [kHz]
     params.ext_inh_rate = 0.0   # external inhibiroty rate drive [kHz]
 
@@ -79,19 +82,13 @@ def loadDefaultParams(Cmat = [], Dmat = [], lookupTableFileName = None, seed=Non
     params.sigmae_ext   = 1.5   # mV/sqrt(ms) (fixed, for now) [1-5] (Internal noise due to random coupling)
     params.sigmai_ext   = 1.5   # mV/sqrt(ms) (fixed, for now) [1-5]
 
-    
-    # sinusoidal input parameters:
-    params.A_sin      = 0.0
-    params.f_sin      = 0.0
-    params.ph_sin     = 0.0
-
 
     # recurrent coupling parameters
-    params.Ke           = 800.0  # "EE = IE" assumed for act_dep_coupling in current implementation 
-    params.Ki           = 200.0  # "EI = II" assumed for act_dep_coupling in current implementation
+    params.Ke           = 800.0  # Number of excitatory inputs per neuron
+    params.Ki           = 200.0  # Number of inhibitory inputs per neuron
 
-    params.de           = 1.0    # ms local constant delay "EE = IE"
-    params.di           = 1.0    # ms local constant delay "EI = II"
+    params.de           = 4.0    # ms local constant delay "EE = IE"
+    params.di           = 2.0    # ms local constant delay "EI = II"
     
     params.tau_se       = 2.0    # ms  "EE = IE"
     params.tau_si       = 5.0    # ms  "EI = II"
@@ -103,10 +100,11 @@ def loadDefaultParams(Cmat = [], Dmat = [], lookupTableFileName = None, seed=Non
     params.cei          = 0.5    # GABA BrunelWang2003
     params.cii          = 0.5
 
-    params.Jee_max      = 4.0    # mV/ms [all 0-10, compare to mue_ext_mean, will be added to it]
-    params.Jie_max      = 8.0    # mV/ms 
-    params.Jei_max      = -8.0   # mV/ms [0-(-10)] 
-    params.Jii_max      = -4.0   # mV/ms  
+    # Coupling strengths used in Cakan2020
+    params.Jee_max      = 2.43    # mV/ms [all 0-10, compare to mue_ext_mean, will be added to it]
+    params.Jie_max      = 2.60    # mV/ms 
+    params.Jei_max      = -3.3   # mV/ms [0-(-10)] 
+    params.Jii_max      = -1.64   # mV/ms  
 
     # neuron model parameters
     params.a            = 12.0   # nS
