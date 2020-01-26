@@ -1,7 +1,4 @@
-h5py==2.10.0
-llvmlite==0.31.0
-neurolib==0.1
-numba==0.47.0
-numpy==1.18.1
-scipy==1.4.1
-six==1.14.0
+h5py
+numba
+numpy
+scipy
