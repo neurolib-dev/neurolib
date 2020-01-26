@@ -5,11 +5,11 @@ Neurolib allows you to easily create your own state-of-the-art whole-brain model
 
 # Whole-brain modeling
 
-In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, representing for example by the number of axonal fibers between each brain area and 2) the signal transmission delays between brain areas, as measured from the length of the axonal fibers. 
+In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, represented for example by the number of axonal fibers between each two brain areas and 2) the signal transmission delays measured from the length of the axonal fibers. 
 
 The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The neural activity is used to simulate BOLD activity using the Balloon-Windkessel model. The resulting simulated [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional) can then be used to fit the model to empirical functional brain data. 
 
-Below is an animation in which the neural activity is plotted on the brain network for visualisation.
+Below is an animation in which the neural activity from such a model is plotted on a brain network for visualisation.
 
 <p align="center">
   <img src="resources/brain_slow_waves_small.gif">
@@ -19,7 +19,7 @@ Below is an animation in which the neural activity is plotted on the brain netwo
 Example iPython notebooks on how to use the library can be found in the `./examples/` directory. A basic overview is given here. 
 
 ### Single node
-To run a single node with the default parameters, simply run
+To create a single `aln` model with the default parameters, simply run
 
 ```python
 from neurolib.models import aln
@@ -30,7 +30,7 @@ alnModel.params['sigma_ou'] = 0.1 # add some noise
 alnModel.run()
 ```
 
-The results of this small simulation can be plotted easily
+The results from this small simulation can be plotted easily:
 
 ```python
 import matplotlib.pyplot as plt
@@ -43,7 +43,7 @@ plt.plot(alnModel.t, alnModel.rates_exc.T)
 
 ### Whole-brain network
 
-To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (which is provided in the `./data/datasets/` directory of this repository).
+To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (an example dataset is provided in the `./data/datasets/` directory).
 
 ```python
 from neurolib.utils.loadData import Dataset
@@ -64,12 +64,12 @@ alnModel.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
 
 alnModel.run()
 ```
-Note that the above specified `simulateBOLD=True`, which simulates a BOLD model in parallel to the rate model. The resulting firing rates and BOLD functional connectivity looks like this:
+This created a network model in which each brain area is an `aln` node. Note that we specified `simulateBOLD=True`, which simulates the BOLD model in parallel to the firing rate model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
   <img src="resources/gw_simulated.png">
 </p>
 
-The fit of the simulation to the empirical data can now be computed per subject or for the whole group on average:
+The quality of the fit of this simulation to the functional empirical data can now be computed per subject or for the whole group on average:
 
 ```python
 scores = []
