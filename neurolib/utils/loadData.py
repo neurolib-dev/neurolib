@@ -17,7 +17,7 @@ class Dataset():
         Paramters:
             :param datasetName: Name of the dataset to load
         """
-        dsBaseDirectory = os.path.join("./data/datasets/", datasetName)
+        dsBaseDirectory = os.path.join(os.path.dirname(__file__), '..', 'data', 'datasets', datasetName)
 
         CmatFilename = os.path.join(dsBaseDirectory, "Cmat_avg.mat")
         self.Cmat = self.loadData(CmatFilename, key='sc') # structural connectivity matrix
