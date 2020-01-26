@@ -69,3 +69,28 @@ Note that the above specified `simulateBOLD=True`, which simulates a BOLD model 
   <img src="resources/gw_simulated.png">
 </p>
 
+The fit of the simulation to the empirical data can now be computed per subject or for the whole group on average:
+
+```python
+scores = []
+for i in range(len(ds.FCs)):
+    fc_score = func.matrix_correlation(func.fc(alnModel.BOLD[:, 5:]), ds.FCs[i]) 
+    scores.append(fc_score)
+    print("Subject {}: {:.2f}". format(i, fc_score))
+print("Mean simulated FC to empirical FC correlation: {:.2f}".format(np.mean(scores)))
+```
+```
+Subject 0: 0.71
+Subject 1: 0.70
+Subject 2: 0.52
+Subject 3: 0.56
+Subject 4: 0.51
+Subject 5: 0.60
+Subject 6: 0.64
+Subject 7: 0.65
+Subject 8: 0.36
+Subject 9: 0.54
+Subject 10: 0.49
+Mean simulated FC to empirical FC correlation: 0.57
+```
+
