@@ -1,0 +1,4 @@
+recursive-include neurolib/data *
+include README_pypi.md
+include requirements.txt
+include neurolib/models/aln/aln-precalc/quantities_cascade.h5
