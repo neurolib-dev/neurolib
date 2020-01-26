@@ -10,7 +10,7 @@ class HopfModel():
     Todo.
     """
     def __init__(self, params = None, Cmat = [], Dmat = [], lookupTableFileName = None, seed=None, \
-        simulateChunkwise = False, chunkSize = 10000):
+        simulateChunkwise = False, chunkSize = 10000, simulateBOLD=False):
         if len(Cmat) == 0:
             self.singleNode = True
         else:
@@ -21,6 +21,9 @@ class HopfModel():
         
         self.simulateChunkwise = simulateChunkwise
         self.chunkSize = chunkSize # Size of integration chunks in chunkwise integration
+        self.simulateBOLD = simulateBOLD # BOLD
+        if simulateBOLD:
+            self.simulateChunkwise = True # Override this setting if BOLD is simulated!        
         self.saveAllActivity = False # Save data from all chunks? Can be very memory demanding if simulations are long or large
         
         # load default parameters if none were given
@@ -36,7 +39,9 @@ class HopfModel():
         Runs the aLN mean-field model simulation
         '''  
         if self.simulateChunkwise:
-            t, x, y = cw.chunkwiseTimeIntegration(self.params, saveAllActivity=self.saveAllActivity, chunkSize=self.chunkSize)
+            t, x, y, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(self.params, chunkSize=self.chunkSize, simulateBOLD=self.simulateBOLD, saveAllActivity=self.saveAllActivity, )
+            self.t_BOLD = t_BOLD
+            self.BOLD = BOLD
         else:
             t, x, y = ti.timeIntegration(self.params)
         
