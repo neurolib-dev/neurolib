@@ -1,2 +1,2 @@
 # neurolib
-Easy whole-brain neural mass models
+Easy whole-brain neural mass modeling
