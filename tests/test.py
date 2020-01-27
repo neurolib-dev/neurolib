@@ -1,4 +1,5 @@
 import time
+
 print("> Running tests ...")
 testingStart = time.time()
 
@@ -8,22 +9,24 @@ start = time.time()
 from neurolib.models import aln
 
 alnModel = aln.ALNModel()
-alnModel.params['duration'] = 2.0*1000
-alnModel.params['sigma_ou'] = 0.1 # add some noise
+alnModel.params["duration"] = 2.0 * 1000
+alnModel.params["sigma_ou"] = 0.1  # add some noise
 
 alnModel.run()
 end = time.time()
 print("\t > Done in {:.2f} s".format(end - start))
 
 # ----------------------------------------
-print("\t > ALN: Testing brain network (chunkwise integration and BOLD simulation) ...")
+print(
+    "\t > ALN: Testing brain network (chunkwise integration and BOLD simulation) ..."
+)
 start = time.time()
 from neurolib.utils.loadData import Dataset
 
 ds = Dataset("gw")
 
-alnModel = aln.ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat, simulateBOLD=True)
-alnModel.params['duration'] = 10*1000 # in ms, simulates for 5 minutes
+alnModel = aln.ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+alnModel.params["duration"] = 10 * 1000  # in ms, simulates for 5 minutes
 
 alnModel.run()
 end = time.time()
@@ -35,22 +38,24 @@ start = time.time()
 from neurolib.models import hopf
 
 hopfModel = hopf.HopfModel()
-hopfModel.params['duration'] = 2.0*1000
-hopfModel.params['sigma_ou'] = 0.03
+hopfModel.params["duration"] = 2.0 * 1000
+hopfModel.params["sigma_ou"] = 0.03
 
 hopfModel.run()
 end = time.time()
 print("\t > Done in {:.2f} s".format(end - start))
 
 # ----------------------------------------
-print("\t > Hopf: Testing brain network (chunkwise integration and BOLD simulation) ...")
+print(
+    "\t > Hopf: Testing brain network (chunkwise integration and BOLD simulation) ..."
+)
 start = time.time()
-hopfModel = hopf.HopfModel(Cmat = ds.Cmat, Dmat = ds.Dmat, simulateBOLD=True)
-hopfModel.params['w'] = 1.0
-hopfModel.params['signalV'] = 0
-hopfModel.params['duration'] = 10 * 1000 
-hopfModel.params['sigma_ou'] = 0.14
-hopfModel.params['K_gl'] = 0.6
+hopfModel = hopf.HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+hopfModel.params["w"] = 1.0
+hopfModel.params["signalV"] = 0
+hopfModel.params["duration"] = 10 * 1000
+hopfModel.params["sigma_ou"] = 0.14
+hopfModel.params["K_gl"] = 0.6
 
 hopfModel.run()
 end = time.time()
