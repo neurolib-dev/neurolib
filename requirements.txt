@@ -4,3 +4,4 @@ numpy
 scipy
 pytest
 flake8
+networkx
