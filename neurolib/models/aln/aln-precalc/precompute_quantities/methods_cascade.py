@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 '''
- functions to calculate and plot the quantities required by the LN cascade models, 
- including functions to compute the steady-state and the first order rate response 
+ functions to calculate and plot the quantities required by the LN cascade models,
+ including functions to compute the steady-state and the first order rate response
  of an exponential/leaky integrate-and-fire neuron subject to white noise input
- (and modulations of the input moments) -- written by Josef Ladenbauer in 2016 
+ (and modulations of the input moments) -- written by Josef Ladenbauer in 2016
 '''
 
 import numpy as np
