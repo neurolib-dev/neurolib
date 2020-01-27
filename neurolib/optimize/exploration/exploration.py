@@ -189,7 +189,7 @@ class BoxSearch:
         trajLoaded.v_auto_load = True
         return trajLoaded
 
-    def getResults(self, filename=None, trajectoryName=None):
+    def loadResults(self, filename=None, trajectoryName=None):
         """
         Load simulation results.
         """
@@ -212,10 +212,10 @@ class BoxSearch:
 
         # ---- make a dictionary with results ----
         resultDicts = []
-        print("Creating results dictionary ...")
+        logging.info("Creating results dictionary ...")
         self.runResults = []
         for rInd in tqdm.tqdm(range(len(self.dfResults)), total=len(self.dfResults)):
             result = trajLoaded.results[rInd].f_to_dict()
             self.runResults.append(result)
-        print("done.")
+        logging.info("done.")
 
