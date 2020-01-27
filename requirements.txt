@@ -3,3 +3,4 @@ numba
 numpy
 scipy
 pytest
+flake8
