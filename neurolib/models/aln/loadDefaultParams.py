@@ -27,29 +27,27 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
 
     params = struct()
 
+    # Todo: Model metadata
+    # recently added for easier simulation of aln and brian in pypet
+    params.model = "aln"
+    params.name = "aln"
+    params.description = (
+        "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
+    )
+    params.inputs = "ext_exc_rate"  # in Hz
+    params.outputs = "rates_exc"  # in Hz
+
     # runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
     params.duration = 2000  # Simulation duration (ms)
     params.seed = np.int64(0)  # seed for RNG of noise and ICs
 
-    # recently added for easier simulation of aln and brian in pypet
-    params.model = "aln"
-    params.load_point = "none"
-
     # options
-    params.warn = 0
-    # if out of precalc limits in interpolation, set to 0 for faster
-    # computation
-    params.dosc_version = 0
-    params.distr_delay = (
-        0
-    )  # if 1, use distributed intra-areal delay insted of fixed
-    params.filter_sigma = 0  # if 1, full filter used for sigmae/sigmai,
-    # else use dirac filter
-    params.fast_interp = (
-        1
-    )  # if 1, Interpolate the value from the look-up table \
-    #    instead of taking the closest value
+    params.warn = 0  # warn if limits of lookup tables are exceeded
+    params.dosc_version = 0  # if 0, use exponential fit to linear response function
+    params.distr_delay = 0  # if 1, use distributed delays instead of fixed
+    params.filter_sigma = 0  # if 1, filter sigmae/sigmai
+    params.fast_interp = 1  # if 1, Interpolate the value from the look-up table instead of taking the closest value
 
     # ------------------------------------------------------------------------
     # global whole-brain network parameters
@@ -82,50 +80,54 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
     # ------------------------------------------------------------------------
 
     # external input parameters:
-    params.tau_ou = 5.0  # ms
-    params.sigma_ou = 0.0  # mV/ms/sqrt(ms)
-    params.mue_ext_mean = 1.6  # mV/ms (OU process) [0-5]
-    params.mui_ext_mean = 0.3  # mV/ms (OU process) [0-5]
-    params.ext_exc_rate = 0.0  # external excitatory rate drive [kHz]
-    params.ext_inh_rate = 0.0  # external inhibiroty rate drive [kHz]
+    params.tau_ou = 5.0  # ms timescale of ornstein-uhlenbeck (OU) noise
+    params.sigma_ou = 0.0  # mV/ms/sqrt(ms) intensity of OU oise
+    params.mue_ext_mean = 1.6  # mV/ms mean external input current to E
+    params.mui_ext_mean = 0.3  # mV/ms mean external input current to I
 
-    params.ext_exc_current = 0.0  # external excitatory field drive [mV/ms]
-    params.ext_inh_current = 0.0  # external inhibiroty field drive [mV/ms]
+    # external neuronal firing rate input
+    params.ext_exc_rate = 0.0  # kHz external excitatory rate drive
+    params.ext_inh_rate = 0.0  # kHz external inhibiroty rate drive
+
+    # externaln input currents, same as mue_ext_mean but can be time-dependent!
+    params.ext_exc_current = 0.0  # external excitatory input current [mV/ms]
+    params.ext_inh_current = 0.0  # external inhibiroty input current [mV/ms]
 
     # Fokker Planck noise (for N->inf)
-    params.sigmae_ext = (
-        1.5
-    )  # mV/sqrt(ms) (fixed, for now) [1-5] (Internal noise due to random coupling)
+    params.sigmae_ext = 1.5  # mV/sqrt(ms) (fixed, for now) [1-5] (Internal noise due to random coupling)
     params.sigmai_ext = 1.5  # mV/sqrt(ms) (fixed, for now) [1-5]
 
     # recurrent coupling parameters
     params.Ke = 800.0  # Number of excitatory inputs per neuron
     params.Ki = 200.0  # Number of inhibitory inputs per neuron
 
+    # synaptic delays
     params.de = 4.0  # ms local constant delay "EE = IE"
     params.di = 2.0  # ms local constant delay "EI = II"
 
-    params.tau_se = 2.0  # ms  "EE = IE"
+    # synaptic time constants
+    params.tau_se = 2.0  # ms  "EE = IE", for fixed delays
     params.tau_si = 5.0  # ms  "EI = II"
-    params.tau_de = 1.0  # ms  "EE = IE"
+    params.tau_de = (
+        1.0  # ms  "EE = IE", time constant for distributed delays (untested)
+    )
     params.tau_di = 1.0  # ms  "EI = II"
 
+    # PSC amplitudes
     params.cee = 0.3  # mV/ms
     params.cie = 0.3  # AMPA
     params.cei = 0.5  # GABA BrunelWang2003
     params.cii = 0.5
 
     # Coupling strengths used in Cakan2020
-    params.Jee_max = (
-        2.43
-    )  # mV/ms [all 0-10, compare to mue_ext_mean, will be added to it]
+    params.Jee_max = 2.43  # mV/ms
     params.Jie_max = 2.60  # mV/ms
     params.Jei_max = -3.3  # mV/ms [0-(-10)]
     params.Jii_max = -1.64  # mV/ms
 
     # neuron model parameters
-    params.a = 12.0  # nS
-    params.b = 60.0  # pA
+    params.a = 0.0  # nS, can be 15.0
+    params.b = 0.0  # pA, can be 40.0
     params.EA = -80.0  # mV
     params.tauA = 200.0  # ms
 
@@ -159,17 +161,13 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
     ) = generateRandomICs(params.N, seed)
 
     params.mufe_init = (
-        mufe_init
-    )  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
+        mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
+    )
     params.IA_init = IA_init  # adaptation current
     params.mufi_init = mufi_init  #
-    params.seem_init = (
-        seem_init
-    )  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
+    params.seem_init = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
     params.seim_init = seim_init  #
-    params.seev_init = (
-        seev_init
-    )  # variance of fraction of active synapses [0-1]
+    params.seev_init = seev_init  # variance of fraction of active synapses [0-1]
     params.seiv_init = seiv_init  #
     params.siim_init = siim_init  #
     params.siem_init = siem_init  #
@@ -290,20 +288,14 @@ def loadICs(params, N, seed=None):
 
     params[
         "mufe_init"
-    ] = (
-        mufe_init
-    )  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
+    ] = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
     params["IA_init"] = IA_init  # adaptation current
     params["mufi_init"] = mufi_init  #
     params[
         "seem_init"
-    ] = (
-        seem_init
-    )  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
+    ] = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
     params["seim_init"] = seim_init  #
-    params[
-        "seev_init"
-    ] = seev_init  # variance of fraction of active synapses [0-1]
+    params["seev_init"] = seev_init  # variance of fraction of active synapses [0-1]
     params["seiv_init"] = seiv_init  #
     params["siim_init"] = siim_init  #
     params["siem_init"] = siem_init  #
