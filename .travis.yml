@@ -10,5 +10,4 @@ install:
 
 script:
   - pytest tests/
-  - python tests/test.py
   - flake8 . --exit-zero
