@@ -34,7 +34,6 @@ class TestHopfModel(unittest.TestCase):
     """
 
     def test_single_node(self):
-        logging.info("\t > Hopf: Testing single node ...")
         hopfModel = hopf.HopfModel()
         hopfModel.params["duration"] = 2.0 * 1000
         hopfModel.params["sigma_ou"] = 0.03
