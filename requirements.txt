@@ -2,3 +2,5 @@ h5py
 numba
 numpy
 scipy
+pytest
+flake8
