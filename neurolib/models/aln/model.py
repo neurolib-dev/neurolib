@@ -13,10 +13,9 @@ class ALNModel(Model):
     """
     name = "aln"
     description = "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
-    inputNames = ["ext_exc_current", "ext_exc_rate" ]
-    
-    outputNames = ["rates_exc", "rates_inh"]
-    outputs = []
+
+    modelInputNames = ["ext_exc_current", "ext_exc_rate" ]
+    modelOutputNames = ["rates_exc", "rates_inh"]
 
     def __init__(self, params=None, Cmat=[], Dmat=[], lookupTableFileName=None, seed=None, simulateChunkwise=False, chunkSize=10000, simulateBOLD=False):
         """
@@ -30,7 +29,7 @@ class ALNModel(Model):
         """
         # Initialize base class Model
         Model.__init__(self, self.name)
-        Model.addOutputs(self, self.outputNames, self.outputNames)
+        #Model.addOutputs(self, self.outputNames, self.outputNames)
 
         # Global parameters
         self.Cmat = Cmat  # Connectivity matrix
@@ -78,14 +77,8 @@ class ALNModel(Model):
         self.rates_inh = rates_inh
         self.input = stimulus
 
-        # new: save results in xarray
-        # note: result arrays like rates_exc should have shape (nodes x times)
-        # to remember, the dimensions of the xarray are ordered according to
-        # Where? What? When?
-        nNodes = rates_exc.shape[0]
-        nodes = list(range(nNodes))
-        times = t
-        resultNames = ['rates_exc', 'rates_inh']
-        allResultsStacked = np.stack([rates_exc, rates_inh], axis=1) # axis=1 to achieve Where? What? When?
-        xResult = xr.DataArray(allResultsStacked, coords=[nodes, resultNames, times], dims=['space', 'variable', 'time'])
-        self.xr = xResult
+        # new: save results into Model output
+        outputNames = self.modelOutputNames
+        outputs = [self.rates_exc, self.rates_inh]
+
+        Model.addOutputs(self, t, outputs, outputNames)
