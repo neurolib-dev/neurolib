@@ -31,7 +31,7 @@ class ALNModel(Model):
         Model.__init__(self, self.name)
         #Model.addOutputs(self, self.outputNames, self.outputNames)
 
-        # Global parameters
+        # Global attributes
         self.Cmat = Cmat  # Connectivity matrix
         self.Dmat = Dmat  # Delay matrix
         self.lookupTableFileName = lookupTableFileName  # Filename for aLN lookup functions
@@ -57,7 +57,7 @@ class ALNModel(Model):
         """
         if self.simulateChunkwise:
             t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity)
-            rates_exc, rates_inh, t, mufe, mufi, IA,   seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk = return_tuple
+            rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk = return_tuple
             self.t_BOLD = t_BOLD
             self.BOLD = BOLD
 
@@ -67,7 +67,6 @@ class ALNModel(Model):
         # convert output from kHz to Hz
         rates_exc = rates_exc * 1000.0 # todo: do in timeintegration
         rates_inh = rates_inh * 1000.0
-        stimulus = self.params["ext_exc_current"]
 
         t = np.dot(range(rates_exc.shape[1]), self.params["dt"])
 
@@ -75,7 +74,6 @@ class ALNModel(Model):
         self.t = t
         self.rates_exc = rates_exc
         self.rates_inh = rates_inh
-        self.input = stimulus
 
         # new: save results into Model output
         outputNames = self.modelOutputNames

@@ -14,7 +14,7 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
     The simulation runs in chunks to save working memory.
     chunkSize corresponds to the size in ms of a single chunk
     """
-
+    # time stuff
     totalDuration = params["duration"]
 
     dt = params["dt"]
@@ -27,19 +27,25 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
     max_global_delay = np.amax(Dmat_ndt)
     delay_Ndt = int(max(max_global_delay, ndt_de, ndt_di) + 1)
 
+    # make a real copy of params
     paramsChunk = cp.deepcopy(params)
 
     N = params["Cmat"].shape[0]
 
+    # initialize BOLD model?
     if simulateBOLD:
         boldModel = bold.BOLDModel(N, dt)
 
+    # initialize data arrays
     t_BOLD_return = np.array([], dtype="f", ndmin=2)
     BOLD_return = np.array([], dtype="f", ndmin=2)
-    all_Rates = np.array([], dtype="f", ndmin=2)
+    all_rates_exc = np.array([], dtype="f", ndmin=2)
     rates_exc_return = np.array([], dtype="f", ndmin=2)
+    all_rates_inh = np.array([], dtype="f", ndmin=2)
+    rates_inh_return = np.array([], dtype="f", ndmin=2)    
 
-    idxLastT = 0  # Index of the last computed t
+    # Index of the last computed t
+    idxLastT = 0  
 
     while dt * idxLastT < totalDuration:
         # Determine the size of the next chunk
@@ -68,10 +74,13 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
         paramsChunk["rates_inh_init"] = rates_inh_chunk[:, -int(delay_Ndt) :]
 
         rates_exc_return = rates_exc_chunk[:, int(delay_Ndt) :]  # cut off initial condition transient, otherwise it would repeat
-        del rates_exc_chunk
+        rates_inh_return = rates_inh_chunk[:, int(delay_Ndt) :]
+
+        del rates_exc_chunk, rates_inh_chunk
 
         if saveAllActivity:
-            all_Rates = np.hstack((all_Rates, rates_exc_return))
+            all_rates_exc = np.hstack((all_rates_exc, rates_exc_return))
+            all_rates_inh = np.hstack((all_rates_inh, rates_inh_return))
 
         if simulateBOLD:
             # Run BOLD model
@@ -83,8 +92,9 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
         idxLastT = idxLastT + rates_exc_return.shape[1]
 
         if saveAllActivity:
-            rates_exc_return = all_Rates
+            rates_exc_return = all_rates_exc
+            rates_inh_return = all_rates_inh
 
-        return_from_timeIntegration = (rates_exc_return, rates_inh_chunk, t_chunk, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk)
+        return_from_timeIntegration = (rates_exc_return, rates_inh_return, t_chunk, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk)
 
     return t_BOLD_return, BOLD_return, return_from_timeIntegration

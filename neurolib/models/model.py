@@ -39,6 +39,9 @@ class Model:
         # assume
         nNodes = outputs[0].shape[0]
         nodes = list(range(nNodes))
+        # print(len(outputs))
+        # print(outputs[0].shape)
+        # print(outputs[1].shape)
         allOutputsStacked = np.stack(outputs) # What? Where? When?
         self.xr = xr.DataArray(allOutputsStacked, coords=[outputNames, nodes, t], dims=['variable', 'space', 'time'])
 
