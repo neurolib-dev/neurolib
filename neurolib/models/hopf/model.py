@@ -1,5 +1,7 @@
 import numpy as np
 
+import xarray as xr
+
 import neurolib.models.hopf.chunkwiseIntegration as cw
 import neurolib.models.hopf.loadDefaultParams as dp
 import neurolib.models.hopf.timeIntegration as ti
@@ -9,6 +11,10 @@ class HopfModel:
     """
     Todo.
     """
+    name = "hopf"
+    description = "Stuart-Landau model with Hopf bifurcation"
+    inputs = ["x", "y" ]
+    outputs = ["x", "y"]    
 
     def __init__(self, params=None, Cmat=[], Dmat=[], lookupTableFileName=None, seed=None, simulateChunkwise=False, chunkSize=10000, simulateBOLD=False):
         if len(Cmat) == 0:
@@ -45,8 +51,20 @@ class HopfModel:
 
         t = np.dot(range(x.shape[1]), self.params["dt"])
 
+        # save results in attributes
         self.t = t
         self.x = x
         self.y = y
 
-        # return t, rates_exc, rates_inh
+        # new: save results in xarray
+        # note: result arrays like x should have shape (nodes x times)
+        # to remember, the dimensions of the xarray are ordered according to
+        # Where? What? When?        
+        nNodes = x.shape[0]
+        nodes = list(range(nNodes))
+        print(nodes)
+        times = t
+        resultNames = ['x', 'y']
+        allResultsStacked = np.stack([x, y], axis=1) # axis=1 to achieve Where? What? When?
+        xResult = xr.DataArray(allResultsStacked, coords=[nodes, resultNames, times], dims=['node', 'variable', 'time'])
+        self.xr = xResult
