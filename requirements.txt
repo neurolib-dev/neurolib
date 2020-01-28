@@ -2,5 +2,6 @@ h5py
 numba
 numpy
 scipy
+xarray
 pytest
 flake8
