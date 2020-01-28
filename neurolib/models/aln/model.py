@@ -1,14 +1,22 @@
 import numpy as np
+import xarray as xr
 
 import neurolib.models.aln.chunkwiseIntegration as cw
 import neurolib.models.aln.loadDefaultParams as dp
 import neurolib.models.aln.timeIntegration as ti
 
+from neurolib.models.model import Model
 
-class ALNModel:
+class ALNModel(Model):
     """
     Multi-population mean-field model with exciatory and inhibitory neurons per population.
     """
+    name = "aln"
+    description = "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
+    inputNames = ["ext_exc_current", "ext_exc_rate" ]
+    
+    outputNames = ["rates_exc", "rates_inh"]
+    outputs = []
 
     def __init__(self, params=None, Cmat=[], Dmat=[], lookupTableFileName=None, seed=None, simulateChunkwise=False, chunkSize=10000, simulateBOLD=False):
         """
@@ -20,6 +28,10 @@ class ALNModel:
         :param simulateChunkwise: Chunkwise time integration (for lower memory use)
         :param simulateBOLD: Parallel (chunkwise) BOLD simulation
         """
+        # Initialize base class Model
+        Model.__init__(self, self.name)
+        Model.addOutputs(self, self.outputNames, self.outputNames)
+
         # Global parameters
         self.Cmat = Cmat  # Connectivity matrix
         self.Dmat = Dmat  # Delay matrix
@@ -46,7 +58,7 @@ class ALNModel:
         """
         if self.simulateChunkwise:
             t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity)
-            rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk = return_tuple
+            rates_exc, rates_inh, t, mufe, mufi, IA,   seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk = return_tuple
             self.t_BOLD = t_BOLD
             self.BOLD = BOLD
 
@@ -54,14 +66,26 @@ class ALNModel:
             rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk = ti.timeIntegration(self.params)
 
         # convert output from kHz to Hz
-        rates_exc = rates_exc * 1000.0
+        rates_exc = rates_exc * 1000.0 # todo: do in timeintegration
         rates_inh = rates_inh * 1000.0
         stimulus = self.params["ext_exc_current"]
 
         t = np.dot(range(rates_exc.shape[1]), self.params["dt"])
 
+        # save results as attributes
         self.t = t
         self.rates_exc = rates_exc
         self.rates_inh = rates_inh
         self.input = stimulus
-        # return t, rates_exc, rates_inh
+
+        # new: save results in xarray
+        # note: result arrays like rates_exc should have shape (nodes x times)
+        # to remember, the dimensions of the xarray are ordered according to
+        # Where? What? When?
+        nNodes = rates_exc.shape[0]
+        nodes = list(range(nNodes))
+        times = t
+        resultNames = ['rates_exc', 'rates_inh']
+        allResultsStacked = np.stack([rates_exc, rates_inh], axis=1) # axis=1 to achieve Where? What? When?
+        xResult = xr.DataArray(allResultsStacked, coords=[nodes, resultNames, times], dims=['space', 'variable', 'time'])
+        self.xr = xResult
