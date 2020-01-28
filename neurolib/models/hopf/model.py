@@ -6,17 +6,22 @@ import neurolib.models.hopf.chunkwiseIntegration as cw
 import neurolib.models.hopf.loadDefaultParams as dp
 import neurolib.models.hopf.timeIntegration as ti
 
+from neurolib.models.model import Model
 
-class HopfModel:
+class HopfModel(Model):
     """
     Todo.
     """
     name = "hopf"
     description = "Stuart-Landau model with Hopf bifurcation"
-    inputs = ["x", "y" ]
-    outputs = ["x", "y"]    
+    
+    modelInputNames = []
+    modelOutputNames = ["x", "y"]
 
     def __init__(self, params=None, Cmat=[], Dmat=[], lookupTableFileName=None, seed=None, simulateChunkwise=False, chunkSize=10000, simulateBOLD=False):
+        # Initialize base class Model
+        Model.__init__(self, self.name)
+
         if len(Cmat) == 0:
             self.singleNode = True
         else:
@@ -56,15 +61,25 @@ class HopfModel:
         self.x = x
         self.y = y
 
+        # new: save results into Model output
+        outputNames = self.modelOutputNames
+        outputs = [self.x, self.y]
+
+        Model.addOutputs(self, t, outputs, outputNames)
+
+        #self.outputNames = self.outputNames
+        #self.outputs = [self.x, self.y]
+
+        #Model.outputsToXarray(self.t, self.outputs, self.outputNames)
+
         # new: save results in xarray
         # note: result arrays like x should have shape (nodes x times)
         # to remember, the dimensions of the xarray are ordered according to
         # Where? What? When?        
-        nNodes = x.shape[0]
-        nodes = list(range(nNodes))
-        print(nodes)
-        times = t
-        resultNames = ['x', 'y']
-        allResultsStacked = np.stack([x, y], axis=1) # axis=1 to achieve Where? What? When?
-        xResult = xr.DataArray(allResultsStacked, coords=[nodes, resultNames, times], dims=['node', 'variable', 'time'])
-        self.xr = xResult
+        # nNodes = x.shape[0]
+        # nodes = list(range(nNodes))
+        # times = t
+        # resultNames = ['x', 'y']
+        # allResultsStacked = np.stack([x, y], axis=1) # axis=1 to achieve Where? What? When?
+        # xResult = xr.DataArray(allResultsStacked, coords=[nodes, resultNames, times], dims=['node', 'variable', 'time'])
+        # self.xr = xResult
