@@ -17,9 +17,6 @@ class TestALNModel(unittest.TestCase):
         alnModel.run()
 
     def test_network(self):
-        logging.info("\t > ALN: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
-        start = time.time()
-
         ds = Dataset("gw")
         alnModel = aln.ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
         # in ms, simulates for 5 minutes
@@ -41,8 +38,6 @@ class TestHopfModel(unittest.TestCase):
         hopfModel.run()
 
     def test_network(self):
-        logging.info("\t > Hopf: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
-        start = time.time()
         ds = Dataset("gw")
         hopfModel = hopf.HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
         hopfModel.params["w"] = 1.0
