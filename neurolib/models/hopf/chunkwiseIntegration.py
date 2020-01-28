@@ -8,6 +8,7 @@ from neurolib.models.hopf.timeIntegration import timeIntegration
 
 
 def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAllActivity=False):
+    # time stuff
     totalDuration = params["duration"]
 
     dt = params["dt"]
@@ -25,10 +26,13 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
     if simulateBOLD:
         boldModel = bold.BOLDModel(N, dt)
 
+    # initialize data arrays
     t_BOLD_return = np.array([], dtype="f", ndmin=2)
     BOLD_return = np.array([], dtype="f", ndmin=2)
     all_xs = np.array([], dtype="f", ndmin=2)
     xs_return = np.array([], dtype="f", ndmin=2)
+    all_ys = np.array([], dtype="f", ndmin=2)
+    ys_return = np.array([], dtype="f", ndmin=2)    
 
     idxLastT = 0  # Index of the last computed t
 
@@ -46,23 +50,19 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
         paramsChunk["ys_init"] = ys_chunk[:, -int(delay_Ndt) :]
 
         xs_return = xs_chunk[:, int(delay_Ndt) :]
-        del xs_chunk
+        ys_return = ys_chunk[:, int(delay_Ndt) :]
+        del xs_chunk, ys_chunk
 
         if saveAllActivity:
             all_xs = np.hstack((all_xs, xs_return))
-            # if all_xs.shape[1] == 0: # first time?
-            #    all_xs = xs_return
-            # else:
-            #    all_xs = np.hstack((all_xs, xs_return))
+            all_ys = np.hstack((all_ys, ys_return))
 
         # BOLD model
         xsNormalized = xs_return
         xsNormalized = np.abs(xsNormalized)
         xsNormalized /= np.max(xsNormalized)
         xsNormalized *= 80.0
-        # import matplotlib.pyplot as plt
-        # plt.plot(xsNormalized.T)
-        # plt.show()
+
         if simulateBOLD:
             boldModel.run(xsNormalized)
             BOLD_return = boldModel.BOLD
@@ -75,5 +75,6 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
 
     if saveAllActivity:
         xs_return = all_xs
+        ys_return = all_ys
 
-    return t_return, xs_return, ys_chunk, t_BOLD_return, BOLD_return
+    return t_return, xs_return, ys_return, t_BOLD_return, BOLD_return

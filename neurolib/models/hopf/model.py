@@ -66,20 +66,3 @@ class HopfModel(Model):
         outputs = [self.x, self.y]
 
         Model.addOutputs(self, t, outputs, outputNames)
-
-        #self.outputNames = self.outputNames
-        #self.outputs = [self.x, self.y]
-
-        #Model.outputsToXarray(self.t, self.outputs, self.outputNames)
-
-        # new: save results in xarray
-        # note: result arrays like x should have shape (nodes x times)
-        # to remember, the dimensions of the xarray are ordered according to
-        # Where? What? When?        
-        # nNodes = x.shape[0]
-        # nodes = list(range(nNodes))
-        # times = t
-        # resultNames = ['x', 'y']
-        # allResultsStacked = np.stack([x, y], axis=1) # axis=1 to achieve Where? What? When?
-        # xResult = xr.DataArray(allResultsStacked, coords=[nodes, resultNames, times], dims=['node', 'variable', 'time'])
-        # self.xr = xResult
