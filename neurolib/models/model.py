@@ -9,7 +9,8 @@ class Model:
     nInputs = 0
 
     outputNames = None
-    outputs = None
+    outputs = {}
+    oxr = {}
 
     # outputs in an xarray
     xr = None
@@ -19,7 +20,7 @@ class Model:
 
         logging.info(f"Model {name} created")
     
-    def addOutputs(self, t, outputs, outputNames = None):
+    def addOutputs(self, name, t, outputs, outputNames = None):
         # if no names are provided, make up names
         # if outputs is a list
         if outputNames == None and isinstance(outputs, list):
@@ -27,13 +28,19 @@ class Model:
         elif outputNames == None:
             outputNames = [self.name + "-output"]
 
-        # sanity check
-        assert len(outputs) == len(outputNames)
-        
-        self.outputs = outputs
-        self.outputNames = outputNames
+        if not isinstance(outputs, list): outputs = [outputs]
+        if not isinstance(outputNames, list): outputNames = [outputNames]
 
-        self.outputsToXarray(t, outputs, outputNames)
+        # sanity check
+        assert len(outputs) == len(outputNames), f'Something wrong eh! Len {len(outputs)} of output {name} doesn\'t match the names {outputNames}'
+        
+        # save outputs
+        self.outputs[name] = {}
+        self.outputs[name]['t'] = t
+        for o, on in zip(outputs, outputNames):
+            self.outputs[name][on] = o
+            
+        self.oxr[name] = self.outputsToXarray(t, outputs, outputNames)
 
     def outputsToXarray(self, t, outputs, outputNames):
         # assume
@@ -43,5 +50,5 @@ class Model:
         # print(outputs[0].shape)
         # print(outputs[1].shape)
         allOutputsStacked = np.stack(outputs) # What? Where? When?
-        self.xr = xr.DataArray(allOutputsStacked, coords=[outputNames, nodes, t], dims=['variable', 'space', 'time'])
+        return xr.DataArray(allOutputsStacked, coords=[outputNames, nodes, t], dims=['variable', 'space', 'time'])
 
