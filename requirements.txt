@@ -4,6 +4,7 @@ numpy
 scipy
 xarray
 pandas
+tqdm
 pypet
 pytest
 flake8
