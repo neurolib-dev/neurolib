@@ -10,4 +10,4 @@ install:
 
 script:
   - pytest tests/
-  - flake8 . --exit-zero
+  - flake8 . --max-line-length=1000 --exit-zero
