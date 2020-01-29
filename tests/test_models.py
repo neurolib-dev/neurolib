@@ -20,6 +20,7 @@ class TestALNModel(unittest.TestCase):
         alnModel.params["sigma_ou"] = 0.1  # add some noise
 
         alnModel.run()
+
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
@@ -51,6 +52,7 @@ class TestHopfModel(unittest.TestCase):
         hopfModel.params["sigma_ou"] = 0.03
 
         hopfModel.run()
+        
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 

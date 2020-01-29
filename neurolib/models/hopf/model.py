@@ -65,4 +65,4 @@ class HopfModel(Model):
         outputNames = self.modelOutputNames
         outputs = [self.x, self.y]
 
-        Model.addOutputs(self, t, outputs, outputNames)
+        Model.addOutputs(self, 'activity', t, outputs, outputNames)
