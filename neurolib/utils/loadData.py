@@ -22,18 +22,18 @@ class Dataset:
         dsBaseDirectory = os.path.join(os.path.dirname(__file__), "..", "data", "datasets", datasetName)
 
         CmatFilename = os.path.join(dsBaseDirectory, "Cmat_avg.mat")
-        self.Cmat = self.loadData(CmatFilename, key="sc")  # structural connectivity matrix
+        self.Cmat = self.loadData(CmatFilename, key="sc", filter_subcortical=True)  # structural connectivity matrix
 
         DmatFilename = os.path.join(dsBaseDirectory, "Dmat_avg.mat")
-        self.Dmat = self.loadData(DmatFilename, key="len")  # fiber length matrix
+        self.Dmat = self.loadData(DmatFilename, key="len", filter_subcortical=True)  # fiber length matrix
 
         BOLDFilenames = glob.glob(os.path.join(dsBaseDirectory, "BOLD/", "*_tc.mat"))  # BOLD timeseries
 
-        self.BOLDs = self.loadData(BOLDFilenames, key="tc")
-        self.FCs = self.loadData(BOLDFilenames, key="tc", apply_function=func.fc)
-        self.FCDs = self.loadData(BOLDFilenames, key="tc", apply_function=func.fcd, apply_function_kwargs={"stepsize": 10})
+        self.BOLDs = self.loadData(BOLDFilenames, key="tc", filter_subcortical=True)
+        self.FCs = self.loadData(BOLDFilenames, key="tc", filter_subcortical=True, apply_function=func.fc)
+        #self.FCDs = self.loadData(BOLDFilenames, key="tc", filter_subcortical=True, apply_function=func.fcd, apply_function_kwargs={"stepsize": 10})
 
-    def loadData(self, matrixFileNames, average=False, filter_subcortical=True, key="", apply_function=None, apply_function_kwargs={}):
+    def loadData(self, matrixFileNames, average=False, filter_subcortical=False, key="", apply_function=None, apply_function_kwargs={}):
         """
         Loads brain matrices provided filenames.
 

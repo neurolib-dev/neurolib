@@ -78,5 +78,7 @@ class ALNModel(Model):
         # new: save results into Model output
         outputNames = self.modelOutputNames
         outputs = [self.rates_exc, self.rates_inh]
+        Model.addOutputs(self, 'rates', t, outputs, outputNames)
 
-        Model.addOutputs(self, t, outputs, outputNames)
+        if self.simulateBOLD:
+            Model.addOutputs(self, 'BOLD', t_BOLD, BOLD, 'BOLD')

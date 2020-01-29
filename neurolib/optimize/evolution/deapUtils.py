@@ -1,7 +1,7 @@
-# This files contains helper function for DEAP library.
-# Especially additional mutation, crossover and selection operators.
-import random
+# This file contains helper functions for DEAP
+# including additional mutation, crossover and selection operators.
 
+import random
 import numpy as np
 
 
@@ -10,7 +10,6 @@ def indivAsDict_adapt(individual, ParametersInterval, paramInterval):
     Convert an individual to a dictionary
     """
     return ParametersInterval(*(individual[: len(paramInterval)]))._asdict().copy()
-
 
 def generateRandomParams_withAdaptation(paramInterval):
     """
