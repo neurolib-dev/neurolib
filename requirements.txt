@@ -3,5 +3,7 @@ numba
 numpy
 scipy
 xarray
+pandas
+pypet
 pytest
 flake8
