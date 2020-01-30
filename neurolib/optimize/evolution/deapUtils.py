@@ -41,27 +41,27 @@ def check_param_validity(individual, paramInterval):
 
 ### Selection operators ###
 
-# Wheel selection
-def selWheel(individuals, k):
-    """
-    Select k individual from a population using the Roulette selection
-    Since we are trying to minimize the distance, we use the inverse fitness function as a probability
+# # Wheel selection
+# def selWheel(individuals, k):
+#     """
+#     Select k individual from a population using the Roulette selection
+#     Since we are trying to minimize the distance, we use the inverse fitness function as a probability
 
-    This code is inspired from DEAP.toolbox.selRoulette
-    """
-    s_inds = sorted(individuals, key=attrgetter("fitness"), reverse=True)
-    sum_invfits = sum(1 / ind.fitness.values[0] for ind in individuals)
+#     This code is inspired from DEAP.toolbox.selRoulette
+#     """
+#     s_inds = sorted(individuals, key=attrgetter("fitness"), reverse=True)
+#     sum_invfits = sum(1 / ind.fitness.values[0] for ind in individuals)
 
-    chosen = []
-    for i in range(k):
-        u = random.random() * sum_invfits
-        sum_ = 0
-        for ind in s_inds:
-            sum_ += 1 / ind.fitness.values[0]
-            if sum_ > u:
-                chosen.append(ind)
-                break
-    return chosen
+#     chosen = []
+#     for i in range(k):
+#         u = random.random() * sum_invfits
+#         sum_ = 0
+#         for ind in s_inds:
+#             sum_ += 1 / ind.fitness.values[0]
+#             if sum_ > u:
+#                 chosen.append(ind)
+#                 break
+#     return chosen
 
 
 # Rank selection
