@@ -292,13 +292,13 @@ def print_params(params):
         print("params['%s'] = %0.3f" % (p, params[p]))
 
 
-def getPowerSpectrum(rate, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
+def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
     """
     Returns a power spectrum using Welch's method.
 
     Parameters
     ----------
-        rate : numpy array
+        activity : numpy array
             One-dimensional timeseries
         dt : float
             Simulation time step
@@ -316,8 +316,13 @@ def getPowerSpectrum(rate, dt, maxfr=70, spectrum_windowsize=1.0, normalize=Fals
         pwers : list
             Powers
     """
+    # convert to one-dimensional array if it is an (1xn)-D array
+    if activity.shape[0] == 1 and activity.shape[1] > 1:
+        activity = activity[0]
+    assert len(activity.shape) == 1, "activity is not one-dimensional!"
+
     f, Pxx_spec = scipy.signal.welch(
-        rate,
+        activity,
         1000 / dt,
         window="hanning",
         nperseg=int(spectrum_windowsize * 1000 / dt),
@@ -330,15 +335,17 @@ def getPowerSpectrum(rate, dt, maxfr=70, spectrum_windowsize=1.0, normalize=Fals
     return f, Pxx_spec
 
 
-def getMeanPowerSpectrum(rates, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
+def getMeanPowerSpectrum(
+    activities, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False
+):
     """
     Returns the mean power spectrum of multiple timeseries.
     """
     powers = np.zeros(
-        getPowerSpectrum(rates[0], dt, maxfr, spectrum_windowsize)[0].shape
+        getPowerSpectrum(activities[0], dt, maxfr, spectrum_windowsize)[0].shape
     )
     ps = []
-    for rate in rates:
+    for rate in activities:
         f, Pxx_spec = getPowerSpectrum(rate, dt, maxfr, spectrum_windowsize)
         ps.append(Pxx_spec)
         powers += Pxx_spec

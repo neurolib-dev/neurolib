@@ -9,13 +9,19 @@ import numpy as np
 import pypet as pp
 import pandas as pd
 import seaborn as sns
+from pandas.plotting import scatter_matrix
 
 import neurolib.utils.paths as paths
 import neurolib.optimize.evolution.deapUtils as du
 
 
-def printParamDist(pop, paramInterval):
-    print("Parameters dictribution:")
+def printParamDist(pop=None, paramInterval=None, gIdx=None):
+    if pop == None:
+        pop = self.pop
+    if paramInterval == None:
+        paramInterval = self.paramInterval
+
+    print("Parameters dictribution (Generation {}):".format(gIdx))
     for idx, k in enumerate(paramInterval._fields):
         print(
             "{}: \t mean: {:.4},\t std: {:.4}".format(
@@ -26,7 +32,36 @@ def printParamDist(pop, paramInterval):
         )
 
 
-from pandas.plotting import scatter_matrix
+def printIndividuals(pop, paramInterval, stats=False):
+    print("Printing {} individuals".format(len(pop)))
+    pars = []
+    for i, ind in enumerate(pop):
+        thesepars = {}
+        for ki, k in enumerate(paramInterval._fields):
+            thesepars[k] = ind[ki]
+        thesepars["fit"] = np.mean(ind.fitness.values)
+        pars.append(thesepars)
+        print(
+            "Individual",
+            i,
+            "pars",
+            ", ".join(
+                [
+                    " ".join([k, "{0:.4}".format(ind[ki])])
+                    for ki, k in enumerate(paramInterval._fields)
+                ]
+            ),
+        )
+        print("\tFitness values: ", *np.round(ind.fitness.values, 4))
+        if stats:
+            print(
+                "\t > mean {0:.4}, std {0:.4}, min {0:.4} max {0:.4}".format(
+                    np.mean(ind.fitness.values),
+                    np.std(ind.fitness.values),
+                    np.min(ind.fitness.values),
+                    np.max(ind.fitness.values),
+                )
+            )
 
 
 def printPopFitnessStats(
@@ -42,7 +77,7 @@ def printPopFitnessStats(
     """
     # Gather all the fitnesses in one list and print the stats
     # selectPop = [p for p in pop if not np.isnan(p.fitness.score)]
-    selectPop = [p for p in pop if p.fitness.score > 0]
+    selectPop = [p for p in pop if not np.any(np.isnan(p.fitness.values))]
     candidates = np.array([p[0 : len(paramInterval._fields)] for p in selectPop]).T
     scores = np.array([selectPop[i].fitness.score for i in range(len(selectPop))])
     print("There are {} valid individuals".format(len(selectPop)))
@@ -111,7 +146,7 @@ def countLiving(pop):
     return nValid
 
 
-def saveToPypet(self, traj, pop, gIdx):
+def saveToPypet(traj, pop, gIdx):
     traj.f_add_result_group("{}.gen_{:06d}".format("evolution", gIdx))
     traj.f_add_result(
         "{}.gen_{:06d}.fitness".format("evolution", gIdx),
