@@ -11,6 +11,7 @@ def indivAsDict_adapt(individual, ParametersInterval, paramInterval):
     """
     return ParametersInterval(*(individual[: len(paramInterval)]))._asdict().copy()
 
+
 def generateRandomParams_withAdaptation(paramInterval):
     """
     Generate a sequence of random parameters from a ParamsInterval using a uniform distribution.
@@ -73,7 +74,9 @@ def selRank(individuals, k, s=1.5):
         n the rank selection, individual are selected with a probability depending on their rank.
     """
     # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
-    s_inds = sorted(individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)
+    s_inds = sorted(
+        individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True
+    )
 
     mu = len(individuals)
 
@@ -103,7 +106,9 @@ def selBest_multiObj(individuals, k):
     This function accept multiobjective function by summing the fitness all of objectives.
     """
     # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
-    return sorted(individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)[:k]
+    return sorted(
+        individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True
+    )[:k]
 
 
 ### Crossover operators ###
@@ -225,8 +230,14 @@ def adaptiveMutation_nStepSize(mutant, gamma_gl=None, gammas=None):
     if gammas is None:
         gammas = [1 / np.sqrt(2 * np.sqrt(nParams))] * nParams
 
-    newSigmas = [oldSigmas[i] * np.exp(gammas[i] * np.random.randn() + gamma_gl * np.random.randn()) for i in range(nParams)]
-    newParams = [oldParams[i] + newSigmas[i] * np.random.randn() for i in range(nParams)]
+    newSigmas = [
+        oldSigmas[i]
+        * np.exp(gammas[i] * np.random.randn() + gamma_gl * np.random.randn())
+        for i in range(nParams)
+    ]
+    newParams = [
+        oldParams[i] + newSigmas[i] * np.random.randn() for i in range(nParams)
+    ]
 
     mutant[:] = newParams + newSigmas
 
