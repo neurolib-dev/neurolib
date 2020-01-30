@@ -81,19 +81,49 @@ params["d_sigma"] = 1e-5  # mV/sqrt(ms)
 EIF_output_dict = OrderedDict()
 LN_quantities_dict = OrderedDict()
 
-EIF_output_names = ["r_ss", "dr_ss_dmu", "dr_ss_dsigma", "V_mean_ss", "r1_mumod", "r1_sigmamod", "peak_real_r1_mumod", "f_peak_real_r1_mumod", "peak_imag_r1_mumod", "f_peak_imag_r1_mumod"]  # last 4 only  # for LN_dos
+EIF_output_names = [
+    "r_ss",
+    "dr_ss_dmu",
+    "dr_ss_dsigma",
+    "V_mean_ss",
+    "r1_mumod",
+    "r1_sigmamod",
+    "peak_real_r1_mumod",
+    "f_peak_real_r1_mumod",
+    "peak_imag_r1_mumod",
+    "f_peak_imag_r1_mumod",
+]  # last 4 only  # for LN_dos
 
-LN_quantity_names = ["r_ss", "V_mean_ss", "tau_mu_exp", "tau_sigma_exp", "tau_mu_dosc", "f0_mu_dosc"]  # last 2 only needed for LN_dos
+LN_quantity_names = [
+    "r_ss",
+    "V_mean_ss",
+    "tau_mu_exp",
+    "tau_sigma_exp",
+    "tau_mu_dosc",
+    "f0_mu_dosc",
+]  # last 2 only needed for LN_dos
 
 plot_EIF_output_names = ["r1_mumod", "ifft_r1_mumod", "r1_sigmamod", "ifft_r1_sigmamod"]
-plot_quantitiy_names = ["r_ss", "V_mean_ss", "tau_mu_exp", "tau_sigma_exp", "tau_mu_dosc", "f0_mu_dosc"]  # last 2 only for LN_dos
+plot_quantitiy_names = [
+    "r_ss",
+    "V_mean_ss",
+    "tau_mu_exp",
+    "tau_sigma_exp",
+    "tau_mu_dosc",
+    "f0_mu_dosc",
+]  # last 2 only for LN_dos
 
 if __name__ == "__main__":
     print("Main")
     # LOAD --------------------------------------------------------------------
     if load_EIF_output:
         print("Loading EIF output...")
-        mc.load(folder + "/" + output_filename, EIF_output_dict, EIF_output_names + ["mu_vals", "sigma_vals", "freq_vals"], params)
+        mc.load(
+            folder + "/" + output_filename,
+            EIF_output_dict,
+            EIF_output_names + ["mu_vals", "sigma_vals", "freq_vals"],
+            params,
+        )
         # optional shortcuts:
         mu_vals = EIF_output_dict["mu_vals"]
         sigma_vals = EIF_output_dict["sigma_vals"]
@@ -101,7 +131,12 @@ if __name__ == "__main__":
 
     if load_quantities:
         print("Loading quantities...")
-        mc.load(folder + "/" + quantities_filename, LN_quantities_dict, LN_quantity_names + ["mu_vals", "sigma_vals", "freq_vals"], params)
+        mc.load(
+            folder + "/" + quantities_filename,
+            LN_quantities_dict,
+            LN_quantity_names + ["mu_vals", "sigma_vals", "freq_vals"],
+            params,
+        )
         # optional shortcuts:
         mu_vals = LN_quantities_dict["mu_vals"]
         sigma_vals = LN_quantities_dict["sigma_vals"]
@@ -112,7 +147,16 @@ if __name__ == "__main__":
         print("")
         print("Computing {}".format(EIF_output_names))
         print("This may take a while for large numbers of mu & sigma values...")
-        EIF_output_dict, LN_quantities_dict = mc.calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params, EIF_output_dict, EIF_output_names, save_rate_mod, LN_quantities_dict, LN_quantity_names)
+        EIF_output_dict, LN_quantities_dict = mc.calc_EIF_output_and_cascade_quants(
+            mu_vals,
+            sigma_vals,
+            params,
+            EIF_output_dict,
+            EIF_output_names,
+            save_rate_mod,
+            LN_quantities_dict,
+            LN_quantity_names,
+        )
 
     # SAVE --------------------------------------------------------------------
     if save_EIF_output:
@@ -122,13 +166,3 @@ if __name__ == "__main__":
     if save_quantities:
         mc.save(folder + "/" + quantities_filename, LN_quantities_dict, params)
         print("LN quantities saved")
-
-    # PLOT --------------------------------------------------------------------
-    if plot_filters:
-        recalc_filters = True
-        mc.plot_filters(EIF_output_dict, LN_quantities_dict, plot_EIF_output_names, params, mus_plot, sigmas_plot, recalc_filters)
-
-    if plot_quantities:
-        mc.plot_quantities(LN_quantities_dict, plot_quantitiy_names, sigmas_quant_plot)
-        # mc.plot_quantities_forpaper(LN_quantities_dict, plot_quantitiy_names,
-        #                            sigmas_quant_plot, mus_plot, sigmas_plot)
