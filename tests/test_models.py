@@ -25,7 +25,10 @@ class TestALNModel(unittest.TestCase):
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
     def test_network(self):
-        logging.info("\t > ALN: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
+        logging.info(
+            "\t > ALN: Testing brain network (chunkwise integration and BOLD"
+            " simulation) ..."
+        )
         start = time.time()
 
         ds = Dataset("gw")
@@ -35,6 +38,11 @@ class TestALNModel(unittest.TestCase):
         alnModel.params["duration"] = 10 * 1000
 
         alnModel.run()
+
+        # access outputs
+        alnModel.xrs["rates"]
+        alnModel.xrs["BOLD"]
+
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
@@ -52,12 +60,15 @@ class TestHopfModel(unittest.TestCase):
         hopfModel.params["sigma_ou"] = 0.03
 
         hopfModel.run()
-        
+
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
     def test_network(self):
-        logging.info("\t > Hopf: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
+        logging.info(
+            "\t > Hopf: Testing brain network (chunkwise integration and BOLD"
+            " simulation) ..."
+        )
         start = time.time()
         ds = Dataset("gw")
         hopfModel = hopf.HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
