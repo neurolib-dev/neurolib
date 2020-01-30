@@ -22,8 +22,8 @@ class TestALNExploration(unittest.TestCase):
         alnModel = ALNModel()
 
         parameters = {
-            "mue_ext_mean": np.linspace(0, 3, 4).tolist(),
-            "mui_ext_mean": np.linspace(0, 3, 4).tolist(),
+            "mue_ext_mean": np.linspace(0, 3, 2).tolist(),
+            "mui_ext_mean": np.linspace(0, 3, 2).tolist(),
         }
 
         search = BoxSearch(alnModel, parameters)

@@ -4,12 +4,10 @@ import random
 import copy
 
 import deap
-import matplotlib.pyplot as plt
 import numpy as np
 import pypet as pp
 import pandas as pd
-import seaborn as sns
-from pandas.plotting import scatter_matrix
+
 
 import neurolib.utils.paths as paths
 import neurolib.optimize.evolution.deapUtils as du
@@ -72,6 +70,10 @@ def printPopFitnessStats(
     draw_scattermatrix=False,
     save_plots=None,
 ):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from pandas.plotting import scatter_matrix
+
     """
     Print some stats of a population fitness
     """

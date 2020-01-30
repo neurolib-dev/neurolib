@@ -69,8 +69,8 @@ class Evolution:
             large_overview_tables=True,
             multiproc=True,
             ncores=ncores,
-            wrap_mode="QUEUE",
-            log_stdout=False,
+            # wrap_mode="QUEUE",
+            # log_stdout=False,
             automatic_storing=False,
             complevel=9,
         )
@@ -291,8 +291,11 @@ class Evolution:
     def runInitial(self):
         ### Evaluate the initial population
         logging.info("Evaluating initial population of size %i ..." % len(self.pop))
-        self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, 0)
         self.gIdx = 0  # set generation index
+
+        self.pop = self.evalPopulationUsingPypet(
+            self.traj, self.toolbox, self.pop, self.gIdx
+        )
 
         if self.verbose:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
@@ -414,11 +417,12 @@ class Evolution:
             self.runInitial()
         self.runEvolution()
 
-    def info(self):
+    def info(self, plot=True):
         eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-        eu.printPopFitnessStats(
-            self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True
-        )
+        if plot:
+            eu.printPopFitnessStats(
+                self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True
+            )
         bestN = 20
         eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)
 
