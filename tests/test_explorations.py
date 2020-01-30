@@ -9,6 +9,7 @@ from neurolib.utils.loadData import Dataset
 
 from neurolib.optimize.exploration import BoxSearch
 
+
 class TestALNExploration(unittest.TestCase):
     """
     ALN model parameter exploration with pypet.
@@ -20,8 +21,10 @@ class TestALNExploration(unittest.TestCase):
 
         alnModel = ALNModel()
 
-        parameters = {'mue_ext_mean' : np.linspace(0, 3, 4).tolist(),
-              'mui_ext_mean' : np.linspace(0, 3, 4).tolist()}
+        parameters = {
+            "mue_ext_mean": np.linspace(0, 3, 4).tolist(),
+            "mui_ext_mean": np.linspace(0, 3, 4).tolist(),
+        }
 
         search = BoxSearch(alnModel, parameters)
 
@@ -32,7 +35,11 @@ class TestALNExploration(unittest.TestCase):
         search.loadResults()
 
         for i in search.dfResults.index:
-            search.dfResults.loc[i, 'max_r'] = np.max(search.runResults[i]['rates_exc'][:, -int(1000/alnModel.params['dt']):])
+            search.dfResults.loc[i, "max_r"] = np.max(
+                search.runResults[i]["rates_exc"][
+                    :, -int(1000 / alnModel.params["dt"]) :
+                ]
+            )
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))

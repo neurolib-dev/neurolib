@@ -108,7 +108,9 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
     # synaptic time constants
     params.tau_se = 2.0  # ms  "EE = IE", for fixed delays
     params.tau_si = 5.0  # ms  "EI = II"
-    params.tau_de = 1.0  # ms  "EE = IE", time constant for distributed delays (untested)
+
+    # time constant for distributed delays (untested)
+    params.tau_de = 1.0  # ms  "EE = IE"
     params.tau_di = 1.0  # ms  "EI = II"
 
     # PSC amplitudes
