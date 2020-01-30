@@ -99,7 +99,9 @@ class Evolution:
         self.paramInterval = self.ParametersInterval(
             [0.0, 4.0], [0.0, 4.0], [0.01, 0.3]
         )
+
         self.toolbox = deap.base.Toolbox()
+
         self.initDEAP(
             self.toolbox,
             self.env,
