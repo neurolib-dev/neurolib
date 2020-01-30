@@ -10,10 +10,8 @@ class Model:
 
     outputNames = None
     outputs = {}
-    oxr = {}
+    xrs = {}
 
-    # outputs in an xarray
-    xr = None
     def __init__(self, name, description = None):
         assert isinstance(name, str), f"name {name} is not a string"
         self.name = name
@@ -40,7 +38,7 @@ class Model:
         for o, on in zip(outputs, outputNames):
             self.outputs[name][on] = o
             
-        self.oxr[name] = self.outputsToXarray(t, outputs, outputNames)
+        self.xrs[name] = self.outputsToXarray(t, outputs, outputNames)
 
     def outputsToXarray(self, t, outputs, outputNames):
         # assume
