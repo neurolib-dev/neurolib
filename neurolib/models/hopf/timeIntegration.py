@@ -24,16 +24,21 @@ def timeIntegration(params):
     w = params["w"]  # Oscillator frequency
 
     # external input parameters:
-    tau_ou = params["tau_ou"]  # Parameter of the Ornstein-Uhlenbeck process for the external input(ms)
-    sigma_ou = params["sigma_ou"]  # Parameter of the Ornstein-Uhlenbeck (OU) process for the external input ( mV/ms/sqrt(ms) )
-    x_ext_mean = params["x_ext_mean"]  # Mean external excitatory input (OU process) (mV/ms)
-    y_ext_mean = params["y_ext_mean"]  # Mean external inhibitory input (OU process) (mV/ms)
+    # Parameter of the Ornstein-Uhlenbeck process for the external input(ms)
+    tau_ou = params["tau_ou"]
+    # Parameter of the Ornstein-Uhlenbeck (OU) process for the external input ( mV/ms/sqrt(ms) )
+    sigma_ou = params["sigma_ou"]
+    # Mean external excitatory input (OU process) (mV/ms)
+    x_ext_mean = params["x_ext_mean"]
+    # Mean external inhibitory input (OU process) (mV/ms)
+    y_ext_mean = params["y_ext_mean"]
 
     # ------------------------------------------------------------------------
     # global coupling parameters
 
     # Connectivity matrix
-    Cmat = params["Cmat"]  # Interareal relative coupling strengths (values between 0 and 1), Cmat(i,j) connnection from jth to ith
+    # Interareal relative coupling strengths (values between 0 and 1), Cmat(i,j) connnection from jth to ith
+    Cmat = params["Cmat"]
     N = len(Cmat)  # Number of nodes
     K_gl = params["K_gl"]  # global coupling strength
     # Interareal connection delay
@@ -43,7 +48,8 @@ def timeIntegration(params):
     if N == 1:
         Dmat = np.zeros((N, N))
     else:
-        Dmat = dp.computeDelayMatrix(lengthMat, signalV)  # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
+        # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
+        Dmat = dp.computeDelayMatrix(lengthMat, signalV)
         Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
     params["Dmat_ndt"] = Dmat_ndt
@@ -93,11 +99,61 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
 
-    return timeIntegration_njit_elementwise(startind, t, dt, sqrt_dt, duration, N, Cmat, Dmat, K_gl, signalV, Dmat_ndt, xs, ys, xs_input_d, a, w, noise_xs, noise_ys, x_ext, y_ext, x_ext_mean, y_ext_mean, tau_ou, sigma_ou)
+    return timeIntegration_njit_elementwise(
+        startind,
+        t,
+        dt,
+        sqrt_dt,
+        duration,
+        N,
+        Cmat,
+        Dmat,
+        K_gl,
+        signalV,
+        Dmat_ndt,
+        xs,
+        ys,
+        xs_input_d,
+        a,
+        w,
+        noise_xs,
+        noise_ys,
+        x_ext,
+        y_ext,
+        x_ext_mean,
+        y_ext_mean,
+        tau_ou,
+        sigma_ou,
+    )
 
 
 @numba.njit
-def timeIntegration_njit_elementwise(startind, t, dt, sqrt_dt, duration, N, Cmat, Dmat, K_gl, signalV, Dmat_ndt, xs, ys, xs_input_d, a, w, noise_xs, noise_ys, x_ext, y_ext, x_ext_mean, y_ext_mean, tau_ou, sigma_ou):
+def timeIntegration_njit_elementwise(
+    startind,
+    t,
+    dt,
+    sqrt_dt,
+    duration,
+    N,
+    Cmat,
+    Dmat,
+    K_gl,
+    signalV,
+    Dmat_ndt,
+    xs,
+    ys,
+    xs_input_d,
+    a,
+    w,
+    noise_xs,
+    noise_ys,
+    x_ext,
+    y_ext,
+    x_ext_mean,
+    y_ext_mean,
+    tau_ou,
+    sigma_ou,
+):
     ### integrate ODE system:
     for i in range(startind, len(t)):
 
@@ -111,19 +167,39 @@ def timeIntegration_njit_elementwise(startind, t, dt, sqrt_dt, duration, N, Cmat
             # delayed input to each node
             xs_input_d[no] = 0
             for l in range(N):
-                xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])  # delayed input
+                xs_input_d[no] += (
+                    K_gl
+                    * Cmat[no, l]
+                    * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
+                )  # delayed input
             # ysd[no] = ys[no,i-1] # delayed input
 
             # Stuart-Landau / Hopf Oscillator
-            # print('a', a, 'w', w, 'xs[no, i]', xs[no, i], 'ys[no, i]', ys[no, i])
-            x_rhs = (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * xs[no, i - 1] - w * ys[no, i - 1] + xs_input_d[no] + x_ext[no]
-            y_rhs = (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1] + w * xs[no, i - 1] + y_ext[no]
+            x_rhs = (
+                (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * xs[no, i - 1]
+                - w * ys[no, i - 1]
+                + xs_input_d[no]
+                + x_ext[no]
+            )
+            y_rhs = (
+                (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
+                + w * xs[no, i - 1]
+                + y_ext[no]
+            )
 
             xs[no, i] = xs[no, i - 1] + dt * x_rhs
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
             # ornstein-uhlenberg process
-            x_ext[no] = x_ext[no] + (x_ext_mean - x_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
-            y_ext[no] = y_ext[no] + (y_ext_mean - y_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
+            x_ext[no] = (
+                x_ext[no]
+                + (x_ext_mean - x_ext[no]) * dt / tau_ou
+                + sigma_ou * sqrt_dt * noise_xs[no]
+            )  # mV/ms
+            y_ext[no] = (
+                y_ext[no]
+                + (y_ext_mean - y_ext[no]) * dt / tau_ou
+                + sigma_ou * sqrt_dt * noise_ys[no]
+            )  # mV/ms
 
     return t, xs, ys

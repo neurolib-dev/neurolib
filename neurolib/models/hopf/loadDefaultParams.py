@@ -79,9 +79,10 @@ def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
         :returns:    A matrix of connexion delay in ms
     """
 
-    normalizedLenMat = lengthMat * segmentLength  # Each segment is ~1.8mm
+    normalizedLenMat = lengthMat * segmentLength
+    # Interareal connection delays, Dmat(i,j) in ms
     if signalV > 0:
-        Dmat = normalizedLenMat / signalV  # Interareal connection delays, Dmat(i,j) in ms
+        Dmat = normalizedLenMat / signalV
     else:
         Dmat = lengthMat * 0.0
     return Dmat
@@ -98,9 +99,9 @@ def generateRandomICs(N, seed=None):
     if seed:
         np.random.seed(seed)
 
-    mufe_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms  if DOSC_version: complex variable
-    IA_init = 200.0 * np.random.uniform(0, 1, (N,))  # pA
-    mufi_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms  if DOSC_version: complex variable
+    mufe_init = 3 * np.random.uniform(0, 1, (N,))
+    IA_init = 200.0 * np.random.uniform(0, 1, (N,))
+    mufi_init = 3 * np.random.uniform(0, 1, (N,))
     seem_init = 0.5 * np.random.uniform(0, 1, (N,))
     seim_init = 0.5 * np.random.uniform(0, 1, (N,))
     seev_init = 0.001 * np.random.uniform(0, 1, (N,))
@@ -112,25 +113,53 @@ def generateRandomICs(N, seed=None):
     rates_exc_init = 0.05 * np.random.uniform(0, 1, (N, 1))
     rates_inh_init = 0.05 * np.random.uniform(0, 1, (N, 1))
 
-    return mufe_init, IA_init, mufi_init, seem_init, seim_init, seev_init, seiv_init, siim_init, siem_init, siiv_init, siev_init, rates_exc_init, rates_inh_init
+    return (
+        mufe_init,
+        IA_init,
+        mufi_init,
+        seem_init,
+        seim_init,
+        seev_init,
+        seiv_init,
+        siim_init,
+        siem_init,
+        siiv_init,
+        siev_init,
+        rates_exc_init,
+        rates_inh_init,
+    )
 
 
 def loadICs(params, N, seed=None):
     # Generate and set random initial conditions
-    mufe_init, IA_init, mufi_init, seem_init, seim_init, seev_init, seiv_init, siim_init, siem_init, siiv_init, siev_init, rates_exc_init, rates_inh_init = generateRandomICs(N, seed)
+    (
+        mufe_init,
+        IA_init,
+        mufi_init,
+        seem_init,
+        seim_init,
+        seev_init,
+        seiv_init,
+        siim_init,
+        siem_init,
+        siiv_init,
+        siev_init,
+        rates_exc_init,
+        rates_inh_init,
+    ) = generateRandomICs(N, seed)
 
-    params["mufe_init"] = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
-    params["IA_init"] = IA_init  # adaptation current
-    params["mufi_init"] = mufi_init  #
-    params["seem_init"] = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
-    params["seim_init"] = seim_init  #
-    params["seev_init"] = seev_init  # variance of fraction of active synapses [0-1]
-    params["seiv_init"] = seiv_init  #
-    params["siim_init"] = siim_init  #
-    params["siem_init"] = siem_init  #
-    params["siiv_init"] = siiv_init  #
-    params["siev_init"] = siev_init  #
-    params["rates_exc_init"] = rates_exc_init  #
-    params["rates_inh_init"] = rates_inh_init  #
+    params["mufe_init"] = mufe_init
+    params["IA_init"] = IA_init
+    params["mufi_init"] = mufi_init
+    params["seem_init"] = seem_init
+    params["seim_init"] = seim_init
+    params["seev_init"] = seev_init
+    params["seiv_init"] = seiv_init
+    params["siim_init"] = siim_init
+    params["siem_init"] = siem_init
+    params["siiv_init"] = siiv_init
+    params["siev_init"] = siev_init
+    params["rates_exc_init"] = rates_exc_init
+    params["rates_inh_init"] = rates_inh_init
 
     return params
