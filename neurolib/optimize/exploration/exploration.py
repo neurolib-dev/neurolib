@@ -77,7 +77,7 @@ class BoxSearch:
             multiproc=True,
             ncores=nprocesses,
             # log_config=None,
-            wrap_mode="QUEUE",
+            # wrap_mode="QUEUE",
             log_stdout=False,
         )
         self.env = env
@@ -152,7 +152,7 @@ class BoxSearch:
         self.env.run(self.runModel)
 
     # The commented code block below is now in neurolib.utils.pypetUtils.py
-    # 
+    #
     # def getTrajectorynamesInFile(self, filename):
     #     """
     #     Return a list of all pypet trajectories name saved in a a given hdf5 file.
