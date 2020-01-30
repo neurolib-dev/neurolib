@@ -7,7 +7,9 @@ from neurolib.models import bold
 from neurolib.models.aln.timeIntegration import timeIntegration
 
 
-def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllActivity=False):
+def chunkwiseTimeIntAndBOLD(
+    params, chunkSize=10000, simulateBOLD=True, saveAllActivity=False
+):
     """
     Run the interareal network simulation with the parametrization params, compute the corresponding BOLD signal
     and store the result ( currently only BOLD signal ) in the hdf5 file fname_out
@@ -42,20 +44,42 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
     all_rates_exc = np.array([], dtype="f", ndmin=2)
     rates_exc_return = np.array([], dtype="f", ndmin=2)
     all_rates_inh = np.array([], dtype="f", ndmin=2)
-    rates_inh_return = np.array([], dtype="f", ndmin=2)    
+    rates_inh_return = np.array([], dtype="f", ndmin=2)
 
     # Index of the last computed t
-    idxLastT = 0  
+    idxLastT = 0
 
     while dt * idxLastT < totalDuration:
         # Determine the size of the next chunk
-        currentChunkSize = min(chunkSize + delay_Ndt, totalDuration - dt * idxLastT + (delay_Ndt + 1) * dt)
+        currentChunkSize = min(
+            chunkSize + delay_Ndt, totalDuration - dt * idxLastT + (delay_Ndt + 1) * dt
+        )
         paramsChunk["duration"] = currentChunkSize
 
         # Time Integration
-        rates_exc_chunk, rates_inh_chunk = np.array([], dtype="f", ndmin=2), np.array([], dtype="f", ndmin=2)
+        rates_exc_chunk, rates_inh_chunk = (
+            np.array([], dtype="f", ndmin=2),
+            np.array([], dtype="f", ndmin=2),
+        )
 
-        rates_exc_chunk, rates_inh_chunk, t_chunk, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk = timeIntegration(paramsChunk)
+        (
+            rates_exc_chunk,
+            rates_inh_chunk,
+            t_chunk,
+            mufe,
+            mufi,
+            IA,
+            seem,
+            seim,
+            siem,
+            siim,
+            seev,
+            seiv,
+            siev,
+            siiv,
+            integrated_chunk,
+            rhs_chunk,
+        ) = timeIntegration(paramsChunk)
 
         # Prepare integration parameters for the next chunk
         paramsChunk["mufe_init"] = mufe
@@ -73,7 +97,9 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
         paramsChunk["rates_exc_init"] = rates_exc_chunk[:, -int(delay_Ndt) :]
         paramsChunk["rates_inh_init"] = rates_inh_chunk[:, -int(delay_Ndt) :]
 
-        rates_exc_return = rates_exc_chunk[:, int(delay_Ndt) :]  # cut off initial condition transient, otherwise it would repeat
+        rates_exc_return = rates_exc_chunk[
+            :, int(delay_Ndt) :
+        ]  # cut off initial condition transient, otherwise it would repeat
         rates_inh_return = rates_inh_chunk[:, int(delay_Ndt) :]
 
         del rates_exc_chunk, rates_inh_chunk
@@ -95,6 +121,23 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
             rates_exc_return = all_rates_exc
             rates_inh_return = all_rates_inh
 
-        return_from_timeIntegration = (rates_exc_return, rates_inh_return, t_chunk, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk)
+        return_from_timeIntegration = (
+            rates_exc_return,
+            rates_inh_return,
+            t_chunk,
+            mufe,
+            mufi,
+            IA,
+            seem,
+            seim,
+            siem,
+            siim,
+            seev,
+            seiv,
+            siev,
+            siiv,
+            integrated_chunk,
+            rhs_chunk,
+        )
 
     return t_BOLD_return, BOLD_return, return_from_timeIntegration

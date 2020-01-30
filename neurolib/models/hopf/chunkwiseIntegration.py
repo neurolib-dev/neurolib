@@ -7,7 +7,9 @@ from neurolib.models import bold
 from neurolib.models.hopf.timeIntegration import timeIntegration
 
 
-def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAllActivity=False):
+def chunkwiseTimeIntegration(
+    params, chunkSize=10000, simulateBOLD=True, saveAllActivity=False
+):
     # time stuff
     totalDuration = params["duration"]
 
@@ -32,14 +34,16 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
     all_xs = np.array([], dtype="f", ndmin=2)
     xs_return = np.array([], dtype="f", ndmin=2)
     all_ys = np.array([], dtype="f", ndmin=2)
-    ys_return = np.array([], dtype="f", ndmin=2)    
+    ys_return = np.array([], dtype="f", ndmin=2)
 
     idxLastT = 0  # Index of the last computed t
 
     nround = 0  # how many cunks simulated?
     while dt * idxLastT < totalDuration:
         # Determine the size of the next chunk
-        currentChunkSize = min(chunkSize + delay_Ndt, totalDuration - dt * idxLastT + (delay_Ndt + 1) * dt)
+        currentChunkSize = min(
+            chunkSize + delay_Ndt, totalDuration - dt * idxLastT + (delay_Ndt + 1) * dt
+        )
         paramsChunk["duration"] = currentChunkSize
 
         # Time Integration
