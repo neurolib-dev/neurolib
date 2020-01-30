@@ -6,5 +6,6 @@ xarray
 pandas
 tqdm
 pypet
+deap
 pytest
 flake8
