@@ -18,12 +18,14 @@ import neurolib.utils.paths as paths
 
 import neurolib.optimize.evolution.evolutionaryUtils as eu
 import neurolib.optimize.evolution.deapUtils as du
+import neurolib.utils.pypetUtils as pu
 
 
 class Evolution:
     def __init__(
         self,
         model,
+        parameter_space,
         evalFunction,
         weightList,
         hdf_filename="evolution.hdf",
@@ -50,8 +52,8 @@ class Evolution:
         trajectoryName = "results" + datetime.datetime.now().strftime(
             "-%Y-%m-%d-%HH-%MM-%SS"
         )
-        HDF_FILE = os.path.join(paths.HDF_DIR, hdf_filename)
-        trajectoryFileName = HDF_FILE
+        self.HDF_FILE = os.path.join(paths.HDF_DIR, hdf_filename)
+        trajectoryFileName = self.HDF_FILE
 
         logging.info("Storing data to: {}".format(trajectoryFileName))
         logging.info("Trajectory Name: {}".format(trajectoryName))
@@ -92,13 +94,18 @@ class Evolution:
         self.trajectoryName = trajectoryName
         self.trajectoryFileName = trajectoryFileName
 
+        self.initialPopulationSimulated = False
+
+        # ------------- settings
+        self.verbose = False
+
         # ------------- define parameters
-        self.ParametersInterval = collections.namedtuple(
-            "ParametersInterval", ["mue_ext_mean", "mui_ext_mean", "sigma_ou"]
-        )
-        self.paramInterval = self.ParametersInterval(
-            [0.0, 4.0], [0.0, 4.0], [0.01, 0.3]
-        )
+        # self.ParametersInterval = collections.namedtuple(
+        #     "ParametersInterval", ['mue_ext_mean']
+        # )
+        # self.paramInterval = self.ParametersInterval([0.0, 4.0], [0.0, 4.0])
+        self.ParametersInterval = parameter_space.named_tuple_constructor
+        self.paramInterval = parameter_space.named_tuple
 
         self.toolbox = deap.base.Toolbox()
 
@@ -154,8 +161,13 @@ class Evolution:
             .copy()
         )
 
-    def printParamDist(self, pop, paramInterval):
-        print("Parameters dictribution:")
+    def printParamDist(self, pop=None, paramInterval=None):
+        if pop == None:
+            pop = self.pop
+        if paramInterval == None:
+            paramInterval = self.paramInterval
+
+        print("Parameters dictribution (Generation {}):".format(self.gIdx))
         for idx, k in enumerate(paramInterval._fields):
             print(
                 "{}: \t mean: {:.4},\t std: {:.4}".format(
@@ -278,11 +290,14 @@ class Evolution:
 
     def runInitial(self):
         ### Evaluate the initial population
-        print("Evaluating initial population of size %i ..." % len(self.pop))
+        logging.info("Evaluating initial population of size %i ..." % len(self.pop))
         self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, 0)
         self.gIdx = 0  # set generation index
 
-        self.printParamDist(self.pop, self.paramInterval)
+        if self.verbose:
+            eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
+            # self.printParamDist(self.pop, self.paramInterval)
+
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
         # Only the best indviduals are selected for the population the others do not survive
@@ -292,21 +307,33 @@ class Evolution:
             p.isOffspring = False
             p.isCrossOver = False
 
+        self.initialPopulationSimulated = True
+
+    def getValidPopulation(self, pop=None):
+        if pop == None:
+            pop = self.pop
+        return [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
+
+    def getInvalidPopulation(self, pop=None):
+        if pop == None:
+            pop = self.pop
+        return [p for p in self.pop if np.any(np.isnan(p.fitness.values))]
+
     def runEvolution(self):
         # Start evolution
-        print("Start of evolution")
+        logging.info("Start of evolution")
         for self.gIdx in range(self.gIdx + 1, self.gIdx + self.traj.NGEN):
             # ------- Weed out the invalid individuals and replace them by random new indivuals -------- #
-            validpop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
-            nanpop = [p for p in self.pop if np.any(np.isnan(p.fitness.values))]
+            validpop = self.getValidPopulation(self.pop)
             # replace invalid individuals
-            print("Replacing {} invalid individuals.".format(len(nanpop)))
+            nanpop = self.getInvalidPopulation(self.pop)
+            logging.info("Replacing {} invalid individuals.".format(len(nanpop)))
             newpop = self.toolbox.population(n=len(nanpop))
             for i, n in enumerate(newpop):
                 n.id = self.last_id + i + 1
                 n.simulation_stored = False
 
-            # pop = validpop + newpop
+            self.pop = validpop + newpop
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
@@ -333,7 +360,7 @@ class Evolution:
 
             # ------- Evaluate next generation -------- #
 
-            print("----------- Generation %i -----------" % self.gIdx)
+            logging.info("----------- Generation %i -----------" % self.gIdx)
 
             self.evalPopulationUsingPypet(
                 self.traj, self.toolbox, offspring + newpop, self.gIdx
@@ -347,35 +374,86 @@ class Evolution:
             )
 
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
-            print("Best individual is {}".format(self.best_ind))
-            print("Score: {}".format(self.best_ind.fitness.score))
-            print("Fitness: {}".format(self.best_ind.fitness.values))
+            logging.info("Best individual is {}".format(self.best_ind))
+            logging.info("Score: {}".format(self.best_ind.fitness.score))
+            logging.info("Fitness: {}".format(self.best_ind.fitness.values))
 
-            print("--- Population statistics ---")
-            self.printParamDist(self.pop, self.paramInterval)
-            eu.printPopFitnessStats(
-                self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True
-            )
+            logging.info("--- Population statistics ---")
+
+            if self.verbose:
+                # self.printParamDist(self.pop, self.paramInterval)
+                eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
+                eu.printPopFitnessStats(
+                    self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True
+                )
 
             # ------- Save data using pypet
             try:
                 self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
             except:
-                print("Error: Write to pypet failed!")
-
-            # print( "Offspring in the new pop: %f %%"%(1.*len([i for i in pop if i.isOffspring])
-            #                                                          /len(pop)))
+                logging.warn("Error: Write to pypet failed!")
 
             # unmark offsprings
             for iv in self.pop:
                 o.isOffspring = False
 
-        print("--- End of evolution ---")
+        logging.info("--- End of evolution ---")
         self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
-        print(
+        logging.info(
             "Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values)
         )
-        print("--- End of evolution ---")
+        logging.info("--- End of evolution ---")
 
         self.traj.f_store()  # We switched off automatic storing, so we need to store manually
+
+    def run(self, verbose=False):
+        """Run full evolution (or continue previous evolution)
+        """
+        self.verbose = verbose
+        if not self.initialPopulationSimulated:
+            self.runInitial()
+        self.runEvolution()
+
+    def info(self):
+        eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
+        eu.printPopFitnessStats(
+            self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True
+        )
+        bestN = 20
+        eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)
+
+    def loadResults(self, filename=None, trajectoryName=None):
+        """Load results from evolution.
+        """
+        if filename == None:
+            filename = self.HDF_FILE
+        trajLoaded = pu.loadPypetTrajectory(filename, trajectoryName)
+        return trajLoaded
+
+    def getScoresDuringEvolution(self, traj=None, drop_first=True, reverse=False):
+        if traj == None:
+            traj = self.traj
+
+        generation_names = list(traj.results.evolution.f_to_dict(nested=True).keys())
+
+        if drop_first:
+            # drop first (initial) generation 0
+            generation_names = generation_names[1:]
+        if reverse:
+            generation_names = generation_names[::-1]
+
+        npop = len(traj.results.evolution[generation_names[0]].scores)
+
+        gens = []
+        all_scores = np.empty((len(generation_names), npop))
+
+        for i, r in enumerate(generation_names):
+            gens.append(i)
+            scores = traj.results.evolution[r].scores
+            all_scores[i] = scores
+
+        if drop_first:
+            gens = np.add(gens, 1)
+
+        return gens, all_scores
 
