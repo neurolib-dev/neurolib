@@ -34,9 +34,7 @@ class BoxSearch:
         self.pypetParametrization = pypet.cartesian_product(exploreParameters)
         logging.info(
             "Number of parameter configurations: {}".format(
-                len(
-                    self.pypetParametrization[list(self.pypetParametrization.keys())[0]]
-                )
+                len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
             )
         )
 
@@ -52,16 +50,9 @@ class BoxSearch:
         # bool to check whether pypet was initialized properly
         self.initialized = False
 
-    def initializeExploration(
-        self, explorationName="exploration", fileName="exploration.hdf"
-    ):
+    def initializeExploration(self, explorationName="exploration", fileName="exploration.hdf"):
         # ---- initialize pypet environment ----
-        trajectoryName = (
-            "results"
-            + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
-            + "-"
-            + explorationName
-        )
+        trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS") + "-" + explorationName
         self.HDF_FILE = os.path.join(paths.HDF_DIR, fileName)
         trajectoryFileName = self.HDF_FILE
 

@@ -14,23 +14,13 @@ class ALNModel(Model):
     """
 
     name = "aln"
-    description = (
-        "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
-    )
+    description = "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
 
     modelInputNames = ["ext_exc_current", "ext_exc_rate"]
     modelOutputNames = ["rates_exc", "rates_inh"]
 
     def __init__(
-        self,
-        params=None,
-        Cmat=[],
-        Dmat=[],
-        lookupTableFileName=None,
-        seed=None,
-        simulateChunkwise=False,
-        chunkSize=10000,
-        simulateBOLD=False,
+        self, params=None, Cmat=[], Dmat=[], lookupTableFileName=None, seed=None, simulateChunkwise=False, chunkSize=10000, simulateBOLD=False,
     ):
         """
         :param params: parameter dictionary of the model
@@ -48,9 +38,7 @@ class ALNModel(Model):
         # Global attributes
         self.Cmat = Cmat  # Connectivity matrix
         self.Dmat = Dmat  # Delay matrix
-        self.lookupTableFileName = (
-            lookupTableFileName  # Filename for aLN lookup functions
-        )
+        self.lookupTableFileName = lookupTableFileName  # Filename for aLN lookup functions
         self.seed = seed  # Random seed
 
         # Chunkwise simulation and BOLD
@@ -63,12 +51,7 @@ class ALNModel(Model):
 
         # load default parameters if none were given
         if params == None:
-            self.params = dp.loadDefaultParams(
-                Cmat=self.Cmat,
-                Dmat=self.Dmat,
-                lookupTableFileName=self.lookupTableFileName,
-                seed=self.seed,
-            )
+            self.params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, lookupTableFileName=self.lookupTableFileName, seed=self.seed,)
         else:
             self.params = params
 
@@ -77,49 +60,13 @@ class ALNModel(Model):
         Runs an aLN mean-field model simulation
         """
         if self.simulateChunkwise:
-            t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(
-                self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity
-            )
-            (
-                rates_exc,
-                rates_inh,
-                t,
-                mufe,
-                mufi,
-                IA,
-                seem,
-                seim,
-                siem,
-                siim,
-                seev,
-                seiv,
-                siev,
-                siiv,
-                integrated_chunk,
-                rhs_chunk,
-            ) = return_tuple
+            t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity)
+            (rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk,) = return_tuple
             self.t_BOLD = t_BOLD
             self.BOLD = BOLD
 
         else:
-            (
-                rates_exc,
-                rates_inh,
-                t,
-                mufe,
-                mufi,
-                IA,
-                seem,
-                seim,
-                siem,
-                siim,
-                seev,
-                seiv,
-                siev,
-                siiv,
-                integrated_chunk,
-                rhs_chunk,
-            ) = ti.timeIntegration(self.params)
+            (rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk,) = ti.timeIntegration(self.params)
 
         # convert output from kHz to Hz
         rates_exc = rates_exc * 1000.0  # todo: do in timeintegration

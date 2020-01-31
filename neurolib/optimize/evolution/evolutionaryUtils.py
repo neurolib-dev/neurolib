@@ -1,3 +1,4 @@
+import logging
 import datetime
 import os
 import random
@@ -23,9 +24,7 @@ def printParamDist(pop=None, paramInterval=None, gIdx=None):
     for idx, k in enumerate(paramInterval._fields):
         print(
             "{}: \t mean: {:.4},\t std: {:.4}".format(
-                k,
-                np.mean([indiv[idx] for indiv in pop]),
-                np.std([indiv[idx] for indiv in pop]),
+                k, np.mean([indiv[idx] for indiv in pop]), np.std([indiv[idx] for indiv in pop]),
             )
         )
 
@@ -43,12 +42,7 @@ def printIndividuals(pop, paramInterval, stats=False):
             "Individual",
             i,
             "pars",
-            ", ".join(
-                [
-                    " ".join([k, "{0:.4}".format(ind[ki])])
-                    for ki, k in enumerate(paramInterval._fields)
-                ]
-            ),
+            ", ".join([" ".join([k, "{0:.4}".format(ind[ki])]) for ki, k in enumerate(paramInterval._fields)]),
         )
         print("\tFitness values: ", *np.round(ind.fitness.values, 4))
         if stats:
@@ -63,12 +57,7 @@ def printIndividuals(pop, paramInterval, stats=False):
 
 
 def printPopFitnessStats(
-    pop,
-    paramInterval,
-    gIdx=0,
-    draw_distribution=True,
-    draw_scattermatrix=False,
-    save_plots=None,
+    pop, paramInterval, gIdx=0, draw_distribution=True, draw_scattermatrix=False, save_plots=None,
 ):
     import matplotlib.pyplot as plt
     import seaborn as sns
@@ -92,52 +81,37 @@ def printPopFitnessStats(
         plt.xlabel("Score")
         plt.ylabel("Count")
         if save_plots is not None:
-            plt.savefig(
-                os.path.join(paths.FIGURES_DIR, "%s_hist_%i.jpg" % (save_plots, gIdx))
+            logging.info(
+                "Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.jpg" % (save_plots, gIdx)))
             )
+            plt.savefig(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.jpg" % (save_plots, gIdx)))
         plt.show()
 
     if draw_scattermatrix:
-        plt.figure()
+        # make a pandas dataframe for the seaborn pairplot
         gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
         pcandidates = pd.DataFrame(candidates, index=gridParameters).T
         pcandidates = pcandidates.loc[:, :]
 
+        plt.figure()
         sm = sns.pairplot(pcandidates, diag_kind="kde", kind="reg")
-
         if save_plots is not None:
-            plt.savefig(
-                os.path.join(
-                    paths.FIGURES_DIR, "%s_sns_params_%i.jpg" % (save_plots, gIdx)
-                )
-            )
-
+            plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.jpg".format(save_plots, gIdx)))
         plt.show()
 
-        # SEABORN TESTING
+        # Seaborn Plotting
         # https://towardsdatascience.com/visualizing-data-with-pair-plots-in-python-f228cf529166
         # Create an instance of the PairGrid class.
-        grid = sns.PairGrid(data=pcandidates)
-        # Map a scatter plot to the upper triangle
-        grid = grid.map_upper(plt.scatter, color="darkred", alpha=0.5)
-        # Map a histogram to the diagonal
-        grid = grid.map_diag(plt.hist, bins=10, color="darkred", edgecolor="k")
-        # Map a density plot to the lower triangle
-        grid = grid.map_lower(sns.kdeplot, cmap="Reds")
-
-        # print(len(scores))
-        # sm = scatter_matrix(pcandidates, grid=True, s=scores*100, alpha=0.8, figsize=(12, 12), diagonal='kde', c='K');
-        # for ax in sm.ravel():
-        #    ax.set_xlabel(ax.get_xlabel(), fontsize = 14, rotation = 0)
-        #    ax.set_ylabel(ax.get_ylabel(), fontsize = 14, rotation = 90)
-
-        if save_plots is not None:
-            plt.savefig(
-                os.path.join(
-                    paths.FIGURES_DIR, "%s_sns2_params_%i.jpg" % (save_plots, gIdx)
-                )
-            )
-        plt.show()
+        try:
+            grid = sns.PairGrid(data=pcandidates)
+            grid = grid.map_upper(plt.scatter, color="darkred", alpha=0.5)
+            grid = grid.map_diag(plt.hist, bins=10, color="darkred", edgecolor="k")
+            grid = grid.map_lower(sns.kdeplot, cmap="Reds")
+            if save_plots is not None:
+                plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.jpg".format(save_plots, gIdx)))
+            plt.show()
+        except:
+            pass
 
 
 def countLiving(pop):
@@ -150,21 +124,10 @@ def countLiving(pop):
 
 def saveToPypet(traj, pop, gIdx):
     traj.f_add_result_group("{}.gen_{:06d}".format("evolution", gIdx))
-    traj.f_add_result(
-        "{}.gen_{:06d}.fitness".format("evolution", gIdx),
-        np.array([p.fitness.values for p in pop]),
-    )
-    traj.f_add_result(
-        "{}.gen_{:06d}.scores".format("evolution", gIdx),
-        np.array([p.fitness.score for p in pop]),
-    )
-    traj.f_add_result(
-        "{}.gen_{:06d}.population".format("evolution", gIdx),
-        np.array([list(p) for p in pop]),
-    )
-    traj.f_add_result(
-        "{}.gen_{:06d}.ind_ids".format("evolution", gIdx), np.array([p.id for p in pop])
-    )
+    traj.f_add_result("{}.gen_{:06d}.fitness".format("evolution", gIdx), np.array([p.fitness.values for p in pop]))
+    traj.f_add_result("{}.gen_{:06d}.scores".format("evolution", gIdx), np.array([p.fitness.score for p in pop]))
+    traj.f_add_result("{}.gen_{:06d}.population".format("evolution", gIdx), np.array([list(p) for p in pop]))
+    traj.f_add_result("{}.gen_{:06d}.ind_ids".format("evolution", gIdx), np.array([p.id for p in pop]))
 
     # recursively store all simulated outputs into hdf
     for i, p in enumerate(pop):
@@ -185,28 +148,23 @@ def saveToPypet(traj, pop, gIdx):
                     else:
                         traj.f_add_result("{}.{}".format(new_save_string, key), value)
 
-            unpackOutputsAndStore(
-                p.outputs, save_string="{}.ind_{:06d}".format("outputs", p.id)
-            )
+            unpackOutputsAndStore(p.outputs, save_string="{}.ind_{:06d}".format("outputs", p.id))
 
     traj.f_store()
     return pop
 
 
-def mutateUntilValid(offspring, paramInterval, toolbox, maxTries=100):
+def mutateUntilValid(offspring, paramInterval, toolbox, maxTries=500):
     #### Check validity of new individuals ###
     # mutate individuald until valid, max 100 times
     for i, o in enumerate(offspring):
         o_bak = copy.copy(o)
         toolbox.mutate(offspring[i])
         nMutations = 0
-        while (
-            not du.check_param_validity(offspring[i], paramInterval)
-            and nMutations < maxTries
-        ):
+        while not du.check_param_validity(offspring[i], paramInterval) and nMutations < maxTries:
             # print("Gen {} Offspring {}, not valid, repeating mutation...".format(gIdx, i))
             offspring[i] = copy.copy(o_bak)
             toolbox.mutate(offspring[i])
             nMutations += 1
-        del offspring[i].fitness.values
+        # del offspring[i].fitness.values
         # print("> Offspring {}, {} mutations tried".format(i, nMutations))
