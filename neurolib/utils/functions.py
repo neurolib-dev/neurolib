@@ -17,7 +17,9 @@ def analyse_run(measure="domfr", result=[], dt=0.1):
 
     t = result["t"]
 
-    down_window = (2000 < t) & (t < 3000)  # time period in ms where we expect the down-state
+    down_window = (2000 < t) & (
+        t < 3000
+    )  # time period in ms where we expect the down-state
     up_window = (5000 < t) & (t < 6000)  # and up state
 
     if measure.endswith("inh"):
@@ -29,7 +31,13 @@ def analyse_run(measure="domfr", result=[], dt=0.1):
         # returns power of dominant frequency
         if np.any((rate > 0)):
             spectrum_windowsize = 0.5  # in seconds
-            f, Pxx_spec = scipy.signal.welch(rate[down_window], 1000 / dt, window="hanning", nperseg=int(spectrum_windowsize * 1000 / dt) - 1, scaling="spectrum")
+            f, Pxx_spec = scipy.signal.welch(
+                rate[down_window],
+                1000 / dt,
+                window="hanning",
+                nperseg=int(spectrum_windowsize * 1000 / dt) - 1,
+                scaling="spectrum",
+            )
             f = f[f < 70]
             Pxx_spec = Pxx_spec[0 : len(f)]
             return np.max(Pxx_spec)
@@ -39,7 +47,13 @@ def analyse_run(measure="domfr", result=[], dt=0.1):
         # returns dominant frequency
         if np.any((rate > 0)):
             spectrum_windowsize = 0.5  # in seconds
-            f, Pxx_spec = scipy.signal.welch(rate[down_window], 1000 / dt, window="hanning", nperseg=int(spectrum_windowsize * 1000 / dt) - 1, scaling="spectrum")
+            f, Pxx_spec = scipy.signal.welch(
+                rate[down_window],
+                1000 / dt,
+                window="hanning",
+                nperseg=int(spectrum_windowsize * 1000 / dt) - 1,
+                scaling="spectrum",
+            )
             f = f[f < 70]
             Pxx_spec = Pxx_spec[0 : len(f)]
             domfr = f[Pxx_spec.argmax()] if max(Pxx_spec) > 1 else 0
@@ -62,7 +76,13 @@ def analyse_run(measure="domfr", result=[], dt=0.1):
     elif measure.startswith("spectrum"):
         if np.any((rate > 0)):
             spectrum_windowsize = 1.0
-            f, Pxx_spec = scipy.signal.welch(rate[t > 1000], 1000 / dt, window="hanning", nperseg=int(spectrum_windowsize * 1000 / dt), scaling="spectrum")
+            f, Pxx_spec = scipy.signal.welch(
+                rate[t > 1000],
+                1000 / dt,
+                window="hanning",
+                nperseg=int(spectrum_windowsize * 1000 / dt),
+                scaling="spectrum",
+            )
             f = f[f < 70]
             Pxx_spec = Pxx_spec[0 : len(f)]
             Pxx_spec /= np.max(Pxx_spec)
@@ -101,8 +121,12 @@ def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
 
         # find peaks
         if smoothing > 0:
-            a = scipy.ndimage.filters.gaussian_filter(traces[n], smoothing)  # smooth data
-        maximalist = scipy.signal.find_peaks_cwt(a, np.arange(peakrange[0], peakrange[1]))
+            a = scipy.ndimage.filters.gaussian_filter(
+                traces[n], smoothing
+            )  # smooth data
+        maximalist = scipy.signal.find_peaks_cwt(
+            a, np.arange(peakrange[0], peakrange[1])
+        )
         maximalist = np.append(maximalist, len(traces[n]) - 1).astype(int)
 
         if len(maximalist) > 1:
@@ -149,7 +173,9 @@ def matrix_correlation(M1, M2):
 
     """
 
-    cc = np.corrcoef(M1[np.triu_indices_from(M1, k=1)], M2[np.triu_indices_from(M2, k=1)])[0, 1]
+    cc = np.corrcoef(
+        M1[np.triu_indices_from(M1, k=1)], M2[np.triu_indices_from(M2, k=1)]
+    )[0, 1]
     return cc
 
 
@@ -209,7 +235,9 @@ def fcd(ts, windowsize=30, stepsize=5):
         for f1 in corrFCs:
             f2i = 0
             for f2 in corrFCs:
-                FCd[f1i, f2i] = np.corrcoef(f1.reshape((1, f1.size)), f2.reshape((1, f2.size)))[0, 1]
+                FCd[f1i, f2i] = np.corrcoef(
+                    f1.reshape((1, f1.size)), f2.reshape((1, f2.size))
+                )[0, 1]
                 f2i += 1
             f1i += 1
 
@@ -238,18 +266,39 @@ def print_params(params):
     """
     Helpfer function to print the current set of parameters.
     """
-    paramsOfInterest = ["dt", "Ke_gl", "mue_ext_mean", "mui_ext_mean", "sigma_ou", "signalV", "a", "b", "Jee_max", "Jie_max", "Jii_max", "Jei_max", "cee", "cie", "cii", "cei", "Ke", "Ki", "de", "di"]
+    paramsOfInterest = [
+        "dt",
+        "Ke_gl",
+        "mue_ext_mean",
+        "mui_ext_mean",
+        "sigma_ou",
+        "signalV",
+        "a",
+        "b",
+        "Jee_max",
+        "Jie_max",
+        "Jii_max",
+        "Jei_max",
+        "cee",
+        "cie",
+        "cii",
+        "cei",
+        "Ke",
+        "Ki",
+        "de",
+        "di",
+    ]
     for p in paramsOfInterest:
         print("params['%s'] = %0.3f" % (p, params[p]))
 
 
-def getPowerSpectrum(rate, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
+def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
     """
     Returns a power spectrum using Welch's method.
 
     Parameters
     ----------
-        rate : numpy array
+        activity : numpy array
             One-dimensional timeseries
         dt : float
             Simulation time step
@@ -267,7 +316,18 @@ def getPowerSpectrum(rate, dt, maxfr=70, spectrum_windowsize=1.0, normalize=Fals
         pwers : list
             Powers
     """
-    f, Pxx_spec = scipy.signal.welch(rate, 1000 / dt, window="hanning", nperseg=int(spectrum_windowsize * 1000 / dt), scaling="spectrum")
+    # convert to one-dimensional array if it is an (1xn)-D array
+    if activity.shape[0] == 1 and activity.shape[1] > 1:
+        activity = activity[0]
+    assert len(activity.shape) == 1, "activity is not one-dimensional!"
+
+    f, Pxx_spec = scipy.signal.welch(
+        activity,
+        1000 / dt,
+        window="hanning",
+        nperseg=int(spectrum_windowsize * 1000 / dt),
+        scaling="spectrum",
+    )
     f = f[f < maxfr]
     Pxx_spec = Pxx_spec[0 : len(f)]
     if normalize:
@@ -275,13 +335,17 @@ def getPowerSpectrum(rate, dt, maxfr=70, spectrum_windowsize=1.0, normalize=Fals
     return f, Pxx_spec
 
 
-def getMeanPowerSpectrum(rates, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
+def getMeanPowerSpectrum(
+    activities, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False
+):
     """
     Returns the mean power spectrum of multiple timeseries.
     """
-    powers = np.zeros(getPowerSpectrum(rates[0], dt, maxfr, spectrum_windowsize)[0].shape)
+    powers = np.zeros(
+        getPowerSpectrum(activities[0], dt, maxfr, spectrum_windowsize)[0].shape
+    )
     ps = []
-    for rate in rates:
+    for rate in activities:
         f, Pxx_spec = getPowerSpectrum(rate, dt, maxfr, spectrum_windowsize)
         ps.append(Pxx_spec)
         powers += Pxx_spec

@@ -2,5 +2,10 @@ h5py
 numba
 numpy
 scipy
+xarray
+pandas
+tqdm
+pypet
+deap
 pytest
 flake8

@@ -19,21 +19,39 @@ class Dataset:
         Paramters:
             :param datasetName: Name of the dataset to load
         """
-        dsBaseDirectory = os.path.join(os.path.dirname(__file__), "..", "data", "datasets", datasetName)
+        dsBaseDirectory = os.path.join(
+            os.path.dirname(__file__), "..", "data", "datasets", datasetName
+        )
 
         CmatFilename = os.path.join(dsBaseDirectory, "Cmat_avg.mat")
-        self.Cmat = self.loadData(CmatFilename, key="sc")  # structural connectivity matrix
+        self.Cmat = self.loadData(
+            CmatFilename, key="sc", filter_subcortical=True
+        )  # structural connectivity matrix
 
         DmatFilename = os.path.join(dsBaseDirectory, "Dmat_avg.mat")
-        self.Dmat = self.loadData(DmatFilename, key="len")  # fiber length matrix
+        self.Dmat = self.loadData(
+            DmatFilename, key="len", filter_subcortical=True
+        )  # fiber length matrix
 
-        BOLDFilenames = glob.glob(os.path.join(dsBaseDirectory, "BOLD/", "*_tc.mat"))  # BOLD timeseries
+        BOLDFilenames = glob.glob(
+            os.path.join(dsBaseDirectory, "BOLD/", "*_tc.mat")
+        )  # BOLD timeseries
 
-        self.BOLDs = self.loadData(BOLDFilenames, key="tc")
-        self.FCs = self.loadData(BOLDFilenames, key="tc", apply_function=func.fc)
-        self.FCDs = self.loadData(BOLDFilenames, key="tc", apply_function=func.fcd, apply_function_kwargs={"stepsize": 10})
+        self.BOLDs = self.loadData(BOLDFilenames, key="tc", filter_subcortical=True)
+        self.FCs = self.loadData(
+            BOLDFilenames, key="tc", filter_subcortical=True, apply_function=func.fc
+        )
+        # self.FCDs = self.loadData(BOLDFilenames, key="tc", filter_subcortical=True, apply_function=func.fcd, apply_function_kwargs={"stepsize": 10})
 
-    def loadData(self, matrixFileNames, average=False, filter_subcortical=True, key="", apply_function=None, apply_function_kwargs={}):
+    def loadData(
+        self,
+        matrixFileNames,
+        average=False,
+        filter_subcortical=False,
+        key="",
+        apply_function=None,
+        apply_function_kwargs={},
+    ):
         """
         Loads brain matrices provided filenames.
 
@@ -95,7 +113,11 @@ class Dataset:
                 if verbose:
                     print('\tLoaded key "{}"'.format(key))
             elif type(matrix) is dict:
-                raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
+                raise ValueError(
+                    "Object is still a dict. Here are the keys: {}".format(
+                        matrix.keys()
+                    )
+                )
             return matrix
         except:  # Deco files
             matrix = scipy.io.loadmat(matFileName)
@@ -107,7 +129,11 @@ class Dataset:
                 if verbose:
                     print('\tLoaded key "{}"'.format(key))
             elif type(matrix) is dict:
-                raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
+                raise ValueError(
+                    "Object is still a dict. Here are the keys: {}".format(
+                        matrix.keys()
+                    )
+                )
             return matrix
         return 0
 
@@ -125,7 +151,8 @@ def filterSubcortical(a, axis="both"):
     Cerebellum: 95-120
     """
 
-    subcortical_index = np.array(list(range(40, 46)) + list(range(74, 82)) + list(range(94, 120)))
+    # subcortical_index = np.array(list(range(40, 46)) + list(range(74, 82)) + list(range(94, 120)))
+    subcortical_index = np.array(list(range(40, 46)) + list(range(74, 82)))
 
     if axis == "both":
         a = np.delete(a, subcortical_index, axis=0)
@@ -139,7 +166,14 @@ def filterSubcortical(a, axis="both"):
 # Legacy (and duplicate) function definitions
 
 
-def loadDataset(matrixFileNames, average=False, filter_subcortical=True, key="", apply_function=None, apply_function_kwargs={}):
+def loadDataset(
+    matrixFileNames,
+    average=False,
+    filter_subcortical=True,
+    key="",
+    apply_function=None,
+    apply_function_kwargs={},
+):
     """
     Loads brain matrices provided filenames.
 
@@ -202,7 +236,9 @@ def loadMatrix(matFileName, key="", verbose=False):
             if verbose:
                 print('\tLoaded key "{}"'.format(key))
         elif type(matrix) is dict:
-            raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
+            raise ValueError(
+                "Object is still a dict. Here are the keys: {}".format(matrix.keys())
+            )
         return matrix
     except:  # Deco files
         matrix = scipy.io.loadmat(matFileName)
@@ -214,6 +250,8 @@ def loadMatrix(matFileName, key="", verbose=False):
             if verbose:
                 print('\tLoaded key "{}"'.format(key))
         elif type(matrix) is dict:
-            raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
+            raise ValueError(
+                "Object is still a dict. Here are the keys: {}".format(matrix.keys())
+            )
         return matrix
     return 0
