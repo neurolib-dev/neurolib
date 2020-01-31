@@ -24,10 +24,10 @@ import neurolib.utils.pypetUtils as pu
 class Evolution:
     def __init__(
         self,
-        model,
-        parameter_space,
         evalFunction,
+        parameter_space,
         weightList,
+        model=None,
         hdf_filename="evolution.hdf",
         ncores=None,
         POP_INIT_SIZE=100,
@@ -49,9 +49,7 @@ class Evolution:
         :param NGEN: Numbers of generations to evaluate
         :param CXPB: Crossover probability of each individual gene
         """
-        trajectoryName = "results" + datetime.datetime.now().strftime(
-            "-%Y-%m-%d-%HH-%MM-%SS"
-        )
+        trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
         self.HDF_FILE = os.path.join(paths.HDF_DIR, hdf_filename)
         trajectoryFileName = self.HDF_FILE
 
@@ -69,7 +67,7 @@ class Evolution:
             large_overview_tables=True,
             multiproc=True,
             ncores=ncores,
-            # wrap_mode="QUEUE",
+            wrap_mode="LOCK",
             # log_stdout=False,
             automatic_storing=False,
             complevel=9,
@@ -85,7 +83,9 @@ class Evolution:
 
         self.CXPB = CXPB
         self.NGEN = NGEN
+        assert POP_SIZE % 2 == 0, "Please chose an even number for POP_SIZE!"
         self.POP_SIZE = POP_SIZE
+        assert POP_INIT_SIZE % 2 == 0, "Please chose an even number for POP_INIT_SIZE!"
         self.POP_INIT_SIZE = POP_INIT_SIZE
         self.ncores = ncores
 
@@ -100,120 +100,86 @@ class Evolution:
         self.verbose = False
 
         # ------------- define parameters
-        # self.ParametersInterval = collections.namedtuple(
-        #     "ParametersInterval", ['mue_ext_mean']
-        # )
-        # self.paramInterval = self.ParametersInterval([0.0, 4.0], [0.0, 4.0])
         self.ParametersInterval = parameter_space.named_tuple_constructor
         self.paramInterval = parameter_space.named_tuple
 
         self.toolbox = deap.base.Toolbox()
 
         self.initDEAP(
-            self.toolbox,
-            self.env,
-            self.paramInterval,
-            self.evalFunction,
-            weights_list=self.weightList,
+            self.toolbox, self.env, self.paramInterval, self.evalFunction, weights_list=self.weightList,
         )
 
         # set up pypet trajectory
         self.initPypetTrajectory(
-            self.traj,
-            self.paramInterval,
-            self.ParametersInterval,
-            self.POP_SIZE,
-            self.CXPB,
-            self.NGEN,
-            self.model.params,
+            self.traj, self.paramInterval, self.ParametersInterval, self.POP_SIZE, self.CXPB, self.NGEN, self.model,
         )
 
         # ------------- initialize population
-        # pop = toolbox.population(n=traj.popsize)
+        self.last_id = 0
         self.pop = self.toolbox.population(n=self.POP_INIT_SIZE)
+        self.pop = self.tagPopulation(self.pop)
 
-        for i in range(len(self.pop)):
-            self.pop[i].id = i
-            self.pop[i].simulation_stored = False
+    def getIndividualFromTraj(self, traj):
+        """Get individual from pypet trajectory
+        """
+        # either pass an individual or a pypet trajectory with the attribute individual
+        if type(traj).__name__ == "Individual":
+            individual = traj
+        else:
+            individual = traj.individual
+            ind_id = traj.id
+            individual = [p for p in self.pop if p.id == ind_id]
+            if len(individual) > 0:
+                individual = individual[0]
+        return individual
 
-        self.last_id = self.pop[-1].id
+    def getModelFromTraj(self, traj):
+        """Return the appropriate model with parameters for this individual
+        :params traj: Pypet trajectory with individual (traj.individual) or directly a deap.Individual
 
-    def loadIndividual(self, traj):
-        def getIndividual(traj):
-            # either pass an individual or a pypet trajectory with the attribute individual
-            if type(traj).__name__ == "Individual":
-                individual = traj
-            else:
-                individual = traj.individual
-            return individual
-
+        :returns model: Model with the parameters of this individual.
+        """
         model = self.model
-        model.params.update(self.individualToDict(getIndividual(traj)))
+        model.params.update(self.individualToDict(self.getIndividualFromTraj(traj)))
         return model
 
     def individualToDict(self, individual):
         """
-        Convert an individual to a dictionary
+        Convert an individual to a parameter dictionary.
         """
-        return (
-            self.ParametersInterval(*(individual[: len(self.paramInterval)]))
-            ._asdict()
-            .copy()
-        )
+        return self.ParametersInterval(*(individual[: len(self.paramInterval)]))._asdict().copy()
 
-    def printParamDist(self, pop=None, paramInterval=None):
-        if pop == None:
-            pop = self.pop
-        if paramInterval == None:
-            paramInterval = self.paramInterval
-
-        print("Parameters dictribution (Generation {}):".format(self.gIdx))
-        for idx, k in enumerate(paramInterval._fields):
-            print(
-                "{}: \t mean: {:.4},\t std: {:.4}".format(
-                    k,
-                    np.mean([indiv[idx] for indiv in pop]),
-                    np.std([indiv[idx] for indiv in pop]),
-                )
-            )
-
-    def initPypetTrajectory(
-        self, traj, paramInterval, ParametersInterval, POP_SIZE, CXPB, NGEN, params
-    ):
+    def initPypetTrajectory(self, traj, paramInterval, ParametersInterval, POP_SIZE, CXPB, NGEN, model):
+        """Initializes pypet trajectory and store all simulation parameters.
+        """
         # Initialize pypet trajectory and add all simulation parameters
         traj.f_add_parameter("popsize", POP_SIZE, comment="Population size")  #
-        traj.f_add_parameter(
-            "CXPB", CXPB, comment="Crossover term"
-        )  # Crossover probability
+        traj.f_add_parameter("CXPB", CXPB, comment="Crossover term")  # Crossover probability
         traj.f_add_parameter("NGEN", NGEN, comment="Number of generations")
 
         # Placeholders for individuals and results that are about to be explored
         traj.f_add_parameter("generation", 0, comment="Current generation")
 
         traj.f_add_result("scores", [], comment="Mean_score for each generation")
-        traj.f_add_result_group(
-            "evolution", comment="Contains results for each generation"
-        )
+        traj.f_add_result_group("evolution", comment="Contains results for each generation")
         traj.f_add_result_group("outputs", comment="Contains simulation results")
 
-        traj.f_add_result("params", params, comment="Default parameters")
+        # if a model was given, save its parameters
+        if model is not None:
+            traj.f_add_result("params", model.params, comment="Default parameters")
 
         # todo: initialize this after individuals have been defined!
         traj.f_add_parameter("id", 0, comment="Index of individual")
         traj.f_add_parameter("ind_len", 20, comment="Length of individual")
         traj.f_add_derived_parameter(
-            "individual",
-            [0 for x in range(traj.ind_len)],
-            "An indivudal of the population",
+            "individual", [0 for x in range(traj.ind_len)], "An indivudal of the population",
         )
 
-    def initDEAP(
-        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list
-    ):
+    def initDEAP(self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list):
+        """Initializes DEAP and registers all methods to the deap.toolbox
+        """
         # ------------- register everything in deap
-        deap.creator.create(
-            "FitnessMulti", deap.base.Fitness, weights=tuple(weights_list)
-        )
+        deap.creator.create("FitnessMulti", deap.base.Fitness, weights=tuple(weights_list))
         deap.creator.create("Individual", list, fitness=deap.creator.FitnessMulti)
 
         # initially, each individual has randomized genes
@@ -223,16 +189,14 @@ class Evolution:
             "individual",
             deap.tools.initIterate,
             deap.creator.Individual,
-            lambda: du.generateRandomParams_withAdaptation(paramInterval),
+            lambda: du.generate_random_pars_adapt(paramInterval),
         )
         toolbox.register("population", deap.tools.initRepeat, list, toolbox.individual)
 
         # Operator registering
         toolbox.register("selBest", du.selBest_multiObj)
         toolbox.register("selRank", du.selRank)
-
         toolbox.register("evaluate", evalFunction)
-
         toolbox.register("mate", du.cxUniform_normDraw_adapt)
         toolbox.register("mutate", du.adaptiveMutation_nStepSize)
         toolbox.register("map", pypetEnvironment.run)
@@ -260,67 +224,69 @@ class Evolution:
         traj.f_expand(
             pp.cartesian_product(
                 {
-                    "generation": [gIdx],
-                    #'ind_idx': range(len(pop)),
-                    "id": [x.id for x in pop],
+                    "generation": [gIdx],  # the current generation
+                    "id": [x.id for x in pop],  # unique id of each individual
                     "individual": [list(x) for x in pop],
                 },
                 [("id", "individual"), "generation"],
             )
         )
-
-        # traj.f_expand(cartesian_product({'generation': [gIdx], 'ind_idx': range(len(pop))}))
-
         # SIMULUATE INDIVIDUALS
+
         results = toolbox.map(toolbox.evaluate)
+        assert len(results) > 0, "No results returned from simulations."
 
         for idx, result in enumerate(results):
             runIdx, packed_result = result
+            # this is the return from the evaluation function
             fitnesses_result, outputs = packed_result
 
             # store outputs of simulations in population
             pop[idx].outputs = outputs
             pop[idx].fitness.values = fitnesses_result
             # mean fitness value
-            pop[idx].fitness.score = np.nansum(pop[idx].fitness.wvalues) / (
-                len(pop[idx].fitness.wvalues)
-            )
-
+            pop[idx].fitness.score = np.nansum(pop[idx].fitness.wvalues) / (len(pop[idx].fitness.wvalues))
         return pop
 
+    def getValidPopulation(self, pop):
+        return [p for p in pop if not np.any(np.isnan(p.fitness.values))]
+
+    def getInvalidPopulation(self, pop):
+        return [p for p in pop if np.any(np.isnan(p.fitness.values))]
+
     def runInitial(self):
+        """First round of evolution: 
+        """
         ### Evaluate the initial population
         logging.info("Evaluating initial population of size %i ..." % len(self.pop))
         self.gIdx = 0  # set generation index
-
-        self.pop = self.evalPopulationUsingPypet(
-            self.traj, self.toolbox, self.pop, self.gIdx
-        )
-
+        # evaluate
+        self.pop = self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, self.gIdx)
         if self.verbose:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-            # self.printParamDist(self.pop, self.paramInterval)
-
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-
         # Only the best indviduals are selected for the population the others do not survive
         self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
-
-        for p in self.pop:
-            p.isOffspring = False
-            p.isCrossOver = False
-
         self.initialPopulationSimulated = True
 
-    def getValidPopulation(self, pop=None):
-        if pop == None:
-            pop = self.pop
-        return [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
+    def tagPopulation(self, pop):
+        """Take a fresh population and add id's and attributes such as parameters that we can use later
 
-    def getInvalidPopulation(self, pop=None):
-        if pop == None:
-            pop = self.pop
-        return [p for p in self.pop if np.any(np.isnan(p.fitness.values))]
+        :param pop: Population
+        :type pop: list
+        """
+        for i, ind in enumerate(pop):
+            assert not hasattr(ind, "id"), "Individual has an id already, will not overwrite it!"
+            ind.id = self.last_id
+            ind.simulation_stored = False
+            ind_dict = self.individualToDict(ind)
+            for key, value in ind_dict.items():
+                # set the parameters as attributes for easy access
+                setattr(ind, key, value)
+            ind.params = ind_dict
+            # increment id counter
+            self.last_id += 1
+        return pop
 
     def runEvolution(self):
         # Start evolution
@@ -332,49 +298,39 @@ class Evolution:
             nanpop = self.getInvalidPopulation(self.pop)
             logging.info("Replacing {} invalid individuals.".format(len(nanpop)))
             newpop = self.toolbox.population(n=len(nanpop))
-            for i, n in enumerate(newpop):
-                n.id = self.last_id + i + 1
-                n.simulation_stored = False
+            newpop = self.tagPopulation(newpop)
 
-            self.pop = validpop + newpop
+            # self.pop = validpop + newpop
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
-            offspring = list(
-                map(self.toolbox.clone, self.toolbox.selRank(self.pop, self.POP_SIZE))
-            )
-            for i, o in enumerate(offspring):
-                o.isOffspring = True  # mark them for statistics
-                o.id = self.last_id + i + 1
-                o.simulation_stored = False
-
-            # increase the id counter
-            self.last_id = self.last_id + len(offspring)
+            offspring = list(map(self.toolbox.clone, self.toolbox.selRank(self.pop, self.POP_SIZE)))
 
             ##### cross-over ####
-            for child1, child2 in zip(offspring[::2], offspring[1::2]):
-                self.toolbox.mate(child1, child2, indpb=self.CXPB)
-                del child1.fitness.values
-                del child2.fitness.values
+            for i in range(1, len(offspring), 2):
+                offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], indpb=self.CXPB)
+                # del offspring[i - 1].fitness, offspring[i].fitness
+                del offspring[i - 1].fitness.values, offspring[i].fitness.values
+                del offspring[i - 1].fitness.wvalues, offspring[i].fitness.wvalues
+                # print("Deleting ID of {} and {}".format(offspring[i - 1].id, offspring[i].id))
+                del offspring[i - 1].id, offspring[i].id
 
             ##### Mutation ####
             # Apply adaptive mutation
             eu.mutateUntilValid(offspring, self.paramInterval, self.toolbox)
 
+            offspring = self.tagPopulation(offspring)
+
             # ------- Evaluate next generation -------- #
 
             logging.info("----------- Generation %i -----------" % self.gIdx)
 
-            self.evalPopulationUsingPypet(
-                self.traj, self.toolbox, offspring + newpop, self.gIdx
-            )
-
+            self.pop = offspring + newpop
+            self.evalPopulationUsingPypet(self.traj, self.toolbox, offspring + newpop, self.gIdx)
             # ------- Select surviving population -------- #
 
             # select next population
-            self.pop = self.toolbox.selBest(
-                validpop + offspring + newpop, k=self.traj.popsize
-            )
+            self.pop = self.toolbox.selBest(validpop + offspring + newpop, k=self.traj.popsize)
 
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
             logging.info("Best individual is {}".format(self.best_ind))
@@ -384,27 +340,20 @@ class Evolution:
             logging.info("--- Population statistics ---")
 
             if self.verbose:
-                # self.printParamDist(self.pop, self.paramInterval)
                 eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
                 eu.printPopFitnessStats(
-                    self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True
+                    self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True, save_plots="evo"
                 )
 
-            # ------- Save data using pypet
+            # save all simulation data to pypet
             try:
                 self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
             except:
                 logging.warn("Error: Write to pypet failed!")
 
-            # unmark offsprings
-            for iv in self.pop:
-                o.isOffspring = False
-
         logging.info("--- End of evolution ---")
         self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
-        logging.info(
-            "Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values)
-        )
+        logging.info("Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values))
         logging.info("--- End of evolution ---")
 
         self.traj.f_store()  # We switched off automatic storing, so we need to store manually
@@ -420,9 +369,7 @@ class Evolution:
     def info(self, plot=True):
         eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
         if plot:
-            eu.printPopFitnessStats(
-                self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True
-            )
+            eu.printPopFitnessStats(self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True)
         bestN = 20
         eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)
 

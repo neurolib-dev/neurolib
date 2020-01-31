@@ -7,9 +7,7 @@ from neurolib.models import bold
 from neurolib.models.aln.timeIntegration import timeIntegration
 
 
-def chunkwiseTimeIntAndBOLD(
-    params, chunkSize=10000, simulateBOLD=True, saveAllActivity=False
-):
+def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllActivity=False):
     """
     Run the interareal network simulation with the parametrization params, compute the corresponding BOLD signal
     and store the result ( currently only BOLD signal ) in the hdf5 file fname_out
@@ -51,35 +49,16 @@ def chunkwiseTimeIntAndBOLD(
 
     while dt * idxLastT < totalDuration:
         # Determine the size of the next chunk
-        currentChunkSize = min(
-            chunkSize + delay_Ndt, totalDuration - dt * idxLastT + (delay_Ndt + 1) * dt
-        )
+        currentChunkSize = min(chunkSize + delay_Ndt, totalDuration - dt * idxLastT + (delay_Ndt + 1) * dt)
         paramsChunk["duration"] = currentChunkSize
 
         # Time Integration
-        rates_exc_chunk, rates_inh_chunk = (
+        rates_exc, rates_inh = (
             np.array([], dtype="f", ndmin=2),
             np.array([], dtype="f", ndmin=2),
         )
 
-        (
-            rates_exc_chunk,
-            rates_inh_chunk,
-            t_chunk,
-            mufe,
-            mufi,
-            IA,
-            seem,
-            seim,
-            siem,
-            siim,
-            seev,
-            seiv,
-            siev,
-            siiv,
-            integrated_chunk,
-            rhs_chunk,
-        ) = timeIntegration(paramsChunk)
+        (rates_exc, rates_inh, t_chunk, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk,) = timeIntegration(paramsChunk)
 
         # Prepare integration parameters for the next chunk
         paramsChunk["mufe_init"] = mufe
@@ -94,15 +73,13 @@ def chunkwiseTimeIntAndBOLD(
         paramsChunk["siiv_init"] = siiv
         paramsChunk["siev_init"] = siev
 
-        paramsChunk["rates_exc_init"] = rates_exc_chunk[:, -int(delay_Ndt) :]
-        paramsChunk["rates_inh_init"] = rates_inh_chunk[:, -int(delay_Ndt) :]
+        paramsChunk["rates_exc_init"] = rates_exc[:, -int(delay_Ndt) :]
+        paramsChunk["rates_inh_init"] = rates_inh[:, -int(delay_Ndt) :]
 
-        rates_exc_return = rates_exc_chunk[
-            :, int(delay_Ndt) :
-        ]  # cut off initial condition transient, otherwise it would repeat
-        rates_inh_return = rates_inh_chunk[:, int(delay_Ndt) :]
+        rates_exc_return = rates_exc[:, int(delay_Ndt) :]  # cut off initial condition transient, otherwise it would repeat
+        rates_inh_return = rates_inh[:, int(delay_Ndt) :]
 
-        del rates_exc_chunk, rates_inh_chunk
+        del rates_exc, rates_inh
 
         if saveAllActivity:
             all_rates_exc = np.hstack((all_rates_exc, rates_exc_return))

@@ -1,9 +1,5 @@
 import logging
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-
-
 import time
 import unittest
 
@@ -17,6 +13,35 @@ import neurolib.optimize.evolution.evolutionaryUtils as eu
 import neurolib.utils.functions as func
 
 
+class TestVanillaEvolution(unittest.TestCase):
+    """Test of the evolutionary optimization without a neural model 
+    """
+
+    def test_circle_optimization(self):
+        logging.info("\t > Evolution: Testing vanilla optimization of a circle ...")
+        start = time.time()
+
+        def optimize_me(traj):
+            # model = evolution.getModelFromTraj(traj)
+            ind = evolution.getIndividualFromTraj(traj)
+            # let's make a circle
+            computation_result = abs((ind.x ** 2 + ind.y ** 2) - 1)
+            # DEAP wants a tuple as fitness, ALWAYS!
+            fitness_tuple = (computation_result,)
+
+            # we also require a dictionary with at least a single result for storing the results in the hdf
+            result_dict = {"result": [computation_result]}
+
+            return fitness_tuple, result_dict
+
+        pars = ParameterSpace(["x", "y"], [[-5.0, 5.0], [-5.0, 5.0]])
+        evolution = Evolution(optimize_me, pars, weightList=[-1.0], POP_INIT_SIZE=8, POP_SIZE=4, NGEN=2)
+        evolution.run(verbose=False)
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
 class TestALNEvolution(unittest.TestCase):
     """
     Evolution with ALN model
@@ -28,10 +53,10 @@ class TestALNEvolution(unittest.TestCase):
 
         def evaluateSimulation(traj):
             rid = traj.id
-            print("rin")
+            print("rasda;lasdk;aldk;alsdka;ldasdlkaldkjalksdjalksdjadasdasdasdin")
             logging.info("Running run id {}".format(rid))
 
-            model = evolution.loadIndividual(traj)
+            model = evolution.getModelFromTraj(traj)
 
             model.params["dt"] = 0.1
             model.params["duration"] = 2 * 1000.0
@@ -42,8 +67,7 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
-                model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -56,17 +80,9 @@ class TestALNEvolution(unittest.TestCase):
         alnModel = ALNModel(simulateBOLD=True)
         alnModel.run()
 
-        pars = ParameterSpace(
-            ["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]]
-        )
+        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
         evolution = Evolution(
-            alnModel,
-            pars,
-            evaluateSimulation,
-            weightList=[-1.0],
-            POP_INIT_SIZE=5,
-            POP_SIZE=3,
-            NGEN=3,
+            evaluateSimulation, pars, model=alnModel, weightList=[-1.0], POP_INIT_SIZE=6, POP_SIZE=4, NGEN=3,
         )
         evolution.run(verbose=False)
         evolution.info(plot=False)

@@ -36,9 +36,7 @@ class TestALNExploration(unittest.TestCase):
 
         for i in search.dfResults.index:
             search.dfResults.loc[i, "max_r"] = np.max(
-                search.runResults[i]["rates_exc"][
-                    :, -int(1000 / alnModel.params["dt"]) :
-                ]
+                search.runResults[i]["rates_exc"][:, -int(1000 / alnModel.params["dt"]) :]
             )
 
         end = time.time()

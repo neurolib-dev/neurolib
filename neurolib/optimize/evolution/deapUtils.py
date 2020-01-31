@@ -12,15 +12,14 @@ def indivAsDict_adapt(individual, ParametersInterval, paramInterval):
     return ParametersInterval(*(individual[: len(paramInterval)]))._asdict().copy()
 
 
-def generateRandomParams_withAdaptation(paramInterval):
+def generate_random_pars_adapt(paramInterval):
     """
     Generate a sequence of random parameters from a ParamsInterval using a uniform distribution.
     Format: [mean_par1, mean_par2, ..., sigma_par1, sigma_par2, ...]
-    Additionally, the second part of the parameters are the adaptive mutation std parameters.
+    The second half of the parameter list is set of adaptive mutation std deviation parameters.
     """
     params = list(map(lambda pI: np.random.uniform(pI[0], pI[1]), paramInterval))
 
-    # UNCOMMENT FOR ADAPTATION
     # The innitial adaptation parameters are chosen according to the inidial parameter range:
     defaultAdaptation = list(map(lambda pI: (abs(pI[1] - pI[0]) / 3), paramInterval))
     # add sigma's to the list of means
@@ -40,30 +39,6 @@ def check_param_validity(individual, paramInterval):
 
 
 ### Selection operators ###
-
-# # Wheel selection
-# def selWheel(individuals, k):
-#     """
-#     Select k individual from a population using the Roulette selection
-#     Since we are trying to minimize the distance, we use the inverse fitness function as a probability
-
-#     This code is inspired from DEAP.toolbox.selRoulette
-#     """
-#     s_inds = sorted(individuals, key=attrgetter("fitness"), reverse=True)
-#     sum_invfits = sum(1 / ind.fitness.values[0] for ind in individuals)
-
-#     chosen = []
-#     for i in range(k):
-#         u = random.random() * sum_invfits
-#         sum_ = 0
-#         for ind in s_inds:
-#             sum_ += 1 / ind.fitness.values[0]
-#             if sum_ > u:
-#                 chosen.append(ind)
-#                 break
-#     return chosen
-
-
 # Rank selection
 def selRank(individuals, k, s=1.5):
     """
@@ -74,9 +49,7 @@ def selRank(individuals, k, s=1.5):
         n the rank selection, individual are selected with a probability depending on their rank.
     """
     # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
-    s_inds = sorted(
-        individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True
-    )
+    s_inds = sorted(individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)
 
     mu = len(individuals)
 
@@ -106,9 +79,7 @@ def selBest_multiObj(individuals, k):
     This function accept multiobjective function by summing the fitness all of objectives.
     """
     # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
-    return sorted(
-        individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True
-    )[:k]
+    return sorted(individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)[:k]
 
 
 ### Crossover operators ###
@@ -130,16 +101,14 @@ def cxUniform_adapt(ind1, ind2, indpb):
     This function uses the :func:`~random.random` function from the python base
     :mod:`random` module.
     """
-    isCrossover = False
     size = min(len(ind1), len(ind2))
     for i in range(size // 2):
         if random.random() < indpb:
-            isCrossover = True
             ind1[i], ind2[i] = ind2[i], ind1[i]
             iAdapt = i + size // 2
             ind1[iAdapt], ind2[iAdapt] = ind2[iAdapt], ind1[iAdapt]
 
-    return isCrossover
+    return ind1, ind2
 
 
 def cxUniform_normDraw(ind1, ind2, indpb):
@@ -158,17 +127,15 @@ def cxUniform_normDraw(ind1, ind2, indpb):
     This function uses the :func:`~random.random` function from the python base
     :mod:`random` module.
     """
-    isCrossover = False
     size = min(len(ind1), len(ind2))
     for i in range(size // 2):
         if random.random() < indpb:
-            isCrossover = True
             mu = np.mean([ind1[i], ind2[i]])
             sigma = np.abs(ind1[i] - ind2[i])
             ind1[i] = random.normalvariate(mu, sigma)
             ind2[i] = random.normalvariate(mu, sigma)
 
-    return isCrossover
+    return ind1, ind2
 
 
 def cxUniform_normDraw_adapt(ind1, ind2, indpb):
@@ -188,19 +155,17 @@ def cxUniform_normDraw_adapt(ind1, ind2, indpb):
     This function uses the :func:`~random.random` function from the python base
     :mod:`random` module.
     """
-    isCrossover = False
     size = min(len(ind1), len(ind2))
     for i in range(size // 2):
         if random.random() < indpb:
-            isCrossover = True
             mu = np.mean([ind1[i], ind2[i]])
             sigma = np.abs(ind1[i] - ind2[i])
-            ind1[i] = random.normalvariate(mu, sigma)
-            ind2[i] = random.normalvariate(mu, sigma)
-            iAdapt = i + size // 2
+            ind1[i] = random.normalvariate(mu, sigma)  # in-place modification!
+            ind2[i] = random.normalvariate(mu, sigma)  # in-place modification!
+            iAdapt = i + size // 2  # adaptive parameters, start at half of the list
             ind1[iAdapt], ind2[iAdapt] = ind2[iAdapt], ind1[iAdapt]
 
-    return isCrossover
+    return ind1, ind2
 
 
 ### Mutation operators ###
@@ -231,13 +196,9 @@ def adaptiveMutation_nStepSize(mutant, gamma_gl=None, gammas=None):
         gammas = [1 / np.sqrt(2 * np.sqrt(nParams))] * nParams
 
     newSigmas = [
-        oldSigmas[i]
-        * np.exp(gammas[i] * np.random.randn() + gamma_gl * np.random.randn())
-        for i in range(nParams)
+        oldSigmas[i] * np.exp(gammas[i] * np.random.randn() + gamma_gl * np.random.randn()) for i in range(nParams)
     ]
-    newParams = [
-        oldParams[i] + newSigmas[i] * np.random.randn() for i in range(nParams)
-    ]
+    newParams = [oldParams[i] + newSigmas[i] * np.random.randn() for i in range(nParams)]
 
     mutant[:] = newParams + newSigmas
 

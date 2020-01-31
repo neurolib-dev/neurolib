@@ -31,9 +31,7 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
     # recently added for easier simulation of aln and brian in pypet
     params.model = "aln"
     params.name = "aln"
-    params.description = (
-        "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
-    )
+    params.description = "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
     params.inputs = "ext_exc_rate"  # in Hz
     params.outputs = "rates_exc"  # in Hz
 
@@ -144,25 +142,9 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
     # ------------------------------------------------------------------------
 
     # Generate and set random initial conditions
-    (
-        mufe_init,
-        IA_init,
-        mufi_init,
-        seem_init,
-        seim_init,
-        seev_init,
-        seiv_init,
-        siim_init,
-        siem_init,
-        siiv_init,
-        siev_init,
-        rates_exc_init,
-        rates_inh_init,
-    ) = generateRandomICs(params.N, seed)
+    (mufe_init, IA_init, mufi_init, seem_init, seim_init, seev_init, seiv_init, siim_init, siem_init, siiv_init, siev_init, rates_exc_init, rates_inh_init,) = generateRandomICs(params.N, seed)
 
-    params.mufe_init = (
-        mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
-    )
+    params.mufe_init = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
     params.IA_init = IA_init  # adaptation current
     params.mufi_init = mufi_init  #
     params.seem_init = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
@@ -178,9 +160,7 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
 
     # load precomputed aLN transfer functions from hdfs
     if lookupTableFileName is None:
-        lookupTableFileName = os.path.join(
-            os.path.dirname(__file__), "aln-precalc", "quantities_cascade.h5"
-        )
+        lookupTableFileName = os.path.join(os.path.dirname(__file__), "aln-precalc", "quantities_cascade.h5")
 
     hf = h5py.File(lookupTableFileName, "r")
     params.Irange = hf.get("mu_vals")[()]
@@ -213,9 +193,7 @@ def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
 
     normalizedLenMat = lengthMat * segmentLength  # Each segment is ~1.8mm
     if signalV > 0:
-        Dmat = (
-            normalizedLenMat / signalV
-        )  # Interareal connection delays, Dmat(i,j) in ms
+        Dmat = normalizedLenMat / signalV  # Interareal connection delays, Dmat(i,j) in ms
     else:
         Dmat = lengthMat * 0.0
     return Dmat
@@ -233,13 +211,9 @@ def generateRandomICs(N, seed=None):
     if seed:
         np.random.seed(seed)
 
-    mufe_init = 3 * np.random.uniform(
-        0, 1, (N,)
-    )  # mV/ms  if DOSC_version: complex variable
+    mufe_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms  if DOSC_version: complex variable
     IA_init = 200.0 * np.random.uniform(0, 1, (N,))  # pA
-    mufi_init = 3 * np.random.uniform(
-        0, 1, (N,)
-    )  # mV/ms  if DOSC_version: complex variable
+    mufi_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms  if DOSC_version: complex variable
     seem_init = 0.5 * np.random.uniform(0, 1, (N,))
     seim_init = 0.5 * np.random.uniform(0, 1, (N,))
     seev_init = 0.001 * np.random.uniform(0, 1, (N,))
@@ -270,30 +244,12 @@ def generateRandomICs(N, seed=None):
 
 def loadICs(params, N, seed=None):
     # Generate and set random initial conditions
-    (
-        mufe_init,
-        IA_init,
-        mufi_init,
-        seem_init,
-        seim_init,
-        seev_init,
-        seiv_init,
-        siim_init,
-        siem_init,
-        siiv_init,
-        siev_init,
-        rates_exc_init,
-        rates_inh_init,
-    ) = generateRandomICs(N, seed)
+    (mufe_init, IA_init, mufi_init, seem_init, seim_init, seev_init, seiv_init, siim_init, siem_init, siiv_init, siev_init, rates_exc_init, rates_inh_init,) = generateRandomICs(N, seed)
 
-    params[
-        "mufe_init"
-    ] = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
+    params["mufe_init"] = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
     params["IA_init"] = IA_init  # adaptation current
     params["mufi_init"] = mufi_init  #
-    params[
-        "seem_init"
-    ] = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
+    params["seem_init"] = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
     params["seim_init"] = seim_init  #
     params["seev_init"] = seev_init  # variance of fraction of active synapses [0-1]
     params["seiv_init"] = seiv_init  #
