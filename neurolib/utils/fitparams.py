@@ -188,7 +188,21 @@ def load_pars_adapt(params, reloadDefaults=True):
 def newIC(params):
     N = params["Cmat"].shape[0]
     # Randomly create the initial parameters
-    mufe_init, IA_init, mufi_init, seem_init, seim_init, seev_init, seiv_init, siim_init, siem_init, siiv_init, siev_init, rates_exc_init, rates_inh_init = dp.generateRandomICs(N)
+    (
+        mufe_init,
+        IA_init,
+        mufi_init,
+        seem_init,
+        seim_init,
+        seev_init,
+        seiv_init,
+        siim_init,
+        siem_init,
+        siiv_init,
+        siev_init,
+        rates_exc_init,
+        rates_inh_init,
+    ) = dp.generateRandomICs(N)
 
     params["mufe_init"] = mufe_init
     params["IA_init"] = IA_init
@@ -210,7 +224,21 @@ def newIC(params):
 def zeroIC(params):
     N = params["Cmat"].shape[0]
     # Randomly create the initial parameters
-    mufe_init, IA_init, mufi_init, seem_init, seim_init, seev_init, seiv_init, siim_init, siem_init, siiv_init, siev_init, rates_exc_init, rates_inh_init = dp.generateRandomICs(N)
+    (
+        mufe_init,
+        IA_init,
+        mufi_init,
+        seem_init,
+        seim_init,
+        seev_init,
+        seiv_init,
+        siim_init,
+        siem_init,
+        siiv_init,
+        siev_init,
+        rates_exc_init,
+        rates_inh_init,
+    ) = dp.generateRandomICs(N)
 
     params["mufe_init"] = mufe_init * 0.0
     params["IA_init"] = IA_init * 0.0
