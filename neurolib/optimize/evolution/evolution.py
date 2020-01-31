@@ -1,7 +1,5 @@
 import datetime
 import os
-import random
-import copy
 import logging
 import multiprocessing
 
@@ -10,7 +8,6 @@ from deap import base
 from deap import creator
 from deap import tools
 
-import collections
 import numpy as np
 import pypet as pp
 
