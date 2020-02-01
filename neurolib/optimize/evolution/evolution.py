@@ -22,7 +22,7 @@ class Evolution:
     def __init__(
         self,
         evalFunction,
-        parameter_space,
+        parameterSpace,
         weightList,
         model=None,
         hdf_filename="evolution.hdf",
@@ -36,7 +36,8 @@ class Evolution:
         
         :param model: Model to run
         :type model: Model
-        :param evalFunction: Evaluation function that outputs the fitness vector
+        :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
+        :type evalFunction: Function shuold retiurn a tuple of the form (fitness_tuple, model.output)
         :param weightList: List of floats that defines the dimensionality of the fitness vector returned from evalFunction and the weights of each component (positive = maximize, negative = minimize) 
 
         :param hdf_filename: HDF file to store all results in (data/hdf/evolution.hdf default)
@@ -97,8 +98,8 @@ class Evolution:
         self.verbose = False
 
         # ------------- define parameters
-        self.ParametersInterval = parameter_space.named_tuple_constructor
-        self.paramInterval = parameter_space.named_tuple
+        self.ParametersInterval = parameterSpace.named_tuple_constructor
+        self.paramInterval = parameterSpace.named_tuple
 
         self.toolbox = deap.base.Toolbox()
 
@@ -368,6 +369,8 @@ class Evolution:
         if plot:
             eu.printPopFitnessStats(self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True)
         bestN = 20
+        print("--------------------------")
+        print(f"Best {bestN} individuals:")
         eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)
 
     def loadResults(self, filename=None, trajectoryName=None):
