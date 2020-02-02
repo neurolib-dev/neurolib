@@ -3,7 +3,7 @@
 # Neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
-Neurolib allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model called `aln` which consists of two populations of excitatory and a inhibitory neurons. This `aln` model is a mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx). An extensive analysis of the model can be found in the paper *Biophysically grounded mean-field models of neural populations under electrical stimulation*, Cakan et al. 2020 ([ArXiv](https://arxiv.org/abs/1906.00676)), and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+Neurolib allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and a inhibitory neurons. An extensive analysis of the model can be found in the paper *Biophysically grounded mean-field models of neural populations under electrical stimulation*, Cakan et al. 2020 ([ArXiv](https://arxiv.org/abs/1906.00676)), and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
 ### Whole-brain modeling
 
@@ -38,19 +38,19 @@ Example iPython notebooks on how to use the library can be found in the `./examp
 To create a single `aln` model with the default parameters, simply run
 
 ```python
-from neurolib.models import aln
+from neurolib.models.aln import ALNModel
 
-alnModel = aln.ALNModel()
-alnModel.params['sigma_ou'] = 0.1 # add some noise
+aln = ALNModel()
+aln.params['sigma_ou'] = 0.1 # add some noise
 
-alnModel.run()
+aln.run()
 ```
 
 The results from this small simulation can be plotted easily:
 
 ```python
 import matplotlib.pyplot as plt
-plt.plot(alnModel.t, alnModel.rates_exc.T)
+plt.plot(aln.t, aln.rates_exc.T)
 
 ```
 <p align="left">
@@ -75,10 +75,10 @@ The dataset that we just loaded, looks like this:
 We can now initialise the model with the dataset:
 
 ```python
-alnModel = aln.ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat, simulateBOLD=True)
-alnModel.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
+aln = ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat, simulateBOLD=True)
+aln.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
 
-alnModel.run()
+aln.run()
 ```
 This can take several minutes to compute, since we are simulating 90 nodes for 5 minutes realtime. Here, we have created a network model in which each brain area is an `aln` node. Note that we specified `simulateBOLD=True`, which simulates the BOLD model in parallel to the firing rate model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
