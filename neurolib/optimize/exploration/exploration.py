@@ -32,11 +32,7 @@ class BoxSearch:
         self.exploreParameters = exploreParameters
         # pypet interaction starts here
         self.pypetParametrization = pypet.cartesian_product(exploreParameters)
-        logging.info(
-            "Number of parameter configurations: {}".format(
-                len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
-            )
-        )
+        logging.info("Number of parameter configurations: {}".format(len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])))
 
         # create hdf file path if it does not exist yet
         pathlib.Path(paths.HDF_DIR).mkdir(parents=True, exist_ok=True)
@@ -105,7 +101,7 @@ class BoxSearch:
 
         addParametersRecursively(traj, params, [])
 
-    def saveOutputsToPypet(self, outputs):
+    def saveOutputsToPypet(self, outputs, traj):
         """This function takes all outputs in the form of a nested dictionary
         and stores all data into the pypet hdf file.
         """
@@ -120,12 +116,15 @@ class BoxSearch:
                     makeSaveStringForPypet(v, _savestr)
                 else:
                     _savestr = savestr + k
-                    # print(_savestr)
-                    traj.f_add_result(_savestr, v)
+                    self.traj.f_add_result(_savestr, v)
 
         value = outputs
         savestr = "results.$."
         makeSaveStringForPypet(value, savestr)
+        # print(outputs["rates_exc"])
+        # traj.f_add_result("rates_exc", outputs["rates_exc"])
+        # traj.f_add_result("results.$", rates_exc=outputs["rates_exc"], t=outputs["t"])
+        # traj.f_add_result('results.$', t = t, rates_exc = rates_exc)
 
     def runModel(self, traj):
         """This function will be called by pypet directly and therefore 
@@ -140,7 +139,7 @@ class BoxSearch:
         # run it
         self.model.run()
         # save all results from exploration
-        self.saveOutputsToPypet(self.model.outputs)
+        self.saveOutputsToPypet(self.model.outputs, traj)
 
     def run(self):
         """
@@ -159,9 +158,6 @@ class BoxSearch:
         trajLoaded = pu.loadPypetTrajectory(filename, trajectoryName)
         self.nResults = len(trajLoaded.f_get_run_names())
 
-        # this is very wonky, might break if nested parameters are used!
-        # dt = trajLoaded.f_get_parameters()["parameters.dt"].f_get()
-
         exploredParameters = trajLoaded.f_get_explored_parameters()
 
         # create pandas dataframe of all runs with parameters as keys
@@ -171,14 +167,12 @@ class BoxSearch:
         for nicep, p in zip(niceParKeys, exploredParameters.keys()):
             self.dfResults[nicep] = exploredParameters[p].f_get_range()
 
-        # make a dictionary with results
-        # todo: this depends on the pandas dataframe created before but should not do so!
-        resultDicts = []
+        # make a list of dictionaries with results
         logging.info("Creating results dictionary ...")
-        self.runResults = []
-        # for rInd in tqdm.tqdm(range(len(self.dfResults)), total=len(self.dfResults)):
+        self.results = []
         for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
-            result = trajLoaded.results[rInd].f_to_dict()
-            print(result)
-            self.runResults.append(result)
+            trajLoaded.results[rInd].f_load()
+            result = trajLoaded.results[rInd].f_to_dict(fast_access=True, short_names=True)
+            trajLoaded.results[rInd].f_remove()
+            self.results.append(result)
         logging.info("All results loaded.")

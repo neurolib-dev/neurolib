@@ -1,6 +1,6 @@
 import numpy as np
 
-import neurolib.models.aln.loadDefaultParams as dp
+import neurolib.models.hopf.loadDefaultParams as dp
 import numba
 
 
@@ -167,11 +167,7 @@ def timeIntegration_njit_elementwise(
             # delayed input to each node
             xs_input_d[no] = 0
             for l in range(N):
-                xs_input_d[no] += (
-                    K_gl
-                    * Cmat[no, l]
-                    * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
-                )  # delayed input
+                xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])  # delayed input
             # ysd[no] = ys[no,i-1] # delayed input
 
             # Stuart-Landau / Hopf Oscillator
@@ -181,25 +177,13 @@ def timeIntegration_njit_elementwise(
                 + xs_input_d[no]
                 + x_ext[no]
             )
-            y_rhs = (
-                (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
-                + w * xs[no, i - 1]
-                + y_ext[no]
-            )
+            y_rhs = (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1] + w * xs[no, i - 1] + y_ext[no]
 
             xs[no, i] = xs[no, i - 1] + dt * x_rhs
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
             # ornstein-uhlenberg process
-            x_ext[no] = (
-                x_ext[no]
-                + (x_ext_mean - x_ext[no]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_xs[no]
-            )  # mV/ms
-            y_ext[no] = (
-                y_ext[no]
-                + (y_ext_mean - y_ext[no]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_ys[no]
-            )  # mV/ms
+            x_ext[no] = x_ext[no] + (x_ext_mean - x_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
+            y_ext[no] = y_ext[no] + (y_ext_mean - y_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
 
     return t, xs, ys
