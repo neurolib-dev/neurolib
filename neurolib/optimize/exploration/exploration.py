@@ -105,35 +105,42 @@ class BoxSearch:
 
         addParametersRecursively(traj, params, [])
 
+    def saveOutputsToPypet(self, outputs):
+        """This function takes all outputs in the form of a nested dictionary
+        and stores all data into the pypet hdf file.
+        """
+
+        def makeSaveStringForPypet(value, savestr):
+            """Builds the pypet-style results string from the results
+            dictionary's keys.
+            """
+            for k, v in value.items():
+                if isinstance(v, dict):
+                    _savestr = savestr + k + "."
+                    makeSaveStringForPypet(v, _savestr)
+                else:
+                    _savestr = savestr + k
+                    # print(_savestr)
+                    traj.f_add_result(_savestr, v)
+
+        value = outputs
+        savestr = "results.$."
+        makeSaveStringForPypet(value, savestr)
+
     def runModel(self, traj):
         """This function will be called by pypet directly and therefore 
         wants a trajectory `traj` as an argument
         """
         if self.useRandomICs:
             logging.warn("Random initial conditions not implemented yet")
-
-        # lambda function for an dictionary update without inplace replacement
-        # (lambda d: d.update(newDict) or d)(oldDict)
-
         # get parameters of this run from pypet trajectory
         runParams = traj.parameters.f_to_dict(short_names=True, fast_access=True)
-
         # set the parameters for the model
         self.model.params.update(runParams)
-
         # run it
         self.model.run()
-
-        # get retuls from the model
-        # attention: this is not model-agnostic yet, only works with aln model
-        # should return a `result` object rather than each dimension
-        t, rates_exc, rates_inh = (
-            self.model.t,
-            self.model.rates_exc,
-            self.model.rates_inh,
-        )
-
-        traj.f_add_result("results.$", t=t, rates_exc=rates_exc, rates_inh=rates_inh)
+        # save all results from exploration
+        self.saveOutputsToPypet(self.model.outputs)
 
     def run(self):
         """
@@ -142,72 +149,36 @@ class BoxSearch:
         assert self.initialized, "Pypet environment not initialized yet."
         self.env.run(self.runModel)
 
-    # The commented code block below is now in neurolib.utils.pypetUtils.py
-    #
-    # def getTrajectorynamesInFile(self, filename):
-    #     """
-    #     Return a list of all pypet trajectories name saved in a a given hdf5 file.
-
-    #     Parameter:
-    #         :param filename:   Name of the hdf5 we want to explore
-
-    #     Return:
-    #         List of string containing the trajectory name
-    #     """
-    #     hdf = h5py.File(filename)
-    #     all_traj_names = list(hdf.keys())
-    #     hdf.close()
-    #     return all_traj_names
-
-    # def loadPypetTrajectory(self, filename, trajectoryName):
-    #     """Read HDF file with simulation results and return the chosen trajectory.
-
-    #     :param filename: HDF file path
-    #     :type filename: str
-
-    #     :return: pypet trajectory
-    #     """
-    #     assert pathlib.Path(filename).exists(), f"{filename} does not exist!"
-    #     logging.info(f"Loading results from {filename}")
-
-    #     # if trajectoryName is not specified, load the most recent trajectory
-    #     if trajectoryName == None:
-    #         trajectoryName = self.getTrajectorynamesInFile(filename)[-1]
-    #     logging.info(f"Analyzing trajectory {trajectoryName}")
-
-    #     trajLoaded = pypet.Trajectory(trajectoryName, add_time=False)
-    #     trajLoaded.f_load(trajectoryName, filename=filename, force=True)
-    #     trajLoaded.v_auto_load = True
-    #     return trajLoaded
-
     def loadResults(self, filename=None, trajectoryName=None):
         """
-        Load simulation results.
+        Load simulation results an hdf file.
         """
+        # chose
         if filename == None:
             filename = self.HDF_FILE
         trajLoaded = pu.loadPypetTrajectory(filename, trajectoryName)
-        nResults = len(trajLoaded.f_get_run_names())
+        self.nResults = len(trajLoaded.f_get_run_names())
 
         # this is very wonky, might break if nested parameters are used!
-        dt = trajLoaded.f_get_parameters()["parameters.dt"].f_get()
+        # dt = trajLoaded.f_get_parameters()["parameters.dt"].f_get()
 
         exploredParameters = trajLoaded.f_get_explored_parameters()
-        # split dot-separated pypet parameters back
+
+        # create pandas dataframe of all runs with parameters as keys
+        logging.info("Creating pandas dataframe ...")
         niceParKeys = [p.split(".")[-1] for p in exploredParameters.keys()]
-
-        # ---- lcreate pandas df with results as keys ----
         self.dfResults = pd.DataFrame(columns=niceParKeys, dtype=object)
-
-        # range of parameters
         for nicep, p in zip(niceParKeys, exploredParameters.keys()):
             self.dfResults[nicep] = exploredParameters[p].f_get_range()
 
-        # ---- make a dictionary with results ----
+        # make a dictionary with results
+        # todo: this depends on the pandas dataframe created before but should not do so!
         resultDicts = []
         logging.info("Creating results dictionary ...")
         self.runResults = []
-        for rInd in tqdm.tqdm(range(len(self.dfResults)), total=len(self.dfResults)):
+        # for rInd in tqdm.tqdm(range(len(self.dfResults)), total=len(self.dfResults)):
+        for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
             result = trajLoaded.results[rInd].f_to_dict()
+            print(result)
             self.runResults.append(result)
-        logging.info("done.")
+        logging.info("All results loaded.")
