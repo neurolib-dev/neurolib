@@ -56,17 +56,7 @@ class BoxSearch:
         logging.info("Number of processes: {}".format(nprocesses))
 
         # set up the pypet environment
-        env = pypet.Environment(
-            trajectory=trajectoryName,
-            filename=trajectoryFileName,
-            file_title=explorationName,
-            large_overview_tables=True,
-            multiproc=True,
-            ncores=nprocesses,
-            # log_config=None,
-            # wrap_mode="QUEUE",
-            log_stdout=False,
-        )
+        env = pypet.Environment(trajectory=trajectoryName, filename=trajectoryFileName, file_title=explorationName, large_overview_tables=True, multiproc=True, ncores=nprocesses, wrap_mode="LOCK", log_stdout=False)
         self.env = env
         # Get the trajectory from the environment
         self.traj = env.trajectory
