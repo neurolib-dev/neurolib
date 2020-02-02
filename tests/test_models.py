@@ -2,11 +2,12 @@ import logging
 import time
 import unittest
 
-from neurolib.models import aln, hopf
+from neurolib.models.aln import ALNModel
+from neurolib.models.hopf import HopfModel
 from neurolib.utils.loadData import Dataset
 
 
-class TestALNModel(unittest.TestCase):
+class Testaln(unittest.TestCase):
     """
     Basic test for ALN model.
     """
@@ -15,11 +16,11 @@ class TestALNModel(unittest.TestCase):
         logging.info("\t > ALN: Testing single node ...")
         start = time.time()
 
-        alnModel = aln.ALNModel()
-        alnModel.params["duration"] = 2.0 * 1000
-        alnModel.params["sigma_ou"] = 0.1  # add some noise
+        aln = ALNModel()
+        aln.params["duration"] = 2.0 * 1000
+        aln.params["sigma_ou"] = 0.1  # add some noise
 
-        alnModel.run()
+        aln.run()
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
@@ -30,21 +31,21 @@ class TestALNModel(unittest.TestCase):
 
         ds = Dataset("gw")
 
-        alnModel = aln.ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
         # in ms, simulates for 5 minutes
-        alnModel.params["duration"] = 10 * 1000
+        aln.params["duration"] = 10 * 1000
 
-        alnModel.run()
+        aln.run()
 
         # access outputs
-        alnModel.xrs["rates"]
-        alnModel.xrs["BOLD"]
+        aln.xr()
+        aln.xr("BOLD")
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
 
-class TestHopfModel(unittest.TestCase):
+class Testhopf(unittest.TestCase):
     """
     Basic test for Hopf model.
     """
@@ -52,11 +53,11 @@ class TestHopfModel(unittest.TestCase):
     def test_single_node(self):
         logging.info("\t > Hopf: Testing single node ...")
         start = time.time()
-        hopfModel = hopf.HopfModel()
-        hopfModel.params["duration"] = 2.0 * 1000
-        hopfModel.params["sigma_ou"] = 0.03
+        hopf = HopfModel()
+        hopf.params["duration"] = 2.0 * 1000
+        hopf.params["sigma_ou"] = 0.03
 
-        hopfModel.run()
+        hopf.run()
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
@@ -65,14 +66,14 @@ class TestHopfModel(unittest.TestCase):
         logging.info("\t > Hopf: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
         start = time.time()
         ds = Dataset("gw")
-        hopfModel = hopf.HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
-        hopfModel.params["w"] = 1.0
-        hopfModel.params["signalV"] = 0
-        hopfModel.params["duration"] = 10 * 1000
-        hopfModel.params["sigma_ou"] = 0.14
-        hopfModel.params["K_gl"] = 0.6
+        hopf = HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+        hopf.params["w"] = 1.0
+        hopf.params["signalV"] = 0
+        hopf.params["duration"] = 10 * 1000
+        hopf.params["sigma_ou"] = 0.14
+        hopf.params["K_gl"] = 0.6
 
-        hopfModel.run()
+        hopf.run()
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 

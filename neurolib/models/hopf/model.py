@@ -26,15 +26,7 @@ class HopfModel(Model):
     defaultOutput = "x"
 
     def __init__(
-        self,
-        params=None,
-        Cmat=[],
-        Dmat=[],
-        lookupTableFileName=None,
-        seed=None,
-        simulateChunkwise=False,
-        chunkSize=10000,
-        simulateBOLD=False,
+        self, params=None, Cmat=[], Dmat=[], lookupTableFileName=None, seed=None, simulateChunkwise=False, chunkSize=10000, simulateBOLD=False,
     ):
         # Initialize base class Model
         Model.__init__(self, self.name)
@@ -52,9 +44,7 @@ class HopfModel(Model):
         self.simulateBOLD = simulateBOLD  # BOLD
         if simulateBOLD:
             self.simulateChunkwise = True  # Override this setting if BOLD is simulated!
-        self.saveAllActivity = (
-            False  # Save data from all chunks? Can be very memory demanding if simulations are long or large
-        )
+        self.saveAllActivity = False  # Save data from all chunks? Can be very memory demanding if simulations are long or large
 
         # load default parameters if none were given
         if params == None:
@@ -70,32 +60,16 @@ class HopfModel(Model):
         Runs the aLN mean-field model simulation
         """
         if self.simulateChunkwise:
-            t, x, y, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(
-                self.params,
-                chunkSize=self.chunkSize,
-                simulateBOLD=self.simulateBOLD,
-                saveAllActivity=self.saveAllActivity,
-            )
-            self.t_BOLD = t_BOLD
-            self.BOLD = BOLD
+            t, x, y, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(self.params, chunkSize=self.chunkSize, simulateBOLD=self.simulateBOLD, saveAllActivity=self.saveAllActivity,)
+            # self.t_BOLD = t_BOLD
+            # self.BOLD = BOLD
             Model.setOutput(self, "BOLD.t", t_BOLD)
             Model.setOutput(self, "BOLD.BOLD", BOLD)
 
         else:
             t, x, y = ti.timeIntegration(self.params)
 
-        # save results in attributes
-        self.t = t
-        self.x = x
-        self.y = y
-
         Model.setOutput(self, "t", t)
         Model.setOutput(self, "x", x)
         Model.setOutput(self, "y", y)
-
-        # # new: save results into Model output
-        # outputNames = self.modelOutputNames
-        # outputs = [self.x, self.y]
-
-        # Model.addOutputs(self, "activity", t, outputs, outputNames)
 
