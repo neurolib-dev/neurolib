@@ -1,7 +1,8 @@
-import nbformat
 import os
-from nbconvert.preprocessors import ExecutePreprocessor
 import unittest
+
+import nbformat
+from nbconvert.preprocessors import ExecutePreprocessor
 
 
 def run_notebook(notebook_path):
@@ -61,11 +62,4 @@ class TestVanillaEvolution(unittest.TestCase):
         fname = "examples/example-3-evolutionary-optimization-aln.ipynb"
         nb, errors = run_notebook(fname)
         print_errors(fname, errors)
-        assert len(errors) == 0, f"Error in {fname}"
-
-
-if __name__ == "__main__":
-    fnames = ["examples/example-0-aln-minimal.ipynb", "examples/example-1-aln-parameter-exploration.ipynb", "examples/example-2-evolutionary-optimization-minimal.ipynb", "examples/example-3-evolutionary-optimization-aln.ipynb"]
-    for fname in fnames:
-        nb, errors = run_notebook(fname)
         assert len(errors) == 0, f"Error in {fname}"
