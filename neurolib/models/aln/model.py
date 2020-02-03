@@ -59,22 +59,6 @@ class ALNModel(Model):
         """
         Runs an aLN mean-field model simulation
         """
-        # if recycleICs:
-        #     rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = ti.timeIntegration(self.params)
-        #     paramsChunk["mufe_init"] = mufe
-        #     paramsChunk["mufi_init"] = mufi
-        #     paramsChunk["IA_init"] = IA
-        #     paramsChunk["seem_init"] = seem
-        #     paramsChunk["seim_init"] = seim
-        #     paramsChunk["siim_init"] = siim
-        #     paramsChunk["siem_init"] = siem
-        #     paramsChunk["seev_init"] = seev
-        #     paramsChunk["seiv_init"] = seiv
-        #     paramsChunk["siiv_init"] = siiv
-        #     paramsChunk["siev_init"] = siev
-
-        #     paramsChunk["rates_exc_init"] = rates_exc[:, -int(delay_Ndt) :]
-        #     paramsChunk["rates_inh_init"] = rates_inh[:, -int(delay_Ndt) :]
 
         if self.simulateChunkwise:
             t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity)
