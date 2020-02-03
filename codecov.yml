@@ -1,0 +1,8 @@
+coverage:
+  precision: 2
+  round: nearest
+  range: "40...70"
+  ignore: 
+    - "neurolib/models/aln/timeIntegration.py"
+    - "neurolib/models/bold/timeIntegration.py"
+    - "neurolib/models/hopf/timeIntegration.py"
