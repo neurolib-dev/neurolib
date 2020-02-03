@@ -387,11 +387,12 @@ class Evolution:
 
         generation_names = list(traj.results.evolution.f_to_dict(nested=True).keys())
 
-        if drop_first:
-            # drop first (initial) generation 0
-            generation_names = generation_names[1:]
         if reverse:
             generation_names = generation_names[::-1]
+        if drop_first:
+            # drop first (initial) generation 0
+            # generation_names = generation_names[1:]
+            generation_names.remove("gen_000000")
 
         npop = len(traj.results.evolution[generation_names[0]].scores)
 
