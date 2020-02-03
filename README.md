@@ -15,7 +15,7 @@ An extensive analysis of this model can be found in our paper and its associated
 
 <p style="text-align: center;"> 
 <br>
-<b> Examples:
+<b> Quick examples:
 <a href="#single-node">Single node simulation</a> 
 <a href="#whole-brain-network">Whole-brain network</a>
 <a href="#parameter-exploration">Parameter exploration</a>
