@@ -64,8 +64,8 @@ class TestVanillaEvolution(unittest.TestCase):
         print_errors(fname, errors)
         assert len(errors) == 0, f"Error in {fname}"
 
-    def test_example_3(self):
-        fname = "examples/example-3-evolutionary-optimization-aln.ipynb"
+    def test_example_2_1(self):
+        fname = "examples/example-2.1-evolutionary-optimization-aln.ipynb"
         nb, errors = run_notebook(fname)
         print_errors(fname, errors)
         assert len(errors) == 0, f"Error in {fname}"
