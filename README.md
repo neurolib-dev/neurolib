@@ -209,5 +209,5 @@ evolution.info(plot=True)
 This will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). As you can see in the parameter space cross sections below, all remaining individuals lie on a circle.
 
 <p align="center">
-  <img src="resources/evolution_minimal.png">
+  <img src="resources/evolution_animated.gif">
 </p>
