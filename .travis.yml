@@ -5,11 +5,14 @@ python:
   
 install:
   - pip install -r requirements.txt
-  - pip install pytest flake8
+  - pip install pytest flake8 codecov pytest-cov
   - pip install jupyterlab nbconvert nbformat matplotlib seaborn
   - python setup.py sdist bdist_wheel
   - pip install --upgrade dist/*
 
 script:
-  - pytest --durations=0 tests/
+  - PYTHONPATH=. pytest --durations=100 --cov=neurolib tests
   - flake8 . --max-line-length=1000 --exit-zero
+
+after_success:
+  - codecov
