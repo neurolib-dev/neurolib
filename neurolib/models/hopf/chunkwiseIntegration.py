@@ -71,8 +71,6 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
 
         # in crement time counter
         lastT = lastT + t_return[-1]
-        # idxLastT = idxLastT + xs_return.shape[1]
-        # t_return = np.dot(range(xs_return.shape[1], idxLastT + xs_return.shape[1]), dt)
 
     if saveAllActivity:
         xs_return = all_xs

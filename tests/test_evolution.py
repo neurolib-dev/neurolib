@@ -22,16 +22,11 @@ class TestVanillaEvolution(unittest.TestCase):
         start = time.time()
 
         def optimize_me(traj):
-            # model = evolution.getModelFromTraj(traj)
             ind = evolution.getIndividualFromTraj(traj)
-            # let's make a circle
             computation_result = abs((ind.x ** 2 + ind.y ** 2) - 1)
-            # DEAP wants a tuple as fitness, ALWAYS!
             fitness_tuple = (computation_result,)
-
-            # we also require a dictionary with at least a single result for storing the results in the hdf
             result_dict = {"result": [computation_result]}
-
+            print(computation_result)
             return fitness_tuple, result_dict
 
         pars = ParameterSpace(["x", "y"], [[-5.0, 5.0], [-5.0, 5.0]])
@@ -53,7 +48,6 @@ class TestALNEvolution(unittest.TestCase):
 
         def evaluateSimulation(traj):
             rid = traj.id
-            print("rasda;lasdk;aldk;alsdka;ldasdlkaldkjalksdjalksdjadasdasdasdin")
             logging.info("Running run id {}".format(rid))
 
             model = evolution.getModelFromTraj(traj)
@@ -66,9 +60,7 @@ class TestALNEvolution(unittest.TestCase):
             # -------- fitness evaluation here --------
 
             # example: get dominant frequency of activity
-            frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
-            )
+            frs, powers = func.getPowerSpectrum(model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],)
             domfr = frs[np.argmax(powers)]
 
             fitness = abs(domfr - 25)  # let's try to find a 25 Hz oscillation
@@ -77,13 +69,11 @@ class TestALNEvolution(unittest.TestCase):
             fitness_tuple += (fitness,)
             return fitness_tuple, model.outputs
 
-        alnModel = ALNModel(simulateBOLD=True)
+        alnModel = ALNModel(simulateBOLD=False)
         alnModel.run()
 
         pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
-        evolution = Evolution(
-            evaluateSimulation, pars, model=alnModel, weightList=[-1.0], POP_INIT_SIZE=6, POP_SIZE=4, NGEN=3,
-        )
+        evolution = Evolution(evaluateSimulation, pars, model=alnModel, weightList=[-1.0], POP_INIT_SIZE=6, POP_SIZE=4, NGEN=3,)
         evolution.run(verbose=False)
         evolution.info(plot=False)
         traj = evolution.loadResults()
