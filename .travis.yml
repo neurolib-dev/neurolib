@@ -5,6 +5,8 @@ python:
 
 install:
   - pip install -r requirements.txt
+  - pip install pytest flake8
+  - pip install matplotlib nbconvert nbformat
   - python setup.py sdist bdist_wheel
   - pip install --upgrade dist/*
 
