@@ -46,6 +46,12 @@ class TestVanillaEvolution(unittest.TestCase):
         print_errors(fname, errors)
         assert len(errors) == 0, f"Error in {fname}"
 
+    def test_example_0_1(self):
+        fname = "examples/example-0.1-hopf-minimal.ipynb"
+        nb, errors = run_notebook(fname)
+        print_errors(fname, errors)
+        assert len(errors) == 0, f"Error in {fname}"
+
     def test_example_1(self):
         fname = "examples/example-1-aln-parameter-exploration.ipynb"
         nb, errors = run_notebook(fname)
