@@ -29,7 +29,6 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
 
     # make a real copy of params
     paramsChunk = cp.deepcopy(params)
-
     N = params["Cmat"].shape[0]
 
     # initialize BOLD model?
@@ -37,28 +36,23 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
         boldModel = bold.BOLDModel(N, dt)
 
     # initialize data arrays
-    t_BOLD_return = np.array([], dtype="f", ndmin=2)
+    t_BOLD_return = np.array([], dtype="f", ndmin=1)
     BOLD_return = np.array([], dtype="f", ndmin=2)
+
+    all_t = np.array([], dtype="f", ndmin=1)
+    t_return = np.array([], dtype="f", ndmin=1)
     all_rates_exc = np.array([], dtype="f", ndmin=2)
     rates_exc_return = np.array([], dtype="f", ndmin=2)
     all_rates_inh = np.array([], dtype="f", ndmin=2)
     rates_inh_return = np.array([], dtype="f", ndmin=2)
 
-    # Index of the last computed t
-    idxLastT = 0
-
-    while dt * idxLastT < totalDuration:
+    lastT = 0
+    while lastT < totalDuration:
         # Determine the size of the next chunk
-        currentChunkSize = min(chunkSize + delay_Ndt, totalDuration - dt * idxLastT + (delay_Ndt + 1) * dt)
+        currentChunkSize = min(chunkSize + delay_Ndt, totalDuration - lastT + (delay_Ndt + 1) * dt)
         paramsChunk["duration"] = currentChunkSize
 
-        # Time Integration
-        rates_exc, rates_inh = (
-            np.array([], dtype="f", ndmin=2),
-            np.array([], dtype="f", ndmin=2),
-        )
-
-        (rates_exc, rates_inh, t_chunk, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, integrated_chunk, rhs_chunk,) = timeIntegration(paramsChunk)
+        rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = timeIntegration(paramsChunk)
 
         # Prepare integration parameters for the next chunk
         paramsChunk["mufe_init"] = mufe
@@ -76,14 +70,20 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
         paramsChunk["rates_exc_init"] = rates_exc[:, -int(delay_Ndt) :]
         paramsChunk["rates_inh_init"] = rates_inh[:, -int(delay_Ndt) :]
 
-        rates_exc_return = rates_exc[:, int(delay_Ndt) :]  # cut off initial condition transient, otherwise it would repeat
-        rates_inh_return = rates_inh[:, int(delay_Ndt) :]
+        # rates_exc_return = rates_exc[:, int(delay_Ndt) :]  # cut off initial condition transient, otherwise it would repeat
+        # rates_inh_return = rates_inh[:, int(delay_Ndt) :]
+        # t_return = t[int(delay_Ndt) :]
 
-        del rates_exc, rates_inh
+        rates_exc_return = rates_exc[:, : -int(delay_Ndt)]  # cut off initial condition transient, otherwise it would repeat
+        rates_inh_return = rates_inh[:, : -int(delay_Ndt)]
+        t_return = t[: -int(delay_Ndt)]
+
+        del rates_exc, rates_inh, t
 
         if saveAllActivity:
             all_rates_exc = np.hstack((all_rates_exc, rates_exc_return))
             all_rates_inh = np.hstack((all_rates_inh, rates_inh_return))
+            all_t = np.hstack((all_t, np.add(t_return, lastT)))
 
         if simulateBOLD:
             # Run BOLD model
@@ -92,29 +92,13 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
             t_BOLD_return = boldModel.t_BOLD
 
         # in crement time counter
-        idxLastT = idxLastT + rates_exc_return.shape[1]
+        lastT = lastT + t_return[-1]
 
         if saveAllActivity:
             rates_exc_return = all_rates_exc
             rates_inh_return = all_rates_inh
+            t_return = all_t
 
-        return_from_timeIntegration = (
-            rates_exc_return,
-            rates_inh_return,
-            t_chunk,
-            mufe,
-            mufi,
-            IA,
-            seem,
-            seim,
-            siem,
-            siim,
-            seev,
-            seiv,
-            siev,
-            siiv,
-            integrated_chunk,
-            rhs_chunk,
-        )
+        return_from_timeIntegration = (rates_exc_return, rates_inh_return, t_return, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv)
 
     return t_BOLD_return, BOLD_return, return_from_timeIntegration
