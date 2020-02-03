@@ -1,4 +1,4 @@
-![](https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master) ![](https://img.shields.io/github/v/release/neurolib-dev/neurolib)
+![](https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master) ![](https://img.shields.io/github/v/release/neurolib-dev/neurolib) ![PyPI](https://img.shields.io/pypi/v/neurolib) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # Neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠

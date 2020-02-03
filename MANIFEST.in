@@ -1,4 +1,20 @@
-recursive-include neurolib/data *
 include README_pypi.md
 include requirements.txt
 include neurolib/models/aln/aln-precalc/quantities_cascade.h5
+
+# datasets
+# recursive-include neurolib/data *
+
+include neurolib/data/datasets/hcp/Cmat_avg.mat
+include neurolib/data/datasets/hcp/Dmat_avg.mat
+include neurolib/data/datasets/hcp/BOLD/102816_rsfMRI_REST1_LR_tc.mat
+include neurolib/data/datasets/hcp/BOLD/211215_rsfMRI_REST1_LR_tc.mat
+include neurolib/data/datasets/hcp/BOLD/280941_rsfMRI_REST1_RL_tc.mat
+include neurolib/data/datasets/hcp/BOLD/381038_rsfMRI_REST2_RL_tc.mat
+
+include neurolib/data/datasets/gw/Cmat_avg.mat
+include neurolib/data/datasets/gw/Dmat_avg.mat
+include neurolib/data/datasets/gw/BOLD/NAP_002_tc.mat
+include neurolib/data/datasets/gw/BOLD/NAP_005_tc.mat
+include neurolib/data/datasets/gw/BOLD/NAP_010_tc.mat
+include neurolib/data/datasets/gw/BOLD/NAP_013_tc.mat
