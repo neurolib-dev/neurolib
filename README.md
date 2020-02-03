@@ -24,7 +24,7 @@ An extensive analysis of this model can be found in our paper and its associated
 <br>
 </p>
 
-### Whole-brain modeling
+## Whole-brain modeling
 
 In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and functional resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) time series data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, represented for example by the number of axonal fibers between each two brain areas and 2) the signal transmission delays measured from the length of the axonal fibers. 
 
@@ -36,7 +36,7 @@ Below is an animation in which the neural activity from such a model is plotted 
   <img src="resources/brain_slow_waves_small.gif">
 </p>
 
-## Installation
+# Installation
 The easiest way to get going is to install the pypi release of `neurolib` using
 
 ```
@@ -51,10 +51,10 @@ pip install -r requirements.txt
 pip install .
 ```
 
-## Usage
-Example iPython notebooks on how to use the library can be found in the `./examples/` directory. A basic overview is given here. 
+# Usage
+Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory, don't forget to check them out! A basic overview of the functionality that `Neurolib` provides is given here. 
 
-### Single node
+## Single node
 
 A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
@@ -80,7 +80,7 @@ plt.plot(aln.t, aln.rates_exc.T)
   <img src="resources/single_timeseries.png">
 </p>
 
-### Whole-brain network
+## Whole-brain network
 
 A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
@@ -136,7 +136,7 @@ Subject 9: 0.54
 Subject 10: 0.49
 Mean simulated FC to empirical FC correlation: 0.57
 ```
-### Parameter exploration
+## Parameter exploration
 A detailed example is available as a [IPython Notebook](examples/example-1-aln-parameter-exploration.ipynb). 
 
 Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameter. For this, it is useful to get an overview of the state space of a given model. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `Neurolib` makes it very easy to quickly explore parameter spaces of a given model:
@@ -168,13 +168,13 @@ We can plot the results to get something close to a bifurcation diagram!
   <img src="resources/exploration_aln.png">
 </p>
 
-### Evolutionary optimization
+## Evolutionary optimization
 
 A detailed example is available as a [IPython Notebook](examples/example-2-evolutionary-optimization-minimal.ipynb). 
 
 `Neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual. An individual is a part of a population. In each generation, individuals are evaluated according to a fitness criterion. Afterwards, all individuals of a population which have a high fitness value are able to mate and create offspring. This offspring undergoes some random changes, which is often called mutation. Then all offsprings are evaluated and the best part of the population is selected. This process goes on for a given amount generations until a good population with high-fitness individuals is found.
 
-`Neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood.
+`Neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. In this example, we will simply calculate the example of each individual as the distance to the unit circle. 
 
 ```python
 from neurolib.utils.parameterSpace import ParameterSpace
@@ -199,7 +199,7 @@ That's it! Now you can check the results!
 evolution.loadResults()
 evolution.info(plot=True)
 ```
-which will give you a summary of the last generation and plot a distribution of the individuals (and their parameters).
+which will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). As you can see in the parameter space cross sections below, all remaining individuals lie on a circle.
 
 <p align="center">
   <img src="resources/evolution_minimal.png">
