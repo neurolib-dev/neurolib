@@ -10,8 +10,11 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Mac
-.DS_Store/
 .DS_Store
+
+logs/
+*.hdf
+hdf/
 
 # Distribution / packaging
 .Python
