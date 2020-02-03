@@ -150,34 +150,3 @@ class Model:
         allOutputsStacked = np.stack(outputs)  # What? Where? When?
         result = xr.DataArray(allOutputsStacked, coords=[outputNames, nodes, t], dims=["output", "space", "time"])
         return result
-
-    def addOutputs(self, name, t, outputs, outputNames=None):
-        # if no names are provided, make up names
-        # if outputs is a list
-        if outputNames == None and isinstance(outputs, list):
-            outputNames = [self.name + "-output-" + str(i) for i in range(len(outputs))]
-        elif outputNames == None:
-            outputNames = [self.name + "-output"]
-
-        if not isinstance(outputs, list):
-            outputs = [outputs]
-        if not isinstance(outputNames, list):
-            outputNames = [outputNames]
-
-        # sanity check
-        assert len(outputs) == len(outputNames), f"Length of output ({name}) = {len(outputs)} doesn't match the length of the names provided = {outputNames}"
-
-        # save outputs
-        self.outputs[name] = {}
-        self.outputs[name]["t"] = t
-        for o, on in zip(outputs, outputNames):
-            self.outputs[name][on] = o
-
-        self.xrs[name] = self.outputsToXarray(t, outputs, outputNames)
-
-    def outputsToXarray_deprecated(self, t, outputs, outputNames):
-        # assume
-        nNodes = outputs[0].shape[0]
-        nodes = list(range(nNodes))
-        allOutputsStacked = np.stack(outputs)  # What? Where? When?
-        return xr.DataArray(allOutputsStacked, coords=[outputNames, nodes, t], dims=["variable", "space", "time"],)
