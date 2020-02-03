@@ -3,7 +3,7 @@
 # Neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
-Neurolib allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and a inhibitory neurons. An extensive analysis of the model can be found in the paper *Biophysically grounded mean-field models of neural populations under electrical stimulation*, Cakan et al. 2020 ([ArXiv](https://arxiv.org/abs/1906.00676)), and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+`Neurolib` allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and a inhibitory neurons. An extensive analysis of the model can be found in the paper *Biophysically grounded mean-field models of neural populations under electrical stimulation*, Cakan et al. 2020 ([ArXiv](https://arxiv.org/abs/1906.00676)), and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
 <p align="center">
   <img src="resources/pipeline.png" width="700">
@@ -89,7 +89,9 @@ This can take several minutes to compute, since we are simulating 90 nodes for 5
   <img src="resources/gw_simulated.png">
 </p>
 
-The quality of the fit of this simulation to the functional empirical data can now be computed per subject or for the whole group on average:
+The quality of the fit of this simulation can be computed by correlating the simulated functional connectivity matrix above to the empirical resting-state functional connectivity for each subject. This gives us an estimate of how well the model reproduces inter-areal BOLD correlations. As a rule of thumb, a value above 0.5 is considered good. 
+
+We can compute this by using the builtin functions `func.fc` to calculate a functional connectivity from `N` (`N` = number of regions) time series and and `fund.matrix_correlation` to compare this to the empirical data.
 
 ```python
 scores = []
@@ -113,4 +115,67 @@ Subject 9: 0.54
 Subject 10: 0.49
 Mean simulated FC to empirical FC correlation: 0.57
 ```
+### Parameter exploration
+Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameter. For this, it is useful to get an overview of the state space of a given model. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `Neurolib` makes it very easy to quickly explore parameter spaces of a given model:
 
+```python
+# create model
+aln = ALNModel()
+# define the parameter space to explore
+parameters = {'mue_ext_mean' : np.linspace(0, 3, 11).tolist(),
+              'mui_ext_mean' : np.linspace(0, 3, 11).tolist()}       
+
+# define exploration              
+search = BoxSearch(aln, parameters)
+search.initializeExploration()
+search.run()                
+```
+That's it!. You can now use the builtin functionality to read the simulation results from disk and do your analysis:
+
+```python
+search.loadResults()
+
+# calculate maximum firing rate for each parameter
+for i in search.dfResults.index:
+    search.dfResults.loc[i, 'max_r'] = np.max(search.results[i]['rates_exc'][:, -int(1000/aln.params['dt']):])
+```
+We can plot the results to get something close to a bifurcation diagram!
+
+<p align="center">
+  <img src="resources/exploration_aln.png">
+</p>
+
+### Evolutionary optimization
+
+`Neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual. An individual is a part of a population. In each generation, individuals are evaluated according to a fitness criterion. Afterwards, all individuals of a population which have a high fitness value are able to mate and create offspring. This offspring undergoes some random changes, which is often called mutation. Then all offsprings are evaluated and the best part of the population is selected. This process goes on for a given amount generations until a good population with high-fitness individuals is found.
+
+`Neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood.
+
+```python
+from neurolib.utils.parameterSpace import ParameterSpace
+from neurolib.optimize.evolution import Evolution
+
+def optimize_me(traj):
+    ind = evolution.getIndividualFromTraj(traj)
+    
+    # let's make a circle
+    fitness_result = abs((ind.x**2 + ind.y**2) - 1)
+    
+    # gather results
+    fitness_tuple = (fitness_result ,)
+    result_dict = {"result" : [fitness_result]}
+    
+    return fitness_tuple, result_dict
+```
+
+That's it! Now you can check the results!
+
+```python
+evolution.loadResults()
+evolution.info(plot=True)
+```
+which will give you a summary of the last generation and plot a distribution of the individuals (and their parameters).
+
+<p align="center">
+  <img src="resources/evolution_minimal.png">
+</p>
