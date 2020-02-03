@@ -3,15 +3,30 @@
 # Neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
-`Neurolib` allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and a inhibitory neurons. An extensive analysis of the model can be found in the paper *Biophysically grounded mean-field models of neural populations under electrical stimulation*, Cakan et al. 2020 ([ArXiv](https://arxiv.org/abs/1906.00676)), and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+`Neurolib` allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and inhibitory neurons. 
+
+An extensive analysis of this model can be found in our paper and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+
+**Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation ([ArXiv](https://arxiv.org/abs/1906.00676)).
 
 <p align="center">
   <img src="resources/pipeline.png" width="700">
 </p>
 
+<p style="text-align: center;"> 
+<br>
+<b> Examples:
+<a href="#single-node">Single node simulation</a> 
+<a href="#whole-brain-network">Whole-brain network</a>
+<a href="#parameter-exploration">Parameter exploration</a>
+<a href="#evolutionary-optimization">Evolutionary optimization</a>
+</b>
+<br>
+</p>
+
 ### Whole-brain modeling
 
-In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, represented for example by the number of axonal fibers between each two brain areas and 2) the signal transmission delays measured from the length of the axonal fibers. 
+In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and functional resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) time series data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, represented for example by the number of axonal fibers between each two brain areas and 2) the signal transmission delays measured from the length of the axonal fibers. 
 
 The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The neural activity is used to simulate BOLD activity using the Balloon-Windkessel model. The resulting simulated [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional) can then be used to fit the model to empirical functional brain data. 
 
@@ -33,12 +48,16 @@ Alternatively, you can also clone this repository and install all dependencies w
 git clone https://github.com/neurolib-dev/neurolib.git
 cd neurolib/
 pip install -r requirements.txt
+pip install .
 ```
 
 ## Usage
 Example iPython notebooks on how to use the library can be found in the `./examples/` directory. A basic overview is given here. 
 
 ### Single node
+
+A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
+
 To create a single `aln` model with the default parameters, simply run
 
 ```python
@@ -62,6 +81,8 @@ plt.plot(aln.t, aln.rates_exc.T)
 </p>
 
 ### Whole-brain network
+
+A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
 To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (an example dataset called `gw` is provided in the `neurolib/data/datasets/` directory).
 
@@ -116,6 +137,8 @@ Subject 10: 0.49
 Mean simulated FC to empirical FC correlation: 0.57
 ```
 ### Parameter exploration
+A detailed example is available as a [IPython Notebook](examples/example-1-aln-parameter-exploration.ipynb). 
+
 Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameter. For this, it is useful to get an overview of the state space of a given model. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `Neurolib` makes it very easy to quickly explore parameter spaces of a given model:
 
 ```python
@@ -146,6 +169,8 @@ We can plot the results to get something close to a bifurcation diagram!
 </p>
 
 ### Evolutionary optimization
+
+A detailed example is available as a [IPython Notebook](examples/example-2-evolutionary-optimization-minimal.ipynb). 
 
 `Neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual. An individual is a part of a population. In each generation, individuals are evaluated according to a fitness criterion. Afterwards, all individuals of a population which have a high fitness value are able to mate and create offspring. This offspring undergoes some random changes, which is often called mutation. Then all offsprings are evaluated and the best part of the population is selected. This process goes on for a given amount generations until a good population with high-fitness individuals is found.
 
