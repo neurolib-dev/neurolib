@@ -5,6 +5,10 @@
 
 Neurolib allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and a inhibitory neurons. An extensive analysis of the model can be found in the paper *Biophysically grounded mean-field models of neural populations under electrical stimulation*, Cakan et al. 2020 ([ArXiv](https://arxiv.org/abs/1906.00676)), and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
+<p align="center">
+  <img src="resources/pipeline.png">
+</p>
+
 ### Whole-brain modeling
 
 In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, represented for example by the number of axonal fibers between each two brain areas and 2) the signal transmission delays measured from the length of the axonal fibers. 
