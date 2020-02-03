@@ -6,6 +6,7 @@ from nbconvert.preprocessors import ExecutePreprocessor
 
 
 def run_notebook(notebook_path):
+    # From https://www.blog.pythonlibrary.org/2018/10/16/testing-jupyter-notebooks/
     nb_name, _ = os.path.splitext(os.path.basename(notebook_path))
     dirname = os.path.dirname(notebook_path)
 
@@ -15,7 +16,6 @@ def run_notebook(notebook_path):
     proc = ExecutePreprocessor(timeout=600, kernel_name="python3")
     proc.allow_errors = True
 
-    # proc.preprocess(nb, {"metadata": {"path": "/"}})
     proc.preprocess(nb, {})
     output_path = os.path.join(dirname, "{}_all_output.ipynb".format(nb_name))
 
