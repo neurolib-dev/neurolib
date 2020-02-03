@@ -191,15 +191,22 @@ def optimize_me(traj):
     result_dict = {"result" : [fitness_result]}
     
     return fitness_tuple, result_dict
+    
+# we define a parameter space and its boundaries
+pars = ParameterSpace(['x', 'y'], [[-5.0, 5.0], [-5.0, 5.0]])
+
+# initialize the evolution and go
+evolution = Evolution(optimize_me, pars, weightList = [-1.0], POP_INIT_SIZE= 100, POP_SIZE = 50, NGEN=10)
+evolution.run()    
 ```
 
-That's it! Now you can check the results!
+That's all! Now you can check the results!
 
 ```python
 evolution.loadResults()
 evolution.info(plot=True)
 ```
-which will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). As you can see in the parameter space cross sections below, all remaining individuals lie on a circle.
+This will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). As you can see in the parameter space cross sections below, all remaining individuals lie on a circle.
 
 <p align="center">
   <img src="resources/evolution_minimal.png">
