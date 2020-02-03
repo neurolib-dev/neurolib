@@ -26,7 +26,7 @@ class Evolution:
         self,
         evalFunction,
         parameterSpace,
-        weightList,
+        weightList=None,
         model=None,
         hdf_filename="evolution.hdf",
         ncores=None,
@@ -49,6 +49,10 @@ class Evolution:
         :param NGEN: Numbers of generations to evaluate
         :param CXPB: Crossover probability of each individual gene
         """
+        if weightList is None:
+            logging.info("weightList not set, assuming single fitness value to be maximized.")
+            weightList = [1.0]
+
         trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
         self.HDF_FILE = os.path.join(paths.HDF_DIR, hdf_filename)
         trajectoryFileName = self.HDF_FILE
@@ -62,7 +66,7 @@ class Evolution:
         # initialize pypet environment
         # env = pp.Environment(trajectory=trajectoryName, filename=trajectoryFileName)
         env = pp.Environment(
-            trajectory=self.trajectoryName,
+            trajectory=trajectoryName,
             filename=trajectoryFileName,
             use_pool=False,
             multiproc=True,
@@ -244,8 +248,7 @@ class Evolution:
             runIndex, packedReturnFromEvalFunction = result
 
             # packedReturnFromEvalFunction is the return from the evaluation function
-            # if it has length two, then the first is the fitness, second is the model output
-            # elif len == 1: then only fitness was returned, no output
+            # it has length two, the first is the fitness, second is the model output
             assert (
                 len(packedReturnFromEvalFunction) == 2
             ), "Evaluation function must return tuple with shape (fitness, output_data)"
