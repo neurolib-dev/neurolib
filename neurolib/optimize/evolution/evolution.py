@@ -48,19 +48,8 @@ class Evolution:
         logging.info("Number of cores: {}".format(ncores))
 
         # initialize pypet environment
-        env = pp.Environment(
-            trajectory=trajectoryName,
-            filename=trajectoryFileName,
-            file_title="Evolutionary optimization",
-            large_overview_tables=True,
-            use_pool=True,
-            multiproc=True,
-            ncores=ncores,
-            wrap_mode="LOCK",
-            # log_stdout=False,
-            automatic_storing=False,
-            complevel=9,
-        )
+        # env = pp.Environment(trajectory=trajectoryName, filename=trajectoryFileName)
+        env = pp.Environment(trajectory=trajectoryName, filename=trajectoryFileName, use_pool=False, multiproc=True, ncores=ncores, complevel=9,)
 
         # Get the trajectory from the environment
         traj = env.traj
@@ -211,6 +200,7 @@ class Evolution:
         # SIMULUATE INDIVIDUALS
 
         results = toolbox.map(toolbox.evaluate)
+
         assert len(results) > 0, "No results returned from simulations."
 
         for idx, result in enumerate(results):

@@ -1,4 +1,4 @@
-![](https://img.shields.io/travis/neurolib-dev/neurolib) ![](https://img.shields.io/github/v/release/neurolib-dev/neurolib)
+![](https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master) ![](https://img.shields.io/github/v/release/neurolib-dev/neurolib)
 
 # Neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
