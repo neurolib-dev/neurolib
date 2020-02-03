@@ -20,7 +20,16 @@ class ALNModel(Model):
     modelOutputNames = ["rates_exc", "rates_inh"]
 
     def __init__(
-        self, params=None, Cmat=[], Dmat=[], lookupTableFileName=None, seed=None, simulateChunkwise=False, chunkSize=10000, simulateBOLD=False, saveAllActivity=False,
+        self,
+        params=None,
+        Cmat=[],
+        Dmat=[],
+        lookupTableFileName=None,
+        seed=None,
+        simulateChunkwise=False,
+        chunkSize=10000,
+        simulateBOLD=False,
+        saveAllActivity=False,
     ):
         """
         :param params: parameter dictionary of the model
@@ -46,29 +55,52 @@ class ALNModel(Model):
         self.simulateBOLD = simulateBOLD  # BOLD
         if simulateBOLD:
             self.simulateChunkwise = True  # Override this setting if BOLD is simulated!
-        self.chunkSize = chunkSize  # Size of integration chunks in chunkwise integration in case of simulateBOLD == True
-        self.saveAllActivity = saveAllActivity  # Save data of all chunks? Can be very memory demanding if simulations are long or large
+        self.chunkSize = (
+            chunkSize  # Size of integration chunks in chunkwise integration in case of simulateBOLD == True
+        )
+        self.saveAllActivity = (
+            saveAllActivity  # Save data of all chunks? Can be very memory demanding if simulations are long or large
+        )
 
         # load default parameters if none were given
         if params == None:
-            self.params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, lookupTableFileName=self.lookupTableFileName, seed=self.seed,)
+            self.params = dp.loadDefaultParams(
+                Cmat=self.Cmat, Dmat=self.Dmat, lookupTableFileName=self.lookupTableFileName, seed=self.seed,
+            )
         else:
             self.params = params
 
     def run(self):
         """
-        Runs an aLN mean-field model simulation
+        Runs an aLN mean-field model simulation.
         """
 
         if self.simulateChunkwise:
-            t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity)
+            t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(
+                self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity
+            )
             rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = return_tuple
             self.t_BOLD = t_BOLD
             self.BOLD = BOLD
             Model.setOutput(self, "BOLD.t", t_BOLD)
             Model.setOutput(self, "BOLD.BOLD", BOLD)
         else:
-            rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = ti.timeIntegration(self.params)
+            (
+                rates_exc,
+                rates_inh,
+                t,
+                mufe,
+                mufi,
+                IA,
+                seem,
+                seim,
+                siem,
+                siim,
+                seev,
+                seiv,
+                siev,
+                siiv,
+            ) = ti.timeIntegration(self.params)
 
         # convert output from kHz to Hz
         rates_exc = rates_exc * 1000.0

@@ -19,11 +19,23 @@ import neurolib.utils.pypetUtils as pu
 
 
 class Evolution:
+    """Evolutionary parameter optimization.
+    """
+
     def __init__(
-        self, evalFunction, parameterSpace, weightList, model=None, hdf_filename="evolution.hdf", ncores=None, POP_INIT_SIZE=100, POP_SIZE=20, NGEN=10, CXPB=1 - 0.96,
+        self,
+        evalFunction,
+        parameterSpace,
+        weightList,
+        model=None,
+        hdf_filename="evolution.hdf",
+        ncores=None,
+        POP_INIT_SIZE=100,
+        POP_SIZE=20,
+        NGEN=10,
+        CXPB=1 - 0.96,
     ):
-        """Evolutionary parameter optimization
-        
+        """
         :param model: Model to run
         :type model: Model
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
@@ -49,7 +61,14 @@ class Evolution:
 
         # initialize pypet environment
         # env = pp.Environment(trajectory=trajectoryName, filename=trajectoryFileName)
-        env = pp.Environment(trajectory=trajectoryName, filename=trajectoryFileName, use_pool=False, multiproc=True, ncores=ncores, complevel=9,)
+        env = pp.Environment(
+            trajectory=trajectoryName,
+            filename=trajectoryFileName,
+            use_pool=False,
+            multiproc=True,
+            ncores=ncores,
+            complevel=9,
+        )
 
         # Get the trajectory from the environment
         traj = env.traj
@@ -74,10 +93,13 @@ class Evolution:
 
         self.initialPopulationSimulated = False
 
-        # ------------- settings
+        # settings
         self.verbose = False
 
-        # ------------- define parameters
+        # environment parameters
+        self.evaluationCounter = 0
+
+        # simulation parameters
         self.ParametersInterval = parameterSpace.named_tuple_constructor
         self.paramInterval = parameterSpace.named_tuple
 
@@ -92,7 +114,7 @@ class Evolution:
             self.traj, self.paramInterval, self.ParametersInterval, self.POP_SIZE, self.CXPB, self.NGEN, self.model,
         )
 
-        # ------------- initialize population
+        # initialize population
         self.last_id = 0
         self.pop = self.toolbox.population(n=self.POP_INIT_SIZE)
         self.pop = self.tagPopulation(self.pop)
@@ -164,7 +186,10 @@ class Evolution:
         # need to create a lambda funciton because du.generateRandomParams wants an argument but
         # toolbox.register cannot pass an argument to it.
         toolbox.register(
-            "individual", deap.tools.initIterate, deap.creator.Individual, lambda: du.generate_random_pars_adapt(paramInterval),
+            "individual",
+            deap.tools.initIterate,
+            deap.creator.Individual,
+            lambda: du.generate_random_pars_adapt(paramInterval),
         )
         toolbox.register("population", deap.tools.initRepeat, list, toolbox.individual)
 
@@ -196,21 +221,28 @@ class Evolution:
         # This is for only having the cartesian product
         # between ``generation x (ind_idx AND individual)``, so that every individual has just one
         # unique index within a generation.
-        traj.f_expand(pp.cartesian_product({"generation": [gIdx], "id": [x.id for x in pop], "individual": [list(x) for x in pop],}, [("id", "individual"), "generation"],))  # the current generation  # unique id of each individual
-        # SIMULUATE INDIVIDUALS
+        traj.f_expand(
+            pp.cartesian_product(
+                {"generation": [gIdx], "id": [x.id for x in pop], "individual": [list(x) for x in pop],},
+                [("id", "individual"), "generation"],
+            )
+        )  # the current generation  # unique id of each individual
 
-        results = toolbox.map(toolbox.evaluate)
+        # increment the evaluationCounter
+        self.evaluationCounter += len(pop)
 
-        assert len(results) > 0, "No results returned from simulations."
+        # run simulations for one generation
+        evolutionResult = toolbox.map(toolbox.evaluate)
 
-        for idx, result in enumerate(results):
-            runIdx, packed_result = result
+        assert len(evolutionResult) > 0, "No results returned from simulations."
+
+        for idx, result in enumerate(evolutionResult):
+            runIndex, packedReturnFromEvalFunction = result
             # this is the return from the evaluation function
-            fitnesses_result, outputs = packed_result
-
+            fitnessesResult, outputs = packedReturnFromEvalFunction
             # store outputs of simulations in population
             pop[idx].outputs = outputs
-            pop[idx].fitness.values = fitnesses_result
+            pop[idx].fitness.values = fitnessesResult
             # mean fitness value
             pop[idx].fitness.score = np.nansum(pop[idx].fitness.wvalues) / (len(pop[idx].fitness.wvalues))
         return pop
@@ -308,7 +340,9 @@ class Evolution:
 
             if self.verbose:
                 eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-                eu.printPopFitnessStats(self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True, save_plots="evo")
+                eu.printPopFitnessStats(
+                    self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True, save_plots="evo"
+                )
 
             # save all simulation data to pypet
             try:
@@ -345,8 +379,7 @@ class Evolution:
         """
         if filename == None:
             filename = self.HDF_FILE
-        trajLoaded = pu.loadPypetTrajectory(filename, trajectoryName)
-        return trajLoaded
+        self.traj = pu.loadPypetTrajectory(filename, trajectoryName)
 
     def getScoresDuringEvolution(self, traj=None, drop_first=True, reverse=False):
         if traj == None:
