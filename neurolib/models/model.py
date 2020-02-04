@@ -148,9 +148,15 @@ class Model:
         # take all outputs of one group: disregard all dictionaries because they are subgroups
         outputDict = self.getOutputs(group)
         # make sure that there is a time array
-        assert "t" in outputDict, f"There is no time array (called t) in the output group."
-        t = outputDict["t"].copy()
-        del outputDict["t"]
+        timeDictKey = ""
+        for k in outputDict:
+            if k == "t" or k.startswith("t"):
+                timeDictKey = k
+                logging.info(f"Assuming {k} to be the time axis.")
+                break
+        assert len(timeDictKey) > 0, f"There is no time array (starting with t) in the output group."
+        t = outputDict[timeDictKey].copy()
+        del outputDict[timeDictKey]
         outputs = []
         outputNames = []
         for key, value in outputDict.items():
