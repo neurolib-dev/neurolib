@@ -9,6 +9,9 @@ import numpy as np
 import pypet as pp
 import pandas as pd
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+from pandas.plotting import scatter_matrix
 
 import neurolib.utils.paths as paths
 import neurolib.optimize.evolution.deapUtils as du
@@ -56,12 +59,21 @@ def printIndividuals(pop, paramInterval, stats=False):
             )
 
 
-def printPopFitnessStats(
+def plotScoresDistribution(scores, gIdx, save_plots=None):
+    plt.figure(figsize=(4, 2))
+    plt.hist(scores, color="grey")
+    plt.title("Generation: %i, Individuals: %i" % (gIdx, len(scores)))
+    plt.xlabel("Score")
+    plt.ylabel("Count")
+    if save_plots is not None:
+        logging.info("Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx))))
+        plt.savefig(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx)))
+    plt.show()
+
+
+def plotPopulation(
     pop, paramInterval, gIdx=0, draw_distribution=True, draw_scattermatrix=False, save_plots=None,
 ):
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    from pandas.plotting import scatter_matrix
 
     """
     Print some stats of a population fitness
@@ -71,11 +83,11 @@ def printPopFitnessStats(
             os.makedirs(paths.FIGURES_DIR)
 
     # Gather all the fitnesses in one list and print the stats
-    # selectPop = [p for p in pop if not np.isnan(p.fitness.score)]
-    selectPop = [p for p in pop if not np.any(np.isnan(p.fitness.values))]
-    candidates = np.array([p[0 : len(paramInterval._fields)] for p in selectPop]).T
-    scores = np.array([selectPop[i].fitness.score for i in range(len(selectPop))])
-    print("There are {} valid individuals".format(len(selectPop)))
+    # validPop = [p for p in pop if not np.isnan(p.fitness.score)]
+    validPop = [p for p in pop if not np.any(np.isnan(p.fitness.values))]
+    popArray = np.array([p[0 : len(paramInterval._fields)] for p in validPop]).T
+    scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
+    print("There are {} valid individuals".format(len(validPop)))
     print("Mean score across population: {:.2}".format(np.mean(scores)))
 
     if draw_distribution:
@@ -94,11 +106,11 @@ def printPopFitnessStats(
     if draw_scattermatrix:
         # make a pandas dataframe for the seaborn pairplot
         gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
-        pcandidates = pd.DataFrame(candidates, index=gridParameters).T
-        pcandidates = pcandidates.loc[:, :]
+        dfPop = pd.DataFrame(popArray, index=gridParameters).T
+        dfPop = dfPop.loc[:, :]
 
         plt.figure()
-        sm = sns.pairplot(pcandidates, diag_kind="kde", kind="reg")
+        sm = sns.pairplot(dfPop, diag_kind="kde", kind="reg")
         if save_plots is not None:
             plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.png".format(save_plots, gIdx)))
         plt.show()
@@ -107,7 +119,7 @@ def printPopFitnessStats(
         # https://towardsdatascience.com/visualizing-data-with-pair-plots-in-python-f228cf529166
         # Create an instance of the PairGrid class.
         try:
-            grid = sns.PairGrid(data=pcandidates)
+            grid = sns.PairGrid(data=dfPop)
             grid = grid.map_upper(plt.scatter, color="darkred", alpha=0.5)
             grid = grid.map_diag(plt.hist, bins=10, color="darkred", edgecolor="k")
             grid = grid.map_lower(sns.kdeplot, cmap="Reds")

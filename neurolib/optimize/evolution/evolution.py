@@ -2,6 +2,7 @@ import datetime
 import os
 import logging
 import multiprocessing
+import sys
 
 import deap
 from deap import base
@@ -10,6 +11,7 @@ from deap import tools
 
 import numpy as np
 import pypet as pp
+import pandas as pd
 
 import neurolib.utils.paths as paths
 
@@ -108,6 +110,7 @@ class Evolution:
         self.evaluationCounter = 0
 
         # simulation parameters
+        self.parameterSpace = parameterSpace
         self.ParametersInterval = parameterSpace.named_tuple_constructor
         self.paramInterval = parameterSpace.named_tuple
 
@@ -346,15 +349,15 @@ class Evolution:
             self.pop = self.toolbox.selBest(validpop + offspring + newpop, k=self.traj.popsize)
 
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
-            logging.info("Best individual is {}".format(self.best_ind))
-            logging.info("Score: {}".format(self.best_ind.fitness.score))
-            logging.info("Fitness: {}".format(self.best_ind.fitness.values))
-
-            logging.info("--- Population statistics ---")
 
             if self.verbose:
+                print("----------- Generation %i -----------" % self.gIdx)
+                print("Best individual is {}".format(self.best_ind))
+                print("Score: {}".format(self.best_ind.fitness.score))
+                print("Fitness: {}".format(self.best_ind.fitness.values))
+                print("--- Population statistics ---")
                 eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-                eu.printPopFitnessStats(
+                eu.plotPopulation(
                     self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True, save_plots=self.trajectoryName
                 )
 
@@ -379,14 +382,34 @@ class Evolution:
             self.runInitial()
         self.runEvolution()
 
-    def info(self, plot=True):
+    def info(self, plot=True, bestN=5):
+        validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
+        popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
+        scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
+        # Text output
+        print("--- Info summary ---")
+        print("Valid: {}".format(len(validPop)))
+        print("Mean score (weighted fitness): {:.2}".format(np.mean(scores)))
         eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-        if plot:
-            eu.printPopFitnessStats(self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True)
-        bestN = 20
-        print("--------------------------")
+        print("--------------------")
         print(f"Best {bestN} individuals:")
         eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)
+        print("--------------------")
+        # Plotting
+        if plot:
+            eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True)
+
+    @property
+    def dfPop(self):
+        validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
+        indIds = [p.id for p in validPop]
+        popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
+        scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
+        # gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
+        dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameter_names).T
+        dfPop["score"] = scores
+        dfPop["id"] = indIds
+        return dfPop
 
     def loadResults(self, filename=None, trajectoryName=None):
         """Load results from evolution.
