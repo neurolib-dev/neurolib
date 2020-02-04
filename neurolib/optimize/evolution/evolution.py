@@ -101,7 +101,7 @@ class Evolution:
         self.trajectoryName = trajectoryName
         self.trajectoryFileName = trajectoryFileName
 
-        self.initialPopulationSimulated = False
+        self._initialPopulationSimulated = False
 
         # settings
         self.verbose = False
@@ -128,7 +128,10 @@ class Evolution:
         # initialize population
         self.last_id = 0
         self.pop = self.toolbox.population(n=self.POP_INIT_SIZE)
-        self.pop = self.tagPopulation(self.pop)
+        # self.pop = self.tagPopulation(self.pop) # will do this in initial run
+
+        # population history: dict of all valid individuals per generation
+        self.popHist = {}
 
     def getIndividualFromTraj(self, traj):
         """Get individual from pypet trajectory
@@ -270,21 +273,6 @@ class Evolution:
     def getInvalidPopulation(self, pop):
         return [p for p in pop if np.any(np.isnan(p.fitness.values))]
 
-    def runInitial(self):
-        """First round of evolution: 
-        """
-        ### Evaluate the initial population
-        logging.info("Evaluating initial population of size %i ..." % len(self.pop))
-        self.gIdx = 0  # set generation index
-        # evaluate
-        self.pop = self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, self.gIdx)
-        if self.verbose:
-            eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-        self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-        # Only the best indviduals are selected for the population the others do not survive
-        self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
-        self.initialPopulationSimulated = True
-
     def tagPopulation(self, pop):
         """Take a fresh population and add id's and attributes such as parameters that we can use later
 
@@ -294,6 +282,7 @@ class Evolution:
         for i, ind in enumerate(pop):
             assert not hasattr(ind, "id"), "Individual has an id already, will not overwrite it!"
             ind.id = self.last_id
+            ind.gIdx = self.gIdx
             ind.simulation_stored = False
             ind_dict = self.individualToDict(ind)
             for key, value in ind_dict.items():
@@ -304,12 +293,36 @@ class Evolution:
             self.last_id += 1
         return pop
 
+    def runInitial(self):
+        """First round of evolution: 
+        """
+        ### Evaluate the initial population
+        logging.info("Evaluating initial population of size %i ..." % len(self.pop))
+        self.gIdx = 0  # set generation index
+        self.pop = self.tagPopulation(self.pop)
+
+        # evaluate
+        self.pop = self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, self.gIdx)
+
+        if self.verbose:
+            eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
+
+        self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
+        # Only the best indviduals are selected for the population the others do not survive
+        self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
+        self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
+        self._initialPopulationSimulated = True
+
     def runEvolution(self):
         # Start evolution
         logging.info("Start of evolution")
         for self.gIdx in range(self.gIdx + 1, self.gIdx + self.traj.NGEN):
             # ------- Weed out the invalid individuals and replace them by random new indivuals -------- #
             validpop = self.getValidPopulation(self.pop)
+
+            # add all valid individuals to the population history
+            self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
+
             # replace invalid individuals
             nanpop = self.getInvalidPopulation(self.pop)
             logging.info("Replacing {} invalid individuals.".format(len(nanpop)))
@@ -378,7 +391,7 @@ class Evolution:
         """Run full evolution (or continue previous evolution)
         """
         self.verbose = verbose
-        if not self.initialPopulationSimulated:
+        if not self._initialPopulationSimulated:
             self.runInitial()
         self.runEvolution()
 
