@@ -37,7 +37,9 @@ def timeIntegration(params):
     # global coupling parameters
 
     # Connectivity matric
-    Cmat = params["Cmat"]  # Interareal relative coupling strengths (values between 0 and 1), Cmat(i,j) connnection from jth to ith
+    Cmat = params[
+        "Cmat"
+    ]  # Interareal relative coupling strengths (values between 0 and 1), Cmat(i,j) connnection from jth to ith
     N = len(Cmat)  # Number of areas
 
     # Interareal connection delay
@@ -49,11 +51,13 @@ def timeIntegration(params):
     if N == 1:
         Dmat = np.ones((N, N)) * params["de"]
     else:
-        Dmat = dp.computeDelayMatrix(lengthMat, signalV)  # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
+        Dmat = dp.computeDelayMatrix(
+            lengthMat, signalV
+        )  # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
         Dmat[np.eye(len(Dmat)) == 1] = np.ones(len(Dmat)) * params["de"]
 
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
-    params["Dmat_ndt"] = Dmat_ndt
+
     # print(Dmat_ndt)
     # print(np.max(Dmat_ndt), np.min(Dmat_ndt))
     c_gl = params["c_gl"]  # global coupling strength between areas(unitless)
@@ -64,7 +68,9 @@ def timeIntegration(params):
     # local network (area) parameters [identical for all areas for now]
 
     ### model parameters
-    dosc_version = params["dosc_version"]  # (Use dynamic oscillations?) if 0: exponential version (fewer dimensions, faster)
+    dosc_version = params[
+        "dosc_version"
+    ]  # (Use dynamic oscillations?) if 0: exponential version (fewer dimensions, faster)
     filter_sigma = params["filter_sigma"]
     distr_delay = params["distr_delay"]
     fast_interp = params["fast_interp"]
@@ -72,7 +78,9 @@ def timeIntegration(params):
 
     # external input parameters:
     tau_ou = params["tau_ou"]  # Parameter of the Ornstein-Uhlenbeck process for the external input(ms)
-    sigma_ou = params["sigma_ou"]  # Parameter of the Ornstein-Uhlenbeck (OU) process for the external input ( mV/ms/sqrt(ms) )
+    sigma_ou = params[
+        "sigma_ou"
+    ]  # Parameter of the Ornstein-Uhlenbeck (OU) process for the external input ( mV/ms/sqrt(ms) )
     mue_ext_mean = params["mue_ext_mean"]  # Mean external excitatory input (OU process) (mV/ms)
     mui_ext_mean = params["mui_ext_mean"]  # Mean external inhibitory input (OU process) (mV/ms)
     sigmae_ext = params["sigmae_ext"]  # External exc input standard deviation ( mV/sqrt(ms) )
@@ -134,7 +142,12 @@ def timeIntegration(params):
     # ------------------------------------------------------------------------
 
     # Lookup tables for the transfer functions
-    precalc_r, precalc_V, precalc_tau_mu, precalc_tau_sigma = params["precalc_r"], params["precalc_V"], params["precalc_tau_mu"], params["precalc_tau_sigma"]
+    precalc_r, precalc_V, precalc_tau_mu, precalc_tau_sigma = (
+        params["precalc_r"],
+        params["precalc_V"],
+        params["precalc_tau_mu"],
+        params["precalc_tau_sigma"],
+    )
 
     # parameter for the lookup tables
     dI = params["dI"]
@@ -161,7 +174,9 @@ def timeIntegration(params):
         Dmat_ndt[l, l] = ndt_de  # if no distributed, this is a fixed value (E-E coupling)
 
     if not global_delay:  # if no network delays, fill delay matrix with zeroes
-        Dmat_ndt = np.zeros((N, N))  # ATTENTION: this will also get rid of the INTRA-network delays (which is modelled as a E-E delay)
+        Dmat_ndt = np.zeros(
+            (N, N)
+        )  # ATTENTION: this will also get rid of the INTRA-network delays (which is modelled as a E-E delay)
     max_global_delay = np.max(Dmat_ndt)
     startind = int(np.max([max_global_delay, ndt_de, ndt_di]) + 1)
     # print("startind", startind)
@@ -214,11 +229,189 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
 
-    return timeIntegration_njit_elementwise(dt, duration, warn, dosc_version, distr_delay, filter_sigma, fast_interp, Cmat, Dmat, c_gl, Ke_gl, tau_ou, sigma_ou, mue_ext_mean, mui_ext_mean, sigmae_ext, sigmai_ext, Ke, Ki, de, di, tau_se, tau_si, tau_de, tau_di, cee, cie, cii, cei, Jee_max, Jei_max, Jie_max, Jii_max, a, b, EA, tauA, C, gL, EL, DeltaT, VT, Vr, Vs, Tref, taum, mufe, mufi, mufe_dosc, mufi_dosc, IA, seem, seim, seev, seiv, siim, siem, siiv, siev, precalc_r, precalc_V, precalc_tau_mu, precalc_tau_sigma, dI, ds, sigmarange, Irange, N, Dmat_ndt, t, rates_exc, rates_inh, rd_exc, rd_inh, sqrt_dt, startind, ndt_de, ndt_di, max_global_delay, mue_ext, mui_ext, ext_exc_rate, ext_inh_rate, ext_exc_current, ext_inh_current, noise_exc, noise_inh, zeros4)
+    return timeIntegration_njit_elementwise(
+        dt,
+        duration,
+        warn,
+        dosc_version,
+        distr_delay,
+        filter_sigma,
+        fast_interp,
+        Cmat,
+        Dmat,
+        c_gl,
+        Ke_gl,
+        tau_ou,
+        sigma_ou,
+        mue_ext_mean,
+        mui_ext_mean,
+        sigmae_ext,
+        sigmai_ext,
+        Ke,
+        Ki,
+        de,
+        di,
+        tau_se,
+        tau_si,
+        tau_de,
+        tau_di,
+        cee,
+        cie,
+        cii,
+        cei,
+        Jee_max,
+        Jei_max,
+        Jie_max,
+        Jii_max,
+        a,
+        b,
+        EA,
+        tauA,
+        C,
+        gL,
+        EL,
+        DeltaT,
+        VT,
+        Vr,
+        Vs,
+        Tref,
+        taum,
+        mufe,
+        mufi,
+        mufe_dosc,
+        mufi_dosc,
+        IA,
+        seem,
+        seim,
+        seev,
+        seiv,
+        siim,
+        siem,
+        siiv,
+        siev,
+        precalc_r,
+        precalc_V,
+        precalc_tau_mu,
+        precalc_tau_sigma,
+        dI,
+        ds,
+        sigmarange,
+        Irange,
+        N,
+        Dmat_ndt,
+        t,
+        rates_exc,
+        rates_inh,
+        rd_exc,
+        rd_inh,
+        sqrt_dt,
+        startind,
+        ndt_de,
+        ndt_di,
+        max_global_delay,
+        mue_ext,
+        mui_ext,
+        ext_exc_rate,
+        ext_inh_rate,
+        ext_exc_current,
+        ext_inh_current,
+        noise_exc,
+        noise_inh,
+        zeros4,
+    )
 
 
 @numba.njit(locals={"idxX": numba.int64, "idxY": numba.int64, "idx1": numba.int64, "idy1": numba.int64})
-def timeIntegration_njit_elementwise(dt, duration, warn, dosc_version, distr_delay, filter_sigma, fast_interp, Cmat, Dmat, c_gl, Ke_gl, tau_ou, sigma_ou, mue_ext_mean, mui_ext_mean, sigmae_ext, sigmai_ext, Ke, Ki, de, di, tau_se, tau_si, tau_de, tau_di, cee, cie, cii, cei, Jee_max, Jei_max, Jie_max, Jii_max, a, b, EA, tauA, C, gL, EL, DeltaT, VT, Vr, Vs, Tref, taum, mufe, mufi, mufe_dosc, mufi_dosc, IA, seem, seim, seev, seiv, siim, siem, siiv, siev, precalc_r, precalc_V, precalc_tau_mu, precalc_tau_sigma, dI, ds, sigmarange, Irange, N, Dmat_ndt, t, rates_exc, rates_inh, rd_exc, rd_inh, sqrt_dt, startind, ndt_de, ndt_di, max_global_delay, mue_ext, mui_ext, ext_exc_rate, ext_inh_rate, ext_exc_current, ext_inh_current, noise_exc, noise_inh, zeros4):
+def timeIntegration_njit_elementwise(
+    dt,
+    duration,
+    warn,
+    dosc_version,
+    distr_delay,
+    filter_sigma,
+    fast_interp,
+    Cmat,
+    Dmat,
+    c_gl,
+    Ke_gl,
+    tau_ou,
+    sigma_ou,
+    mue_ext_mean,
+    mui_ext_mean,
+    sigmae_ext,
+    sigmai_ext,
+    Ke,
+    Ki,
+    de,
+    di,
+    tau_se,
+    tau_si,
+    tau_de,
+    tau_di,
+    cee,
+    cie,
+    cii,
+    cei,
+    Jee_max,
+    Jei_max,
+    Jie_max,
+    Jii_max,
+    a,
+    b,
+    EA,
+    tauA,
+    C,
+    gL,
+    EL,
+    DeltaT,
+    VT,
+    Vr,
+    Vs,
+    Tref,
+    taum,
+    mufe,
+    mufi,
+    mufe_dosc,
+    mufi_dosc,
+    IA,
+    seem,
+    seim,
+    seev,
+    seiv,
+    siim,
+    siem,
+    siiv,
+    siev,
+    precalc_r,
+    precalc_V,
+    precalc_tau_mu,
+    precalc_tau_sigma,
+    dI,
+    ds,
+    sigmarange,
+    Irange,
+    N,
+    Dmat_ndt,
+    t,
+    rates_exc,
+    rates_inh,
+    rd_exc,
+    rd_inh,
+    sqrt_dt,
+    startind,
+    ndt_de,
+    ndt_di,
+    max_global_delay,
+    mue_ext,
+    mui_ext,
+    ext_exc_rate,
+    ext_inh_rate,
+    ext_exc_current,
+    ext_inh_current,
+    noise_exc,
+    noise_inh,
+    zeros4,
+):
 
     # squared Jee_max
     sq_Jee_max = Jee_max ** 2
@@ -252,7 +445,9 @@ def timeIntegration_njit_elementwise(dt, duration, warn, dosc_version, distr_del
             if not distr_delay:
                 # interareal coupling
                 for l in range(N):
-                    rd_exc[l, no] = rates_exc[no, i - Dmat_ndt[l, no] - 1]  # rd_exc(i,j) delayed input rate from population j to population i
+                    rd_exc[l, no] = rates_exc[
+                        no, i - Dmat_ndt[l, no] - 1
+                    ]  # rd_exc(i,j) delayed input rate from population j to population i
                 rd_inh[no] = rates_inh[no, i - ndt_di - 1]  # Warning: this is a vector and not a matrix as rd_exc
 
             mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ext[no] + ext_exc_current[no, i]
@@ -266,19 +461,35 @@ def timeIntegration_njit_elementwise(dt, duration, warn, dosc_version, distr_del
                 rowsumsq = rowsumsq + Cmat[no, col] ** 2 * rd_exc[no, col]
 
             # z1: weighted sum of delayed rates, weights=c*K
-            z1ee = cee * Ke * rd_exc[no, no] + c_gl * Ke_gl * rowsum + c_gl * Ke_gl * ext_exc_rate[no, i]  # rate from other regions + exc_ext_rate
+            z1ee = (
+                cee * Ke * rd_exc[no, no] + c_gl * Ke_gl * rowsum + c_gl * Ke_gl * ext_exc_rate[no, i]
+            )  # rate from other regions + exc_ext_rate
             z1ei = cei * Ki * rd_inh[no]
-            z1ie = cie * Ke * rd_exc[no, no] + c_gl * Ke_gl * ext_inh_rate[no, i]  # first test of external rate input to inh. population
+            z1ie = (
+                cie * Ke * rd_exc[no, no] + c_gl * Ke_gl * ext_inh_rate[no, i]
+            )  # first test of external rate input to inh. population
             z1ii = cii * Ki * rd_inh[no]
             # z2: weighted sum of delayed rates, weights=c^2*K (see thesis last ch.)
-            z2ee = cee ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * rowsumsq + c_gl ** 2 * Ke_gl * ext_exc_rate[no, i]
+            z2ee = (
+                cee ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * rowsumsq + c_gl ** 2 * Ke_gl * ext_exc_rate[no, i]
+            )
             z2ei = cei ** 2 * Ki * rd_inh[no]
-            z2ie = cie ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * ext_inh_rate[no, i]  # external rate input to inh. population
+            z2ie = (
+                cie ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * ext_inh_rate[no, i]
+            )  # external rate input to inh. population
             z2ii = cii ** 2 * Ki * rd_inh[no]
 
-            sigmae = np.sqrt(2 * sq_Jee_max * seev[no] * tau_se * taum / ((1 + z1ee) * taum + tau_se) + 2 * sq_Jei_max * seiv[no] * tau_si * taum / ((1 + z1ei) * taum + tau_si) + sigmae_ext ** 2)  # mV/sqrt(ms)
+            sigmae = np.sqrt(
+                2 * sq_Jee_max * seev[no] * tau_se * taum / ((1 + z1ee) * taum + tau_se)
+                + 2 * sq_Jei_max * seiv[no] * tau_si * taum / ((1 + z1ei) * taum + tau_si)
+                + sigmae_ext ** 2
+            )  # mV/sqrt(ms)
 
-            sigmai = np.sqrt(2 * sq_Jie_max * siev[no] * tau_se * taum / ((1 + z1ie) * taum + tau_se) + 2 * sq_Jii_max * siiv[no] * tau_si * taum / ((1 + z1ii) * taum + tau_si) + sigmai_ext ** 2)  # mV/sqrt(ms)
+            sigmai = np.sqrt(
+                2 * sq_Jie_max * siev[no] * tau_se * taum / ((1 + z1ie) * taum + tau_se)
+                + 2 * sq_Jii_max * siiv[no] * tau_si * taum / ((1 + z1ii) * taum + tau_si)
+                + sigmai_ext ** 2
+            )  # mV/sqrt(ms)
 
             if not filter_sigma:
                 sigmae_f = sigmae
@@ -380,15 +591,24 @@ def timeIntegration_njit_elementwise(dt, duration, warn, dosc_version, distr_del
                 siiv[no] = 0.0
 
             # ornstein-uhlenberg process
-            mue_ext[no] = mue_ext[no] + (mue_ext_mean - mue_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[no]  # mV/ms
-            mui_ext[no] = mui_ext[no] + (mui_ext_mean - mui_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[no]  # mV/ms
+            mue_ext[no] = (
+                mue_ext[no] + (mue_ext_mean - mue_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[no]
+            )  # mV/ms
+            mui_ext[no] = (
+                mui_ext[no] + (mui_ext_mean - mui_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[no]
+            )  # mV/ms
 
     return rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv
 
 
 @numba.njit(locals={"idxX": numba.int64, "idxY": numba.int64})
 def interpolate_values(table, xid1, yid1, dxid, dyid):
-    output = table[yid1, xid1] * (1 - dxid) * (1 - dyid) + table[yid1, xid1 + 1] * dxid * (1 - dyid) + table[yid1 + 1, xid1] * (1 - dxid) * dyid + table[yid1 + 1, xid1 + 1] * dxid * dyid
+    output = (
+        table[yid1, xid1] * (1 - dxid) * (1 - dyid)
+        + table[yid1, xid1 + 1] * dxid * (1 - dyid)
+        + table[yid1 + 1, xid1] * (1 - dxid) * dyid
+        + table[yid1 + 1, xid1 + 1] * dxid * dyid
+    )
     return output
 
 
