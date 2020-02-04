@@ -150,11 +150,14 @@ class Model:
         outputDict = self.getOutputs(group)
         # make sure that there is a time array
         timeDictKey = ""
-        for k in outputDict:
-            if k == "t" or k.startswith("t"):
-                timeDictKey = k
-                logging.info(f"Assuming {k} to be the time axis.")
-                break
+        if "t" in outputDict:
+            timeDictKey = "t"
+        else:
+            for k in outputDict:
+                if k.startswith("t"):
+                    timeDictKey = k
+                    logging.info(f"Assuming {k} to be the time axis.")
+                    break
         assert len(timeDictKey) > 0, f"There is no time array (starting with t) in the output group."
         t = outputDict[timeDictKey].copy()
         del outputDict[timeDictKey]
