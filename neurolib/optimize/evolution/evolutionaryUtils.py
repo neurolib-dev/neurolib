@@ -22,7 +22,11 @@ def printParamDist(pop=None, paramInterval=None, gIdx=None):
 
     print("Parameters dictribution (Generation {}):".format(gIdx))
     for idx, k in enumerate(paramInterval._fields):
-        print("{}: \t mean: {:.4},\t std: {:.4}".format(k, np.mean([indiv[idx] for indiv in pop]), np.std([indiv[idx] for indiv in pop]),))
+        print(
+            "{}: \t mean: {:.4},\t std: {:.4}".format(
+                k, np.mean([indiv[idx] for indiv in pop]), np.std([indiv[idx] for indiv in pop]),
+            )
+        )
 
 
 def printIndividuals(pop, paramInterval, stats=False):
@@ -35,11 +39,21 @@ def printIndividuals(pop, paramInterval, stats=False):
         thesepars["fit"] = np.mean(ind.fitness.values)
         pars.append(thesepars)
         print(
-            "Individual", i, "pars", ", ".join([" ".join([k, "{0:.4}".format(ind[ki])]) for ki, k in enumerate(paramInterval._fields)]),
+            "Individual",
+            i,
+            "pars",
+            ", ".join([" ".join([k, "{0:.4}".format(ind[ki])]) for ki, k in enumerate(paramInterval._fields)]),
         )
         print("\tFitness values: ", *np.round(ind.fitness.values, 4))
         if stats:
-            print("\t > mean {0:.4}, std {0:.4}, min {0:.4} max {0:.4}".format(np.mean(ind.fitness.values), np.std(ind.fitness.values), np.min(ind.fitness.values), np.max(ind.fitness.values),))
+            print(
+                "\t > mean {0:.4}, std {0:.4}, min {0:.4} max {0:.4}".format(
+                    np.mean(ind.fitness.values),
+                    np.std(ind.fitness.values),
+                    np.min(ind.fitness.values),
+                    np.max(ind.fitness.values),
+                )
+            )
 
 
 def printPopFitnessStats(
@@ -52,6 +66,10 @@ def printPopFitnessStats(
     """
     Print some stats of a population fitness
     """
+    if save_plots:
+        if not os.path.exists(paths.FIGURES_DIR):
+            os.makedirs(paths.FIGURES_DIR)
+
     # Gather all the fitnesses in one list and print the stats
     # selectPop = [p for p in pop if not np.isnan(p.fitness.score)]
     selectPop = [p for p in pop if not np.any(np.isnan(p.fitness.values))]
@@ -67,8 +85,10 @@ def printPopFitnessStats(
         plt.xlabel("Score")
         plt.ylabel("Count")
         if save_plots is not None:
-            logging.info("Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.jpg" % (save_plots, gIdx))))
-            plt.savefig(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.jpg" % (save_plots, gIdx)))
+            logging.info(
+                "Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx)))
+            )
+            plt.savefig(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx)))
         plt.show()
 
     if draw_scattermatrix:
@@ -80,7 +100,7 @@ def printPopFitnessStats(
         plt.figure()
         sm = sns.pairplot(pcandidates, diag_kind="kde", kind="reg")
         if save_plots is not None:
-            plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.jpg".format(save_plots, gIdx)))
+            plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.png".format(save_plots, gIdx)))
         plt.show()
 
         # Seaborn Plotting
@@ -92,7 +112,7 @@ def printPopFitnessStats(
             grid = grid.map_diag(plt.hist, bins=10, color="darkred", edgecolor="k")
             grid = grid.map_lower(sns.kdeplot, cmap="Reds")
             if save_plots is not None:
-                plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.jpg".format(save_plots, gIdx)))
+                plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.png".format(save_plots, gIdx)))
             plt.show()
         except:
             pass

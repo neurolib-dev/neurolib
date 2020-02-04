@@ -9,6 +9,8 @@ An extensive analysis of this model can be found in our paper and its associated
 
 **Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation ([ArXiv](https://arxiv.org/abs/1906.00676)).
 
+The figure below shows a schematic of how a brain network is constructed:
+
 <p align="center">
   <img src="resources/pipeline.png" width="700">
 </p>
@@ -206,8 +208,8 @@ That's all! Now you can check the results!
 evolution.loadResults()
 evolution.info(plot=True)
 ```
-This will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). As you can see in the parameter space cross sections below, all remaining individuals lie on a circle.
+This will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). Below is an animation of 10 generations of the evolutionary process. As you can see, after a couple of generations, all remaining individuals lie on a circle.
 
 <p align="center">
-  <img src="resources/evolution_minimal.png">
+  <img src="resources/evolution_animated.gif">
 </p>
