@@ -9,6 +9,8 @@ An extensive analysis of this model can be found in our paper and its associated
 
 **Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation ([ArXiv](https://arxiv.org/abs/1906.00676)).
 
+The figure below shows a schematic of how a brain network is constructed:
+
 <p align="center">
   <img src="resources/pipeline.png" width="700">
 </p>
