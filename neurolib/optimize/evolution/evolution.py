@@ -2,6 +2,7 @@ import datetime
 import os
 import logging
 import multiprocessing
+import sys
 
 import deap
 from deap import base
@@ -10,6 +11,7 @@ from deap import tools
 
 import numpy as np
 import pypet as pp
+import pandas as pd
 
 import neurolib.utils.paths as paths
 
@@ -99,7 +101,7 @@ class Evolution:
         self.trajectoryName = trajectoryName
         self.trajectoryFileName = trajectoryFileName
 
-        self.initialPopulationSimulated = False
+        self._initialPopulationSimulated = False
 
         # settings
         self.verbose = False
@@ -108,6 +110,7 @@ class Evolution:
         self.evaluationCounter = 0
 
         # simulation parameters
+        self.parameterSpace = parameterSpace
         self.ParametersInterval = parameterSpace.named_tuple_constructor
         self.paramInterval = parameterSpace.named_tuple
 
@@ -125,7 +128,10 @@ class Evolution:
         # initialize population
         self.last_id = 0
         self.pop = self.toolbox.population(n=self.POP_INIT_SIZE)
-        self.pop = self.tagPopulation(self.pop)
+        # self.pop = self.tagPopulation(self.pop) # will do this in initial run
+
+        # population history: dict of all valid individuals per generation
+        self.popHist = {}
 
     def getIndividualFromTraj(self, traj):
         """Get individual from pypet trajectory
@@ -267,21 +273,6 @@ class Evolution:
     def getInvalidPopulation(self, pop):
         return [p for p in pop if np.any(np.isnan(p.fitness.values))]
 
-    def runInitial(self):
-        """First round of evolution: 
-        """
-        ### Evaluate the initial population
-        logging.info("Evaluating initial population of size %i ..." % len(self.pop))
-        self.gIdx = 0  # set generation index
-        # evaluate
-        self.pop = self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, self.gIdx)
-        if self.verbose:
-            eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-        self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-        # Only the best indviduals are selected for the population the others do not survive
-        self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
-        self.initialPopulationSimulated = True
-
     def tagPopulation(self, pop):
         """Take a fresh population and add id's and attributes such as parameters that we can use later
 
@@ -291,6 +282,7 @@ class Evolution:
         for i, ind in enumerate(pop):
             assert not hasattr(ind, "id"), "Individual has an id already, will not overwrite it!"
             ind.id = self.last_id
+            ind.gIdx = self.gIdx
             ind.simulation_stored = False
             ind_dict = self.individualToDict(ind)
             for key, value in ind_dict.items():
@@ -301,12 +293,36 @@ class Evolution:
             self.last_id += 1
         return pop
 
+    def runInitial(self):
+        """First round of evolution: 
+        """
+        ### Evaluate the initial population
+        logging.info("Evaluating initial population of size %i ..." % len(self.pop))
+        self.gIdx = 0  # set generation index
+        self.pop = self.tagPopulation(self.pop)
+
+        # evaluate
+        self.pop = self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, self.gIdx)
+
+        if self.verbose:
+            eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
+
+        self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
+        # Only the best indviduals are selected for the population the others do not survive
+        self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
+        self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
+        self._initialPopulationSimulated = True
+
     def runEvolution(self):
         # Start evolution
         logging.info("Start of evolution")
         for self.gIdx in range(self.gIdx + 1, self.gIdx + self.traj.NGEN):
             # ------- Weed out the invalid individuals and replace them by random new indivuals -------- #
             validpop = self.getValidPopulation(self.pop)
+
+            # add all valid individuals to the population history
+            self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
+
             # replace invalid individuals
             nanpop = self.getInvalidPopulation(self.pop)
             logging.info("Replacing {} invalid individuals.".format(len(nanpop)))
@@ -346,15 +362,15 @@ class Evolution:
             self.pop = self.toolbox.selBest(validpop + offspring + newpop, k=self.traj.popsize)
 
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
-            logging.info("Best individual is {}".format(self.best_ind))
-            logging.info("Score: {}".format(self.best_ind.fitness.score))
-            logging.info("Fitness: {}".format(self.best_ind.fitness.values))
-
-            logging.info("--- Population statistics ---")
 
             if self.verbose:
+                print("----------- Generation %i -----------" % self.gIdx)
+                print("Best individual is {}".format(self.best_ind))
+                print("Score: {}".format(self.best_ind.fitness.score))
+                print("Fitness: {}".format(self.best_ind.fitness.values))
+                print("--- Population statistics ---")
                 eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-                eu.printPopFitnessStats(
+                eu.plotPopulation(
                     self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True, save_plots=self.trajectoryName
                 )
 
@@ -375,18 +391,38 @@ class Evolution:
         """Run full evolution (or continue previous evolution)
         """
         self.verbose = verbose
-        if not self.initialPopulationSimulated:
+        if not self._initialPopulationSimulated:
             self.runInitial()
         self.runEvolution()
 
-    def info(self, plot=True):
+    def info(self, plot=True, bestN=5):
+        validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
+        popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
+        scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
+        # Text output
+        print("--- Info summary ---")
+        print("Valid: {}".format(len(validPop)))
+        print("Mean score (weighted fitness): {:.2}".format(np.mean(scores)))
         eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-        if plot:
-            eu.printPopFitnessStats(self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True)
-        bestN = 20
-        print("--------------------------")
+        print("--------------------")
         print(f"Best {bestN} individuals:")
         eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)
+        print("--------------------")
+        # Plotting
+        if plot:
+            eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True)
+
+    @property
+    def dfPop(self):
+        validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
+        indIds = [p.id for p in validPop]
+        popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
+        scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
+        # gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
+        dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameter_names).T
+        dfPop["score"] = scores
+        dfPop["id"] = indIds
+        return dfPop
 
     def loadResults(self, filename=None, trajectoryName=None):
         """Load results from evolution.
