@@ -49,10 +49,10 @@ class Model:
 
         # if the output is a single name (not dot.separated)
         if "." not in name:
-            # set output as an attribute
-            setattr(self, name, data)
             # save into output dict
             self.outputs[name] = data
+            # set output as an attribute
+            setattr(self, name, self.outputs[name])
         else:
             # build results dictionary and write into self.outputs
             # dot.notation iteration
@@ -65,6 +65,7 @@ class Model:
                 # if key is in outputs, then go deeper
                 elif k in level:
                     level = level[k]
+                    setattr(self, k, level)
                 # if it's a new key, create new nested dictionary, set attribute, then go deeper
                 else:
                     level[k] = dotdict({})
