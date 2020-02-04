@@ -208,7 +208,7 @@ That's all! Now you can check the results!
 evolution.loadResults()
 evolution.info(plot=True)
 ```
-This will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). Below, is an animation of the evolution taking place across 10 generations. As you can see, after a couple of generations, all remaining individuals lie on a circle.
+This will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). Below is an animation of 10 generations of the evolutionary process. As you can see, after a couple of generations, all remaining individuals lie on a circle.
 
 <p align="center">
   <img src="resources/evolution_animated.gif">
