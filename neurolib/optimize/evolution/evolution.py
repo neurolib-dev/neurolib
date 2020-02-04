@@ -26,7 +26,7 @@ class Evolution:
         self,
         evalFunction,
         parameterSpace,
-        weightList,
+        weightList=None,
         model=None,
         hdf_filename="evolution.hdf",
         ncores=None,
@@ -49,6 +49,10 @@ class Evolution:
         :param NGEN: Numbers of generations to evaluate
         :param CXPB: Crossover probability of each individual gene
         """
+        if weightList is None:
+            logging.info("weightList not set, assuming single fitness value to be maximized.")
+            weightList = [1.0]
+
         trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
         self.HDF_FILE = os.path.join(paths.HDF_DIR, hdf_filename)
         trajectoryFileName = self.HDF_FILE
@@ -72,7 +76,11 @@ class Evolution:
 
         # Get the trajectory from the environment
         traj = env.traj
-        trajectoryName = traj.v_name
+        # Sanity check if everything went ok
+        assert (
+            trajectoryName == traj.v_name
+        ), f"Pypet trajectory has a different name than trajectoryName {trajectoryName}"
+        # trajectoryName = traj.v_name
 
         self.model = model
         self.evalFunction = evalFunction
@@ -238,10 +246,16 @@ class Evolution:
 
         for idx, result in enumerate(evolutionResult):
             runIndex, packedReturnFromEvalFunction = result
-            # this is the return from the evaluation function
-            fitnessesResult, outputs = packedReturnFromEvalFunction
+
+            # packedReturnFromEvalFunction is the return from the evaluation function
+            # it has length two, the first is the fitness, second is the model output
+            assert (
+                len(packedReturnFromEvalFunction) == 2
+            ), "Evaluation function must return tuple with shape (fitness, output_data)"
+
+            fitnessesResult, returnedOutputs = packedReturnFromEvalFunction
+            pop[idx].outputs = returnedOutputs
             # store outputs of simulations in population
-            pop[idx].outputs = outputs
             pop[idx].fitness.values = fitnessesResult
             # mean fitness value
             pop[idx].fitness.score = np.nansum(pop[idx].fitness.wvalues) / (len(pop[idx].fitness.wvalues))
@@ -341,7 +355,7 @@ class Evolution:
             if self.verbose:
                 eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
                 eu.printPopFitnessStats(
-                    self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True, save_plots="evo"
+                    self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True, save_plots=self.trajectoryName
                 )
 
             # save all simulation data to pypet
@@ -390,8 +404,6 @@ class Evolution:
         if reverse:
             generation_names = generation_names[::-1]
         if drop_first:
-            # drop first (initial) generation 0
-            # generation_names = generation_names[1:]
             generation_names.remove("gen_000000")
 
         npop = len(traj.results.evolution[generation_names[0]].scores)

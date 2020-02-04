@@ -82,7 +82,7 @@ class ALNModel(Model):
             rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = return_tuple
             self.t_BOLD = t_BOLD
             self.BOLD = BOLD
-            Model.setOutput(self, "BOLD.t", t_BOLD)
+            Model.setOutput(self, "BOLD.t_BOLD", t_BOLD)
             Model.setOutput(self, "BOLD.BOLD", BOLD)
         else:
             (

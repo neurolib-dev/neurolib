@@ -10,6 +10,13 @@ class dotdict(dict):
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
+    # now pickleable!!!
+    def __getstate__(self):
+        return dict(self)
+
+    def __setstate__(self, state):
+        self.update(state)
+
 
 class Model:
     """The Model superclass manages inputs and outputs of all models.
@@ -17,14 +24,7 @@ class Model:
 
     # working
     defaultOutput = None
-    outputs = {}
-
-    # possiby deprecated
-    inputNames = []
-    inputs = []
-    nInputs = 0
-    outputNames = None
-    xrs = {}
+    outputs = dotdict({})
 
     def __init__(self, name, description=None):
         assert isinstance(name, str), f"Model name is not a string."
@@ -39,28 +39,34 @@ class Model:
         """
         assert not isinstance(data, dict), "Output data cannot be a dictionary."
         assert isinstance(name, str), "Output name must be a string."
-        # set output as an attribute
-        setattr(self, name, data)
 
-        # build results dictionary and write into self.outputs
-
-        keys = name.split(".")
-        level = self.outputs
-        for i, k in enumerate(keys):
-            # if it's the last iteration, it's data
-            if i == len(keys) - 1:
-                level[k] = data
-            # if it's a known key, then go deeper
-            elif k in level:
-                level = level[k]
-            # if it's a new key, create new nested dictionary and go deeper
-            else:
-                level[k] = dotdict({})
-                setattr(self, k, level[k])
-                level = level[k]
+        # if the output is a single name (not dot.separated)
+        if "." not in name:
+            # save into output dict
+            self.outputs[name] = data
+            # set output as an attribute
+            setattr(self, name, self.outputs[name])
+        else:
+            # build results dictionary and write into self.outputs
+            # dot.notation iteration
+            keys = name.split(".")
+            level = self.outputs  # not copy, reference!
+            for i, k in enumerate(keys):
+                # if it's the last iteration, store data
+                if i == len(keys) - 1:
+                    level[k] = data
+                # if key is in outputs, then go deeper
+                elif k in level:
+                    level = level[k]
+                    setattr(self, k, level)
+                # if it's a new key, create new nested dictionary, set attribute, then go deeper
+                else:
+                    level[k] = dotdict({})
+                    setattr(self, k, level[k])
+                    level = level[k]
 
     def getOutput(self, name):
-        """Get an output.
+        """Get an output of a given name (dot.semarated)
         :param name: A key, grouped outputs in the form group.subgroup.variable
         :type name: str
 
@@ -136,9 +142,18 @@ class Model:
         # take all outputs of one group: disregard all dictionaries because they are subgroups
         outputDict = self.getOutputs(group)
         # make sure that there is a time array
-        assert "t" in outputDict, f"There is no time array (called t) in the output group."
-        t = outputDict["t"].copy()
-        del outputDict["t"]
+        timeDictKey = ""
+        if "t" in outputDict:
+            timeDictKey = "t"
+        else:
+            for k in outputDict:
+                if k.startswith("t"):
+                    timeDictKey = k
+                    logging.info(f"Assuming {k} to be the time axis.")
+                    break
+        assert len(timeDictKey) > 0, f"No time array found (starting with t) in output group {group}."
+        t = outputDict[timeDictKey].copy()
+        del outputDict[timeDictKey]
         outputs = []
         outputNames = []
         for key, value in outputDict.items():
