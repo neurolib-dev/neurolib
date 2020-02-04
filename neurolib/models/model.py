@@ -158,7 +158,7 @@ class Model:
                     timeDictKey = k
                     logging.info(f"Assuming {k} to be the time axis.")
                     break
-        assert len(timeDictKey) > 0, f"There is no time array (starting with t) in the output group."
+        assert len(timeDictKey) > 0, f"No time array found (starting with t) in output group {group}."
         t = outputDict[timeDictKey].copy()
         del outputDict[timeDictKey]
         outputs = []
