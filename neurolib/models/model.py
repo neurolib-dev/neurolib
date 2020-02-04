@@ -24,14 +24,7 @@ class Model:
 
     # working
     defaultOutput = None
-    outputs = {}
-
-    # possiby deprecated
-    inputNames = []
-    inputs = []
-    nInputs = 0
-    outputNames = None
-    xrs = {}
+    outputs = dotdict({})
 
     def __init__(self, name, description=None):
         assert isinstance(name, str), f"Model name is not a string."
