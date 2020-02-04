@@ -86,9 +86,9 @@ def printPopFitnessStats(
         plt.ylabel("Count")
         if save_plots is not None:
             logging.info(
-                "Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.jpg" % (save_plots, gIdx)))
+                "Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx)))
             )
-            plt.savefig(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.jpg" % (save_plots, gIdx)))
+            plt.savefig(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx)))
         plt.show()
 
     if draw_scattermatrix:
@@ -100,7 +100,7 @@ def printPopFitnessStats(
         plt.figure()
         sm = sns.pairplot(pcandidates, diag_kind="kde", kind="reg")
         if save_plots is not None:
-            plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.jpg".format(save_plots, gIdx)))
+            plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.png".format(save_plots, gIdx)))
         plt.show()
 
         # Seaborn Plotting
@@ -112,7 +112,7 @@ def printPopFitnessStats(
             grid = grid.map_diag(plt.hist, bins=10, color="darkred", edgecolor="k")
             grid = grid.map_lower(sns.kdeplot, cmap="Reds")
             if save_plots is not None:
-                plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.jpg".format(save_plots, gIdx)))
+                plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.png".format(save_plots, gIdx)))
             plt.show()
         except:
             pass
