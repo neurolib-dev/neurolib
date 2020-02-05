@@ -26,6 +26,7 @@ class TestFunctions(unittest.TestCase):
         aln.run()
 
         cls.model = aln
+        cls.ds = Dataset("gw")
 
     def test_kuramoto(self):
         kuramoto = func.kuramoto(self.model.rates_exc, dt=self.model.params["dt"], smoothing=5.0)
@@ -38,7 +39,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_matrix_correlation(self):
         FC = func.fc(self.model.BOLD.BOLD)
-        cc = func.matrix_correlation(FC, ds.FCs[0])
+        cc = func.matrix_correlation(FC, self.ds.FCs[0])
 
     def test_print_params(self):
         func.print_params(self.model.params)
