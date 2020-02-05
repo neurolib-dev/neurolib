@@ -39,7 +39,15 @@ def print_errors(fname, errors):
             print(error["ename"], error["evalue"])
 
 
-class TestVanillaEvolution(unittest.TestCase):
+class TestNotebooksTesting(unittest.TestCase):
+    def test_aln_evolution_testing(self):
+        fname = "examples/TEST-aln-evolutionary-brain.ipynb"
+        nb, errors = run_notebook(fname)
+        print_errors(fname, errors)
+        assert len(errors) == 0, f"Error in {fname}"
+
+
+class TestExampleNotebooks(unittest.TestCase):
     def test_example_0(self):
         fname = "examples/example-0-aln-minimal.ipynb"
         nb, errors = run_notebook(fname)
