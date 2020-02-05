@@ -143,10 +143,12 @@ def plotPopulation(
     print("There are {} valid individuals".format(len(validPop)))
     print("Mean score across population: {:.2}".format(np.mean(scores)))
 
-    if len(validPop) > 0 and draw_distribution:
+    # plots can only be drawn if there are enough individuals
+    MIN_POP_SIZE_PLOTTING = 4
+    if len(validPop) > MIN_POP_SIZE_PLOTTING and draw_distribution:
         plotScoresDistribution(scores, gIdx, save_plots)
 
-    if len(validPop) > 0 and draw_scattermatrix:
+    if len(validPop) > MIN_POP_SIZE_PLOTTING and draw_scattermatrix:
         # make a pandas dataframe for the seaborn pairplot
         gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
         dfPop = pd.DataFrame(popArray, index=gridParameters).T
