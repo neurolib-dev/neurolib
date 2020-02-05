@@ -17,27 +17,6 @@ import neurolib.utils.paths as paths
 import neurolib.optimize.evolution.deapUtils as du
 
 
-def mutateUntilValid(pop, paramInterval, toolbox, maxTries=500):
-    """Checks the validity of new individuals' parameter. If they are invalid 
-    (for example if they are out of the predefined paramter space bounds), 
-    mutate the individual, until valid.
-
-    :param pop: population to mutate
-    :param paramInterval: parameter interval (from parameterSpace.named_tuple)
-    :param toolbox: deap toolbox
-    :param maxTries: how many mutations to try until valid
-    """
-    # mutate individuald until valid, max 100 times
-    for i, o in enumerate(pop):
-        o_bak = copy.copy(o)
-        toolbox.mutate(pop[i])
-        nMutations = 0
-        while not du.check_param_validity(pop[i], paramInterval) and nMutations < maxTries:
-            pop[i] = copy.copy(o_bak)
-            toolbox.mutate(pop[i])
-            nMutations += 1
-
-
 def saveToPypet(traj, pop, gIdx):
     traj.f_add_result_group("{}.gen_{:06d}".format("evolution", gIdx))
     traj.f_add_result("{}.gen_{:06d}.fitness".format("evolution", gIdx), np.array([p.fitness.values for p in pop]))
@@ -164,10 +143,12 @@ def plotPopulation(
     print("There are {} valid individuals".format(len(validPop)))
     print("Mean score across population: {:.2}".format(np.mean(scores)))
 
-    if draw_distribution:
+    # plots can only be drawn if there are enough individuals
+    MIN_POP_SIZE_PLOTTING = 4
+    if len(validPop) > MIN_POP_SIZE_PLOTTING and draw_distribution:
         plotScoresDistribution(scores, gIdx, save_plots)
 
-    if draw_scattermatrix:
+    if len(validPop) > MIN_POP_SIZE_PLOTTING and draw_scattermatrix:
         # make a pandas dataframe for the seaborn pairplot
         gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
         dfPop = pd.DataFrame(popArray, index=gridParameters).T

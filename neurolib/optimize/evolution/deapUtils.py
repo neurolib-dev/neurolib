@@ -2,6 +2,7 @@
 # including additional mutation, crossover and selection operators.
 
 import random
+import copy
 import numpy as np
 
 
@@ -25,6 +26,34 @@ def generate_random_pars_adapt(paramInterval):
     # add sigma's to the list of means
     params.extend(defaultAdaptation)
     return params
+
+
+def mutateUntilValid(pop, paramInterval, toolbox, maxTries=500):
+    """Checks the validity of new individuals' parameter. If they are invalid 
+    (for example if they are out of the predefined paramter space bounds), 
+    mutate the individual, until valid.
+
+    :param pop: population to mutate
+    :param paramInterval: parameter interval (from parameterSpace.named_tuple)
+    :param toolbox: deap toolbox
+    :param maxTries: how many mutations to try until valid
+    """
+    # mutate individuald until valid, max 100 times
+    for i, ind in enumerate(pop):
+        ind_bak = copy.copy(ind)
+        toolbox.mutate(pop[i])
+        nMutations = 0
+        while not check_param_validity(pop[i], paramInterval) and nMutations < maxTries:
+            pop[i] = copy.copy(ind_bak)
+            toolbox.mutate(pop[i])
+            nMutations += 1
+
+        # if it didn't work, set the individual to the boundary
+        for l, v in enumerate(paramInterval):
+            if ind[l] < v[0]:
+                ind[l] = v[0]
+            elif ind[l] > v[1]:
+                ind[l] = v[1]
 
 
 def check_param_validity(individual, paramInterval):
