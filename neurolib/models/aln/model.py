@@ -1,10 +1,6 @@
-import numpy as np
-import xarray as xr
-
 import neurolib.models.aln.chunkwiseIntegration as cw
 import neurolib.models.aln.loadDefaultParams as dp
 import neurolib.models.aln.timeIntegration as ti
-
 from neurolib.models.model import Model
 
 
@@ -41,7 +37,7 @@ class ALNModel(Model):
         :param simulateBOLD: Parallel (chunkwise) BOLD simulation
         """
         # Initialize base class Model
-        Model.__init__(self, self.name)
+        super().__init__(self.name)
         # Model.addOutputs(self, self.outputNames, self.outputNames)
 
         # Global attributes
@@ -63,7 +59,7 @@ class ALNModel(Model):
         )
 
         # load default parameters if none were given
-        if params == None:
+        if params is None:
             self.params = dp.loadDefaultParams(
                 Cmat=self.Cmat, Dmat=self.Dmat, lookupTableFileName=self.lookupTableFileName, seed=self.seed,
             )
@@ -79,11 +75,11 @@ class ALNModel(Model):
             t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(
                 self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity
             )
-            rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = return_tuple
+            (rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv,) = return_tuple
             self.t_BOLD = t_BOLD
             self.BOLD = BOLD
-            Model.setOutput(self, "BOLD.t_BOLD", t_BOLD)
-            Model.setOutput(self, "BOLD.BOLD", BOLD)
+            self.setOutput("BOLD.t_BOLD", t_BOLD)
+            self.setOutput("BOLD.BOLD", BOLD)
         else:
             (
                 rates_exc,
@@ -106,6 +102,6 @@ class ALNModel(Model):
         rates_exc = rates_exc * 1000.0
         rates_inh = rates_inh * 1000.0
 
-        Model.setOutput(self, "t", t)
-        Model.setOutput(self, "rates_exc", rates_exc)
-        Model.setOutput(self, "rates_inh", rates_inh)
+        self.setOutput("t", t)
+        self.setOutput("rates_exc", rates_exc)
+        self.setOutput("rates_inh", rates_inh)

@@ -44,12 +44,25 @@ class BOLDModel:
         """
 
         # Compute the BOLD signal for the chunk
-        BOLD_chunk, self.X_BOLD, self.F_BOLD, self.Q_BOLD, self.V_BOLD = simulateBOLD(activity, self.dt * 1e-3, 10000 * np.ones((self.N,)), X=self.X_BOLD, F=self.F_BOLD, Q=self.Q_BOLD, V=self.V_BOLD)
+        BOLD_chunk, self.X_BOLD, self.F_BOLD, self.Q_BOLD, self.V_BOLD = simulateBOLD(
+            activity,
+            self.dt * 1e-3,
+            10000 * np.ones((self.N,)),
+            X=self.X_BOLD,
+            F=self.F_BOLD,
+            Q=self.Q_BOLD,
+            V=self.V_BOLD,
+        )
 
         # downsample BOLD
-        BOLD_resampled = BOLD_chunk[:, self.samplingRate_NDt - np.mod(self.idxLastT - 1, self.samplingRate_NDt) :: self.samplingRate_NDt]
+        BOLD_resampled = BOLD_chunk[
+            :, self.samplingRate_NDt - np.mod(self.idxLastT - 1, self.samplingRate_NDt) :: self.samplingRate_NDt
+        ]
         t_new_idx = self.idxLastT + np.arange(activity.shape[1])
-        t_BOLD_resampled = t_new_idx[self.samplingRate_NDt - np.mod(self.idxLastT - 1, self.samplingRate_NDt) :: self.samplingRate_NDt] * self.dt
+        t_BOLD_resampled = (
+            t_new_idx[self.samplingRate_NDt - np.mod(self.idxLastT - 1, self.samplingRate_NDt) :: self.samplingRate_NDt]
+            * self.dt
+        )
 
         if self.BOLD.shape[1] == 0:
             self.t_BOLD = t_BOLD_resampled
