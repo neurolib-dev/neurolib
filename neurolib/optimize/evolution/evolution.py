@@ -35,7 +35,7 @@ class Evolution:
         POP_INIT_SIZE=100,
         POP_SIZE=20,
         NGEN=10,
-        CXPB=1 - 0.96,
+        CXPB=0.04,
     ):
         """
         :param model: Model to run
@@ -346,7 +346,7 @@ class Evolution:
 
             ##### Mutation ####
             # Apply adaptive mutation
-            eu.mutateUntilValid(offspring, self.paramInterval, self.toolbox)
+            du.mutateUntilValid(offspring, self.paramInterval, self.toolbox)
 
             offspring = self.tagPopulation(offspring)
 
