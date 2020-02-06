@@ -7,18 +7,13 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 <br>
-<p align="center" style="font-size: 35px">
-Neurolib
-</p>
-
+<h3 align="center"> Neurolib </h3>
 
 <p align="center">
 <i> Easy whole-brain neural mass modeling </i> 
 </p>
 
-<p align="center" style="font-size: 40px">
-👩‍🔬💻🧠 <br>
-</p>
+<h3 align="center" > 👩‍🔬💻🧠 </h3>
 
 <p align="center">
 Quick examples:
