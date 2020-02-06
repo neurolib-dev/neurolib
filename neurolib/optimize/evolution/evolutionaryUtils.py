@@ -9,10 +9,6 @@ import numpy as np
 import pypet as pp
 import pandas as pd
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-from pandas.plotting import scatter_matrix
-
 import neurolib.utils.paths as paths
 import neurolib.optimize.evolution.deapUtils as du
 
@@ -94,6 +90,8 @@ def printIndividuals(pop, paramInterval, stats=False):
 
 
 def plotScoresDistribution(scores, gIdx, save_plots=None):
+    import matplotlib.pyplot as plt
+
     plt.figure(figsize=(4, 2))
     plt.hist(scores, color="grey", edgecolor="black", linewidth=1.2)
     plt.title("Generation: %i, Individuals: %i" % (gIdx, len(scores)))
@@ -106,6 +104,9 @@ def plotScoresDistribution(scores, gIdx, save_plots=None):
 
 
 def plotSeabornScatter1(dfPop, pop, paramInterval, gIdx, save_plots):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     plt.figure()
     sm = sns.pairplot(dfPop, diag_kind="kde", kind="reg")
     if save_plots is not None:
@@ -114,6 +115,9 @@ def plotSeabornScatter1(dfPop, pop, paramInterval, gIdx, save_plots):
 
 
 def plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     # https://towardsdatascience.com/visualizing-data-with-pair-plots-in-python-f228cf529166
     grid = sns.PairGrid(data=dfPop)
     grid = grid.map_upper(plt.scatter, color="darkred", alpha=0.5)
@@ -164,10 +168,14 @@ def printEvolutionInfo(evolution):
     print("> Simulation parameters")
     print(f"HDF file storage: {evolution.trajectoryFileName}")
     print(f"Trajectory Name: {evolution.trajectoryName}")
-    print(f"Model: {evolution.model.name} ({type(evolution.model)})")
+    if evolution.model is not None:
+        print(f"Model: {type(evolution.model)}")
+        if hasattr(evolution.model, "name"):
+            if isinstance(evolution.model.name, str):
+                print(f"Model name: {evolution.model.name}")
     print(f"Eval function: {evolution.evalFunction}")
     print(f"Parameter space: {evolution.paramInterval}")
-    print(f"Weights: {evolution.weightList}")
+    # print(f"Weights: {evolution.weightList}")
     print("> Evolution parameters")
     print(f"Number of generations: {evolution.NGEN}")
     print(f"Initial population size: {evolution.POP_INIT_SIZE}")
