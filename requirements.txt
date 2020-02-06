@@ -8,3 +8,4 @@ pandas
 tqdm
 pypet
 deap
+mne
