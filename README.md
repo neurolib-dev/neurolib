@@ -6,10 +6,8 @@
 [![Downloads](https://pepy.tech/badge/neurolib)](https://pepy.tech/project/neurolib) 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-<p align="center">
-</p>
 
-<h1 align="center">Neurolib</h1>
+<font size="+4"><h3 align="center">Neurolib</h1></font>
 
 <p align="center">
 
