@@ -98,7 +98,7 @@ def plotScoresDistribution(scores, gIdx, save_plots=None):
     plt.xlabel("Score")
     plt.ylabel("Count")
     if save_plots is not None:
-        print("Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx))))
+        logging.info("Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx))))
         plt.savefig(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx)))
     plt.show()
 
