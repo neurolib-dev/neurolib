@@ -30,6 +30,7 @@ class Signal:
         "description",
         "process_steps",
     ]
+    PROCESS_STEPS_KEY = "process_steps"
 
     @classmethod
     def from_file(cls, filename):
@@ -46,9 +47,16 @@ class Signal:
         # init class
         signal = cls(xarray)
         # if nc file has atrributes, copy them to signal class
+        process_steps = []
         if xarray.attrs:
             for k, v in xarray.attrs.items():
-                setattr(signal, k, v)
+                if cls.PROCESS_STEPS_KEY in k:
+                    idx = int(k[len(cls.PROCESS_STEPS_KEY) + 1 :])
+                    process_steps.insert(idx, v)
+                else:
+                    setattr(signal, k, v)
+        if len(process_steps) > 0:
+            setattr(signal, cls.PROCESS_STEPS_KEY, process_steps)
         else:
             logging.warning("No metadata found, setting empty...")
         return signal
@@ -136,6 +144,20 @@ class Signal:
         """
         return self.__class__.mro()[0]
 
+    def _write_attrs_to_xr(self):
+        """
+        Copy attributes to xarray before saving.
+        """
+        # write attritubes to xarray
+        for attr in self._copy_attributes:
+            value = getattr(self, attr)
+            # if list need to unwrap
+            if isinstance(value, (list, tuple)):
+                for idx, val in enumerate(value):
+                    self.data.attrs[f"{attr}_{idx}"] = val
+            else:
+                self.data.attrs[attr] = deepcopy(value)
+
     def save(self, filename):
         """
         Save signal.
@@ -143,14 +165,12 @@ class Signal:
         :param filename: filename to save, currently saves to netCDF file, which is natively supported by xarray
         :type filename: str
         """
-        # write attritubes to xarray
-        for attr in self._copy_attributes:
-            self.data.attrs[attr] = deepcopy(getattr(self, attr))
+        self._write_attrs_to_xr()
         if not filename.endswith(NC_EXT):
             filename += NC_EXT
         self.data.to_netcdf(filename)
 
-    def iterate(self, return_as="xr"):
+    def iterate(self, return_as="signal"):
         """
         Return iterator over columns, so univariate measures can be computed
         per column. Loops over tuples as (variable name, timeseries).
@@ -492,6 +512,48 @@ class Signal:
             self.process_steps += add_steps
         else:
             return self.__constructor__(filtered).__finalize__(self, add_steps)
+
+    def apply(self, func, inplace=True):
+        """
+        Apply func for each timeseries.
+
+        :param func: function to be applied for each 1D timeseries
+        :type func: callable
+        :param inplace: whether to do the operation in place or return
+        :type inplace: bool
+        """
+        assert callable(func)
+        stacked = self.data.stack({"all": self.dims_not_time})
+        processed = np.apply_along_axis(func, axis=0, arr=stacked.values)
+        # if same shape
+        if stacked.shape == processed.shape:
+            # cast back to original shape
+            processed = (
+                xr.DataArray(processed, dims=stacked.dims, coords=stacked.coords)
+                .unstack("all")
+                .transpose(*self.dims_not_time + ["time"])
+            )
+            add_steps = [f"apply {func.__name__} function over time dim"]
+            if inplace:
+                self.data = processed
+                self.process_steps += add_steps
+            else:
+                return self.__constructor__(processed).__finalize__(self, add_steps)
+        # different shape
+        else:
+            processed = (
+                xr.DataArray(processed, dims=["all"], coords=stacked.coords["all"].coords)  # cast to DataArray
+                .unstack("all")  # unstack
+                .transpose(*self.dims_not_time)  # transpose to original shape
+                .expand_dims("time", axis=-1)  # add dummy time dim
+                .assign_coords(time=[func.__name__])  # add coordinate name for dummy time dimension
+            )
+            logging.warning(
+                f"Shape changed after operation! Old shape: {self.shape}, new "
+                f"shape: {processed.shape}; Cannot cast to Signal class, "
+                "returing as `xr.DataArray`"
+            )
+            return processed
 
 
 class VoltageSignal(Signal):
