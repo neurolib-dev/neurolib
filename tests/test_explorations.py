@@ -6,6 +6,7 @@ import numpy as np
 
 from neurolib.models.aln import ALNModel
 from neurolib.optimize.exploration import BoxSearch
+from neurolib.utils.parameterSpace import ParameterSpace
 
 
 class TestALNExploration(unittest.TestCase):
@@ -18,14 +19,16 @@ class TestALNExploration(unittest.TestCase):
         start = time.time()
 
         aln = ALNModel()
-        parameters = {"mue_ext_mean": np.linspace(0, 3, 2).tolist(), "mui_ext_mean": np.linspace(0, 3, 2).tolist()}
+        parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
         search = BoxSearch(aln, parameters)
         search.initializeExploration()
         search.run()
         search.loadResults()
 
         for i in search.dfResults.index:
-            search.dfResults.loc[i, "max_r"] = np.max(search.results[i]["rates_exc"][:, -int(1000 / aln.params["dt"]) :])
+            search.dfResults.loc[i, "max_r"] = np.max(
+                search.results[i]["rates_exc"][:, -int(1000 / aln.params["dt"]) :]
+            )
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
