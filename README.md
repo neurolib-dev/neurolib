@@ -6,25 +6,9 @@
 [![Downloads](https://pepy.tech/badge/neurolib)](https://pepy.tech/project/neurolib) 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-<br>
-<h3 align="center"> Neurolib </h3>
 
-<p align="center">
-<i> Easy whole-brain neural mass modeling </i> 
-</p>
-
-<h3 align="center" > 👩‍🔬💻🧠 </h3>
-
-<p align="center">
-Quick examples:
-<a href="#single-node">Single node simulation</a> ·
-<a href="#whole-brain-network">Whole-brain network</a> ·
-<a href="#parameter-exploration">Parameter exploration</a> ·
-<a href="#evolutionary-optimization">Evolutionary optimization</a>
-<br><br>    
-    
-</p>
-
+# Neurolib
+*Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
 `neurolib` allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and inhibitory neurons. 
 
@@ -36,6 +20,16 @@ The figure below shows a schematic of how a brain network is constructed:
 
 <p align="center">
   <img src="resources/pipeline.png" width="700">
+</p>
+
+<p align="center">
+Examples:
+<a href="#single-node">Single node simulation</a> ·
+<a href="#whole-brain-network">Whole-brain network</a> ·
+<a href="#parameter-exploration">Parameter exploration</a> ·
+<a href="#evolutionary-optimization">Evolutionary optimization</a>
+<br><br>    
+    
 </p>
 
 ## Whole-brain modeling
