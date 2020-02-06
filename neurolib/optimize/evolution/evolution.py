@@ -123,7 +123,7 @@ class Evolution:
 
         # set up pypet trajectory
         self.initPypetTrajectory(
-            self.traj, self.paramInterval, self.ParametersInterval, self.POP_SIZE, self.CXPB, self.NGEN, self.model,
+            self.traj, self.paramInterval, self.POP_SIZE, self.CXPB, self.NGEN, self.model,
         )
 
         # population history: dict of all valid individuals per generation
@@ -164,7 +164,7 @@ class Evolution:
         """
         return self.ParametersInterval(*(individual[: len(self.paramInterval)]))._asdict().copy()
 
-    def initPypetTrajectory(self, traj, paramInterval, ParametersInterval, POP_SIZE, CXPB, NGEN, model):
+    def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, CXPB, NGEN, model):
         """Initializes pypet trajectory and store all simulation parameters.
         """
         # Initialize pypet trajectory and add all simulation parameters
@@ -204,7 +204,7 @@ class Evolution:
             "individual",
             deap.tools.initIterate,
             deap.creator.Individual,
-            lambda: du.generate_random_pars_adapt(paramInterval),
+            lambda: du.randomParametersAdaptive(paramInterval),
         )
         toolbox.register("population", deap.tools.initRepeat, list, toolbox.individual)
 
@@ -249,6 +249,9 @@ class Evolution:
         # run simulations for one generation
         evolutionResult = toolbox.map(toolbox.evaluate)
 
+        # This error can have different reasons but is most likely
+        # due to multiprocessing problems. One possibility is that your evaluation
+        # funciton is not pickleable or that it returns an object that is not pickleable.
         assert len(evolutionResult) > 0, "No results returned from simulations."
 
         for idx, result in enumerate(evolutionResult):
