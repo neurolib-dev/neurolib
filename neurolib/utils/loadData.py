@@ -84,17 +84,17 @@ class Dataset:
         """Function to furiously load SC and FC .mat files of different formats.
         """
         if verbose:
-            print("Loading {}".format(matFileName))
+            print(f"Loading {matFileName}")
         matrix = scipy.io.loadmat(matFileName)
         if verbose:
             print("\tLoading using scipy.io.loadmat...")
-            print("Keys: {}".format(list(matrix.keys())))
+            print(f"Keys: {list(matrix.keys())}")
         if key != "" and key in list(matrix.keys()):
             matrix = matrix[key]
             if verbose:
-                print('\tLoaded key "{}"'.format(key))
+                print(f'\tLoaded key "{key}"')
         elif type(matrix) is dict:
-            raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
+            raise ValueError(f"Object is still a dict. Here are the keys: {matrix.keys()}")
         return matrix
 
         # bulletproof loading (old, maybe necessary)
