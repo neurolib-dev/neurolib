@@ -37,8 +37,7 @@ class TestVanillaEvolution(unittest.TestCase):
 
 
 class TestALNEvolution(unittest.TestCase):
-    """
-    Evolution with ALN model
+    """Evolution with ALN model
     """
 
     def test_single_node(self):
