@@ -81,42 +81,56 @@ class Dataset:
             return matrices[0]
 
     def loadMatrix(self, matFileName, key="", verbose=False):
-        """
-        Function to load SC and FC .mat files of different formats.
+        """Function to furiously load SC and FC .mat files of different formats.
         """
         if verbose:
             print("Loading {}".format(matFileName))
-        try:  # FSL files:
+        matrix = scipy.io.loadmat(matFileName)
+        if verbose:
+            print("\tLoading using scipy.io.loadmat...")
+            print("Keys: {}".format(list(matrix.keys())))
+        if key != "" and key in list(matrix.keys()):
+            matrix = matrix[key]
             if verbose:
-                print("\tLoading using np.loadtxt...")
-            matrix = np.loadtxt(matFileName)
-            return matrix
-        except:
-            pass
-        try:  # LEAD DBS files:
-            matrix = h5py.File(matFileName, "r")
-            if verbose:
-                print("\tLoading using h5py.File...")
-                print("Keys: {}".format(list(matrix.keys())))
-            if key != "" and key in list(matrix.keys()):
-                matrix = matrix[key].value
-                if verbose:
-                    print('\tLoaded key "{}"'.format(key))
-            elif type(matrix) is dict:
-                raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
-            return matrix
-        except:  # Deco files
-            matrix = scipy.io.loadmat(matFileName)
-            if verbose:
-                print("\tLoading using scipy.io.loadmat...")
-                print("Keys: {}".format(list(matrix.keys())))
-            if key != "" and key in list(matrix.keys()):
-                matrix = matrix[key]
-                if verbose:
-                    print('\tLoaded key "{}"'.format(key))
-            elif type(matrix) is dict:
-                raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
-            return matrix
+                print('\tLoaded key "{}"'.format(key))
+        elif type(matrix) is dict:
+            raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
+        return matrix
+
+        # bulletproof loading (old, maybe necessary)
+        # if verbose:
+        #     print("Loading {}".format(matFileName))
+        # try:  # np.loadtxt
+        #     if verbose:
+        #         print("\tLoading using np.loadtxt...")
+        #     matrix = np.loadtxt(matFileName)
+        #     return matrix
+        # except:
+        #     pass
+        # try:  # h5py.File
+        #     matrix = h5py.File(matFileName, "r")
+        #     if verbose:
+        #         print("\tLoading using h5py.File...")
+        #         print("Keys: {}".format(list(matrix.keys())))
+        #     if key != "" and key in list(matrix.keys()):
+        #         matrix = matrix[key].value
+        #         if verbose:
+        #             print('\tLoaded key "{}"'.format(key))
+        #     elif type(matrix) is dict:
+        #         raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
+        #     return matrix
+        # except:  # scipy.io.loadmat
+        #     matrix = scipy.io.loadmat(matFileName)
+        #     if verbose:
+        #         print("\tLoading using scipy.io.loadmat...")
+        #         print("Keys: {}".format(list(matrix.keys())))
+        #     if key != "" and key in list(matrix.keys()):
+        #         matrix = matrix[key]
+        #         if verbose:
+        #             print('\tLoaded key "{}"'.format(key))
+        #     elif type(matrix) is dict:
+        #         raise ValueError("Object is still a dict. Here are the keys: {}".format(matrix.keys()))
+        #     return matrix
         return 0
 
 
