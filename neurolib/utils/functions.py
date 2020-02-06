@@ -3,7 +3,6 @@ import numpy as np
 import scipy.signal
 
 
-
 def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
     """
     Computes the Kuramoto order parameter of a timeseries.
@@ -36,12 +35,8 @@ def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
 
         # find peaks
         if smoothing > 0:
-            a = scipy.ndimage.filters.gaussian_filter(
-                traces[n], smoothing
-            )  # smooth data
-        maximalist = scipy.signal.find_peaks_cwt(
-            a, np.arange(peakrange[0], peakrange[1])
-        )
+            a = scipy.ndimage.filters.gaussian_filter(traces[n], smoothing)  # smooth data
+        maximalist = scipy.signal.find_peaks_cwt(a, np.arange(peakrange[0], peakrange[1]))
         maximalist = np.append(maximalist, len(traces[n]) - 1).astype(int)
 
         if len(maximalist) > 1:
@@ -88,9 +83,7 @@ def matrix_correlation(M1, M2):
 
     """
 
-    cc = np.corrcoef(
-        M1[np.triu_indices_from(M1, k=1)], M2[np.triu_indices_from(M2, k=1)]
-    )[0, 1]
+    cc = np.corrcoef(M1[np.triu_indices_from(M1, k=1)], M2[np.triu_indices_from(M2, k=1)])[0, 1]
     return cc
 
 
@@ -150,9 +143,7 @@ def fcd(ts, windowsize=30, stepsize=5):
         for f1 in corrFCs:
             f2i = 0
             for f2 in corrFCs:
-                FCd[f1i, f2i] = np.corrcoef(
-                    f1.reshape((1, f1.size)), f2.reshape((1, f2.size))
-                )[0, 1]
+                FCd[f1i, f2i] = np.corrcoef(f1.reshape((1, f1.size)), f2.reshape((1, f2.size)))[0, 1]
                 f2i += 1
             f1i += 1
 
@@ -161,12 +152,12 @@ def fcd(ts, windowsize=30, stepsize=5):
         return 0
 
 
-def kolmogorov(BOLD1, BOLD2, windowsize=1.0):
+def kolmogorov(BOLD1, BOLD2, stepsize=5, windowsize=1.0):
     """
     Computes kolmogorov distance between two FCS matrices.
     """
-    empiricalFCD = fcd(BOLD2[:, : len(BOLD1[0, :])], windowsize=windowsize)
-    FCD = fcd(BOLD1[:, 10:], windowsize=windowsize)
+    empiricalFCD = fcd(BOLD2[:, : len(BOLD1[0, :])], stepsize, windowsize)
+    FCD = fcd(BOLD1, stepsize, windowsize)
 
     triUFCD = np.triu(FCD)
     triUFCD = triUFCD[(triUFCD > 0.0) & (triUFCD < 1.0)]
@@ -237,11 +228,7 @@ def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=
     assert len(activity.shape) == 1, "activity is not one-dimensional!"
 
     f, Pxx_spec = scipy.signal.welch(
-        activity,
-        1000 / dt,
-        window="hanning",
-        nperseg=int(spectrum_windowsize * 1000 / dt),
-        scaling="spectrum",
+        activity, 1000 / dt, window="hanning", nperseg=int(spectrum_windowsize * 1000 / dt), scaling="spectrum",
     )
     f = f[f < maxfr]
     Pxx_spec = Pxx_spec[0 : len(f)]
@@ -250,15 +237,11 @@ def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=
     return f, Pxx_spec
 
 
-def getMeanPowerSpectrum(
-    activities, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False
-):
+def getMeanPowerSpectrum(activities, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
     """
     Returns the mean power spectrum of multiple timeseries.
     """
-    powers = np.zeros(
-        getPowerSpectrum(activities[0], dt, maxfr, spectrum_windowsize)[0].shape
-    )
+    powers = np.zeros(getPowerSpectrum(activities[0], dt, maxfr, spectrum_windowsize)[0].shape)
     ps = []
     for rate in activities:
         f, Pxx_spec = getPowerSpectrum(rate, dt, maxfr, spectrum_windowsize)
