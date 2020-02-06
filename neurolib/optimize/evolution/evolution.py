@@ -51,6 +51,7 @@ class Evolution:
         :param NGEN: Numbers of generations to evaluate
         :param CXPB: Crossover probability of each individual gene
         """
+
         if weightList is None:
             logging.info("weightList not set, assuming single fitness value to be maximized.")
             weightList = [1.0]
@@ -103,13 +104,10 @@ class Evolution:
 
         self._initialPopulationSimulated = False
 
-        # settings
+        # -------- settings
         self.verbose = False
 
-        # environment parameters
-        self.evaluationCounter = 0
-
-        # simulation parameters
+        # -------- simulation
         self.parameterSpace = parameterSpace
         self.ParametersInterval = parameterSpace.named_tuple_constructor
         self.paramInterval = parameterSpace.named_tuple
@@ -120,18 +118,21 @@ class Evolution:
             self.toolbox, self.env, self.paramInterval, self.evalFunction, weights_list=self.weightList,
         )
 
+        # comment string for storing info
+        self.comments = ""
+
         # set up pypet trajectory
         self.initPypetTrajectory(
             self.traj, self.paramInterval, self.ParametersInterval, self.POP_SIZE, self.CXPB, self.NGEN, self.model,
         )
 
-        # initialize population
-        self.last_id = 0
-        self.pop = self.toolbox.population(n=self.POP_INIT_SIZE)
-        # self.pop = self.tagPopulation(self.pop) # will do this in initial run
-
         # population history: dict of all valid individuals per generation
         self.popHist = {}
+
+        # initialize population
+        self.evaluationCounter = 0
+        self.last_id = 0
+        self.pop = self.toolbox.population(n=self.POP_INIT_SIZE)
 
     def getIndividualFromTraj(self, traj):
         """Get individual from pypet trajectory
@@ -352,8 +353,6 @@ class Evolution:
 
             # ------- Evaluate next generation -------- #
 
-            logging.info("----------- Generation %i -----------" % self.gIdx)
-
             self.pop = offspring + newpop
             self.evalPopulationUsingPypet(self.traj, self.toolbox, offspring + newpop, self.gIdx)
             # ------- Select surviving population -------- #
@@ -363,15 +362,18 @@ class Evolution:
 
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
 
+            # verbose
             if self.verbose:
-                print("----------- Generation %i -----------" % self.gIdx)
-                print("Best individual is {}".format(self.best_ind))
-                print("Score: {}".format(self.best_ind.fitness.score))
-                print("Fitness: {}".format(self.best_ind.fitness.values))
-                print("--- Population statistics ---")
+                # text log
+                logging.info("----------- Generation %i -----------" % self.gIdx)
+                logging.info("Best individual is {}".format(self.best_ind))
+                logging.info("Score: {}".format(self.best_ind.fitness.score))
+                logging.info("Fitness: {}".format(self.best_ind.fitness.values))
+                logging.info("--- Population statistics ---")
                 eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
+                # plotting
                 eu.plotPopulation(
-                    self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True, save_plots=self.trajectoryName
+                    self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName
                 )
 
             # save all simulation data to pypet
@@ -396,6 +398,7 @@ class Evolution:
         self.runEvolution()
 
     def info(self, plot=True, bestN=5):
+        eu.printEvolutionInfo(self)
         validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
         scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
@@ -410,7 +413,7 @@ class Evolution:
         print("--------------------")
         # Plotting
         if plot:
-            eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, draw_scattermatrix=True)
+            eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True)
 
     @property
     def dfPop(self):
