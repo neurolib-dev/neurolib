@@ -123,26 +123,14 @@ The quality of the fit of this simulation can be computed by correlating the sim
 We can compute this by using the builtin functions `func.fc` to calculate a functional connectivity from `N` (`N` = number of regions) time series and and `fund.matrix_correlation` to compare this to the empirical data.
 
 ```python
-scores = []
-for i in range(len(ds.FCs)):
-    fc_score = func.matrix_correlation(func.fc(alnModel.BOLD[:, 5:]), ds.FCs[i]) 
-    scores.append(fc_score)
-    print("Subject {}: {:.2f}". format(i, fc_score))
-print("Mean simulated FC to empirical FC correlation: {:.2f}".format(np.mean(scores)))
+scores = [func.matrix_correlation(func.fc(aln.BOLD.BOLD[:, 5:]), fcemp) for fcemp in ds.FCs]
+
+print("Correlation per subject:", [f"{s:.2}" for s in scores])
+print(f"Mean FC/FC correlation: {np.mean(scores):.2}")
 ```
 ```
-Subject 0: 0.71
-Subject 1: 0.70
-Subject 2: 0.52
-Subject 3: 0.56
-Subject 4: 0.51
-Subject 5: 0.60
-Subject 6: 0.64
-Subject 7: 0.65
-Subject 8: 0.36
-Subject 9: 0.54
-Subject 10: 0.49
-Mean simulated FC to empirical FC correlation: 0.57
+Correlation per subject: ['0.34', '0.61', '0.54', '0.7', '0.54', '0.64', '0.69', '0.47', '0.59', '0.72', '0.58']
+Mean FC/FC correlation: 0.58
 ```
 ## Parameter exploration
 A detailed example is available as a [IPython Notebook](examples/example-1-aln-parameter-exploration.ipynb). 
@@ -153,8 +141,8 @@ Whenever you work with a model, it is of great importance to know what kind of d
 # create model
 aln = ALNModel()
 # define the parameter space to explore
-parameters = {'mue_ext_mean' : np.linspace(0, 3, 11).tolist(),
-              'mui_ext_mean' : np.linspace(0, 3, 11).tolist()}       
+parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 21),  # input to E
+							 "mui_ext_mean": np.linspace(0, 3, 21)}) # input to I
 
 # define exploration              
 search = BoxSearch(aln, parameters)
