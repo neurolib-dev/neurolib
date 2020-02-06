@@ -26,7 +26,6 @@ class TestVanillaEvolution(unittest.TestCase):
             computation_result = abs((ind.x ** 2 + ind.y ** 2) - 1)
             fitness_tuple = (computation_result,)
             result_dict = {"result": [computation_result]}
-            print(computation_result)
             return fitness_tuple, result_dict
 
         pars = ParameterSpace(["x", "y"], [[-5.0, 5.0], [-5.0, 5.0]])
@@ -38,8 +37,7 @@ class TestVanillaEvolution(unittest.TestCase):
 
 
 class TestALNEvolution(unittest.TestCase):
-    """
-    Evolution with ALN model
+    """Evolution with ALN model
     """
 
     def test_single_node(self):
@@ -60,7 +58,9 @@ class TestALNEvolution(unittest.TestCase):
             # -------- fitness evaluation here --------
 
             # example: get dominant frequency of activity
-            frs, powers = func.getPowerSpectrum(model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],)
+            frs, powers = func.getPowerSpectrum(
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
+            )
             domfr = frs[np.argmax(powers)]
 
             fitness = abs(domfr - 25)  # let's try to find a 25 Hz oscillation
@@ -73,7 +73,9 @@ class TestALNEvolution(unittest.TestCase):
         alnModel.run()
 
         pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
-        evolution = Evolution(evaluateSimulation, pars, model=alnModel, weightList=[-1.0], POP_INIT_SIZE=6, POP_SIZE=4, NGEN=3,)
+        evolution = Evolution(
+            evaluateSimulation, pars, model=alnModel, weightList=[-1.0], POP_INIT_SIZE=6, POP_SIZE=4, NGEN=3,
+        )
         evolution.run(verbose=False)
         evolution.info(plot=False)
         traj = evolution.loadResults()

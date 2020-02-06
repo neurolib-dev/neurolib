@@ -1,9 +1,16 @@
-![](https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master) ![](https://img.shields.io/github/v/release/neurolib-dev/neurolib) ![PyPI](https://img.shields.io/pypi/v/neurolib) [![codecov](https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg)](https://codecov.io/gh/neurolib-dev/neurolib) [![PyPI license](https://img.shields.io/pypi/l/neurolib.svg)](https://pypi.python.org/pypi/neurolib/) [![Downloads](https://pepy.tech/badge/neurolib)](https://pepy.tech/project/neurolib) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Build](https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master)](https://travis-ci.org/neurolib-dev/neurolib) 
+[![Release](https://img.shields.io/github/v/release/neurolib-dev/neurolib)](https://github.com/neurolib-dev/neurolib/releases) 
+[![PyPI](https://img.shields.io/pypi/v/neurolib) ](https://pypi.org/project/neurolib/)
+[![codecov](https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg)](https://codecov.io/gh/neurolib-dev/neurolib) 
+[![PyPI license](https://img.shields.io/pypi/l/neurolib.svg)](https://pypi.python.org/pypi/neurolib/) 
+[![Downloads](https://pepy.tech/badge/neurolib)](https://pepy.tech/project/neurolib) 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 
 # Neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
-`Neurolib` allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and inhibitory neurons. 
+`neurolib` allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and inhibitory neurons. 
 
 An extensive analysis of this model can be found in our paper and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
@@ -15,15 +22,14 @@ The figure below shows a schematic of how a brain network is constructed:
   <img src="resources/pipeline.png" width="700">
 </p>
 
-<p style="text-align: center;"> 
-<br>
-<b> Quick examples:
-<a href="#single-node">Single node simulation</a> 
-<a href="#whole-brain-network">Whole-brain network</a>
-<a href="#parameter-exploration">Parameter exploration</a>
+<p align="center">
+Examples:
+<a href="#single-node">Single node simulation</a> ·
+<a href="#whole-brain-network">Whole-brain network</a> ·
+<a href="#parameter-exploration">Parameter exploration</a> ·
 <a href="#evolutionary-optimization">Evolutionary optimization</a>
-</b>
-<br>
+<br><br>    
+    
 </p>
 
 ## Whole-brain modeling
@@ -213,3 +219,24 @@ This will give you a summary of the last generation and plot a distribution of t
 <p align="center">
   <img src="resources/evolution_animated.gif">
 </p>
+
+## More information
+
+### Built With
+
+`neurolib` is built on other amazing open source projects:
+
+* [pypet](https://github.com/SmokinCaterpillar/pypet) - Python parameter exploration toolbox
+* [deap](https://github.com/DEAP/deap) - Distributed Evolutionary Algorithms in Python
+* [numpy](https://github.com/numpy/numpy) - The fundamental package for scientific computing with Python
+* [numba](https://github.com/numba/numba) - NumPy aware dynamic Python compiler using LLVM
+* [Jupyter](https://github.com/jupyter/notebook) - Jupyter Interactive Notebook
+
+### Get in touch
+
+Caglar Cakan (cakan@ni.tu-berlin.de)  
+Department of Software Engineering and Theoretical Computer Science, Technische Universität Berlin, Germany  
+Bernstein Center for Computational Neuroscience Berlin, Germany  
+
+### Acknowledgments
+This work was supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) with the project number 327654276 (SFB 1315) and the Research Training Group GRK1589/2.

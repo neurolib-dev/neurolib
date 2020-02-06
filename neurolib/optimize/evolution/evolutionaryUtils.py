@@ -9,10 +9,6 @@ import numpy as np
 import pypet as pp
 import pandas as pd
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-from pandas.plotting import scatter_matrix
-
 import neurolib.utils.paths as paths
 import neurolib.optimize.evolution.deapUtils as du
 
@@ -57,7 +53,7 @@ def printParamDist(pop=None, paramInterval=None, gIdx=None):
     if paramInterval == None:
         paramInterval = self.paramInterval
 
-    print("Parameters dictribution (Generation {}):".format(gIdx))
+    print("Parameter dictribution (Generation {}):".format(gIdx))
     for idx, k in enumerate(paramInterval._fields):
         print(
             "{}: \t mean: {:.4},\t std: {:.4}".format(
@@ -94,6 +90,8 @@ def printIndividuals(pop, paramInterval, stats=False):
 
 
 def plotScoresDistribution(scores, gIdx, save_plots=None):
+    import matplotlib.pyplot as plt
+
     plt.figure(figsize=(4, 2))
     plt.hist(scores, color="grey", edgecolor="black", linewidth=1.2)
     plt.title("Generation: %i, Individuals: %i" % (gIdx, len(scores)))
@@ -106,6 +104,9 @@ def plotScoresDistribution(scores, gIdx, save_plots=None):
 
 
 def plotSeabornScatter1(dfPop, pop, paramInterval, gIdx, save_plots):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     plt.figure()
     sm = sns.pairplot(dfPop, diag_kind="kde", kind="reg")
     if save_plots is not None:
@@ -114,6 +115,9 @@ def plotSeabornScatter1(dfPop, pop, paramInterval, gIdx, save_plots):
 
 
 def plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     # https://towardsdatascience.com/visualizing-data-with-pair-plots-in-python-f228cf529166
     grid = sns.PairGrid(data=dfPop)
     grid = grid.map_upper(plt.scatter, color="darkred", alpha=0.5)
@@ -125,7 +129,7 @@ def plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots):
 
 
 def plotPopulation(
-    pop, paramInterval, gIdx=0, draw_distribution=True, draw_scattermatrix=False, save_plots=None,
+    pop, paramInterval, gIdx=0, plotDistribution=True, plotScattermatrix=False, save_plots=None,
 ):
 
     """
@@ -145,10 +149,10 @@ def plotPopulation(
 
     # plots can only be drawn if there are enough individuals
     MIN_POP_SIZE_PLOTTING = 4
-    if len(validPop) > MIN_POP_SIZE_PLOTTING and draw_distribution:
+    if len(validPop) > MIN_POP_SIZE_PLOTTING and plotDistribution:
         plotScoresDistribution(scores, gIdx, save_plots)
 
-    if len(validPop) > MIN_POP_SIZE_PLOTTING and draw_scattermatrix:
+    if len(validPop) > MIN_POP_SIZE_PLOTTING and plotScattermatrix:
         # make a pandas dataframe for the seaborn pairplot
         gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
         dfPop = pd.DataFrame(popArray, index=gridParameters).T
@@ -157,9 +161,29 @@ def plotPopulation(
         plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots)
 
 
-def countLiving(pop):
-    nValid = 0
-    for i in range(len(pop)):
-        nValid += 1 if not np.isnan(pop[i].fitness.score) else 0
-    # print("Number of living individuals: %i"%nValid)
-    return nValid
+def printEvolutionInfo(evolution):
+    """Function that prints all important parameters of the evolution.
+    :param evolution: evolution object
+    """
+    print("> Simulation parameters")
+    print(f"HDF file storage: {evolution.trajectoryFileName}")
+    print(f"Trajectory Name: {evolution.trajectoryName}")
+    if evolution.model is not None:
+        print(f"Model: {type(evolution.model)}")
+        if hasattr(evolution.model, "name"):
+            if isinstance(evolution.model.name, str):
+                print(f"Model name: {evolution.model.name}")
+    print(f"Eval function: {evolution.evalFunction}")
+    print(f"Parameter space: {evolution.paramInterval}")
+    # print(f"Weights: {evolution.weightList}")
+    print("> Evolution parameters")
+    print(f"Number of generations: {evolution.NGEN}")
+    print(f"Initial population size: {evolution.POP_INIT_SIZE}")
+    print(f"Population size: {evolution.POP_SIZE}")
+    print(f"Crossover probability: {evolution.CXPB}")
+    if len(evolution.comments) > 0:
+        if isinstance(evolution.comments, str):
+            print(f"Comments: {evolution.comments}")
+        elif isinstance(evolution.comments, list):
+            for c in evolution.comments:
+                print(f"Comments: {c}")

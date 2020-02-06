@@ -6,14 +6,14 @@ import copy
 import numpy as np
 
 
-def indivAsDict_adapt(individual, ParametersInterval, paramInterval):
-    """
-    Convert an individual to a dictionary
-    """
-    return ParametersInterval(*(individual[: len(paramInterval)]))._asdict().copy()
+# def indivAsDict_adapt(individual, ParametersInterval, paramInterval):
+#     """
+#     Convert an individual to a dictionary
+#     """
+#     return ParametersInterval(*(individual[: len(paramInterval)]))._asdict().copy()
 
 
-def generate_random_pars_adapt(paramInterval):
+def randomParametersAdaptive(paramInterval):
     """
     Generate a sequence of random parameters from a ParamsInterval using a uniform distribution.
     Format: [mean_par1, mean_par2, ..., sigma_par1, sigma_par2, ...]
@@ -43,7 +43,7 @@ def mutateUntilValid(pop, paramInterval, toolbox, maxTries=500):
         ind_bak = copy.copy(ind)
         toolbox.mutate(pop[i])
         nMutations = 0
-        while not check_param_validity(pop[i], paramInterval) and nMutations < maxTries:
+        while not checkParamValidity(pop[i], paramInterval) and nMutations < maxTries:
             pop[i] = copy.copy(ind_bak)
             toolbox.mutate(pop[i])
             nMutations += 1
@@ -56,7 +56,7 @@ def mutateUntilValid(pop, paramInterval, toolbox, maxTries=500):
                 ind[l] = v[1]
 
 
-def check_param_validity(individual, paramInterval):
+def checkParamValidity(individual, paramInterval):
     """
     Check if an individual is within the specified bounds
     Return True if it is correct, False otherwise
@@ -69,7 +69,7 @@ def check_param_validity(individual, paramInterval):
 
 ### Selection operators ###
 # Rank selection
-def selRank(individuals, k, s=1.5):
+def selRank(pop, k, s=1.5):
     """
     Select k individual from a population using the Rank selection
     The individual are selected according to the fitness rank
@@ -78,9 +78,9 @@ def selRank(individuals, k, s=1.5):
         n the rank selection, individual are selected with a probability depending on their rank.
     """
     # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
-    s_inds = sorted(individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)
+    s_inds = sorted(pop, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)
 
-    mu = len(individuals)
+    mu = len(pop)
 
     # Probability of drawing individuals i in s_inds
     P_indiv = ((2 - s) / mu + 2 * (s - 1) / (mu * (mu - 1)) * np.arange(mu)).tolist()
@@ -101,70 +101,70 @@ def selRank(individuals, k, s=1.5):
 
 
 # Select best
-def selBest_multiObj(individuals, k):
+def selBest_multiObj(pop, k):
     """
     Select the best k individuals.
 
     This function accept multiobjective function by summing the fitness all of objectives.
     """
     # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
-    return sorted(individuals, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)[:k]
+    return sorted(pop, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)[:k]
 
 
-### Crossover operators ###
+# ### Crossover operators ###
 
-# This crossover was taken from DEAP but modified to
-#   - add a boolean return value giving information on if a crossover happenned
-#   - switch the adaptive mutation rate too
-def cxUniform_adapt(ind1, ind2, indpb):
-    """Executes a uniform crossover that modify in place the two
-    :term:`sequence` individuals. The attributes are swapped according to the
-    *indpb* probability.
-    The individuals are composed of the gene values first and then the mutation rates.
+# # This crossover was taken from DEAP but modified to
+# #   - add a boolean return value giving information on if a crossover happenned
+# #   - switch the adaptive mutation rate too
+# def cxUniform_adapt(ind1, ind2, indpb):
+#     """Executes a uniform crossover that modify in place the two
+#     :term:`sequence` individuals. The attributes are swapped according to the
+#     *indpb* probability.
+#     The individuals are composed of the gene values first and then the mutation rates.
 
-    :param ind1: The first individual participating in the crossover.
-    :param ind2: The second individual participating in the crossover.
-    :param indpb: Independent probabily for each attribute to be exchanged.
-    :returns: A tuple of two individuals.
+#     :param ind1: The first individual participating in the crossover.
+#     :param ind2: The second individual participating in the crossover.
+#     :param indpb: Independent probabily for each attribute to be exchanged.
+#     :returns: A tuple of two individuals.
 
-    This function uses the :func:`~random.random` function from the python base
-    :mod:`random` module.
-    """
-    size = min(len(ind1), len(ind2))
-    for i in range(size // 2):
-        if random.random() < indpb:
-            ind1[i], ind2[i] = ind2[i], ind1[i]
-            iAdapt = i + size // 2
-            ind1[iAdapt], ind2[iAdapt] = ind2[iAdapt], ind1[iAdapt]
+#     This function uses the :func:`~random.random` function from the python base
+#     :mod:`random` module.
+#     """
+#     size = min(len(ind1), len(ind2))
+#     for i in range(size // 2):
+#         if random.random() < indpb:
+#             ind1[i], ind2[i] = ind2[i], ind1[i]
+#             iAdapt = i + size // 2
+#             ind1[iAdapt], ind2[iAdapt] = ind2[iAdapt], ind1[iAdapt]
 
-    return ind1, ind2
+#     return ind1, ind2
 
 
-def cxUniform_normDraw(ind1, ind2, indpb):
-    """Executes a uniform crossover that modify in place the two individuals.
-    The attributes of the 2 individuals are set according to a normal distribution whose mean is
-    the mean between both individual attributes and the standard deviation the distance between the 2 attributes.
-    The individuals are composed of the gene values first and then the mutation rates.
+# def cxUniform_normDraw(ind1, ind2, indpb):
+#     """Executes a uniform crossover that modify in place the two individuals.
+#     The attributes of the 2 individuals are set according to a normal distribution whose mean is
+#     the mean between both individual attributes and the standard deviation the distance between the 2 attributes.
+#     The individuals are composed of the gene values first and then the mutation rates.
 
-    Warning: a check should be done afterward on the parameter to be sure they are not out of bound.
+#     Warning: a check should be done afterward on the parameter to be sure they are not out of bound.
 
-    :param ind1: The first individual participating in the crossover.
-    :param ind2: The second individual participating in the crossover.
-    :param indpb: Independent probabily for each attribute to be exchanged.
-    :returns: A tuple of two individuals.
+#     :param ind1: The first individual participating in the crossover.
+#     :param ind2: The second individual participating in the crossover.
+#     :param indpb: Independent probabily for each attribute to be exchanged.
+#     :returns: A tuple of two individuals.
 
-    This function uses the :func:`~random.random` function from the python base
-    :mod:`random` module.
-    """
-    size = min(len(ind1), len(ind2))
-    for i in range(size // 2):
-        if random.random() < indpb:
-            mu = np.mean([ind1[i], ind2[i]])
-            sigma = np.abs(ind1[i] - ind2[i])
-            ind1[i] = random.normalvariate(mu, sigma)
-            ind2[i] = random.normalvariate(mu, sigma)
+#     This function uses the :func:`~random.random` function from the python base
+#     :mod:`random` module.
+#     """
+#     size = min(len(ind1), len(ind2))
+#     for i in range(size // 2):
+#         if random.random() < indpb:
+#             mu = np.mean([ind1[i], ind2[i]])
+#             sigma = np.abs(ind1[i] - ind2[i])
+#             ind1[i] = random.normalvariate(mu, sigma)
+#             ind2[i] = random.normalvariate(mu, sigma)
 
-    return ind1, ind2
+#     return ind1, ind2
 
 
 def cxUniform_normDraw_adapt(ind1, ind2, indpb):
