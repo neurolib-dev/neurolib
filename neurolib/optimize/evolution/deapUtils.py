@@ -100,15 +100,16 @@ def selRank(pop, k, s=1.5):
     return chosen
 
 
-# # Select best
-# def selBest_multiObj(pop, k):
-#     """
-#     Select the best k individuals.
+# Select best
+def selBest_multiObj(pop, k):
+    """
+    Select the best k individuals.
 
-#     This function accept multiobjective function by summing the fitness all of objectives.
-#     """
-#     # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
-#     return sorted(pop, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)[:k]
+    This function accept multiobjective function by summing the fitness all of objectives.
+    """
+    # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
+    return sorted(pop, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)[:k]
+
 
 # ### Crossover operators ###
 
