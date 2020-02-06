@@ -6,16 +6,21 @@
 [![Downloads](https://pepy.tech/badge/neurolib)](https://pepy.tech/project/neurolib) 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-<p align="center">
-<font size="+4">Neurolib</font>
+<br>
+<p align="center" style="font-size: 35px">
+Neurolib
 </p>
 
 
 <p align="center">
 <i> Easy whole-brain neural mass modeling </i> 
-<br>
-<font size="+4"> 👩‍🔬💻🧠 </font>
-<br>
+</p>
+
+<p align="center" style="font-size: 40px">
+👩‍🔬💻🧠 <br>
+</p>
+
+<p align="center">
 Quick examples:
 <a href="#single-node">Single node simulation</a> ·
 <a href="#whole-brain-network">Whole-brain network</a> ·
