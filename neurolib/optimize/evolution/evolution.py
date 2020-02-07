@@ -345,7 +345,9 @@ class Evolution:
                 # del offspring[i - 1].fitness, offspring[i].fitness
                 del offspring[i - 1].fitness.values, offspring[i].fitness.values
                 del offspring[i - 1].fitness.wvalues, offspring[i].fitness.wvalues
-                # print("Deleting ID of {} and {}".format(offspring[i - 1].id, offspring[i].id))
+                #
+                offspring[i - 1].parentIds = offspring[i - 1].id, offspring[i].id
+                offspring[i].parentIds = offspring[i - 1].id, offspring[i].id
                 del offspring[i - 1].id, offspring[i].id
 
             ##### Mutation ####
