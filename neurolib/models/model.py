@@ -22,10 +22,11 @@ class Model:
     """The Model superclass manages inputs and outputs of all models.
     """
 
+    defaultOutput = None
+
     def __init__(self, name, description=None):
         assert isinstance(name, str), f"Model name is not a string."
         self.name = name
-        self.defaultOutput = None
         self.outputs = dotdict({})
         logging.info(f"Model {name} created")
 
