@@ -29,10 +29,14 @@ class BoxSearch:
         """
         self.model = model
 
-        self.exploreParameters = exploreParameters
+        self.exploreParameters = exploreParameters.dict()
         # pypet interaction starts here
-        self.pypetParametrization = pypet.cartesian_product(exploreParameters)
-        logging.info("Number of parameter configurations: {}".format(len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])))
+        self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
+        logging.info(
+            "Number of parameter configurations: {}".format(
+                len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
+            )
+        )
 
         # create hdf file path if it does not exist yet
         pathlib.Path(paths.HDF_DIR).mkdir(parents=True, exist_ok=True)
@@ -56,7 +60,14 @@ class BoxSearch:
         logging.info("Number of processes: {}".format(nprocesses))
 
         # set up the pypet environment
-        env = pypet.Environment(trajectory=trajectoryName, filename=trajectoryFileName, multiproc=True, ncores=nprocesses, complevel=9, log_stdout=False)
+        env = pypet.Environment(
+            trajectory=trajectoryName,
+            filename=trajectoryFileName,
+            multiproc=True,
+            ncores=nprocesses,
+            complevel=9,
+            log_stdout=False,
+        )
         self.env = env
         # Get the trajectory from the environment
         self.traj = env.trajectory
