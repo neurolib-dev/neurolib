@@ -9,6 +9,7 @@ import numpy as np
 import xarray as xr
 from mne import set_log_level
 from mne.filter import filter_data, resample
+from neurolib.models.model import Model
 from scipy.signal import detrend, get_window, hilbert
 
 NC_EXT = ".nc"
@@ -31,6 +32,14 @@ class Signal:
         "process_steps",
     ]
     PROCESS_STEPS_KEY = "process_steps"
+
+    @classmethod
+    def from_model_result(cls, model, time_in_ms=True):
+        """
+        Initial Signal from modelling results.
+        """
+        assert isinstance(model, Model)
+        return cls(model.xr(), time_in_ms=time_in_ms)
 
     @classmethod
     def from_file(cls, filename):
@@ -117,6 +126,13 @@ class Signal:
             if getattr(self, attr) != getattr(other, attr):
                 logging.warning(f"`{attr}` not equal between signals.")
         return eq
+
+    def __getitem__(self, pos):
+        """
+        Get item selectes in output dimension.
+        """
+        add_steps = [f"select `{pos}` output"]
+        return self.__constructor__(self.data.sel(output=pos)).__finalize__(self, add_steps)
 
     def __finalize__(self, other, add_steps=None):
         """
@@ -513,6 +529,32 @@ class Signal:
         else:
             return self.__constructor__(filtered).__finalize__(self, add_steps)
 
+    def functional_connectivity(self, fc_function=np.corrcoef):
+        """
+        Compute and return functional connectivity from the data.
+
+        :param fc_function: function which to use for FC computation, should
+            take 2D array as space x time and convert it to space x space with
+            desired measure
+        """
+        if self.data.ndim == 3:
+            assert callable(fc_function)
+            fcs = []
+            for output in self.data["output"]:
+                current_slice = self.data.sel({"output": output})
+                assert current_slice.ndim == 2
+                fcs.append(fc_function(current_slice.values))
+
+            return xr.DataArray(
+                np.array(fcs),
+                dims=["output", "space", "space"],
+                coords={"output": self.data.coords["output"], "space": self.data.coords["space"]},
+            )
+        if self.data.ndim == 2:
+            return xr.DataArray(
+                fc_function(self.data.values), dims=["space", "space"], coords={"space": self.data.coords["space"]},
+            )
+
     def apply(self, func, inplace=True):
         """
         Apply func for each timeseries.
@@ -523,6 +565,7 @@ class Signal:
         :type inplace: bool
         """
         assert callable(func)
+        # after stack the time axis is the first one and others are stacked as second axis
         stacked = self.data.stack({"all": self.dims_not_time})
         processed = np.apply_along_axis(func, axis=0, arr=stacked.values)
         # if same shape
@@ -533,7 +576,7 @@ class Signal:
                 .unstack("all")
                 .transpose(*self.dims_not_time + ["time"])
             )
-            add_steps = [f"apply {func.__name__} function over time dim"]
+            add_steps = [f"apply `{func.__name__}` function over time dim"]
             if inplace:
                 self.data = processed
                 self.process_steps += add_steps
