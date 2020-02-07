@@ -312,9 +312,10 @@ class Evolution:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
 
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
+
+        self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
         # Only the best indviduals are selected for the population the others do not survive
         self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
-        self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
         self._initialPopulationSimulated = True
 
     def runEvolution(self):
