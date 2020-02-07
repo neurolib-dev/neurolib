@@ -4,17 +4,16 @@ Base classes for representing signals.
 
 import logging
 from copy import deepcopy
+from functools import partial
 
 import numpy as np
 import xarray as xr
-from mne import set_log_level
-from mne.filter import filter_data, resample
 from neurolib.models.model import Model
-from scipy.signal import detrend, get_window, hilbert
+from scipy.signal import butter, detrend, get_window, hilbert
+from scipy.signal import resample as scipy_resample
+from scipy.signal import sosfiltfilt
 
 NC_EXT = ".nc"
-MNE_LOGGING_LEVEL = "WARNING"
-set_log_level(MNE_LOGGING_LEVEL)
 
 
 class Signal:
@@ -410,9 +409,24 @@ class Signal:
         :type inplace: bool
         """
         to_frequency = float(to_frequency)
-        resampled = resample(
-            self.data.values, up=to_frequency, down=self.sampling_frequency, npad="auto", axis=-1, pad="edge",
-        )
+        try:
+            from mne.filter import resample
+
+            resample_func = partial(
+                resample, up=to_frequency, down=self.sampling_frequency, npad="auto", axis=-1, pad="edge"
+            )
+        except ImportError:
+            logging.warning("`mne` module not found, falling back to basic scipy's function")
+
+            def resample_func(x):
+                return scipy_resample(
+                    x,
+                    num=int(round((to_frequency / self.sampling_frequency) * self.data.shape[-1])),
+                    axis=-1,
+                    window="boxcar",
+                )
+
+        resampled = resample_func(self.data.values)
         # construct new times
         new_times = (np.arange(resampled.shape[-1], dtype=np.float) / to_frequency) + self.data.time.values[0]
         # to dataframe
@@ -511,6 +525,40 @@ class Signal:
             `fir_window`="hamming",
             `fir_design`="firwin"
         """
+        try:
+            from mne.filter import filter_data
+
+        except ImportError:
+            logging.warning("`mne` module not found, falling back to basic scipy's function")
+
+            def filter_data(x, sfreq, l_freq, h_freq, l_trans_bandwidth=None, h_trans_bandwidth=None, **kwargs):
+                """
+                Custom, scipy based filtering function with basic butterworth filter.
+                """
+                nyq = 0.5 * sfreq
+                if l_freq is not None:
+                    low = l_freq / nyq
+                    if h_freq is not None:
+                        # so we have band filter
+                        high = high_freq / nyq
+                        if l_freq < h_freq:
+                            btype = "bandpass"
+                        elif l_freq > h_freq:
+                            btype = "bandstop"
+                        Wn = [low, high]
+                    elif h_freq is None:
+                        # so we have a high-pass filter
+                        Wn = low
+                        btype = "highpass"
+                elif l_freq is None:
+                    # we have a low-pass
+                    high = high_freq / nyq
+                    Wn = high
+                    btype = "lowpass"
+                # get butter coeffs
+                sos = butter(N=kwargs.pop("order", 8), Wn=Wn, btype=btype, output="sos")
+                return sosfiltfilt(sos, x, axis=-1)
+
         filtered = filter_data(
             self.data.values,  # times has to be the last axis
             sfreq=self.sampling_frequency,
