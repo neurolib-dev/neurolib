@@ -22,13 +22,11 @@ class Model:
     """The Model superclass manages inputs and outputs of all models.
     """
 
-    # working
-    defaultOutput = None
-    outputs = dotdict({})
-
     def __init__(self, name, description=None):
         assert isinstance(name, str), f"Model name is not a string."
         self.name = name
+        self.defaultOutput = None
+        self.outputs = dotdict({})
         logging.info(f"Model {name} created")
 
     def setOutput(self, name, data):
@@ -88,7 +86,8 @@ class Model:
     def getOutputs(self, group=""):
         """Get all outputs of an output group. Examples: getOutputs("BOLD") or simply getOutputs()
 
-        :param group: Group name, subgroups separated by dots. If left empty (default), all outputs of the root group are returned.
+        :param group: Group name, subgroups separated by dots. If left empty (default), all outputs of the root group
+            are returned.
         :type group: str
         """
         assert isinstance(group, str), "Group name must be a string."
@@ -128,11 +127,11 @@ class Model:
     def getDefaultOutput(self):
         """Returns value of default output.
         """
-        assert not self.defaultOutput == None, "Default output has not been set yet. Use setDefaultOutput() to set it."
+        assert self.defaultOutput is not None, "Default output has not been set yet. Use setDefaultOutput() to set it."
         return self.getOutput(self.defaultOutput)
 
     def xr(self, group=""):
-        """Converts a group of outputs to xarray. Output group needs to contain an 
+        """Converts a group of outputs to xarray. Output group needs to contain an
         element called "t" or it will not recognize any time axis.
 
         :param group: Output group name, example:  "BOLD". Leave blank for top group.
