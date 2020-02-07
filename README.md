@@ -142,7 +142,7 @@ Whenever you work with a model, it is of great importance to know what kind of d
 aln = ALNModel()
 # define the parameter space to explore
 parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 21),  # input to E
-							 "mui_ext_mean": np.linspace(0, 3, 21)}) # input to I
+		"mui_ext_mean": np.linspace(0, 3, 21)}) # input to I
 
 # define exploration              
 search = BoxSearch(aln, parameters)
