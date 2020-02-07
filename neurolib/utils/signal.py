@@ -537,6 +537,9 @@ class Signal:
             take 2D array as space x time and convert it to space x space with
             desired measure
         """
+        if len(self.data["space"]) <= 1:
+            logging.error("Cannot compute functional connectivity from one timeseries.")
+            return None
         if self.data.ndim == 3:
             assert callable(fc_function)
             fcs = []
@@ -565,32 +568,18 @@ class Signal:
         :type inplace: bool
         """
         assert callable(func)
-        # after stack the time axis is the first one and others are stacked as second axis
-        stacked = self.data.stack({"all": self.dims_not_time})
-        processed = np.apply_along_axis(func, axis=0, arr=stacked.values)
-        # if same shape
-        if stacked.shape == processed.shape:
-            # cast back to original shape
-            processed = (
-                xr.DataArray(processed, dims=stacked.dims, coords=stacked.coords)
-                .unstack("all")
-                .transpose(*self.dims_not_time + ["time"])
-            )
+        try:
+            # this will work for element-wise function that does not reduces dimensions
+            processed = xr.apply_ufunc(func, self.data, input_core_dims=[["time"]], output_core_dims=[["time"]])
             add_steps = [f"apply `{func.__name__}` function over time dim"]
             if inplace:
                 self.data = processed
                 self.process_steps += add_steps
             else:
                 return self.__constructor__(processed).__finalize__(self, add_steps)
-        # different shape
-        else:
-            processed = (
-                xr.DataArray(processed, dims=["all"], coords=stacked.coords["all"].coords)  # cast to DataArray
-                .unstack("all")  # unstack
-                .transpose(*self.dims_not_time)  # transpose to original shape
-                .expand_dims("time", axis=-1)  # add dummy time dim
-                .assign_coords(time=[func.__name__])  # add coordinate name for dummy time dimension
-            )
+        except ValueError:
+            # this works for functions that reduce time dimension
+            processed = xr.apply_ufunc(func, self.data, input_core_dims=[["time"]])
             logging.warning(
                 f"Shape changed after operation! Old shape: {self.shape}, new "
                 f"shape: {processed.shape}; Cannot cast to Signal class, "

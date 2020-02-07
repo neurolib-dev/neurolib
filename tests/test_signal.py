@@ -2,12 +2,15 @@
 Set of tests for `Signal` class.
 """
 
+import logging
 import os
 import unittest
 from shutil import rmtree
 
 import numpy as np
+import xarray as xr
 from neurolib.models.aln import ALNModel
+from neurolib.utils.loadData import Dataset
 from neurolib.utils.signal import RatesSignal
 
 
@@ -44,7 +47,17 @@ class TestSignal(unittest.TestCase):
         loaded = RatesSignal.from_file(filename)
         # compare they are equal
         self.assertEqual(self.signal, loaded)
-        # self.assertTrue(False)
+
+    def test_iterate(self):
+        for name, it in self.signal.iterate(return_as="signal"):
+            self.assertTrue(isinstance(it, RatesSignal))
+            # test it is one-dim with only time axis
+            self.assertTupleEqual(it.shape, (self.signal.shape[-1],))
+
+        for name, it in self.signal.iterate(return_as="xr"):
+            self.assertTrue(isinstance(it, xr.DataArray))
+            # test it is one-dim with only time axis
+            self.assertTupleEqual(it.shape, (self.signal.shape[-1],))
 
     def test_sel(self):
         selected = self.signal.sel([5.43, 7.987], inplace=False)
@@ -133,32 +146,90 @@ class TestSignal(unittest.TestCase):
         self.assertEqual(resampled.sampling_frequency, resample_to)
         self.assertEqual(resampled.dt, 1.0 / resample_to)
 
-    # def test_hilbert_transform(self):
-    #     for hilbert_type in ["amplitude", "phase_unwrapped", "phase_wrapped"]:
-    #         filtered = self.signal.filter(low_freq=16, high_freq=24, inplace=False)
-    #         hilbert = filtered.hilbert_transform(return_as=hilbert_type, inplace=False)
-    #         correct_result = Signal.from_file(os.path.join(self.TEST_FOLDER, f"hilbert_{hilbert_type}_test_result.csv"))
-    #         self.assertEqual(correct_result, hilbert)
+    def test_hilbert_transform(self):
+        for hilbert_type in ["amplitude", "phase_unwrapped", "phase_wrapped"]:
+            hilbert = self.signal.filter(low_freq=16, high_freq=24, inplace=False)
+            # just check whether it runs
+            self.assertTrue(isinstance(hilbert, RatesSignal))
+            self.assertTupleEqual(hilbert.shape, self.signal.shape)
 
-    # def test_detrend(self):
-    #     detrended = self.signal.detrend(segments=[5000, 10000, 15000], inplace=False)
-    #     correct_result = Signal.from_file(os.path.join(self.TEST_FOLDER, "detrend_test_result.csv"))
-    #     self.assertEqual(correct_result, detrended)
+    def test_detrend(self):
+        detrended = self.signal.detrend(segments=[5000, 10000, 15000], inplace=False)
+        # just check whether it runs
+        self.assertTrue(isinstance(detrended, RatesSignal))
+        self.assertTupleEqual(detrended.shape, self.signal.shape)
 
-    # def test_filter(self):
-    #     # test more filtering combinations
-    #     filter_specs = [
-    #         {"low_freq": None, "high_freq": 25},  # low-pass filter
-    #         {"low_freq": 10, "high_freq": None},  # high-pass filter
-    #         {"low_freq": 16, "high_freq": 24},  # band-pass
-    #         {"low_freq": 19, "high_freq": 21},  # band-stop
-    #     ]
-    #     for filter_spec in filter_specs:
-    #         filtered = self.signal.filter(**filter_spec, inplace=False)
-    #         correct_result = Signal.from_file(
-    #             os.path.join(
-    #                 self.TEST_FOLDER,
-    #                 f"filter_{filter_spec['low_freq']}-" f"{filter_spec['high_freq']}_test_result.csv",
-    #             )
-    #         )
-    #         self.assertEqual(correct_result, filtered)
+    def test_filter(self):
+        # test more filtering combinations
+        filter_specs = [
+            {"low_freq": None, "high_freq": 25},  # low-pass filter
+            {"low_freq": 10, "high_freq": None},  # high-pass filter
+            {"low_freq": 16, "high_freq": 24},  # band-pass
+            {"low_freq": 19, "high_freq": 21},  # band-stop
+        ]
+        for filter_spec in filter_specs:
+            filtered = self.signal.filter(**filter_spec, inplace=False)
+            # just check whether it runs
+            self.assertTrue(isinstance(filtered, RatesSignal))
+            self.assertTupleEqual(filtered.shape, self.signal.shape)
+
+    def test_apply(self):
+        # test function which does not change shape
+        def do_operation(x):
+            return np.abs(x - 4.0) / 8.0
+
+        operation = self.signal.apply(func=do_operation, inplace=False)
+        self.assertTrue(isinstance(operation, RatesSignal))
+        xr.testing.assert_equal(
+            operation.data,
+            xr.apply_ufunc(do_operation, self.signal.data, input_core_dims=[["time"]], output_core_dims=[["time"]]),
+        )
+
+        def do_operation(x):
+            return np.mean(x, axis=-1) - 8.0 + 19.0
+
+        # assert log warning was issued
+        root_logger = logging.getLogger()
+        with self.assertLogs(root_logger, level="WARNING") as cm:
+            operation = self.signal.apply(func=do_operation)
+            self.assertEqual(
+                cm.output,
+                [
+                    "WARNING:root:Shape changed after operation! Old shape: "
+                    f"{self.signal.shape}, new shape: {operation.shape}; "
+                    "Cannot cast to Signal class, returing as `xr.DataArray`"
+                ],
+            )
+        self.assertTrue(isinstance(operation, xr.DataArray))
+        xr.testing.assert_equal(
+            operation, xr.apply_ufunc(do_operation, self.signal.data, input_core_dims=[["time"]]),
+        )
+
+    def test_functional_connectivity(self):
+        # assert log warning was issued
+        root_logger = logging.getLogger()
+        with self.assertLogs(root_logger, level="ERROR") as cm:
+            fcs = self.signal.functional_connectivity()
+            self.assertEqual(
+                cm.output, ["ERROR:root:Cannot compute functional connectivity from one timeseries."],
+            )
+        # should be None when computing on one timeseries
+        self.assertEqual(None, fcs)
+
+        # now proper example with network - 3D case
+        ds = Dataset("gw")
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+        # in ms, simulates for 2 minutes
+        aln.params["duration"] = 2 * 1000
+        aln.run()
+        network_sig = RatesSignal.from_model_result(aln)
+        fcs = network_sig.functional_connectivity()
+        self.assertTrue(isinstance(fcs, xr.DataArray))
+        correct_shape = (network_sig.shape[0], network_sig.shape[1], network_sig.shape[1])
+        self.assertTupleEqual(fcs.shape, correct_shape)
+
+        # 2D case
+        fc = network_sig["rates_exc"].functional_connectivity()
+        self.assertTrue(isinstance(fc, xr.DataArray))
+        correct_shape = (network_sig.shape[1], network_sig.shape[1])
+        self.assertTupleEqual(fc.shape, correct_shape)
