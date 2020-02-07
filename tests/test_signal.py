@@ -27,7 +27,7 @@ class TestSignal(unittest.TestCase):
         aln.params["sigma_ou"] = 0.1  # add some noise
         aln.run()
         # init RatesSignal
-        cls.signal = RatesSignal(data=aln.xr(), time_in_ms=True)
+        cls.signal = RatesSignal.from_model_result(aln)
         os.makedirs(cls.TEST_FOLDER)
 
     @classmethod
