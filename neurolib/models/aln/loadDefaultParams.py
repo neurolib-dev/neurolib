@@ -88,7 +88,7 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
     params.ext_inh_rate = 0.0  # kHz external inhibiroty rate drive
 
     # externaln input currents, same as mue_ext_mean but can be time-dependent!
-    params.ext_exc_current = 0.0  # external excitatory input current [mV/ms]
+    params.ext_exc_current = 0.0  # external excitatory input current [mV/ms], C*[]V/s=[]nA
     params.ext_inh_current = 0.0  # external inhibiroty input current [mV/ms]
 
     # Fokker Planck noise (for N->inf)
@@ -142,7 +142,21 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
     # ------------------------------------------------------------------------
 
     # Generate and set random initial conditions
-    (mufe_init, IA_init, mufi_init, seem_init, seim_init, seev_init, seiv_init, siim_init, siem_init, siiv_init, siev_init, rates_exc_init, rates_inh_init,) = generateRandomICs(params.N, seed)
+    (
+        mufe_init,
+        IA_init,
+        mufi_init,
+        seem_init,
+        seim_init,
+        seev_init,
+        seiv_init,
+        siim_init,
+        siem_init,
+        siiv_init,
+        siev_init,
+        rates_exc_init,
+        rates_inh_init,
+    ) = generateRandomICs(params.N, seed)
 
     params.mufe_init = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
     params.IA_init = IA_init  # adaptation current
@@ -244,7 +258,21 @@ def generateRandomICs(N, seed=None):
 
 def loadICs(params, N, seed=None):
     # Generate and set random initial conditions
-    (mufe_init, IA_init, mufi_init, seem_init, seim_init, seev_init, seiv_init, siim_init, siem_init, siiv_init, siev_init, rates_exc_init, rates_inh_init,) = generateRandomICs(N, seed)
+    (
+        mufe_init,
+        IA_init,
+        mufi_init,
+        seem_init,
+        seim_init,
+        seev_init,
+        seiv_init,
+        siim_init,
+        siem_init,
+        siiv_init,
+        siev_init,
+        rates_exc_init,
+        rates_inh_init,
+    ) = generateRandomICs(N, seed)
 
     params["mufe_init"] = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
     params["IA_init"] = IA_init  # adaptation current

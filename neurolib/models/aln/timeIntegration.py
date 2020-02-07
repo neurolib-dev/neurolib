@@ -11,7 +11,7 @@ def timeIntegration(params):
     Return:
       rates_exc:  N*L array   : containing the exc. neuron rates in kHz time series of the N nodes
       rates_inh:  N*L array   : containing the inh. neuron rates in kHz time series of the N nodes
-      t:          L array     : the time value at which the time series are evaluated
+      t:          L array     : time in ms
       mufe:       N vector    : final value of mufe for each node
       mufi:       N vector    : final value of mufi for each node
       IA:         N vector    : final value of IA   for each node
