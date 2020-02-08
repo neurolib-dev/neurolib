@@ -71,11 +71,19 @@ def checkParamValidity(individual, paramInterval):
 # Rank selection
 def selRank(pop, k, s=1.5):
     """
-    Select k individual from a population using the Rank selection
-    The individual are selected according to the fitness rank
-    In case of multiobjective fitness function, the weighted sum of fitness objective will be used.
+    Select k individuals from a population using rank selection. (Eiben&Smith, p.81)
+    Individuals are selected according to the fitness rank.
+    To support multiobjective fitness functions, the weighted sum of fitness is used.
 
-        n the rank selection, individual are selected with a probability depending on their rank.
+    :param pop: population
+    :type pop: list
+    :param k: number of individuals to select
+    :type k: int
+    :param s: selection probability parameter
+    :type s: float
+
+    :return: population of selected individuals
+    :rtype: list
     """
     # Sort individual according to their rank, the first indiv in the list is the one with the best fitness
     s_inds = sorted(pop, key=lambda iv: np.nansum(iv.fitness.wvalues), reverse=True)
@@ -98,6 +106,30 @@ def selRank(pop, k, s=1.5):
                 chosen.append(ind)
                 break
     return chosen
+
+
+# # Wheel selection
+# # This code is not compatible with multiobjective fitness functions! Use np.nansum(iv.fitness.wvalues) instead!
+# def selWheel(individuals,k):
+#     '''
+#     Select k individual from a population using the Roulette selection
+#     Since we are trying to minimize the distance, we use the inverse fitness function as a probability
+
+#     This code is inspired from DEAP.toolbox.selRoulette
+#     '''
+#     s_inds = sorted(individuals, key=attrgetter("fitness"), reverse=True)
+#     sum_invfits = sum(1/ind.fitness.values[0] for ind in individuals)
+
+#     chosen = []
+#     for i in range(k):
+#         u = random.random() * sum_invfits
+#         sum_ = 0
+#         for ind in s_inds:
+#             sum_ += 1 / ind.fitness.values[0]
+#             if sum_ > u:
+#                 chosen.append(ind)
+#                 break
+#     return chosen
 
 
 # Select best
@@ -170,10 +202,10 @@ def selBest_multiObj(pop, k):
 def cxUniform_normDraw_adapt(ind1, ind2, indpb):
     """Executes a uniform crossover that modify in place the two
     :term:`sequence` individuals.
-    The attributes of the 2 individuals are set according to a normal distribution whose mean is
-    the mean between both individual attributes and the standard deviation the distance between the 2 attributes.
-    The individuals are composed of the gene values first and then the mutation rates.
-
+    The new attributes of the two individuals are set according to a normal distribution whose mean is
+    the mean between both individual's attributes and the standard deviation being the distance between the two attributes.
+    
+    Info: The individuals are composed of the gene values first and then the mutation rates.
     Warning: a check should be done afterward on the parameter to be sure they are not out of bound.
 
     :param ind1: The first individual participating in the crossover.
@@ -223,6 +255,8 @@ def adaptiveMutation_nStepSize(mutant, gamma_gl=None, gammas=None):
 
     if gammas is None:
         gammas = [1 / np.sqrt(2 * np.sqrt(nParams))] * nParams
+
+    randn_global = np.random.randn()
 
     newSigmas = [
         oldSigmas[i] * np.exp(gammas[i] * np.random.randn() + gamma_gl * np.random.randn()) for i in range(nParams)
