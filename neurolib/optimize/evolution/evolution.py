@@ -311,7 +311,11 @@ class Evolution:
         if self.verbose:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
 
-        self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
+        # save all simulation data to pypet
+        try:
+            self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
+        except:
+            logging.warn("Error: Write to pypet failed!")
 
         self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
         # Only the best indviduals are selected for the population the others do not survive
