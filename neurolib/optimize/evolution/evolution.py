@@ -36,6 +36,7 @@ class Evolution:
         POP_SIZE=20,
         NGEN=10,
         CXPB=0.04,
+        matingFunction=None,
     ):
         """
         :param model: Model to run
@@ -114,8 +115,17 @@ class Evolution:
 
         self.toolbox = deap.base.Toolbox()
 
+        if matingFunction is None:
+            matingFunction = du.cxUniform_adapt
+        self.matingFunction = matingFunction
+
         self.initDEAP(
-            self.toolbox, self.env, self.paramInterval, self.evalFunction, weights_list=self.weightList,
+            self.toolbox,
+            self.env,
+            self.paramInterval,
+            self.evalFunction,
+            weights_list=self.weightList,
+            matingFunction=self.matingFunction,
         )
 
         # comment string for storing info
@@ -189,7 +199,7 @@ class Evolution:
             "individual", [0 for x in range(traj.ind_len)], "An indivudal of the population",
         )
 
-    def initDEAP(self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list):
+    def initDEAP(self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingFunction):
         """Initializes DEAP and registers all methods to the deap.toolbox
         """
         # ------------- register everything in deap
@@ -211,7 +221,8 @@ class Evolution:
         toolbox.register("selBest", du.selBest_multiObj)
         toolbox.register("selRank", du.selRank)
         toolbox.register("evaluate", evalFunction)
-        toolbox.register("mate", du.cxUniform_adapt)
+        toolbox.register("mate", matingFunction)
+        logging.info(f"Evolution: Registered {matingFunction} as mating function.")
         toolbox.register("mutate", du.gaussianAdaptiveMutation_nStepSizes)
         toolbox.register("map", pypetEnvironment.run)
         toolbox.register("run_map", pypetEnvironment.run_map)
