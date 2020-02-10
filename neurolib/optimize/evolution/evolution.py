@@ -132,7 +132,6 @@ class Evolution:
         # initialize population
         self.evaluationCounter = 0
         self.last_id = 0
-        self.pop = self.toolbox.population(n=self.POP_INIT_SIZE)
 
     def getIndividualFromTraj(self, traj):
         """Get individual from pypet trajectory
@@ -213,9 +212,14 @@ class Evolution:
         toolbox.register("selRank", du.selRank)
         toolbox.register("evaluate", evalFunction)
         toolbox.register("mate", du.cxUniform_normDraw_adapt)
-        toolbox.register("mutate", du.adaptiveMutation_nStepSize)
+        toolbox.register("mutate", du.gaussianAdaptiveMutation_nStepSizes)
         toolbox.register("map", pypetEnvironment.run)
         toolbox.register("run_map", pypetEnvironment.run_map)
+
+        # recording the history
+        # self.history = tools.History()
+        # toolbox.decorate("mate", self.history.decorator)
+        # toolbox.decorate("mutate", self.history.decorator)
 
     def evalPopulationUsingPypet(self, traj, toolbox, pop, gIdx):
         """
@@ -300,6 +304,11 @@ class Evolution:
     def runInitial(self):
         """First round of evolution: 
         """
+        self._t_start_initial_population = datetime.datetime.now()
+
+        # Create the initial population
+        self.pop = self.toolbox.population(n=self.POP_INIT_SIZE)
+
         ### Evaluate the initial population
         logging.info("Evaluating initial population of size %i ..." % len(self.pop))
         self.gIdx = 0  # set generation index
@@ -317,20 +326,22 @@ class Evolution:
         except:
             logging.warn("Error: Write to pypet failed!")
 
-        self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
         # Only the best indviduals are selected for the population the others do not survive
         self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
         self._initialPopulationSimulated = True
 
+        # populate history for tracking
+        self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
+
+        self._t_end_initial_population = datetime.datetime.now()
+
     def runEvolution(self):
         # Start evolution
         logging.info("Start of evolution")
+        self._t_start_evolution = datetime.datetime.now()
         for self.gIdx in range(self.gIdx + 1, self.gIdx + self.traj.NGEN):
             # ------- Weed out the invalid individuals and replace them by random new indivuals -------- #
             validpop = self.getValidPopulation(self.pop)
-
-            # add all valid individuals to the population history
-            self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
 
             # replace invalid individuals
             nanpop = self.getInvalidPopulation(self.pop)
@@ -343,6 +354,10 @@ class Evolution:
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
             offspring = list(map(self.toolbox.clone, self.toolbox.selRank(self.pop, self.POP_SIZE)))
+            # n_offspring = min(len(validpop), self.POP_SIZE)
+            # if n_offspring % 2 != 0:
+            #     n_offspring -= 1
+            # offspring = list(map(self.toolbox.clone, self.toolbox.selRank(validpop, n_offspring)))
 
             ##### cross-over ####
             for i in range(1, len(offspring), 2):
@@ -370,34 +385,41 @@ class Evolution:
             # select next population
             self.pop = self.toolbox.selBest(validpop + offspring + newpop, k=self.traj.popsize)
 
-            self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
+            # ------- END OF ROUND -------
 
-            # verbose
-            if self.verbose:
-                # text log
-                logging.info("----------- Generation %i -----------" % self.gIdx)
-                logging.info("Best individual is {}".format(self.best_ind))
-                logging.info("Score: {}".format(self.best_ind.fitness.score))
-                logging.info("Fitness: {}".format(self.best_ind.fitness.values))
-                logging.info("--- Population statistics ---")
-                eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-                # plotting
-                eu.plotPopulation(
-                    self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName
-                )
-
+            # add all valid individuals to the population history
+            self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
+            # self.history.update(self.getValidPopulation(self.pop))
             # save all simulation data to pypet
             try:
                 self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
             except:
                 logging.warn("Error: Write to pypet failed!")
 
+            # select best individual for logging
+            self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
+
+            # text log
+            logging.info("----------- Generation %i -----------" % self.gIdx)
+            logging.info("Best individual is {}".format(self.best_ind))
+            logging.info("Score: {}".format(self.best_ind.fitness.score))
+            logging.info("Fitness: {}".format(self.best_ind.fitness.values))
+            logging.info("--- Population statistics ---")
+
+            # plotting
+            if self.verbose:
+                eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
+                # plotting
+                eu.plotPopulation(
+                    self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName
+                )
+
         logging.info("--- End of evolution ---")
-        self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
         logging.info("Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values))
         logging.info("--- End of evolution ---")
 
         self.traj.f_store()  # We switched off automatic storing, so we need to store manually
+        self._t_end_evolution = datetime.datetime.now()
 
     def run(self, verbose=False):
         """Run full evolution (or continue previous evolution)
