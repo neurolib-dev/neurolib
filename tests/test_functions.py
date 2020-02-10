@@ -41,6 +41,9 @@ class TestFunctions(unittest.TestCase):
         FC = func.fc(self.model.BOLD.BOLD)
         cc = func.matrix_correlation(FC, self.ds.FCs[0])
 
+    def test_kolmogorov(self):
+        func.kolmogorov(self.model.rates_exc, self.model.rates_exc, stepsize=100, windowsize=30)
+
     def test_print_params(self):
         func.print_params(self.model.params)
 
