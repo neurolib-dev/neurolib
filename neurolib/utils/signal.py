@@ -16,6 +16,50 @@ from scipy.signal import sosfiltfilt
 NC_EXT = ".nc"
 
 
+def scipy_iir_filter_data(x, sfreq, l_freq, h_freq, l_trans_bandwidth=None, h_trans_bandwidth=None, **kwargs):
+    """
+    Custom, scipy based filtering function with basic butterworth filter.
+
+    :param x: data to be filtered, time is the last axis
+    :type x: np.ndarray
+    :param sfreq: sampling frequency of the data in Hz
+    :type sfreq: float
+    :param l_freq: frequency below which to filter the data in Hz
+    :type l_freq: float|None
+    :param h_freq: frequency above which to filter the data in Hz
+    :type h_freq: float|None
+    :param l_trans_bandwidth: keeping for compatibility with mne
+    :type l_trans_bandwidth: None
+    :param h_trans_bandwidth: keeping for compatibility with mne
+    :type h_trans_bandwidth: None
+    :return: filtered data
+    :rtype: np.ndarray
+    """
+    nyq = 0.5 * sfreq
+    if l_freq is not None:
+        low = l_freq / nyq
+        if h_freq is not None:
+            # so we have band filter
+            high = h_freq / nyq
+            if l_freq < h_freq:
+                btype = "bandpass"
+            elif l_freq > h_freq:
+                btype = "bandstop"
+            Wn = [low, high]
+        elif h_freq is None:
+            # so we have a high-pass filter
+            Wn = low
+            btype = "highpass"
+    elif l_freq is None:
+        # we have a low-pass
+        high = h_freq / nyq
+        Wn = high
+        btype = "lowpass"
+    # get butter coeffs
+    sos = butter(N=kwargs.pop("order", 8), Wn=Wn, btype=btype, output="sos")
+    return sosfiltfilt(sos, x, axis=-1)
+
+
 class Signal:
     name = ""
     label = ""
@@ -530,34 +574,7 @@ class Signal:
 
         except ImportError:
             logging.warning("`mne` module not found, falling back to basic scipy's function")
-
-            def filter_data(x, sfreq, l_freq, h_freq, l_trans_bandwidth=None, h_trans_bandwidth=None, **kwargs):
-                """
-                Custom, scipy based filtering function with basic butterworth filter.
-                """
-                nyq = 0.5 * sfreq
-                if l_freq is not None:
-                    low = l_freq / nyq
-                    if h_freq is not None:
-                        # so we have band filter
-                        high = high_freq / nyq
-                        if l_freq < h_freq:
-                            btype = "bandpass"
-                        elif l_freq > h_freq:
-                            btype = "bandstop"
-                        Wn = [low, high]
-                    elif h_freq is None:
-                        # so we have a high-pass filter
-                        Wn = low
-                        btype = "highpass"
-                elif l_freq is None:
-                    # we have a low-pass
-                    high = high_freq / nyq
-                    Wn = high
-                    btype = "lowpass"
-                # get butter coeffs
-                sos = butter(N=kwargs.pop("order", 8), Wn=Wn, btype=btype, output="sos")
-                return sosfiltfilt(sos, x, axis=-1)
+            filter_data = scipy_iir_filter_data
 
         filtered = filter_data(
             self.data.values,  # times has to be the last axis
