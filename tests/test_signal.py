@@ -5,6 +5,7 @@ Set of tests for `Signal` class.
 import logging
 import os
 import unittest
+from copy import deepcopy
 from shutil import rmtree
 
 import numpy as np
@@ -42,6 +43,13 @@ class TestSignal(unittest.TestCase):
         filename = os.path.join(self.TEST_FOLDER, "temp")
         # do operation so we also test saving and loading of preprocessing steps
         self.signal.normalize(std=True)
+        # test basic properties
+        repr(self.signal)
+        str(self.signal)
+        self.signal.start_time
+        self.signal.end_time
+        self.signal.preprocessing_steps
+        # now save
         self.signal.save(filename)
         # load
         loaded = RatesSignal.from_file(filename)
@@ -64,12 +72,20 @@ class TestSignal(unittest.TestCase):
         # test correct indices
         self.assertEqual(selected.data.time.values[0], 5.43)
         self.assertEqual(selected.data.time.values[-1], 7.987)
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.sel([5.43, 7.987], inplace=True)
+        self.assertEqual(sig, selected)
 
     def test_isel(self):
         selected = self.signal.isel([12143, 16424], inplace=False)
         # test correct indices
         self.assertEqual(selected.data.time.values[0], 12143 / self.signal.sampling_frequency)
         self.assertEqual(selected.data.time.values[-1], (16424 - 1) / self.signal.sampling_frequency)
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.isel([12143, 16424], inplace=True)
+        self.assertEqual(sig, selected)
 
     def test_sliding_window(self):
         # 2seconds window with step 0.5 second
@@ -94,29 +110,46 @@ class TestSignal(unittest.TestCase):
         # pad both sides with 2.3 constant value for 2 seconds
         pad_seconds = 2.0
         const_value = 2.3
-        correct_shape = tuple(
-            list(self.signal.shape[:-1]) + [self.signal.shape[-1] + 2 * pad_seconds * self.signal.sampling_frequency]
-        )
-        padded = self.signal.pad(
-            pad_seconds,
-            in_seconds=True,
-            padding_type="constant",
-            side="both",
-            constant_values=const_value,
-            inplace=False,
-        )
-        # assert correct shape
-        self.assertEqual(padded.shape, correct_shape)
-        # assert correct indices - they should increase monotically without
-        # sudden jump, i.e. all timestep differences should be equal to dt
-        np.testing.assert_allclose(np.diff(padded.data.time.values), padded.dt)
-        # assert we actually did input `const_value`
-        np.testing.assert_allclose(
-            padded.isel([0, int(2 * padded.sampling_frequency)], inplace=False).data, const_value,
-        )
-        np.testing.assert_allclose(
-            padded.isel([-int(2 * padded.sampling_frequency), None], inplace=False).data, const_value,
-        )
+
+        for side in ["before", "after", "both"]:
+            padded = self.signal.pad(
+                pad_seconds,
+                in_seconds=True,
+                padding_type="constant",
+                side=side,
+                constant_values=const_value,
+                inplace=False,
+            )
+            padded_multiplier = 2 if side == "both" else 1
+            correct_shape = tuple(
+                list(self.signal.shape[:-1])
+                + [self.signal.shape[-1] + padded_multiplier * pad_seconds * self.signal.sampling_frequency]
+            )
+            # assert correct shape
+            self.assertEqual(padded.shape, correct_shape)
+            # assert correct indices - they should increase monotically without
+            # sudden jump, i.e. all timestep differences should be equal to dt
+            np.testing.assert_allclose(np.diff(padded.data.time.values), padded.dt)
+            # assert we actually did input `const_value`
+            if side in ["before", "both"]:
+                np.testing.assert_allclose(
+                    padded.isel([0, int(2 * padded.sampling_frequency)], inplace=False).data, const_value,
+                )
+            if side in ["after", "both"]:
+                np.testing.assert_allclose(
+                    padded.isel([-int(2 * padded.sampling_frequency), None], inplace=False).data, const_value,
+                )
+            # test inplace
+            sig = deepcopy(self.signal)
+            sig.pad(
+                pad_seconds,
+                in_seconds=True,
+                padding_type="constant",
+                side=side,
+                constant_values=const_value,
+                inplace=True,
+            )
+            self.assertEqual(sig, padded)
 
     def test_normalize(self):
         normalized = self.signal.normalize(std=True, inplace=False)
@@ -134,6 +167,10 @@ class TestSignal(unittest.TestCase):
         self.assertTupleEqual(resampled.shape, correct_shape)
         self.assertEqual(resampled.sampling_frequency, resample_to)
         self.assertEqual(resampled.dt, 1.0 / resample_to)
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.resample(to_frequency=resample_to, inplace=True)
+        self.assertEqual(sig, resampled)
 
     def test_upsample(self):
         # upsample to 20000Hz
@@ -145,19 +182,32 @@ class TestSignal(unittest.TestCase):
         self.assertTupleEqual(resampled.shape, correct_shape)
         self.assertEqual(resampled.sampling_frequency, resample_to)
         self.assertEqual(resampled.dt, 1.0 / resample_to)
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.resample(to_frequency=resample_to, inplace=True)
+        self.assertEqual(sig, resampled)
 
     def test_hilbert_transform(self):
-        for hilbert_type in ["amplitude", "phase_unwrapped", "phase_wrapped"]:
+        for hilbert_type in ["complex", "amplitude", "phase_unwrapped", "phase_wrapped"]:
             hilbert = self.signal.filter(low_freq=16, high_freq=24, inplace=False)
+            hil = hilbert.hilbert_transform(return_as=hilbert_type, inplace=False)
             # just check whether it runs
-            self.assertTrue(isinstance(hilbert, RatesSignal))
-            self.assertTupleEqual(hilbert.shape, self.signal.shape)
+            self.assertTrue(isinstance(hil, RatesSignal))
+            self.assertTupleEqual(hil.shape, self.signal.shape)
+            # test inplace
+            sig = deepcopy(hilbert)
+            sig.hilbert_transform(return_as=hilbert_type, inplace=True)
+            self.assertEqual(sig, hil)
 
     def test_detrend(self):
         detrended = self.signal.detrend(segments=[5000, 10000, 15000], inplace=False)
         # just check whether it runs
         self.assertTrue(isinstance(detrended, RatesSignal))
         self.assertTupleEqual(detrended.shape, self.signal.shape)
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.detrend(segments=[5000, 10000, 15000], inplace=True)
+        self.assertEqual(sig, detrended)
 
     def test_filter(self):
         # test more filtering combinations
@@ -172,6 +222,10 @@ class TestSignal(unittest.TestCase):
             # just check whether it runs
             self.assertTrue(isinstance(filtered, RatesSignal))
             self.assertTupleEqual(filtered.shape, self.signal.shape)
+            # test inplace
+            sig = deepcopy(self.signal)
+            sig.filter(**filter_spec, inplace=True)
+            self.assertEqual(sig, filtered)
 
     def test_apply(self):
         # test function which does not change shape
@@ -184,6 +238,10 @@ class TestSignal(unittest.TestCase):
             operation.data,
             xr.apply_ufunc(do_operation, self.signal.data, input_core_dims=[["time"]], output_core_dims=[["time"]]),
         )
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.apply(func=do_operation, inplace=True)
+        self.assertEqual(sig, operation)
 
         def do_operation(x):
             return np.mean(x, axis=-1) - 8.0 + 19.0

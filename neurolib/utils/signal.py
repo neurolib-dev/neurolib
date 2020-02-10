@@ -116,7 +116,7 @@ class Signal:
         assert isinstance(other, Signal)
         # assert data are the same
         try:
-            xr.testing.assert_equal(self.data, other.data)
+            xr.testing.assert_allclose(self.data, other.data)
             eq = True
         except AssertionError:
             eq = False
@@ -308,14 +308,14 @@ class Signal:
         """
         Return starting time of the signal.
         """
-        return self.data.time[0].values
+        return self.data.time.values[0]
 
     @property
     def end_time(self):
         """
         Return ending time of the signal.
         """
-        return self.data.time[-1].values
+        return self.data.time.values[-1]
 
     @property
     def preprocessing_steps(self):
