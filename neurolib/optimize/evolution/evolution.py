@@ -211,10 +211,10 @@ class Evolution:
         toolbox.register("selBest", du.selBest_multiObj)
         toolbox.register("selRank", du.selRank)
         toolbox.register("evaluate", evalFunction)
-        toolbox.register("mate", du.cxUniform_normDraw_adapt)
+        toolbox.register("mate", du.cxUniform_adapt)
         toolbox.register("mutate", du.gaussianAdaptiveMutation_nStepSizes)
         toolbox.register("map", pypetEnvironment.run)
-        toolbox.register("run_map", pypetEnvironment.run_map)
+        toolbox.reg ister("run_map", pypetEnvironment.run_map)
 
         # recording the history
         # self.history = tools.History()
