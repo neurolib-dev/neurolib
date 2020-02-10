@@ -441,6 +441,13 @@ class Evolution:
         self.runEvolution()
 
     def info(self, plot=True, bestN=5):
+        """Print and plot information about the evolution and the current population
+        
+        :param plot: plot a plot using `matplotlib`, defaults to True
+        :type plot: bool, optional
+        :param bestN: Print summary of `bestN` best individuals, defaults to 5
+        :type bestN: int, optional
+        """
         eu.printEvolutionInfo(self)
         validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
@@ -457,6 +464,11 @@ class Evolution:
         # Plotting
         if plot:
             eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True)
+
+    def plotProgress(self):
+        """Plots progress of fitnesses of current evolution run
+        """
+        eu.plotProgress(self)
 
     @property
     def dfPop(self):
