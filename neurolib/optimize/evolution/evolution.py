@@ -214,7 +214,7 @@ class Evolution:
         toolbox.register("mate", du.cxUniform_adapt)
         toolbox.register("mutate", du.gaussianAdaptiveMutation_nStepSizes)
         toolbox.register("map", pypetEnvironment.run)
-        toolbox.reg ister("run_map", pypetEnvironment.run_map)
+        toolbox.register("run_map", pypetEnvironment.run_map)
 
         # recording the history
         # self.history = tools.History()
