@@ -154,7 +154,7 @@ def fcd(ts, windowsize=30, stepsize=5):
 
 def kolmogorov(BOLD1, BOLD2, stepsize=5, windowsize=1.0):
     """
-    Computes kolmogorov distance between two FCS matrices.
+    Computes kolmogorov distance between two FCD matrices.
     """
     empiricalFCD = fcd(BOLD2[:, : len(BOLD1[0, :])], stepsize, windowsize)
     FCD = fcd(BOLD1, stepsize, windowsize)
