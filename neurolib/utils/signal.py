@@ -77,12 +77,12 @@ class Signal:
     PROCESS_STEPS_KEY = "process_steps"
 
     @classmethod
-    def from_model_result(cls, model, time_in_ms=True):
+    def from_model_result(cls, model, group="", time_in_ms=True):
         """
         Initial Signal from modelling results.
         """
         assert isinstance(model, Model)
-        return cls(model.xr(), time_in_ms=time_in_ms)
+        return cls(model.xr(group=group), time_in_ms=time_in_ms)
 
     @classmethod
     def from_file(cls, filename):
@@ -138,7 +138,7 @@ class Signal:
         """
         return (
             f"{self.name} representing {self.signal_type} signal with unit of "
-            f"{self.unit} with user-provided description: {self.description}. "
+            f"{self.unit} with user-provided description: `{self.description}`. "
             f"Shape of the signal is {self.shape} with dimensions {self.data.dims}."
         )
 
