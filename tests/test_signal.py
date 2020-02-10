@@ -9,6 +9,7 @@ from copy import deepcopy
 from shutil import rmtree
 
 import numpy as np
+import pytest
 import xarray as xr
 from neurolib.models.aln import ALNModel
 from neurolib.utils.loadData import Dataset
@@ -66,6 +67,10 @@ class TestSignal(unittest.TestCase):
             self.assertTrue(isinstance(it, xr.DataArray))
             # test it is one-dim with only time axis
             self.assertTupleEqual(it.shape, (self.signal.shape[-1],))
+
+        with pytest.raises(ValueError):
+            for name, it in self.signal.iterate(return_as="abcde"):
+                pass
 
     def test_sel(self):
         selected = self.signal.sel([5.43, 7.987], inplace=False)
@@ -151,7 +156,22 @@ class TestSignal(unittest.TestCase):
             )
             self.assertEqual(sig, padded)
 
+        with pytest.raises(ValueError):
+            padded = self.signal.pad(
+                pad_seconds,
+                in_seconds=True,
+                padding_type="constant",
+                side="abcde",
+                constant_values=const_value,
+                inplace=False,
+            )
+
     def test_normalize(self):
+        # demean
+        demeaned = self.signal.normalize(std=False, inplace=False)
+        # test mean is 0
+        np.testing.assert_almost_equal(demeaned.data.mean(dim="time").values, 0.0)
+        # normalise
         normalized = self.signal.normalize(std=True, inplace=False)
         # test mean is 0 and std is 1
         np.testing.assert_almost_equal(normalized.data.mean(dim="time").values, 0.0)
@@ -198,6 +218,10 @@ class TestSignal(unittest.TestCase):
             sig = deepcopy(hilbert)
             sig.hilbert_transform(return_as=hilbert_type, inplace=True)
             self.assertEqual(sig, hil)
+
+        with pytest.raises(ValueError):
+            hilbert = self.signal.filter(low_freq=16, high_freq=24, inplace=False)
+            hil = hilbert.hilbert_transform(return_as="abcde", inplace=False)
 
     def test_detrend(self):
         detrended = self.signal.detrend(segments=[5000, 10000, 15000], inplace=False)
