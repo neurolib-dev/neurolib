@@ -28,7 +28,7 @@ def randomParametersAdaptive(paramInterval):
     return params
 
 
-def mutateUntilValid(pop, paramInterval, toolbox, maxTries=500):
+def mutateUntilValid(pop, paramInterval, toolbox, maxTries=0):
     """Checks the validity of new individuals' parameter. If they are invalid 
     (for example if they are out of the predefined paramter space bounds), 
     mutate the individual, until valid.
@@ -40,8 +40,10 @@ def mutateUntilValid(pop, paramInterval, toolbox, maxTries=500):
     """
     # mutate individuald until valid, max 100 times
     for i, ind in enumerate(pop):
+
         ind_bak = copy.copy(ind)
         toolbox.mutate(pop[i])
+
         nMutations = 0
         while not checkParamValidity(pop[i], paramInterval) and nMutations < maxTries:
             pop[i] = copy.copy(ind_bak)
@@ -50,10 +52,10 @@ def mutateUntilValid(pop, paramInterval, toolbox, maxTries=500):
 
         # if it didn't work, set the individual to the boundary
         for l, v in enumerate(paramInterval):
-            if ind[l] < v[0]:
-                ind[l] = v[0]
-            elif ind[l] > v[1]:
-                ind[l] = v[1]
+            if pop[i][l] < v[0]:
+                pop[i][l] = float(v[0])
+            elif pop[i][l] > v[1]:
+                pop[i][l] = float(v[1])
 
 
 def checkParamValidity(individual, paramInterval):
@@ -219,10 +221,10 @@ def cxUniform_normDraw_adapt(ind1, ind2, indpb):
     size = min(len(ind1), len(ind2))
     for i in range(size // 2):
         if random.random() < indpb:
-            mu = np.mean([ind1[i], ind2[i]])
-            sigma = np.abs(ind1[i] - ind2[i])
-            ind1[i] = random.normalvariate(mu, sigma)  # in-place modification!
-            ind2[i] = random.normalvariate(mu, sigma)  # in-place modification!
+            mu = float(np.mean([ind1[i], ind2[i]]))
+            sigma = float(np.abs(ind1[i] - ind2[i]))
+            ind1[i] = random.gauss(mu, sigma)  # in-place modification!
+            ind2[i] = random.gauss(mu, sigma)  # in-place modification!
             iAdapt = i + size // 2  # adaptive parameters, start at half of the list
             ind1[iAdapt], ind2[iAdapt] = ind2[iAdapt], ind1[iAdapt]
 
@@ -232,37 +234,39 @@ def cxUniform_normDraw_adapt(ind1, ind2, indpb):
 ### Mutation operators ###
 
 # Adaptive mutation with m different stepsizes
-def adaptiveMutation_nStepSize(mutant, gamma_gl=None, gammas=None):
+def gaussianAdaptiveMutation_nStepSizes(individual, gamma_gl=None, gamma=None):
     """
-    Perform an uncorrelated adaptive mutation with n step sizes on the mutant
+    Perform an uncorrelated adaptive mutation with n step sizes on the individual
 
     Warning: the mutations is in place, i.e. it modifies the given individual
     Parameters:
-        :param mutant:      Inidivual to mutate. This should a sequence of length 2 * n_params 
-                                ( the last n_params element being the individual adaptation rates)
-        :param gamma_gl:   Global adaptive mutation param ( should be proportional to 1/sqrt(2 n_params ) )
-        :param gammas:      Adaptive mutation parameters ( should be proportional to 1/sqrt(2 sqrt(n_params) ) )
+        :param individual: Inidivual to mutate. This should a sequence of length 2 * n_params 
+        the last n_params elements being the individual adaptation rates)
+        :param gamma_gl: Global adaptive mutation param ( should be proportional to 1/sqrt(2 n_params ) )
+        :param gamma: Adaptive mutation parameters ( should be proportional to 1/sqrt(2 sqrt(n_params) ) )
 
-    :returns: the mutant
+    :returns: the individual
 
     """
-    nParams = len(mutant) // 2
-    oldParams = mutant[0:nParams]
-    oldSigmas = mutant[nParams:]
+    n_params = len(individual) // 2
+    oldParams = individual[0:n_params]
+    oldSigmas = individual[n_params:]
 
     if gamma_gl is None:
-        gamma_gl = 1 / np.sqrt(2 * nParams)
+        gamma_gl = 1 / np.sqrt(2 * n_params)
 
-    if gammas is None:
-        gammas = [1 / np.sqrt(2 * np.sqrt(nParams))] * nParams
+    if gamma is None:
+        gamma = 1 / np.sqrt(2 * np.sqrt(n_params))
 
-    randn_global = np.random.randn()
+    randn_global = float(np.random.randn())
 
     newSigmas = [
-        oldSigmas[i] * np.exp(gammas[i] * np.random.randn() + gamma_gl * np.random.randn()) for i in range(nParams)
+        oldSigmas[i] * float(np.exp(gamma * float(np.random.randn()) + gamma_gl * randn_global))
+        for i in range(n_params)
     ]
-    newParams = [oldParams[i] + newSigmas[i] * np.random.randn() for i in range(nParams)]
+    newParams = [oldParams[i] + newSigmas[i] * float(np.random.randn()) for i in range(n_params)]
 
-    mutant[:] = newParams + newSigmas
+    individual[:] = newParams + newSigmas
 
-    return mutant
+    return (individual,)
+

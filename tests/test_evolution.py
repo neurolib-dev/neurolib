@@ -29,8 +29,8 @@ class TestVanillaEvolution(unittest.TestCase):
             return fitness_tuple, result_dict
 
         pars = ParameterSpace(["x", "y"], [[-5.0, 5.0], [-5.0, 5.0]])
-        evolution = Evolution(optimize_me, pars, weightList=[-1.0], POP_INIT_SIZE=8, POP_SIZE=4, NGEN=2)
-        evolution.run(verbose=False)
+        evolution = Evolution(optimize_me, pars, weightList=[-1.0], POP_INIT_SIZE=8, POP_SIZE=8, NGEN=2)
+        evolution.run(verbose=True)
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
