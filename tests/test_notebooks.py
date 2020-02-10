@@ -52,6 +52,12 @@ class TestExampleNotebooks(unittest.TestCase):
         print_errors(fname, errors)
         assert len(errors) == 0, f"Error in {fname}"
 
+    def test_example_0_2(self):
+        fname = "examples/example-0.2-basic_analysis.ipynb"
+        nb, errors = run_notebook(fname)
+        print_errors(fname, errors)
+        assert len(errors) == 0, f"Error in {fname}"
+
     def test_example_1(self):
         fname = "examples/example-1-aln-parameter-exploration.ipynb"
         nb, errors = run_notebook(fname)
@@ -75,4 +81,3 @@ class TestExampleNotebooks(unittest.TestCase):
         nb, errors = run_notebook(fname)
         print_errors(fname, errors)
         assert len(errors) == 0, f"Error in {fname}"
-
