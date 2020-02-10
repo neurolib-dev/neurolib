@@ -13,7 +13,7 @@ import pytest
 import xarray as xr
 from neurolib.models.aln import ALNModel
 from neurolib.utils.loadData import Dataset
-from neurolib.utils.signal import RatesSignal
+from neurolib.utils.signal import RatesSignal, scipy_iir_filter_data
 
 
 class TestSignal(unittest.TestCase):
@@ -250,6 +250,20 @@ class TestSignal(unittest.TestCase):
             sig = deepcopy(self.signal)
             sig.filter(**filter_spec, inplace=True)
             self.assertEqual(sig, filtered)
+
+    def test_scipy_filter(self):
+        filter_specs = [
+            {"l_freq": None, "h_freq": 25},  # low-pass filter
+            {"l_freq": 10, "h_freq": None},  # high-pass filter
+            {"l_freq": 16, "h_freq": 24},  # band-pass
+            {"l_freq": 19, "h_freq": 21},  # band-stop
+        ]
+        for filter_spec in filter_specs:
+            filtered_array = scipy_iir_filter_data(
+                self.signal.data.values, sfreq=self.signal.sampling_frequency, **filter_spec
+            )
+            self.assertTrue(isinstance(filtered_array, np.ndarray))
+            self.assertTupleEqual(filtered_array.shape, self.signal.shape)
 
     def test_apply(self):
         # test function which does not change shape
