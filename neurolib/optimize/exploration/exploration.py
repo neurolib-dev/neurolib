@@ -12,6 +12,8 @@ import tqdm
 import neurolib.utils.paths as paths
 import neurolib.utils.pypetUtils as pu
 
+from neurolib.models.model import dotdict
+
 
 class BoxSearch:
     """
@@ -19,12 +21,15 @@ class BoxSearch:
     """
 
     def __init__(self, model=None, exploreParameters=None, evalFunction=None):
-        """Defines the model to explore and the parameter range
+        """ Either a model has to be passed, or an evalFunction. If an evalFunction
+        is passed, then the evalFunction will be called and the model is accessible to the 
+        evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current 
+        run are accible via `self.getParametersFromTraj(traj)`.
 
-        :param evalFunction: Evaluation function to call for each parameter 
         :param model: Model to run for each parameter (or model to pass to the evaluation funciton)
-
         :param exploreParameters: Parameter space
+        :param evalFunction: Evaluation function to call for each parameter 
+
         """
         self.model = model
         if evalFunction is None and model is not None:
@@ -40,30 +45,23 @@ class BoxSearch:
 
         self.parameterSpace = exploreParameters
         self.exploreParameters = exploreParameters.dict()
-        # pypet interaction starts here
-        self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
-        logging.info(
-            "Number of parameter configurations: {}".format(
-                len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
-            )
-        )
-
-        # create hdf file path if it does not exist yet
-        pathlib.Path(paths.HDF_DIR).mkdir(parents=True, exist_ok=True)
-
-        # set default hdf filename
-        self.HDF_FILE = os.path.join(paths.HDF_DIR, "exploration.hdf")
 
         # todo: use random ICs for every explored point or rather reuse the ones that are generated at model initialization
         self.useRandomICs = False
 
         # bool to check whether pypet was initialized properly
         self.initialized = False
+        self.initializeExploration()
 
     def initializeExploration(self, fileName="exploration.hdf"):
-        # ---- initialize pypet environment ----
-        trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
+        # create hdf file path if it does not exist yet
+        pathlib.Path(paths.HDF_DIR).mkdir(parents=True, exist_ok=True)
+
+        # set default hdf filename
         self.HDF_FILE = os.path.join(paths.HDF_DIR, fileName)
+
+        # initialize pypet environment
+        trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
         trajectoryFileName = self.HDF_FILE
 
         nprocesses = multiprocessing.cpu_count()
@@ -93,10 +91,17 @@ class BoxSearch:
             self.addParametersToPypet(self.traj, self.parameterSpace.getRandom(safe=True))
 
         # Tell pypet which parameters to explore
+        self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
+        logging.info(
+            "Number of parameter configurations: {}".format(
+                len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
+            )
+        )
+
         self.traj.f_explore(self.pypetParametrization)
 
         # initialization done
-        logging.info("Pypet environment initialized.")
+        logging.info("BoxSearch: Environment initialized.")
         self.initialized = True
 
     def addParametersToPypet(self, traj, params):
@@ -157,14 +162,14 @@ class BoxSearch:
         self.saveOutputsToPypet(self.model.outputs, traj)
 
     def getParametersFromTraj(self, traj):
-        """Returns the parameters of the current run as a dictionary
+        """Returns the parameters of the current run as a (dot.able) dictionary
         
         :param traj: pypet trajectory
         :return: parameter set
         :rtype: dict
         """
         runParams = self.traj.parameters.f_to_dict(short_names=True, fast_access=True)
-        return runParams
+        return dotdict(runParams)
 
     def getModelFromTraj(self, traj):
         """Return the appropriate model with parameters for this individual
