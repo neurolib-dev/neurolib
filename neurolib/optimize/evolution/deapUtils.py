@@ -201,7 +201,7 @@ def selBest_multiObj(pop, k):
 #     return ind1, ind2
 
 
-def cxNormDraw_adapt(ind1, ind2, indpb):
+def cxNormDraw_adapt(ind1, ind2, indpb=None):
     """The new attributes of the two individuals are set according to a normal distribution whose mean is
     the mean between both individual's attributes and the standard deviation being the distance between the two attributes.
     
@@ -221,7 +221,7 @@ def cxNormDraw_adapt(ind1, ind2, indpb):
     size = min(len(ind1), len(ind2))
     for i in range(size // 2):
         mu = float(np.mean([ind1[i], ind2[i]]))
-        sigma = float(np.abs(ind1[i] - ind2[i]))
+        sigma = float(np.abs(ind1[i] - ind2[i])) / 4
         # In Ono 2003, they draw only one random number r and
         # ind1 = mean - r * sigma
         # ind2 = mean + r * sigma
