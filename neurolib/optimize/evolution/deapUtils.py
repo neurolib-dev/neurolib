@@ -282,7 +282,7 @@ def cxUniform_normDraw_adapt(ind1, ind2, indpb):
     for i in range(size // 2):
         if random.random() < indpb:
             mu = float(np.mean([ind1[i], ind2[i]]))
-            sigma = float(np.abs(ind1[i] - ind2[i]))
+            sigma = float(np.abs(ind1[i] - ind2[i])) / 4
             ind1[i] = random.normalvariate(mu, sigma)  # in-place modification!
             ind2[i] = random.normalvariate(mu, sigma)  # in-place modification!
             iAdapt = i + size // 2  # adaptive parameters, start at half of the list
