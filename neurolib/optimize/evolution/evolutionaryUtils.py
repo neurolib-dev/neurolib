@@ -180,10 +180,12 @@ def printEvolutionInfo(evolution):
     print("> Simulation parameters")
     print(f"HDF file storage: {evolution.trajectoryFileName}")
     print(f"Trajectory Name: {evolution.trajectoryName}")
-    print(
-        f"Duration of evaluating initial population {evolution._t_end_initial_population-evolution._t_start_initial_population}"
-    )
-    print(f"Duration of evolution {evolution._t_end_evolution-evolution._t_start_evolution}")
+    if hasattr(evolution, "_t_end_initial_population"):
+        print(
+            f"Duration of evaluating initial population {evolution._t_end_initial_population-evolution._t_start_initial_population}"
+        )
+    if hasattr(evolution, "_t_end_evolution"):
+        print(f"Duration of evolution {evolution._t_end_evolution-evolution._t_start_evolution}")
     if evolution.model is not None:
         print(f"Model: {type(evolution.model)}")
         if hasattr(evolution.model, "name"):
