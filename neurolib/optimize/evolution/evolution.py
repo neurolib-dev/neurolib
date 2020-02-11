@@ -35,7 +35,8 @@ class Evolution:
         POP_INIT_SIZE=100,
         POP_SIZE=20,
         NGEN=10,
-        CXP=0.8,
+        CXP=0.5,
+        RANKP=1.5,
         matingFunction=None,
     ):
         """
@@ -51,6 +52,8 @@ class Evolution:
         :param POP_SIZE: Size of the population during evolution
         :param NGEN: Numbers of generations to evaluate
         :param CXP: Crossover parameter handed to the mating function
+        :param RANKP: Parent selection parameter (For rank selection, this is s in Eiben&Smith p.81)
+        :param matingFunction: Custom mating function
         """
 
         if weightList is None:
@@ -361,7 +364,7 @@ class Evolution:
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
-            offspring = list(map(self.toolbox.clone, self.toolbox.selRank(self.pop, self.POP_SIZE)))
+            offspring = list(map(self.toolbox.clone, self.toolbox.selRank(self.pop, self.POP_SIZE, self.RANKP)))
             # n_offspring = min(len(validpop), self.POP_SIZE)
             # if n_offspring % 2 != 0:
             #     n_offspring -= 1
