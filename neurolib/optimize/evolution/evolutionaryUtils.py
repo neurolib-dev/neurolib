@@ -198,7 +198,8 @@ def printEvolutionInfo(evolution):
     print(f"Number of generations: {evolution.NGEN}")
     print(f"Initial population size: {evolution.POP_INIT_SIZE}")
     print(f"Population size: {evolution.POP_SIZE}")
-    print(f"Crossover probability: {evolution.CXPB}")
+    print(f"Crossover paramter: {evolution.CXP}")
+    print(f"Selection paramter: {evolution.RANKP}")
     if len(evolution.comments) > 0:
         if isinstance(evolution.comments, str):
             print(f"Comments: {evolution.comments}")
