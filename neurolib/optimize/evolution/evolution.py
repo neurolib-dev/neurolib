@@ -36,8 +36,9 @@ class Evolution:
         POP_SIZE=20,
         NGEN=10,
         CXP=0.5,
-        RANKP=1.5,
         matingFunction=None,
+        RANKP=1.5,
+        selectionFunction=None,
     ):
         """
         :param model: Model to run
@@ -123,6 +124,10 @@ class Evolution:
             matingFunction = du.cxUniform_adapt
         self.matingFunction = matingFunction
 
+        if selectionFunction is None:
+            selectionFunction = du.selRank
+        self.selectionFunction = selectionFunction
+
         self.initDEAP(
             self.toolbox,
             self.env,
@@ -130,6 +135,7 @@ class Evolution:
             self.evalFunction,
             weights_list=self.weightList,
             matingFunction=self.matingFunction,
+            selectionFunction=self.selectionFunction,
         )
 
         # comment string for storing info
@@ -203,7 +209,9 @@ class Evolution:
             "individual", [0 for x in range(traj.ind_len)], "An indivudal of the population",
         )
 
-    def initDEAP(self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingFunction):
+    def initDEAP(
+        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingFunction, selectionFunction
+    ):
         """Initializes DEAP and registers all methods to the deap.toolbox
         """
         # ------------- register everything in deap
@@ -224,6 +232,9 @@ class Evolution:
         # Operator registering
         toolbox.register("selBest", du.selBest_multiObj)
         toolbox.register("selRank", du.selRank)
+        # "select" is not used, instead selRank is used but this is more general and should be changed
+        toolbox.register("select", selectionFunction)
+        logging.info(f"Evolution: Registered {selectionFunction} as selection function.")
         toolbox.register("evaluate", evalFunction)
         toolbox.register("mate", matingFunction)
         logging.info(f"Evolution: Registered {matingFunction} as mating function.")
@@ -358,9 +369,9 @@ class Evolution:
             # ------- Weed out the invalid individuals and replace them by random new indivuals -------- #
             validpop = self.getValidPopulation(self.pop)
             # replace invalid individuals
-            nanpop = self.getInvalidPopulation(self.pop)
-            logging.info("Replacing {} invalid individuals.".format(len(nanpop)))
-            newpop = self.toolbox.population(n=len(nanpop))
+            invalidpop = self.getInvalidPopulation(self.pop)
+            logging.info("Replacing {} invalid individuals.".format(len(invalidpop)))
+            newpop = self.toolbox.population(n=len(invalidpop))
             newpop = self.tagPopulation(newpop)
 
             # ------- Create the next generation by crossover and mutation -------- #
