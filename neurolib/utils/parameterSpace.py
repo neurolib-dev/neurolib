@@ -91,10 +91,9 @@ class ParameterSpace:
         which could be of type numpy.float64 for example. This is necessary for pypet.
         """
         safeDict = self.parameters.copy()
-        newSave = {}
         for key, value in safeDict.items():
-            newSave[key] = [float(v) for v in value]
-        return newSave
+            safeDict[key] = [float(v) for v in value]
+        return safeDict
 
     @property
     def ndims(self):
