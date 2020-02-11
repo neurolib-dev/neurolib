@@ -35,7 +35,7 @@ class Evolution:
         POP_INIT_SIZE=100,
         POP_SIZE=20,
         NGEN=10,
-        CXPB=0.04,
+        CXP=0.8,
         matingFunction=None,
     ):
         """
@@ -50,7 +50,7 @@ class Evolution:
         :param POP_INIT_SIZE: Size of first population to initialize evolution with (random, uniformly distributed)
         :param POP_SIZE: Size of the population during evolution
         :param NGEN: Numbers of generations to evaluate
-        :param CXPB: Crossover probability of each individual gene
+        :param CXP: Crossover parameter handed to the mating function
         """
 
         if weightList is None:
@@ -90,7 +90,7 @@ class Evolution:
         self.evalFunction = evalFunction
         self.weightList = weightList
 
-        self.CXPB = CXPB
+        self.CXP = CXP
         self.NGEN = NGEN
         assert POP_SIZE % 2 == 0, "Please chose an even number for POP_SIZE!"
         self.POP_SIZE = POP_SIZE
@@ -133,7 +133,7 @@ class Evolution:
 
         # set up pypet trajectory
         self.initPypetTrajectory(
-            self.traj, self.paramInterval, self.POP_SIZE, self.CXPB, self.NGEN, self.model,
+            self.traj, self.paramInterval, self.POP_SIZE, self.CXP, self.NGEN, self.model,
         )
 
         # population history: dict of all valid individuals per generation
@@ -173,18 +173,18 @@ class Evolution:
         """
         return self.ParametersInterval(*(individual[: len(self.paramInterval)]))._asdict().copy()
 
-    def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, CXPB, NGEN, model):
+    def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, CXP, NGEN, model):
         """Initializes pypet trajectory and store all simulation parameters.
         """
         # Initialize pypet trajectory and add all simulation parameters
         traj.f_add_parameter("popsize", POP_SIZE, comment="Population size")  #
-        traj.f_add_parameter("CXPB", CXPB, comment="Crossover term")  # Crossover probability
+        traj.f_add_parameter("CXP", CXP, comment="Crossover parameter")
         traj.f_add_parameter("NGEN", NGEN, comment="Number of generations")
 
         # Placeholders for individuals and results that are about to be explored
         traj.f_add_parameter("generation", 0, comment="Current generation")
 
-        traj.f_add_result("scores", [], comment="Mean_score for each generation")
+        traj.f_add_result("scores", [], comment="Score of all individuals for each generation")
         traj.f_add_result_group("evolution", comment="Contains results for each generation")
         traj.f_add_result_group("outputs", comment="Contains simulation results")
 
@@ -353,14 +353,11 @@ class Evolution:
         for self.gIdx in range(self.gIdx + 1, self.gIdx + self.traj.NGEN):
             # ------- Weed out the invalid individuals and replace them by random new indivuals -------- #
             validpop = self.getValidPopulation(self.pop)
-
             # replace invalid individuals
             nanpop = self.getInvalidPopulation(self.pop)
             logging.info("Replacing {} invalid individuals.".format(len(nanpop)))
             newpop = self.toolbox.population(n=len(nanpop))
             newpop = self.tagPopulation(newpop)
-
-            # self.pop = validpop + newpop
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
@@ -372,7 +369,7 @@ class Evolution:
 
             ##### cross-over ####
             for i in range(1, len(offspring), 2):
-                offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], indpb=self.CXPB)
+                offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], self.CXP)
                 # del offspring[i - 1].fitness, offspring[i].fitness
                 del offspring[i - 1].fitness.values, offspring[i].fitness.values
                 del offspring[i - 1].fitness.wvalues, offspring[i].fitness.wvalues
