@@ -94,6 +94,7 @@ class Evolution:
         self.weightList = weightList
 
         self.CXP = CXP
+        self.RANKP = RANKP
         self.NGEN = NGEN
         assert POP_SIZE % 2 == 0, "Please chose an even number for POP_SIZE!"
         self.POP_SIZE = POP_SIZE
