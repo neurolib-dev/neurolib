@@ -256,8 +256,10 @@ def generateRandomICs(N, seed=None):
     )
 
 
-def loadICs(params, N, seed=None):
+def loadICs(params, seed=None):
     # Generate and set random initial conditions
+    N = params["N"]
+
     (
         mufe_init,
         IA_init,

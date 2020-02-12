@@ -7,19 +7,22 @@ from neurolib.models.hopf import HopfModel
 from neurolib.utils.loadData import Dataset
 
 
-class Testaln(unittest.TestCase):
+class TestAln(unittest.TestCase):
     """
     Basic test for ALN model.
     """
 
     def test_single_node(self):
+        import neurolib.models.aln.loadDefaultParams as dp
+
         logging.info("\t > ALN: Testing single node ...")
         start = time.time()
 
         aln = ALNModel()
         aln.params["duration"] = 2.0 * 1000
         aln.params["sigma_ou"] = 0.1  # add some noise
-
+        # load new initial parameters
+        aln.params = dp.loadICs(aln.params)
         aln.run()
 
         end = time.time()
@@ -45,7 +48,7 @@ class Testaln(unittest.TestCase):
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
 
-class Testhopf(unittest.TestCase):
+class TestHopf(unittest.TestCase):
     """
     Basic test for Hopf model.
     """
