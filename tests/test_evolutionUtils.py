@@ -57,3 +57,13 @@ class TestEvolutinUtils(unittest.TestCase):
         matplotlib = pytest.importorskip("matplotlib")
         eu.plotPopulation(self.pop, self.evolution.paramInterval, plotScattermatrix=True)
 
+
+class TestEvolutionCrossover(unittest.TestCase):
+    def test_all_crossovers(self):
+        def evo(traj):
+            return (1,), {}
+
+        pars = ParameterSpace(["x"], [[0.0, 4.0]])
+        evolution = Evolution(evalFunction=evo, parameterSpace=pars)
+        evolution.runInitial()
+        init_pop = evolution.pop.copy()
