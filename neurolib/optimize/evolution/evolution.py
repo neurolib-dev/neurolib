@@ -35,10 +35,10 @@ class Evolution:
         POP_INIT_SIZE=100,
         POP_SIZE=20,
         NGEN=10,
-        CXP=0.5,
         matingFunction=None,
-        RANKP=1.5,
+        CXP=0.5,
         selectionFunction=None,
+        RANKP=1.5,
     ):
         """
         :param model: Model to run
@@ -52,9 +52,10 @@ class Evolution:
         :param POP_INIT_SIZE: Size of first population to initialize evolution with (random, uniformly distributed)
         :param POP_SIZE: Size of the population during evolution
         :param NGEN: Numbers of generations to evaluate
-        :param CXP: Crossover parameter handed to the mating function
-        :param RANKP: Parent selection parameter (For rank selection, this is s in Eiben&Smith p.81)
-        :param matingFunction: Custom mating function
+        :param matingFunction: Custom mating function, defaults to blend crossover if not set.
+        :param CXP: Parameter handed to the mating function (for blend crossover, this is `alpha`)
+        :param selectionFunction: Custom parent selection function, defaults to rank selection if not set.
+        :param RANKP: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81)
         """
 
         if weightList is None:
@@ -121,7 +122,10 @@ class Evolution:
         self.toolbox = deap.base.Toolbox()
 
         if matingFunction is None:
-            matingFunction = du.cxUniform_adapt
+            # this is our custom uniform mating function
+            # matingFunction = du.cxUniform_adapt
+            # this is blend crossover (with alpha)
+            matingFunction = tools.cxBlend
         self.matingFunction = matingFunction
 
         if selectionFunction is None:
