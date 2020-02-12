@@ -201,7 +201,7 @@ def selBest_multiObj(pop, k):
 #     return ind1, ind2
 
 
-def cxNormDraw_adapt(ind1, ind2, indpb=None):
+def cxNormDraw_adapt(ind1, ind2, sigma_scale=2.0):
     """The new attributes of the two individuals are set according to a normal distribution whose mean is
     the mean between both individual's attributes and the standard deviation being the distance between the two attributes.
     
@@ -212,7 +212,7 @@ def cxNormDraw_adapt(ind1, ind2, indpb=None):
 
     :param ind1: The first individual participating in the crossover.
     :param ind2: The second individual participating in the crossover.
-    :param indpb: Independent probabily for each attribute to be exchanged.
+    :param sigma_scale: Scaling of sigma (distance of parents / sigma_scale)
     :returns: A tuple of two individuals.
 
     This function uses the :func:`~random.random` function from the python base
@@ -221,7 +221,7 @@ def cxNormDraw_adapt(ind1, ind2, indpb=None):
     size = min(len(ind1), len(ind2))
     for i in range(size // 2):
         mu = float(np.mean([ind1[i], ind2[i]]))
-        sigma = float(np.abs(ind1[i] - ind2[i])) / 4
+        sigma = float(np.abs(ind1[i] - ind2[i])) / sigma_scale
         # In Ono 2003, they draw only one random number r and
         # ind1 = mean - r * sigma
         # ind2 = mean + r * sigma
@@ -232,7 +232,7 @@ def cxNormDraw_adapt(ind1, ind2, indpb=None):
         iAdapt = i + size // 2  # adaptive parameters, start at half of the list
         # ind1[iAdapt], ind2[iAdapt] = ind2[iAdapt], ind1[iAdapt]
         mu_adapt = float(np.mean([ind1[iAdapt], ind2[iAdapt]]))
-        sigma_adapt = float(np.abs(ind1[iAdapt] - ind2[iAdapt])) / 4
+        sigma_adapt = float(np.abs(ind1[iAdapt] - ind2[iAdapt])) / sigma_scale
         ind1[iAdapt] = random.gauss(mu_adapt, sigma_adapt)
         ind2[iAdapt] = random.gauss(mu_adapt, sigma_adapt)
 
