@@ -67,3 +67,9 @@ class TestEvolutionCrossover(unittest.TestCase):
         evolution = Evolution(evalFunction=evo, parameterSpace=pars)
         evolution.runInitial()
         init_pop = evolution.pop.copy()
+
+        # perform crossover methods
+        ind1, ind2 = init_pop[:2]
+        du.cxNormDraw_adapt(ind1, ind2, 0.4)
+        du.cxUniform_adapt(ind1, ind2, 0.4)
+        du.cxUniform_normDraw_adapt(ind1, ind2, 0.4)
