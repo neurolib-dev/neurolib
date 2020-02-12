@@ -79,6 +79,7 @@ def timeIntegration(params):
 
     # xsd = np.zeros((N,N))  # delayed activity
     xs_input_d = np.zeros(N)  # delayed input to x
+    ys_input_d = np.zeros(N)  # delayed input to x
 
     # Save the noise in the rates array to save memory
     if RNGseed:
@@ -114,6 +115,7 @@ def timeIntegration(params):
         xs,
         ys,
         xs_input_d,
+        ys_input_d,
         a,
         w,
         noise_xs,
@@ -143,6 +145,7 @@ def timeIntegration_njit_elementwise(
     xs,
     ys,
     xs_input_d,
+    ys_input_d,
     a,
     w,
     noise_xs,
