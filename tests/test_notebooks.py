@@ -70,6 +70,12 @@ class TestExampleNotebooks(unittest.TestCase):
         print_errors(fname, errors)
         assert len(errors) == 0, f"Error in {fname}"
 
+    def test_example_1_2(self):
+        fname = "examples/example-1.2-brain-network-exploration.ipynb"
+        nb, errors = run_notebook(fname)
+        print_errors(fname, errors)
+        assert len(errors) == 0, f"Error in {fname}"
+
     def test_example_2(self):
         fname = "examples/example-2-evolutionary-optimization-minimal.ipynb"
         nb, errors = run_notebook(fname)
