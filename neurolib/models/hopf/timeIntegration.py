@@ -184,7 +184,7 @@ def timeIntegration_njit_elementwise(
             y_rhs = (
                 (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
                 + w * xs[no, i - 1]
-                + ys_input_d
+                + ys_input_d[no]
                 + y_ext[no]
             )
 
