@@ -21,7 +21,8 @@ import neurolib.utils.pypetUtils as pu
 
 
 class Evolution:
-    """Evolutionary parameter optimization.
+    """Evolutionary parameter optimization. This class helps you to optimize any function or model using an evlutionary algorithm. 
+    It uses the package `deap` and supports its builtin mating and selection functions as well as custom ones. 
     """
 
     def __init__(
