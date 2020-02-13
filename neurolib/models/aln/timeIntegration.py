@@ -5,9 +5,8 @@ import numba
 
 
 def timeIntegration(params):
-    """
-    TIMEINTEGRATION : Simulate a network of aLN modules
-
+    """Sets up the parameters for time integration
+    
     Return:
       rates_exc:  N*L array   : containing the exc. neuron rates in kHz time series of the N nodes
       rates_inh:  N*L array   : containing the inh. neuron rates in kHz time series of the N nodes
@@ -23,6 +22,11 @@ def timeIntegration(params):
       seiv :      N vector    : final value of seiv  for each node
       siev :      N vector    : final value of siev  for each node
       siiv :      N vector    : final value of siiv  for each node
+
+    :param params: Parameter dictionary of the model
+    :type params: dict
+    :return: Integrated activity variables of the model
+    :rtype: (numpy.ndarray,)
     """
 
     dt = params["dt"]  # Time step for the Euler intergration (ms)

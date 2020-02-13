@@ -5,13 +5,12 @@ import numba
 
 
 def timeIntegration(params):
-    """
-    TIMEINTEGRATION : Simulate a network of Hopf modules
-
-    Return:
-      x:  N*L array   : containing the x time series of the N nodes
-      y:  N*L array   : containing the y time series of the N nodes
-      t:          L array     : the time value at which the time series are evaluated
+    """Sets up the parameters for time integration
+    
+    :param params: Parameter dictionary of the model
+    :type params: dict
+    :return: Integrated activity variables of the model
+    :rtype: (numpy.ndarray,)
     """
 
     dt = params["dt"]  # Time step for the Euler intergration (ms)
