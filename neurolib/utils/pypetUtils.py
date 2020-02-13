@@ -6,14 +6,15 @@ import logging
 
 def getTrajectorynamesInFile(filename):
     """
-    Return a list of all pypet trajectories name saved in a a given hdf5 file.
+    Return a list of all pypet trajectory names in a a given hdf5 file.
 
-    Parameter:
-        :param filename:   Name of the hdf5 we want to explore
+    :param filename:  Name of the hdf file
+    :type filename: str
 
-    Return:
-        List of string containing the trajectory name
+    :return: List of strings containing the trajectory names
+    :rtype: list[str]
     """
+    assert pathlib.Path(filename).exists(), f"{filename} does not exist!"
     hdf = h5py.File(filename)
     all_traj_names = list(hdf.keys())
     hdf.close()
