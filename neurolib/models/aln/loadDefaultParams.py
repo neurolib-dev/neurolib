@@ -5,21 +5,19 @@ import numpy as np
 import h5py
 
 
-def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
-    """
-    Load default parameters for a network of aLN nodes.
-    if Cmat is an empty list, only a single node (consisting of E and I) will
-    be simulated.
-    A lot of the code which deals with loading structural connectivity
-    and delay matrices for an interareal whole-brain network simulation.
-
-    Parameters:
-        :param Cmat: Structural connectivity matrix
-        :param Dmat: Distance matrix in mm
-        :param lookUpTableFileName:     Matlab filename where to find the
-            lookup table. Default: aln-precalc/quantities_cascade.h5'
-        :param seed: Seed for the RNG
-    :returns:   A dictionary of default parameters
+def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None):
+    """Load default parameters for a network of aLN nodes.
+    :param Cmat: Structural connectivity matrix (adjacency matrix) of coupling strengths, will be normalized to 1. If not given, then a single node simulation will be assumed, defaults to None
+    :type Cmat: numpy.ndarray, optional
+    :param Dmat: Fiber length matrix, will be used for computing the delay matrix together with the signal transmission speed parameter `signalV`, defaults to None
+    :type Dmat: numpy.ndarray, optional
+    :param lookUpTableFileName: Filename of lookup table with aln non-linear transfer functions and other precomputed quantities., defaults to aln-precalc/quantities_cascade.h
+    :type lookUpTableFileName: str, optional
+    :param seed: Seed for the random number generator, defaults to None
+    :type seed: int, optional
+    
+    :return: A dictionary with the default parameters of the model
+    :rtype: dict
     """
 
     class struct(object):
@@ -51,7 +49,7 @@ def loadDefaultParams(Cmat=[], Dmat=[], lookupTableFileName=None, seed=None):
     # global whole-brain network parameters
     # ------------------------------------------------------------------------
 
-    if len(Cmat) == 0:
+    if Cmat is None:
         params.N = 1
         params.Cmat = np.zeros((1, 1))
         params.lengthMat = np.zeros((1, 1))

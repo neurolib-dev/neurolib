@@ -4,16 +4,18 @@ import h5py
 import scipy.io
 
 
-def loadDefaultParams(Cmat=[], Dmat=[], seed=None):
-    """
-    Load default parameters for the for a whole network of aLN nodes.
-    A lot of the code which deals with loading structural connectivity
-    and delay matrices for an interareal whole-brain network simulation
-    can be ignored if only a single E-I module is to be simulated (set singleNode=1 then)
-
-    Parameters:
-        :param lookUpTableFileName:     Matlab filename where to find the lookup table. Default: interarea/networks/aln-python/aln-precalc/precalc05sps_all.mat'
-    :returns:   A dictionary of default parameters
+def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
+    """Load default parameters for the FHN model
+    
+    :param Cmat: Structural connectivity matrix (adjacency matrix) of coupling strengths, will be normalized to 1. If not given, then a single node simulation will be assumed, defaults to None
+    :type Cmat: numpy.ndarray, optional
+    :param Dmat: Fiber length matrix, will be used for computing the delay matrix together with the signal transmission speed parameter `signalV`, defaults to None
+    :type Dmat: numpy.ndarray, optional
+    :param seed: Seed for the random number generator, defaults to None
+    :type seed: int, optional
+    
+    :return: A dictionary with the default parameters of the model
+    :rtype: dict
     """
 
     class struct(object):
@@ -38,7 +40,7 @@ def loadDefaultParams(Cmat=[], Dmat=[], seed=None):
     params.signalV = 20.0
     params.K_gl = 250.0  # global coupling strength
 
-    if len(Cmat) == 0:
+    if Cmat is None:
         params.N = 1
         params.Cmat = np.zeros((1, 1))
         params.lengthMat = np.zeros((1, 1))
