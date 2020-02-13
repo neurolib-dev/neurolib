@@ -12,7 +12,7 @@ import tqdm
 import neurolib.utils.paths as paths
 import neurolib.utils.pypetUtils as pu
 
-from neurolib.models.model import dotdict
+from neurolib.utils.collections import dotdict
 
 
 class BoxSearch:
