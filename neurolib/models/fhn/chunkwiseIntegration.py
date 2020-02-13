@@ -1,8 +1,8 @@
 import copy as cp
 import numpy as np
 
-from neurolib.models.hopf.timeIntegration import timeIntegration
-import neurolib.models.hopf.loadDefaultParams as dp
+from neurolib.models.fhn.timeIntegration import timeIntegration
+import neurolib.models.fhn.loadDefaultParams as dp
 from neurolib.models import bold
 
 
