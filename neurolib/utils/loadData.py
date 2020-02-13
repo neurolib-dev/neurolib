@@ -28,10 +28,10 @@ class Dataset:
         dsBaseDirectory = os.path.join(os.path.dirname(__file__), "..", "data", "datasets", datasetName)
 
         CmatFilename = os.path.join(dsBaseDirectory, "Cmat_avg.mat")
-        self.Cmat = self.loadData(CmatFilename, key="sc", filter_subcortical=True)  # structural connectivity matrix
+        self.Cmat = self.loadData(CmatFilename, key="sc", filter_subcortical=True)[0]  # structural connectivity matrix
 
         DmatFilename = os.path.join(dsBaseDirectory, "Dmat_avg.mat")
-        self.Dmat = self.loadData(DmatFilename, key="len", filter_subcortical=True)  # fiber length matrix
+        self.Dmat = self.loadData(DmatFilename, key="len", filter_subcortical=True)[0]  # fiber length matrix
 
         BOLDFilenames = glob.glob(os.path.join(dsBaseDirectory, "BOLD/", "*_tc.mat"))  # BOLD timeseries
 
