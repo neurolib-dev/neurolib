@@ -57,14 +57,8 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
             all_ys = np.hstack((all_ys, ys_return))
             all_t = np.hstack((all_t, np.add(t_return, lastT)))
 
-        # BOLD model
-        xsNormalized = xs_return
-        xsNormalized = np.abs(xsNormalized)
-        xsNormalized /= np.max(xsNormalized)
-        xsNormalized *= 80.0
-
         if simulateBOLD:
-            boldModel.run(xsNormalized)
+            boldModel.run(xs_return, normalize=True)
             BOLD_return = boldModel.BOLD
             t_BOLD_return = boldModel.t_BOLD
 
