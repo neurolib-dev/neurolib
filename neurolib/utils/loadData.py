@@ -15,9 +15,15 @@ class Dataset:
 
     def loadDataset(self, datasetName):
         """
-        Load empirical data in aln2 parcellation
-        Paramters:
-            :param datasetName: Name of the dataset to load
+        Load example empirical data sets that are provided with `neurolib`. 
+        Datasets are loaded into class attributes: 
+        self.Cmat: Structural connectivity matrix (for coupling strenghts between areas)
+        self.Dmat: Fiber length matrix (for delays)
+        self.BOLDs: BOLD timeseries of each area
+        self.FCs: Functional connectiviy matrices of each BOLD timeseries
+
+        :param datasetName: Name of the dataset to load
+        :type datasetName: str
         """
         dsBaseDirectory = os.path.join(os.path.dirname(__file__), "..", "data", "datasets", datasetName)
 
@@ -42,19 +48,24 @@ class Dataset:
         apply_function=None,
         apply_function_kwargs={},
     ):
-        """
-        Loads brain matrices provided filenames.
+        """Loads matrices and applies operations on the matrices.
+        
+        :param matrixFileNames: List of filenames to load
+        :type matrixFileNames: list[str]
+        :param average: Take the average of all or not (consequently returns a list of a single matrix), defaults to False
+        :type average: bool, optional
+        :param filter_subcortical: Returns only cortical areas if set True, defaults to False
+        :type filter_subcortical: bool, optional
+        :param key: Key (string) in which data is stored in the .mat file, will be given to loadMatrix(), defaults to ""
+        :type key: str, optional
+        :param apply_function: Function to apply on loaded matrices, defaults to None
+        :type apply_function: function, optional
+        :param apply_function_kwargs: Keyword arguments for the applied function, defaults to {}
+        :type apply_function_kwargs: dict, optional
 
-        Parameters:
-        matrixFileNames (list): List of filenames to load
-        average (bool): Take the average of all or not (consequently returns a single matric of a list of matrices)
-        filter_subcortical (bool): Returns only cortical areas if set True
-        key (str): Key (string) in which data is stored in the .mat file, will be given to loadMatrix()
-
-        Returns:
-        numpy.array: Single average matrix _or_ list of matrices
+        :return: List of matrices
+        :rtype: list[np.ndarray]
         """
-        # print(matrixFileNames)
         # Handler if matrixFileNames is not a list but a str
         if isinstance(matrixFileNames, str):
             matrixFileNames = [matrixFileNames]
@@ -68,20 +79,26 @@ class Dataset:
                 thisMat = apply_function(thisMat, **apply_function_kwargs)
             matrices.append(thisMat)
 
-        if len(matrices) > 1:
-            if average:
-                avgMatrix = np.zeros(matrices[0].shape)
-                for cm in matrices:
-                    avgMatrix += cm
-                avgMatrix /= len(matrices)
-                return avgMatrix
-            else:
-                return matrices
+        if average:
+            avgMatrix = np.zeros(matrices[0].shape)
+            for cm in matrices:
+                avgMatrix += cm
+            avgMatrix /= len(matrices)
+            return [avgMatrix]
         else:
-            return matrices[0]
+            return matrices
 
     def loadMatrix(self, matFileName, key="", verbose=False):
-        """Function to furiously load SC and FC .mat files of different formats.
+        """Function to furiously load .mat files with scipy.io.loadmat. 
+        Info: More formats are supported but commented out in the code.
+
+        :param matFileName: Filename of matrix to load
+        :type matFileName: str
+        :param key: .mat file key in which data is stored (example: "sc")
+        :type key: str
+
+        :return: Loaded matrix
+        :rtype: numpy.ndarray
         """
         if verbose:
             print(f"Loading {matFileName}")
@@ -145,9 +162,16 @@ def filterSubcortical(a, axis="both"):
     Basal Ganglia: 75-80
     Thalamus: 81-82
     Cerebellum: 95-120
-    """
 
+    :param a: Input (square) matrix with cortical and subcortical areas
+    :type a: numpy.ndarray
+
+    :return: Matrix without subcortical areas
+    :rtype: numpy.ndarray
+    """
+    # with cerebellum indices
     # subcortical_index = np.array(list(range(40, 46)) + list(range(74, 82)) + list(range(94, 120)))
+    # without cerebellum
     subcortical_index = np.array(list(range(40, 46)) + list(range(74, 82)))
 
     if axis == "both":
