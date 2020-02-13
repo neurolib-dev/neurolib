@@ -178,20 +178,21 @@ def timeIntegration_njit_elementwise(
             x_rhs = (
                 (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * xs[no, i - 1]
                 - w * ys[no, i - 1]
-                + xs_input_d[no]
-                + x_ext[no]
+                + xs_input_d[no]  # input from other nodes
+                + x_ext[no]  # input from external sources / noise
             )
             y_rhs = (
                 (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
                 + w * xs[no, i - 1]
-                + ys_input_d[no]
-                + y_ext[no]
+                + ys_input_d[no]  # input from other nodes
+                + y_ext[no]  # input from external sources / noise
             )
 
+            # Euler integration
             xs[no, i] = xs[no, i - 1] + dt * x_rhs
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
-            # ornstein-uhlenberg process
+            # Ornstein-Uhlenberg process
             x_ext[no] = x_ext[no] + (x_ext_mean - x_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
             y_ext[no] = y_ext[no] + (y_ext_mean - y_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
 

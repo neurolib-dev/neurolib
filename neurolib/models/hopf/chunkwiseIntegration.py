@@ -1,10 +1,9 @@
 import copy as cp
-
 import numpy as np
 
+from neurolib.models.hopf.timeIntegration import timeIntegration
 import neurolib.models.hopf.loadDefaultParams as dp
 from neurolib.models import bold
-from neurolib.models.hopf.timeIntegration import timeIntegration
 
 
 def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAllActivity=False):
