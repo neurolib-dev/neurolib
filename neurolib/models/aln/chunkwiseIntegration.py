@@ -48,9 +48,11 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
 
     lastT = 0
     while lastT < totalDuration:
+
         # Determine the size of the next chunk
-        currentChunkSize = min(chunkSize + delay_Ndt, totalDuration - lastT + (delay_Ndt + 1) * dt)
-        paramsChunk["duration"] = currentChunkSize
+        currentChunkSize = min(chunkSize, (totalDuration - lastT) / dt)
+        currentChunkSize += delay_Ndt
+        paramsChunk["duration"] = currentChunkSize * dt
 
         rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = timeIntegration(
             paramsChunk
@@ -72,15 +74,9 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
         paramsChunk["rates_exc_init"] = rates_exc[:, -int(delay_Ndt) :]
         paramsChunk["rates_inh_init"] = rates_inh[:, -int(delay_Ndt) :]
 
-        # rates_exc_return = rates_exc[:, int(delay_Ndt) :]  # cut off initial condition transient, otherwise it would repeat
-        # rates_inh_return = rates_inh[:, int(delay_Ndt) :]
-        # t_return = t[int(delay_Ndt) :]
-
-        rates_exc_return = rates_exc[
-            :, : -int(delay_Ndt)
-        ]  # cut off initial condition transient, otherwise it would repeat
-        rates_inh_return = rates_inh[:, : -int(delay_Ndt)]
-        t_return = t[: -int(delay_Ndt)]
+        rates_exc_return = rates_exc[:, int(delay_Ndt) :]
+        rates_inh_return = rates_inh[:, int(delay_Ndt) :]
+        t_return = t[int(delay_Ndt) :]
 
         del rates_exc, rates_inh, t
 
