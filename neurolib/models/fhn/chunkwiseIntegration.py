@@ -36,10 +36,11 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
 
     lastT = 0
     while lastT < totalDuration:
-        # Determine the size of the next chunk
-        currentChunkSize = min(chunkSize + delay_Ndt, totalDuration - lastT + (delay_Ndt + 1) * dt)
-        paramsChunk["duration"] = currentChunkSize
 
+        # Determine the size of the next chunk
+        currentChunkSize = min(chunkSize, (totalDuration - lastT) / dt)
+        currentChunkSize += delay_Ndt
+        paramsChunk["duration"] = currentChunkSize * dt
         # Time Integration
         t_chunk, xs_chunk, ys_chunk = timeIntegration(paramsChunk)
 
@@ -47,9 +48,9 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
         paramsChunk["xs_init"] = xs_chunk[:, -int(delay_Ndt) :]
         paramsChunk["ys_init"] = ys_chunk[:, -int(delay_Ndt) :]
 
-        xs_return = xs_chunk[:, : -int(delay_Ndt)]
-        ys_return = ys_chunk[:, : -int(delay_Ndt)]
-        t_return = t_chunk[: -int(delay_Ndt)]
+        xs_return = xs_chunk[:, int(delay_Ndt) :]
+        ys_return = ys_chunk[:, int(delay_Ndt) :]
+        t_return = t_chunk[int(delay_Ndt) :]
         del xs_chunk, ys_chunk, t_chunk
 
         if saveAllActivity:
