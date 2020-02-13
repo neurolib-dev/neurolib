@@ -19,8 +19,8 @@ class FHNModel(Model):
     def __init__(
         self,
         params=None,
-        Cmat=[],
-        Dmat=[],
+        Cmat=None,
+        Dmat=None,
         lookupTableFileName=None,
         seed=None,
         simulateChunkwise=False,
@@ -30,7 +30,7 @@ class FHNModel(Model):
         # Initialize base class Model
         super().__init__(self.name)
 
-        if len(Cmat) == 0:
+        if Cmat is None:
             self.singleNode = True
         else:
             self.singleNode = False
