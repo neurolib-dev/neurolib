@@ -13,7 +13,7 @@ class BOLDModel:
 
     def __init__(self, N, dt):
         self.N = N
-        self.dt = dt  # dt of neuronal activity
+        self.dt = dt  # dt of input activity in ms
         self.samplingRate_NDt = int(round(2000 / dt))  # downsample (0.5 Hz fMRI sampling rate)
 
         # return arrays
