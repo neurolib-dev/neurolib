@@ -1,7 +1,7 @@
 import numpy as np
+import numba
 
 import neurolib.models.hopf.loadDefaultParams as dp
-import numba
 
 
 def timeIntegration(params):
