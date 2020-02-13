@@ -21,15 +21,20 @@ class BoxSearch:
     """
 
     def __init__(self, model=None, exploreParameters=None, evalFunction=None):
-        """ Either a model has to be passed, or an evalFunction. If an evalFunction
+        """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the 
         evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current 
         run are accible via `self.getParametersFromTraj(traj)`.
 
-        :param model: Model to run for each parameter (or model to pass to the evaluation funciton)
-        :param exploreParameters: Parameter space
-        :param evalFunction: Evaluation function to call for each parameter 
+        If no evaluation function is passed, then the model is simulated using `Model.run()`
+        for every parameter.
 
+        :param model: Model to run for each parameter (or model to pass to the evaluation funciton if an evaluation function is used), defaults to None
+        :type model: `neurolib.models.model.Model`, optional
+        :param exploreParameters: Parameter space to explore, defaults to None
+        :type exploreParameters: `neurolib.utils.parameterSpace.ParameterSpace`, optional
+        :param evalFunction: Evaluation function to call for each run., defaults to None
+        :type evalFunction: function, optional
         """
         self.model = model
         if evalFunction is None and model is not None:
@@ -54,6 +59,11 @@ class BoxSearch:
         self.initializeExploration()
 
     def initializeExploration(self, fileName="exploration.hdf"):
+        """Initialize the pypet environment
+        
+        :param fileName: hdf filename to store the results in , defaults to "exploration.hdf"
+        :type fileName: str, optional
+        """
         # create hdf file path if it does not exist yet
         pathlib.Path(paths.HDF_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -106,7 +116,12 @@ class BoxSearch:
 
     def addParametersToPypet(self, traj, params):
         """This function registers the parameters of the model to Pypet.
-        Parameters can be nested dictionaries. They are unpacked here recursively.
+        Parameters can be nested dictionaries. They are unpacked and stored recursively.
+        
+        :param traj: Pypet trajectory to store the parameters in
+        :type traj: `pypet.trajectory.Trajectory`
+        :param params: Parameter dictionary
+        :type params: dict, dict[dict,]
         """
 
         def addParametersRecursively(traj, params, current_level):
@@ -127,6 +142,11 @@ class BoxSearch:
     def saveOutputsToPypet(self, outputs, traj):
         """This function takes all outputs in the form of a nested dictionary
         and stores all data into the pypet hdf file.
+        
+        :param outputs: Simulation outputs as a dictionary.
+        :type outputs: dict
+        :param traj: Pypet trajectory
+        :type traj: `pypet.trajectory.Trajectory`
         """
 
         def makeSaveStringForPypet(value, savestr):
@@ -147,8 +167,11 @@ class BoxSearch:
         makeSaveStringForPypet(value, savestr)
 
     def runModel(self, traj):
-        """This function will be called by pypet directly and therefore 
-        wants a trajectory `traj` as an argument
+        """If not evaluation function is given, we assume that a model will be simulated.
+        This function will be called by pypet directly and therefore wants a pypet trajectory as an argument
+        
+        :param traj: Pypet trajectory
+        :type traj: `pypet.trajectory.Trajectory`
         """
         if self.useRandomICs:
             logging.warn("Random initial conditions not implemented yet")
@@ -164,8 +187,9 @@ class BoxSearch:
     def getParametersFromTraj(self, traj):
         """Returns the parameters of the current run as a (dot.able) dictionary
         
-        :param traj: pypet trajectory
-        :return: parameter set
+        :param traj: Pypet trajectory
+        :type traj: `pypet.trajectory.Trajectory`
+        :return: Parameter set of the current run
         :rtype: dict
         """
         runParams = self.traj.parameters.f_to_dict(short_names=True, fast_access=True)
@@ -190,8 +214,12 @@ class BoxSearch:
         self.env.run(self.evalFunction)
 
     def loadResults(self, filename=None, trajectoryName=None):
-        """
-        Load simulation results an hdf file.
+        """Load results from a hdf file of a previous simulation.
+        
+        :param filename: hdf filename in which results are stored, defaults to None
+        :type filename: str, optional
+        :param trajectoryName: name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
+        :type trajectoryName: str, optional
         """
         # chose
         if filename == None:
