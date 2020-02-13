@@ -12,10 +12,6 @@ class HopfModel(Model):
     name = "hopf"
     description = "Stuart-Landau model with Hopf bifurcation"
 
-    # multiple outputs can be specified as
-    # {"outputname1" : ["variablename1", "variablename2"],
-    # {"outputname2" : ["output2varname1"]}}
-    # deprecated
     modelOutputs = {"activity": ["x", "y"]}
 
     defaultOutput = "x"
@@ -71,8 +67,6 @@ class HopfModel(Model):
                 simulateBOLD=self.simulateBOLD,
                 saveAllActivity=self.saveAllActivity,
             )
-            # self.t_BOLD = t_BOLD
-            # self.BOLD = BOLD
             self.setOutput("BOLD.t", t_BOLD)
             self.setOutput("BOLD.BOLD", BOLD)
 
