@@ -5,28 +5,23 @@ import scipy.signal
 
 def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
     """
-    Computes the Kuramoto order parameter of a timeseries.
-    Can smooth timeseries if there is noise. Peaks are then detected using a peakfinder.
-    From these peaks a phase is derived and then phase synchrony (Kuramoto order parameter)
-    is computed across all timeseries.
+    Computes the Kuramoto order parameter of a timeseries which is a measure for synchrony.
+    Can smooth timeseries if there is noise. 
+    Peaks are then detected using a peakfinder. From these peaks a phase is derived and then 
+    the amount of phase synchrony (the Kuramoto order parameter) is computed.
 
-    Parameters
-    ----------
-        traces : numpy array
-            Multidimensional timeseries array
-        dt : float
-            Integration timestep
-        smoothing : float, optional
-            Gaussian smoothing strength
-        peakrange : list of floats, length 2
-            Width range of peaks for peak detection
-
-    Returns
-    -------
-        kuramoto : numpy array
-            Timeseries of Kuramoto order paramter
+    :param traces: Multidimensional timeseries array
+    :type traces: numpy.ndarray
+    :param dt: Integration time step
+    :type dt: float
+    :param smoothing: Gaussian smoothing strength
+    :type smoothing: float, optional
+    :param peakrange: Width range of peaks for peak detection with `scipy.signal.find_peaks_cwt`
+    :type peakrange: list[float], length 2
+            
+    :return: Timeseries of Kuramoto order paramter 
+    :rtype: numpy.ndarray
     """
-
     phases = []
     nTraces = len(traces)
     for n in range(nTraces):
@@ -65,69 +60,48 @@ def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
 
 
 def matrix_correlation(M1, M2):
-    """
-    Pearson correlation of the lower triagonal of two matrices.
+    """Pearson correlation of the lower triagonal of two matrices.
     The triangular matrix is offset by k = 1 in order to ignore the diagonal line
-
-    Parameters
-    ----------
-        M1 : numpy array
-            N x N matrix
-        M2 : numpy array
-            N x N matrix, must have same dimensions as M1
-
-    Returns
-    -------
-        cc : float
-            Correlation coefficient
-
+    
+    :param M1: First matrix
+    :type M1: numpy.ndarray
+    :param M2: Second matrix
+    :type M2: numpy.ndarray
+    :return: Correlation coefficient
+    :rtype: float
     """
-
     cc = np.corrcoef(M1[np.triu_indices_from(M1, k=1)], M2[np.triu_indices_from(M2, k=1)])[0, 1]
     return cc
 
 
 def fc(ts):
-    """
-    Functional connectivity matrix of timeseries multidimensional `ts` (Nxt).
+    """Functional connectivity matrix of timeseries multidimensional `ts` (Nxt).
     Pearson correlation (from `np.corrcoef()` is used).
 
-    Parameters
-    ----------
-        ts : numpy array
-            Nxt timeseries
-
-    Returns
-    -------
-        fc : numpy array
-            N x N functional connectivity matrix
+    :param ts: Nxt timeseries
+    :type ts: numpy.ndarray
+    :return: N x N functional connectivity matrix
+    :rtype: numpy.ndarray
     """
-
     fc = np.corrcoef(ts)
     fc = np.nan_to_num(fc)  # remove NaNs
     return fc
 
 
 def fcd(ts, windowsize=30, stepsize=5):
+    """Computes FCD (functional connectivity dynamics) matrix, as described in Deco's whole-brain model papers.
+    Default paramters are suited for computing FCS matrices of BOLD timeseries:
+    A windowsize of 30 at the BOLD sampling rate of 0.5 Hz equals 60s and stepsize = 5 equals 10s.
+
+    :param ts: Nxt timeseries
+    :type ts: numpy.ndarray
+    :param windowsize: Size of each rolling window in timesteps, defaults to 30
+    :type windowsize: int, optional
+    :param stepsize: Stepsize between each rolling window, defaults to 5
+    :type stepsize: int, optional
+    :return: T x T FCD matrix
+    :rtype: numpy.ndarray
     """
-    Computes FCD (functional connectivity dynamics) matrix, as described in Deco's whole-brain model papers.
-    Default paramters are adjusted for BOLD timeseries: windowsize = 30 (=60s) and stepsize = 5 (=10s).
-
-    Parameters
-    ----------
-        ts : numpy array
-            Nxt timeseries
-        windowsize : int
-            Size of each rolling window in timesteps
-        stepsize : int
-            Stepsize between each rolling window
-
-    Returns
-    -------
-        fc : numpy array
-            T x T FCD matrix
-    """
-
     t_window_width = int(windowsize)  # int(windowsize * 30) # x minutes
     stepsize = stepsize  # ts.shape[1]/N
     corrFCs = []
@@ -152,12 +126,24 @@ def fcd(ts, windowsize=30, stepsize=5):
         return 0
 
 
-def kolmogorov(BOLD1, BOLD2, stepsize=5, windowsize=1.0):
+def kolmogorov(ts1, ts2, stepsize=5, windowsize=1.0):
+    """Computes kolmogorov distance between two timeseries. 
+    This is done by first computing two FCD matrices (one for each timeseries)
+    and then measuring the Kolmogorov distance of the upper triangle of these matrices.
+    
+    :param ts1: Timeseries 1
+    :type ts1: np.ndarray
+    :param ts2: Timeseries 2
+    :type ts2: np.ndarray
+    :param stepsize: Step size for FCD matrix calculation, defaults to 5
+    :type stepsize: int, optional
+    :param windowsize: Window size for FCD matrix calculation, defaults to 1.0
+    :type windowsize: float, optional
+    :return: Kolmogorov distance
+    :rtype: float
     """
-    Computes kolmogorov distance between two FCD matrices.
-    """
-    empiricalFCD = fcd(BOLD2[:, : len(BOLD1[0, :])], stepsize, windowsize)
-    FCD = fcd(BOLD1, stepsize, windowsize)
+    empiricalFCD = fcd(ts2[:, : len(ts1[0, :])], stepsize, windowsize)
+    FCD = fcd(ts1, stepsize, windowsize)
 
     triUFCD = np.triu(FCD)
     triUFCD = triUFCD[(triUFCD > 0.0) & (triUFCD < 1.0)]
@@ -170,7 +156,10 @@ def kolmogorov(BOLD1, BOLD2, stepsize=5, windowsize=1.0):
 
 def print_params(params):
     """
-    Helpfer function to print the current set of parameters.
+    Helpfer function for printing a subset of the paramters of the aln model.
+    Todo: This function should not be here, it is too specific for the aln model.
+    Idea: A model could register "parameters of interest" and be printed with this function. 
+    However, this should be placed in the Model class in any case
     """
     paramsOfInterest = [
         "dt",
@@ -199,28 +188,21 @@ def print_params(params):
 
 
 def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
-    """
-    Returns a power spectrum using Welch's method.
+    """Returns a power spectrum using Welch's method.
+    
+    :param activity: One-dimensional timeseries
+    :type activity: np.ndarray
+    :param dt: Simulation time step
+    :type dt: float
+    :param maxfr: Maximum frequency in Hz to cutoff from return, defaults to 70
+    :type maxfr: int, optional
+    :param spectrum_windowsize: Length of the window used in Welch's method (in seconds), defaults to 1.0
+    :type spectrum_windowsize: float, optional
+    :param normalize: Maximum power is normalized to 1 if True, defaults to False
+    :type normalize: bool, optional
 
-    Parameters
-    ----------
-        activity : numpy array
-            One-dimensional timeseries
-        dt : float
-            Simulation time step
-        maxfr : float, optional
-            Maximum frequency to cutoff from return
-        spectrum_windowsize : float
-            Length of the window used in Welch's method (in seconds)
-        normalize : bool
-            Maximum power is normalized to 1 if True
-
-    Returns
-    -------
-        f : list
-            Frequencies
-        pwers : list
-            Powers
+    :return: Frquencies and the power of each frequency
+    :rtype: [np.ndarray, np.ndarray]
     """
     # convert to one-dimensional array if it is an (1xn)-D array
     if activity.shape[0] == 1 and activity.shape[1] > 1:
@@ -238,9 +220,23 @@ def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=
 
 
 def getMeanPowerSpectrum(activities, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
+    """Returns the mean power spectrum of multiple timeseries.
+    
+    :param activities: N-dimensional timeseries
+    :type activities: np.ndarray
+    :param dt: Simulation time step
+    :type dt: float
+    :param maxfr: Maximum frequency in Hz to cutoff from return, defaults to 70
+    :type maxfr: int, optional
+    :param spectrum_windowsize: Length of the window used in Welch's method (in seconds), defaults to 1.0
+    :type spectrum_windowsize: float, optional
+    :param normalize: Maximum power is normalized to 1 if True, defaults to False
+    :type normalize: bool, optional
+
+    :return: Frquencies and the power of each frequency
+    :rtype: [np.ndarray, np.ndarray]
     """
-    Returns the mean power spectrum of multiple timeseries.
-    """
+
     powers = np.zeros(getPowerSpectrum(activities[0], dt, maxfr, spectrum_windowsize)[0].shape)
     ps = []
     for rate in activities:
