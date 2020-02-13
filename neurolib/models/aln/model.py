@@ -54,9 +54,8 @@ class ALNModel(Model):
         self.chunkSize = (
             chunkSize  # Size of integration chunks in chunkwise integration in case of simulateBOLD == True
         )
-        self.saveAllActivity = (
-            saveAllActivity  # Save data of all chunks? Can be very memory demanding if simulations are long or large
-        )
+        # Save data from all chunks? Can be very memory demanding if simulations are long or large
+        self.saveAllActivity = saveAllActivity
 
         # load default parameters if none were given
         if params is None:

@@ -26,6 +26,7 @@ class HopfModel(Model):
         simulateChunkwise=False,
         chunkSize=10000,
         simulateBOLD=False,
+        saveAllActivity=False,
     ):
         # Initialize base class Model
         super().__init__(self.name)
@@ -43,9 +44,8 @@ class HopfModel(Model):
         self.simulateBOLD = simulateBOLD  # BOLD
         if simulateBOLD:
             self.simulateChunkwise = True  # Override this setting if BOLD is simulated!
-        self.saveAllActivity = (
-            False  # Save data from all chunks? Can be very memory demanding if simulations are long or large
-        )
+        # Save data from all chunks? Can be very memory demanding if simulations are long or large
+        self.saveAllActivity = saveAllActivity
 
         # load default parameters if none were given
         if params is None:
