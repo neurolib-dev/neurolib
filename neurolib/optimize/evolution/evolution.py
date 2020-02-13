@@ -41,22 +41,33 @@ class Evolution:
         selectionFunction=None,
         RANKP=1.5,
     ):
-        """
-        :param model: Model to run
-        :type model: Model
+        """Initialize evolutionary optimization.
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
-        :type evalFunction: Function shuold retiurn a tuple of the form (fitness_tuple, model.output)
-        :param weightList: List of floats that defines the dimensionality of the fitness vector returned from evalFunction and the weights of each component (positive = maximize, negative = minimize) 
-
-        :param hdf_filename: HDF file to store all results in (data/hdf/evolution.hdf default)
-        :param ncores: Number of cores to simulate on (max cores default)
-        :param POP_INIT_SIZE: Size of first population to initialize evolution with (random, uniformly distributed)
-        :param POP_SIZE: Size of the population during evolution
-        :param NGEN: Numbers of generations to evaluate
-        :param matingFunction: Custom mating function, defaults to blend crossover if not set.
-        :param CXP: Parameter handed to the mating function (for blend crossover, this is `alpha`)
-        :param selectionFunction: Custom parent selection function, defaults to rank selection if not set.
-        :param RANKP: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81)
+        :type evalFunction: function
+        :param parameterSpace: Parameter space to run evolution in.
+        :type parameterSpace: `neurolib.utils.parameterSpace.ParameterSpace`
+        :param weightList: List of floats that defines the dimensionality of the fitness vector returned from evalFunction and the weights of each component for multiobjective optimization (positive = maximize, negative = minimize). If not given, then a single positive weight will be used, defaults to None
+        :type weightList: list[float], optional
+        :param model: Model to simulate, defaults to None
+        :type model: `neurolib.models.model.Model`, optional
+        :param hdf_filename: HDF file to store all results in, defaults to "evolution.hdf"
+        :type hdf_filename: str, optional
+        :param ncores: Number of cores to simulate on (max cores default), defaults to None
+        :type ncores: int, optional
+        :param POP_INIT_SIZE: Size of first population to initialize evolution with (random, uniformly distributed), defaults to 100
+        :type POP_INIT_SIZE: int, optional
+        :param POP_SIZE: Size of the population during evolution, defaults to 20
+        :type POP_SIZE: int, optional
+        :param NGEN: Numbers of generations to evaluate, defaults to 10
+        :type NGEN: int, optional
+        :param matingFunction: Custom mating function, defaults to blend crossover if not set., defaults to None
+        :type matingFunction: function, optional
+        :param CXP: Parameter handed to the mating function (for blend crossover, this is `alpha`), defaults to 0.5
+        :type CXP: float, optional
+        :param selectionFunction: Custom parent selection function, defaults to rank selection if not set., defaults to None
+        :type selectionFunction: function, optional
+        :param RANKP: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
+        :type RANKP: float, optional
         """
 
         if weightList is None:
@@ -160,6 +171,11 @@ class Evolution:
 
     def getIndividualFromTraj(self, traj):
         """Get individual from pypet trajectory
+        
+        :param traj: Pypet trajectory
+        :type traj: `pypet.trajectory.Trajectory`
+        :return: Individual (`DEAP` type)
+        :rtype: `deap.creator.Individual`
         """
         # either pass an individual or a pypet trajectory with the attribute individual
         if type(traj).__name__ == "Individual":
@@ -177,19 +193,41 @@ class Evolution:
         :params traj: Pypet trajectory with individual (traj.individual) or directly a deap.Individual
 
         :returns model: Model with the parameters of this individual.
+        
+        :param traj: Pypet trajectory with individual (traj.individual) or directly a deap.Individual
+        :type traj: `pypet.trajectory.Trajectory`
+        :return: Model with the parameters of this individual.
+        :rtype: `neurolib.models.model.Model`
         """
         model = self.model
         model.params.update(self.individualToDict(self.getIndividualFromTraj(traj)))
         return model
 
     def individualToDict(self, individual):
-        """
-        Convert an individual to a parameter dictionary.
+        """Convert an individual to a parameter dictionary.
+        
+        :param individual: Individual (`DEAP` type)
+        :type individual: `deap.creator.Individual`
+        :return: Parameter dictionary of this individual
+        :rtype: dict
         """
         return self.ParametersInterval(*(individual[: len(self.paramInterval)]))._asdict().copy()
 
     def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, CXP, NGEN, model):
-        """Initializes pypet trajectory and store all simulation parameters.
+        """Initializes pypet trajectory and store all simulation parameters for later analysis.
+        
+        :param traj: Pypet trajectory (must be already initialized!)
+        :type traj: `pypet.trajectory.Trajectory`
+        :param paramInterval: Parameter space, from ParameterSpace class
+        :type paramInterval: parameterSpace.named_tuple
+        :param POP_SIZE: Population size
+        :type POP_SIZE: int
+        :param CXP: Crossover parameter
+        :type CXP: float
+        :param NGEN: Number of generations
+        :type NGEN: int
+        :param model: Model to store the default parameters of
+        :type model: `neurolib.models.model.Model`
         """
         # Initialize pypet trajectory and add all simulation parameters
         traj.f_add_parameter("popsize", POP_SIZE, comment="Population size")  #
@@ -218,6 +256,21 @@ class Evolution:
         self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingFunction, selectionFunction
     ):
         """Initializes DEAP and registers all methods to the deap.toolbox
+        
+        :param toolbox: Deap toolbox
+        :type toolbox: deap.base.Toolbox
+        :param pypetEnvironment: Pypet environment (must be initialized first!)
+        :type pypetEnvironment: [type]
+        :param paramInterval: Parameter space, from ParameterSpace class
+        :type paramInterval: parameterSpace.named_tuple
+        :param evalFunction: Evaluation function
+        :type evalFunction: function
+        :param weights_list: List of weiths for multiobjective optimization
+        :type weights_list: list[float]
+        :param matingFunction: Mating function (crossover)
+        :type matingFunction: function
+        :param selectionFunction: Parent selection function
+        :type selectionFunction: function
         """
         # ------------- register everything in deap
         deap.creator.create("FitnessMulti", deap.base.Fitness, weights=tuple(weights_list))
@@ -253,17 +306,18 @@ class Evolution:
         # toolbox.decorate("mutate", self.history.decorator)
 
     def evalPopulationUsingPypet(self, traj, toolbox, pop, gIdx):
+        """Evaluate the fitness of the popoulation of the current generation using pypet
+        :param traj: Pypet trajectory
+        :type traj: `pypet.trajectory.Trajectory`
+        :param toolbox: `deap` toolbox
+        :type toolbox: deap.base.Toolbox
+        :param pop: Population
+        :type pop: list
+        :param gIdx: Index of the current generation
+        :type gIdx: int
+        :return: Evaluated population with fitnesses
+        :rtype: list
         """
-        Eval the population fitness using pypet
-        
-        Params:
-            pop:    List of inidivual (population to evaluate)
-            gIdx:   Index of the current generation
-            
-        Return:
-            The population with updated fitness values
-        """
-
         # Add as many explored runs as individuals that need to be evaluated.
         # Furthermore, add the individuals as explored parameters.
         # We need to convert them to lists or write our own custom IndividualParameter ;-)
@@ -315,8 +369,10 @@ class Evolution:
     def tagPopulation(self, pop):
         """Take a fresh population and add id's and attributes such as parameters that we can use later
 
-        :param pop: Population
+        :param pop: Fresh population
         :type pop: list
+        :return: Population with tags
+        :rtype: list
         """
         for i, ind in enumerate(pop):
             assert not hasattr(ind, "id"), "Individual has an id already, will not overwrite it!"
@@ -333,7 +389,8 @@ class Evolution:
         return pop
 
     def runInitial(self):
-        """First round of evolution: 
+        """Run the first round of evolution with the initial population of size `POP_INIT_SIZE`
+        and select the best `POP_SIZE` for the following evolution. This needs to be run before `runEvolution()`
         """
         self._t_start_initial_population = datetime.datetime.now()
 
@@ -367,6 +424,8 @@ class Evolution:
         self._t_end_initial_population = datetime.datetime.now()
 
     def runEvolution(self):
+        """Run the evolutionary optimization process for `NGEN` generations.
+        """
         # Start evolution
         logging.info("Start of evolution")
         self._t_start_evolution = datetime.datetime.now()
@@ -450,7 +509,11 @@ class Evolution:
         self._t_end_evolution = datetime.datetime.now()
 
     def run(self, verbose=False):
-        """Run full evolution (or continue previous evolution)
+        """Run the evolution or continue previous evolution. If evolution was not initialized first
+        using `runInitial()`, this will be done.
+        
+        :param verbose: Print and plot state of evolution during run, defaults to False
+        :type verbose: bool, optional
         """
         self.verbose = verbose
         if not self._initialPopulationSimulated:
@@ -489,6 +552,11 @@ class Evolution:
 
     @property
     def dfPop(self):
+        """Returns a `pandas` dataframe of the current generation's population parameters 
+        for post processing. This object can be further used to easily analyse the population.
+        :return: Pandas dataframe with all individuals and their parameters
+        :rtype: `pandas.core.frame.DataFrame`
+        """
         validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
         indIds = [p.id for p in validPop]
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
@@ -500,13 +568,30 @@ class Evolution:
         return dfPop
 
     def loadResults(self, filename=None, trajectoryName=None):
-        """Load results from evolution.
+        """Load results from a hdf file of a previous evolution and store the
+        pypet trajectory in `self.traj`
+        
+        :param filename: hdf filename of the previous run, defaults to None
+        :type filename: str, optional
+        :param trajectoryName: Name of the trajectory in the hdf file to load. If not given, the last one will be loaded, defaults to None
+        :type trajectoryName: str, optional
         """
         if filename == None:
             filename = self.HDF_FILE
         self.traj = pu.loadPypetTrajectory(filename, trajectoryName)
 
     def getScoresDuringEvolution(self, traj=None, drop_first=True, reverse=False):
+        """Get the scores of each generation's population.
+        
+        :param traj: Pypet trajectory. If not given, the current trajectory is used, defaults to None
+        :type traj: `pypet.trajectory.Trajectory`, optional
+        :param drop_first: Drop the first (initial) generation. This can be usefull because it can have a different size (`POP_INIT_SIZE`) than the succeeding populations (`POP_SIZE`) which can make data handling tricky, defaults to True
+        :type drop_first: bool, optional
+        :param reverse: Reverse the order of each generation. This is a necessary workaraound because loading from the an hdf file returns the generations in a reversed order compared to loading each generation from the pypet trajectory in memory, defaults to False
+        :type reverse: bool, optional
+        :return: Tuple of list of all generations and an array of the scores of all individuals
+        :rtype: tuple[list, numpy.ndarray]
+        """
         if traj == None:
             traj = self.traj
 
