@@ -55,7 +55,7 @@ def loadDefaultParams(Cmat=[], Dmat=[], seed=None):
     params.x_ext_mean = 0.0  # mV/ms (OU process) [0-5]
     params.y_ext_mean = 0.0  # mV/ms (OU process) [0-5]
 
-    # neuron model parameters
+    # neural mass model parameters
     params.a = 0.25  # Hopf bifurcation parameter
     params.w = 0.2  # Oscillator frequency, 32 Hz at w = 0.2
 
