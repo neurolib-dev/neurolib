@@ -30,6 +30,10 @@ def loadDefaultParams(Cmat=[], Dmat=[], seed=None):
     # global whole-brain network parameters
     # ------------------------------------------------------------------------
 
+    # the coupling parameter determines how nodes are coupled.
+    # "diffusive" for diffusive coupling, "additive" for additive coupling
+    params.coupling = "diffusive"
+
     params.signalV = 20.0
     params.K_gl = 250.0  # global coupling strength
 
