@@ -53,9 +53,10 @@ class TestEvolutinUtils(unittest.TestCase):
         du.mutateUntilValid(self.pop, self.evolution.paramInterval, self.evolution.toolbox, maxTries=10)
 
     @pytest.mark.skipif(sys.platform == "darwin", reason="plotting does not work on macOS")
-    def test_plotPopulation(self):
+    def test_plots(self):
         matplotlib = pytest.importorskip("matplotlib")
         eu.plotPopulation(self.pop, self.evolution.paramInterval, plotScattermatrix=True)
+        eu.plotProgress(self.evolution)
 
 
 class TestEvolutionCrossover(unittest.TestCase):
