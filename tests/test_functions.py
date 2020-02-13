@@ -15,7 +15,7 @@ class TestFunctions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         ds = Dataset("gw")
-        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, chunkSize=500)
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, chunkSize=1000)
 
         # Resting state fits
         aln.params["mue_ext_mean"] = 1.57
@@ -42,7 +42,7 @@ class TestFunctions(unittest.TestCase):
         cc = func.matrix_correlation(FC, self.ds.FCs[0])
 
     def test_kolmogorov(self):
-        func.kolmogorov(self.model.rates_exc[::20, :], self.model.rates_exc, stepsize=1000, windowsize=30)
+        func.kolmogorov(self.model.rates_exc[::20, :], self.model.rates_exc, stepsize=250, windowsize=30)
 
     def test_print_params(self):
         func.print_params(self.model.params)
