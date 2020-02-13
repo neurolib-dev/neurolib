@@ -4,6 +4,8 @@ import unittest
 
 from neurolib.models.aln import ALNModel
 from neurolib.models.hopf import HopfModel
+from neurolib.models.fhn import FHNModel
+
 from neurolib.utils.loadData import Dataset
 
 
@@ -77,6 +79,39 @@ class TestHopf(unittest.TestCase):
         hopf.params["K_gl"] = 0.6
 
         hopf.run()
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+class TestFHN(unittest.TestCase):
+    """
+    Basic test for FHN model.
+    """
+
+    def test_single_node(self):
+        logging.info("\t > FHN: Testing single node ...")
+        start = time.time()
+        fhn = FHNModel()
+        fhn.params["duration"] = 2.0 * 1000
+        fhn.params["sigma_ou"] = 0.03
+
+        fhn.run()
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+    def test_network(self):
+        logging.info("\t > FHN: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
+        start = time.time()
+        ds = Dataset("gw")
+        fhn = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+        fhn.params["signalV"] = 4.0
+        fhn.params["duration"] = 10 * 1000
+        fhn.params["sigma_ou"] = 0.1
+        fhn.params["K_gl"] = 0.6
+        fhn.params["x_ext_mean"] = 0.72
+
+        fhn.run()
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
