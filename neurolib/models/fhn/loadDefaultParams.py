@@ -50,16 +50,13 @@ def loadDefaultParams(Cmat=[], Dmat=[], seed=None):
     # ------------------------------------------------------------------------
 
     # external input parameters:
-    params.I = 0.4
-
-    # noise parameters
     params.tau_ou = 5.0  # ms Timescale of the Ornstein-Uhlenbeck noise process
     params.sigma_ou = 0.0  # mV/ms/sqrt(ms) noise intensity
     params.x_ext_mean = 0.0  # mV/ms (OU process) [0-5]
     params.y_ext_mean = 0.0  # mV/ms (OU process) [0-5]
 
     # neural mass model parameters
-    params.alpha = 3.0  # Eqpsilon in Kostova et al. (2005)
+    params.alpha = 3.0  # Eqpsilon in Kostova et al. (2004) FitzHugh–Nagumo revisited: Types of bifurcations, periodical forcing and stability regions by a Lyapunov functional
     params.beta = 4.0  # eps(1+lam)
     params.gamma = -1.5  # lam eps
     params.delta = 0.0
