@@ -18,8 +18,8 @@ class ALNModel(Model):
     def __init__(
         self,
         params=None,
-        Cmat=[],
-        Dmat=[],
+        Cmat=None,
+        Dmat=None,
         lookupTableFileName=None,
         seed=None,
         simulateChunkwise=False,
