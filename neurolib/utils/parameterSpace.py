@@ -1,3 +1,7 @@
+"""
+Class for representing a parameter space for exploration or optimization.
+"""
+
 import collections
 import numpy as np
 

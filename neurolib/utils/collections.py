@@ -1,3 +1,8 @@
+"""
+Collections of custom data structures and types.
+"""
+
+
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""
 
