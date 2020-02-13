@@ -27,11 +27,11 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
     # initialize data arrays
     t_BOLD_return = np.array([], dtype="f", ndmin=1)
     BOLD_return = np.array([], dtype="f", ndmin=2)
-    all_t = np.array([], dtype="f", ndmin=2)
-    t_return = np.array([], dtype="f", ndmin=2)
-    all_xs = np.array([], dtype="f", ndmin=2)
+    all_t = np.array([], dtype="f", ndmin=1)
+    t_return = np.array([], dtype="f", ndmin=1)
+    all_xs = np.array([], dtype="f", ndmin=2).reshape(N, 0)
     xs_return = np.array([], dtype="f", ndmin=2)
-    all_ys = np.array([], dtype="f", ndmin=2)
+    all_ys = np.array([], dtype="f", ndmin=2).reshape(N, 0)
     ys_return = np.array([], dtype="f", ndmin=2)
 
     lastT = 0

@@ -36,7 +36,7 @@ class TestAln(unittest.TestCase):
 
         ds = Dataset("gw")
 
-        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, saveAllActivity=True)
         # in ms, simulates for 5 minutes
         aln.params["duration"] = 10 * 1000
 
@@ -71,7 +71,7 @@ class TestHopf(unittest.TestCase):
         logging.info("\t > Hopf: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
         start = time.time()
         ds = Dataset("gw")
-        hopf = HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+        hopf = HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, saveAllActivity=True)
         hopf.params["w"] = 1.0
         hopf.params["signalV"] = 0
         hopf.params["duration"] = 10 * 1000
@@ -104,7 +104,7 @@ class TestFHN(unittest.TestCase):
         logging.info("\t > FHN: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
         start = time.time()
         ds = Dataset("gw")
-        fhn = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+        fhn = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, saveAllActivity=True)
         fhn.params["signalV"] = 4.0
         fhn.params["duration"] = 10 * 1000
         fhn.params["sigma_ou"] = 0.1
