@@ -168,9 +168,9 @@ We can plot the results to get something close to a bifurcation diagram!
 
 A detailed example is available as a [IPython Notebook](examples/example-2-evolutionary-optimization-minimal.ipynb). 
 
-`neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual. An individual is a part of a population. In each generation, individuals are evaluated according to a fitness criterion. Afterwards, all individuals of a population which have a high fitness value are able to mate and create offspring. This offspring undergoes some random changes, which is often called mutation. Then all offsprings are evaluated and the best part of the population is selected. This process goes on for a given amount generations until a good population with high-fitness individuals is found.
+`neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual and the parameters of the simulation, for example coupling strengths or noise level values, are represented as genes of each offspring. An individual is a part of a population. In each generation, individuals are evaluated and ranked according to a fitness criterion. For whole-brain network simulations, this could be the fit of the activity to empirical data. Then, individuals with a high fitness value are `selected` as parents and `mate` to create offspring. These offspring undergo random `mutations` of their genes. After all offspring are evaluated, the best individuals of the population are selected to transition into the next generation. This process goes on for a given amount generations until a stopping criterion is reached. This could be a predefined maximum number of generations or when a large enough population with high fitness values is found.
 
-`neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. In this example, we will simply calculate the example of each individual as the distance to the unit circle. 
+`neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. Of course, if you like, you can dig deeper, define your own selection, mutation and mating operators. In the following example, we will simply evaluate the fitness of each individual as the distance to the unit circle. After a couple of generations of mating, mutating and selecting, only individuals who are close to the circle should survive:
 
 ```python
 from neurolib.utils.parameterSpace import ParameterSpace
@@ -196,13 +196,14 @@ evolution = Evolution(optimize_me, pars, weightList = [-1.0], POP_INIT_SIZE= 100
 evolution.run()    
 ```
 
-That's all! Now you can check the results!
+That's it! Now we can check the results:
 
 ```python
 evolution.loadResults()
 evolution.info(plot=True)
 ```
-This will give you a summary of the last generation and plot a distribution of the individuals (and their parameters). Below is an animation of 10 generations of the evolutionary process. As you can see, after a couple of generations, all remaining individuals lie on a circle.
+
+This will gives us a summary of the last generation and plots a distribution of the individuals (and their parameters). Below is an animation of 10 generations of the evolutionary process. As you can see, after a couple of generations, all remaining individuals lie very close to the unit circle.
 
 <p align="center">
   <img src="resources/evolution_animated.gif">
