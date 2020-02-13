@@ -19,8 +19,12 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
     # local parameters
-    a = params["a"]  # Hopf bifurcation parameter
-    w = params["w"]  # Oscillator frequency
+    alpha = params["alpha"]
+    beta = params["beta"]
+    gamma = params["gamma"]
+    delta = params["delta"]
+    epsilon = params["epsilon"]
+    tau = params["tau"]
 
     # external input parameters:
     # Parameter of the Ornstein-Uhlenbeck process for the external input(ms)
@@ -101,12 +105,6 @@ def timeIntegration(params):
 
     zeros4 = np.zeros((4,))
 
-    # tile external inputs to appropriate shape
-    # ext_exc_current = adjust_shape(params['ext_exc_current'], xs)
-    # ext_inh_current = adjust_shape(params['ext_inh_current'], xs)
-    # ext_exc_rate = adjust_shape(params['ext_exc_rate'], xs)
-    # ext_inh_rate = adjust_shape(params['ext_inh_rate'], xs)
-
     # ------------------------------------------------------------------------
 
     return timeIntegration_njit_elementwise(
@@ -126,8 +124,12 @@ def timeIntegration(params):
         ys,
         xs_input_d,
         ys_input_d,
-        a,
-        w,
+        alpha,
+        beta,
+        gamma,
+        delta,
+        epsilon,
+        tau,
         noise_xs,
         noise_ys,
         x_ext,
@@ -157,8 +159,12 @@ def timeIntegration_njit_elementwise(
     ys,
     xs_input_d,
     ys_input_d,
-    a,
-    w,
+    alpha,
+    beta,
+    gamma,
+    delta,
+    epsilon,
+    tau,
     noise_xs,
     noise_ys,
     x_ext,
@@ -168,6 +174,11 @@ def timeIntegration_njit_elementwise(
     tau_ou,
     sigma_ou,
 ):
+    """
+    Fitz-Hugh Nagumo equations
+    du/dt = -alpha u^3 + beta u^2 - gamma u - w + I_{ext}
+    dw/dt = 1/tau (u + delta  - epsilon w)
+    """
     ### integrate ODE system:
     for i in range(startind, len(t)):
 
@@ -193,18 +204,20 @@ def timeIntegration_njit_elementwise(
                     xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1])
 
-            # Stuart-Landau / Hopf Oscillator
+            # Fitz-Hugh Nagumo equations
             x_rhs = (
-                (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * xs[no, i - 1]
-                - w * ys[no, i - 1]
+                -alpha * xs[no, i - 1] ** 3
+                + beta * xs[no, i - 1] ** 2
+                + gamma * xs[no, i - 1]
+                - ys[no, i - 1]
                 + xs_input_d[no]  # input from other nodes
                 + x_ext[no]  # input from external sources / noise
             )
             y_rhs = (
-                (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
-                + w * xs[no, i - 1]
-                + ys_input_d[no]  # input from other nodes
-                + y_ext[no]  # input from external sources / noise
+                (xs[no, i - 1] - delta - epsilon * ys[no, i - 1])
+                / tau
+                # + ys_input_d[no]
+                # + y_ext[no]
             )
 
             # Euler integration

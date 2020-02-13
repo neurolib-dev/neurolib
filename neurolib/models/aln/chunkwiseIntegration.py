@@ -41,9 +41,9 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
 
     all_t = np.array([], dtype="f", ndmin=1)
     t_return = np.array([], dtype="f", ndmin=1)
-    all_rates_exc = np.array([], dtype="f", ndmin=2)
+    all_rates_exc = np.array([], dtype="f", ndmin=2).reshape(N, 0)
     rates_exc_return = np.array([], dtype="f", ndmin=2)
-    all_rates_inh = np.array([], dtype="f", ndmin=2)
+    all_rates_inh = np.array([], dtype="f", ndmin=2).reshape(N, 0)
     rates_inh_return = np.array([], dtype="f", ndmin=2)
 
     lastT = 0
@@ -52,7 +52,9 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
         currentChunkSize = min(chunkSize + delay_Ndt, totalDuration - lastT + (delay_Ndt + 1) * dt)
         paramsChunk["duration"] = currentChunkSize
 
-        rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = timeIntegration(paramsChunk)
+        rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv = timeIntegration(
+            paramsChunk
+        )
 
         # Prepare integration parameters for the next chunk
         paramsChunk["mufe_init"] = mufe
@@ -74,7 +76,9 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
         # rates_inh_return = rates_inh[:, int(delay_Ndt) :]
         # t_return = t[int(delay_Ndt) :]
 
-        rates_exc_return = rates_exc[:, : -int(delay_Ndt)]  # cut off initial condition transient, otherwise it would repeat
+        rates_exc_return = rates_exc[
+            :, : -int(delay_Ndt)
+        ]  # cut off initial condition transient, otherwise it would repeat
         rates_inh_return = rates_inh[:, : -int(delay_Ndt)]
         t_return = t[: -int(delay_Ndt)]
 
@@ -99,6 +103,21 @@ def chunkwiseTimeIntAndBOLD(params, chunkSize=10000, simulateBOLD=True, saveAllA
             rates_inh_return = all_rates_inh
             t_return = all_t
 
-        return_from_timeIntegration = (rates_exc_return, rates_inh_return, t_return, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv)
+        return_from_timeIntegration = (
+            rates_exc_return,
+            rates_inh_return,
+            t_return,
+            mufe,
+            mufi,
+            IA,
+            seem,
+            seim,
+            siem,
+            siim,
+            seev,
+            seiv,
+            siev,
+            siiv,
+        )
 
     return t_BOLD_return, BOLD_return, return_from_timeIntegration

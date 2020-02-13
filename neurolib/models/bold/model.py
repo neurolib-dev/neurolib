@@ -13,7 +13,7 @@ class BOLDModel:
 
     def __init__(self, N, dt):
         self.N = N
-        self.dt = dt  # dt of neuronal activity
+        self.dt = dt  # dt of input activity in ms
         self.samplingRate_NDt = int(round(2000 / dt))  # downsample (0.5 Hz fMRI sampling rate)
 
         # return arrays
@@ -34,14 +34,27 @@ class BOLDModel:
         self.V_BOLD = np.ones((N,))
         # Blood volume
 
-    def run(self, activity):
-        """
-        Runs the Balloon-Windkessel BOLD simulation.
+    def run(self, activity, normalize=False, normalize_max=50):
+        """Runs the Balloon-Windkessel BOLD simulation.
 
         Parameters:
             :param activity:     Neuronal firing rate in Hz
-
+        
+        :param activity: Neuronal firing rate in Hz
+        :type activity: numpy.ndarray
+        :param normalize: Normalize input to generate sensible amplitudes for BOLD model input, defaults to False
+        :type normalize: bool, optional
+        :param normalize_max: Maximum of input after normalization, corresponds to maximal firing rate in Hz. The minimum will be normalized to 0.
+        :type normalize_max: float
         """
+        if normalize:
+            assert isinstance(normalize, (float, int)), "normalize_max must be a scalar."
+            assert normalize_max > 0, "normalize_max must be greater than 0."
+            # dermine the minimum and the maxmimum of the input
+            min_input = np.min(activity)
+            max_input = np.max(activity)
+            # rescale activity to range [0, normalize_max]
+            activity = (activity - min_input) / (max_input - min_input) * normalize_max
 
         # Compute the BOLD signal for the chunk
         BOLD_chunk, self.X_BOLD, self.F_BOLD, self.Q_BOLD, self.V_BOLD = simulateBOLD(

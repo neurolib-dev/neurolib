@@ -5,7 +5,7 @@ import scipy.io
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
-    """Load default parameters for the Hopf model
+    """Load default parameters for the FHN model
     
     :param Cmat: Structural connectivity matrix (adjacency matrix) of coupling strengths, will be normalized to 1. If not given, then a single node simulation will be assumed, defaults to None
     :type Cmat: numpy.ndarray, optional
@@ -36,6 +36,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # "diffusive" for diffusive coupling, "additive" for additive coupling
     params.coupling = "diffusive"
 
+    # signal transmission speec between areas
     params.signalV = 20.0
     params.K_gl = 250.0  # global coupling strength
 
@@ -62,9 +63,12 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.y_ext_mean = 0.0  # mV/ms (OU process) [0-5]
 
     # neural mass model parameters
-    params.a = 0.25  # Hopf bifurcation parameter
-    params.w = 0.2  # Oscillator frequency, 32 Hz at w = 0.2
-
+    params.alpha = 3.0  # Eqpsilon in Kostova et al. (2004) FitzHugh–Nagumo revisited: Types of bifurcations, periodical forcing and stability regions by a Lyapunov functional
+    params.beta = 4.0  # eps(1+lam)
+    params.gamma = -1.5  # lam eps
+    params.delta = 0.0
+    params.epsilon = 0.5  # a
+    params.tau = 20.0
     # ------------------------------------------------------------------------
 
     params.xs_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
