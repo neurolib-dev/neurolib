@@ -49,6 +49,16 @@ def timeIntegration(params):
     lengthMat = params["lengthMat"]
     signalV = params["signalV"]
 
+    # Additive or diffusive coupling scheme
+    coupling = params["coupling"]
+    # convert to integer for faster integration later
+    if coupling == "diffusive":
+        coupling = 0
+    elif coupling == "additive":
+        coupling = 1
+    else:
+        raise ValueError('Paramter "coupling" must be either "diffusive" or "additive"')
+
     if N == 1:
         Dmat = np.zeros((N, N))
     else:
@@ -109,6 +119,7 @@ def timeIntegration(params):
         Dmat,
         K_gl,
         signalV,
+        coupling,
         Dmat_ndt,
         xs,
         ys,
@@ -143,6 +154,7 @@ def timeIntegration_njit_elementwise(
     Dmat,
     K_gl,
     signalV,
+    coupling,
     Dmat_ndt,
     xs,
     ys,
@@ -181,9 +193,17 @@ def timeIntegration_njit_elementwise(
             # delayed input to each node
             xs_input_d[no] = 0
             ys_input_d[no] = 0
-            for l in range(N):
-                xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])  # delayed input
-                # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1] - ys[no, i - 1])  # delayed input
+
+            # diffusive coupling
+            if coupling == 0:
+                for l in range(N):
+                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
+                    # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1] - ys[no, i - 1])
+            # additive coupling
+            elif coupling == 1:
+                for l in range(N):
+                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
+                    # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1])
 
             # Fitz-Hugh Nagumo equations
             x_rhs = (
