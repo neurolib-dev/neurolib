@@ -161,6 +161,18 @@ def plotPopulation(
         plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots)
 
 
+def plotProgress(evolution, drop_first=True):
+    gens, all_scores = evolution.getScoresDuringEvolution(reverse=False, drop_first=drop_first)
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(8, 4), dpi=200)
+    plt.plot(gens, np.nanmean(all_scores, axis=1))
+    plt.fill_between(gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3)
+    plt.xlabel("Generation #")
+    plt.ylabel("Score")
+    plt.show()
+
+
 def printEvolutionInfo(evolution):
     """Function that prints all important parameters of the evolution.
     :param evolution: evolution object
@@ -168,6 +180,12 @@ def printEvolutionInfo(evolution):
     print("> Simulation parameters")
     print(f"HDF file storage: {evolution.trajectoryFileName}")
     print(f"Trajectory Name: {evolution.trajectoryName}")
+    if hasattr(evolution, "_t_end_initial_population"):
+        print(
+            f"Duration of evaluating initial population {evolution._t_end_initial_population-evolution._t_start_initial_population}"
+        )
+    if hasattr(evolution, "_t_end_evolution"):
+        print(f"Duration of evolution {evolution._t_end_evolution-evolution._t_start_evolution}")
     if evolution.model is not None:
         print(f"Model: {type(evolution.model)}")
         if hasattr(evolution.model, "name"):
@@ -180,7 +198,8 @@ def printEvolutionInfo(evolution):
     print(f"Number of generations: {evolution.NGEN}")
     print(f"Initial population size: {evolution.POP_INIT_SIZE}")
     print(f"Population size: {evolution.POP_SIZE}")
-    print(f"Crossover probability: {evolution.CXPB}")
+    print(f"Crossover paramter: {evolution.CXP}")
+    print(f"Selection paramter: {evolution.RANKP}")
     if len(evolution.comments) > 0:
         if isinstance(evolution.comments, str):
             print(f"Comments: {evolution.comments}")

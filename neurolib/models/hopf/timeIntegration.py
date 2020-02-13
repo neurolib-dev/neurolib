@@ -79,6 +79,7 @@ def timeIntegration(params):
 
     # xsd = np.zeros((N,N))  # delayed activity
     xs_input_d = np.zeros(N)  # delayed input to x
+    ys_input_d = np.zeros(N)  # delayed input to x
 
     # Save the noise in the rates array to save memory
     if RNGseed:
@@ -114,6 +115,7 @@ def timeIntegration(params):
         xs,
         ys,
         xs_input_d,
+        ys_input_d,
         a,
         w,
         noise_xs,
@@ -143,6 +145,7 @@ def timeIntegration_njit_elementwise(
     xs,
     ys,
     xs_input_d,
+    ys_input_d,
     a,
     w,
     noise_xs,
@@ -166,9 +169,10 @@ def timeIntegration_njit_elementwise(
 
             # delayed input to each node
             xs_input_d[no] = 0
+            ys_input_d[no] = 0
             for l in range(N):
                 xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])  # delayed input
-            # ysd[no] = ys[no,i-1] # delayed input
+                ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1] - ys[no, i - 1])  # delayed input
 
             # Stuart-Landau / Hopf Oscillator
             x_rhs = (
@@ -177,7 +181,12 @@ def timeIntegration_njit_elementwise(
                 + xs_input_d[no]
                 + x_ext[no]
             )
-            y_rhs = (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1] + w * xs[no, i - 1] + y_ext[no]
+            y_rhs = (
+                (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
+                + w * xs[no, i - 1]
+                + ys_input_d[no]
+                + y_ext[no]
+            )
 
             xs[no, i] = xs[no, i - 1] + dt * x_rhs
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
