@@ -1,3 +1,7 @@
+"""
+Class for representing a parameter space for exploration or optimization.
+"""
+
 import collections
 import numpy as np
 
@@ -60,7 +64,40 @@ class ParameterSpace:
         self._processParameterDict(self.parameters)
 
     def dict(self):
+        """Returns the parameter space as a dicitonary of lists.
+        :rtype: dict
+        """
         return self.parameters
+
+    def getRandom(self, safe=False):
+        """This function returns a random single parameter from the whole space
+        in the form of { "par1" : 1, "par2" : 2}. 
+        
+        This function is used by neurolib/optimize/exploarion.py
+        to add parameters of the space to pypet (for initialization)
+
+        :param safe: Return a "safe" parameter or the original. Safe refers to 
+        returning python floats, not, for example numpy.float64 (necessary for pypet).
+        ;type safe: bool
+        """
+        randomPar = {}
+        if safe:
+            for key, value in self.safe.items():
+                randomPar[key] = float(np.random.choice(value))
+        else:
+            for key, value in self.parameters.items():
+                randomPar[key] = np.random.choice(value)
+        return randomPar
+
+    @property
+    def safe(self):
+        """Returns the parameter dict but with python types instead of the original ones
+        which could be of type numpy.float64 for example. This is necessary for pypet.
+        """
+        safeDict = self.parameters.copy()
+        for key, value in safeDict.items():
+            safeDict[key] = [float(v) for v in value]
+        return safeDict
 
     @property
     def ndims(self):
