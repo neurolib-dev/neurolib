@@ -67,8 +67,13 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     # ------------------------------------------------------------------------
 
+    # initial values of the state variables
     params.xs_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
     params.ys_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
+
+    # values of the external inputs
+    params.x_ext = np.zeros((params.N,))
+    params.y_ext = np.zeros((params.N,))
 
     params_dict = params.__dict__
 

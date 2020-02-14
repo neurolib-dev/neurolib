@@ -71,8 +71,8 @@ def timeIntegration(params):
     max_global_delay = np.max(Dmat_ndt)
     startind = int(max_global_delay + 1)  # timestep to start integration at
 
-    x_ext = np.zeros((N,))
-    y_ext = np.zeros((N,))
+    x_ext = params["x_ext"]
+    y_ext = params["y_ext"]
 
     # Set the initial firing rates.
     if np.shape(params["xs_init"])[1] == 1:
@@ -98,8 +98,6 @@ def timeIntegration(params):
 
     noise_xs = np.zeros((N,))
     noise_ys = np.zeros((N,))
-
-    zeros4 = np.zeros((4,))
 
     # tile external inputs to appropriate shape
     # ext_exc_current = adjust_shape(params['ext_exc_current'], xs)
