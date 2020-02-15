@@ -126,7 +126,7 @@ class Dataset:
         normalizationMethods = [None, "max", "waytotal", "nvoxel"]
         if method not in normalizationMethods:
             raise NotImplementedError(
-                f'"{method}" is not a known normalization method. Use: one of these: {normalizationMethods}'
+                f'"{method}" is not a known normalization method. Use one of these: {normalizationMethods}'
             )
         if method == "max":
             Cmats = [cm / np.max(cm) for cm in Cmats]
