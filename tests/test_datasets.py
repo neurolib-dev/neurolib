@@ -18,14 +18,10 @@ class TestDatasets(unittest.TestCase):
 
     def test_dataset_hcp(self):
         ds = Dataset("hcp")
+        ds = Dataset("hcp", normalizeCmats="waytotal")
+        ds = Dataset("hcp", normalizeCmats="nvoxel")
+
         self.assertTupleEqual(ds.Cmat.shape, (80, 80))
         self.assertTupleEqual(ds.Dmat.shape, (80, 80))
         self.assertTupleEqual(ds.FCs[0].shape, (80, 80))
         self.assertTrue(len(ds.FCs) == len(ds.BOLDs))
-
-    def test_manual_loading(self):
-        dsBaseDirectory = os.path.join("neurolib", "data", "datasets", "gw")
-        BOLDFilenames = glob.glob(os.path.join(dsBaseDirectory, "BOLD/", "*_tc.mat"))  # BOLD timeseries
-        ds = Dataset("gw")
-        ds.loadData(BOLDFilenames, key="tc", filter_subcortical=False, average=True)
-        ds.loadData(BOLDFilenames, key="tc", filter_subcortical=True, apply_function=func.fc)
