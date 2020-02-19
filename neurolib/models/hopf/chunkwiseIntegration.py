@@ -41,16 +41,18 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
         currentChunkSize = min(chunkSize, (totalDuration - lastT) / dt)
         currentChunkSize += delay_Ndt
         paramsChunk["duration"] = currentChunkSize * dt
+
         # Time Integration
-        t_chunk, xs_chunk, ys_chunk = timeIntegration(paramsChunk)
+        t_chunk, xs_chunk, ys_chunk, x_ou_chunk, y_ou_chunk = timeIntegration(paramsChunk)
 
         # Prepare integration parameters for the next chunk
-        paramsChunk["xs_init"] = xs_chunk[:, -int(delay_Ndt) :]
-        paramsChunk["ys_init"] = ys_chunk[:, -int(delay_Ndt) :]
+        paramsChunk["xs_init"] = xs_chunk[:, -delay_Ndt:]
+        paramsChunk["ys_init"] = ys_chunk[:, -delay_Ndt:]
 
-        xs_return = xs_chunk[:, int(delay_Ndt) :]
-        ys_return = ys_chunk[:, int(delay_Ndt) :]
-        t_return = t_chunk[int(delay_Ndt) :]
+        xs_return = xs_chunk[:, delay_Ndt:]
+        ys_return = ys_chunk[:, delay_Ndt:]
+        t_return = t_chunk[:-delay_Ndt]
+
         del xs_chunk, ys_chunk, t_chunk
 
         if saveAllActivity:
@@ -64,11 +66,11 @@ def chunkwiseTimeIntegration(params, chunkSize=10000, simulateBOLD=True, saveAll
             t_BOLD_return = boldModel.t_BOLD
 
         # in crement time counter
-        lastT = lastT + t_return[-1]
+        lastT = lastT + t_return[-1] + dt
 
     if saveAllActivity:
         xs_return = all_xs
         ys_return = all_ys
         t_return = all_t
 
-    return t_return, xs_return, ys_return, t_BOLD_return, BOLD_return
+    return t_return, xs_return, ys_return, x_ou_chunk, y_ou_chunk, t_BOLD_return, BOLD_return
