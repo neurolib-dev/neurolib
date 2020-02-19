@@ -1,3 +1,5 @@
+import numpy as np
+
 import neurolib.models.hopf.chunkwiseIntegration as cw
 import neurolib.models.hopf.loadDefaultParams as dp
 import neurolib.models.hopf.timeIntegration as ti
@@ -13,8 +15,12 @@ class HopfModel(Model):
     description = "Stuart-Landau model with Hopf bifurcation"
 
     modelOutputs = {"activity": ["x", "y"]}
-
     defaultOutput = "x"
+
+    # variable names for auto reinitialization
+    init_vars = ["xs_init", "ys_init", "x_ou", "y_ou"]
+    state_vars = ["x", "y", "x_ou", "y_ou"]
+    input_vars = ["x_ext", "y_ext"]
 
     def __init__(
         self,
@@ -51,17 +57,24 @@ class HopfModel(Model):
         if params is None:
             self.params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
         else:
-            self.params = params
+            self.params = params.copy()
 
         # set default output
         self.setDefaultOutput(self.defaultOutput)
 
-    def run(self):
+    def getMaxDelay(self):
+        # compute maximum delay of model
+        dt = self.params["dt"]
+        Dmat = dp.computeDelayMatrix(self.params["lengthMat"], self.params["signalV"])
+        Dmat_ndt = np.around(Dmat / dt)  # delay matrix in multiples of dt
+        max_global_delay = int(np.amax(Dmat_ndt))
+        return max_global_delay
+
+    def run(self, chunkwise=False):
+        """Run the model.
         """
-        Runs the aLN mean-field model simulation
-        """
-        if self.simulateChunkwise:
-            t, x, y, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(
+        if chunkwise:
+            t, x, y, x_ou, y_ou, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(
                 self.params,
                 chunkSize=self.chunkSize,
                 simulateBOLD=self.simulateBOLD,
@@ -71,8 +84,10 @@ class HopfModel(Model):
             self.setOutput("BOLD.BOLD", BOLD)
 
         else:
-            t, x, y = ti.timeIntegration(self.params)
+            t, x, y, x_ou, y_ou = ti.timeIntegration(self.params)
 
         self.setOutput("t", t)
         self.setOutput("x", x)
         self.setOutput("y", y)
+        self.setOutput("x_ou", x_ou)
+        self.setOutput("y_ou", y_ou)
