@@ -22,6 +22,7 @@ class Model:
         :params name: Name of the output in dot.notation, a la "outputgroup.output"
         :type name: str
         :params data: Output data, can't be a dictionary!
+        :type data: `numpy.ndarray`
         """
         assert not isinstance(data, dict), "Output data cannot be a dictionary."
         assert isinstance(name, str), "Output name must be a string."
@@ -72,7 +73,7 @@ class Model:
         return self.getOutput(key)
 
     def getOutputs(self, group=""):
-        """Get all outputs of an output group. Examples: getOutputs("BOLD") or simply getOutputs()
+        """Get all outputs of an output group. Examples: `getOutputs("BOLD")` or simply `getOutputs()`
 
         :param group: Group name, subgroups separated by dots. If left empty (default), all outputs of the root group
             are returned.
@@ -115,14 +116,14 @@ class Model:
     def getDefaultOutput(self):
         """Returns value of default output.
         """
-        assert self.defaultOutput is not None, "Default output has not been set yet. Use setDefaultOutput() to set it."
+        assert self.defaultOutput is not None, "Default output has not been set yet. Use `setDefaultOutput()`."
         return self.getOutput(self.defaultOutput)
 
     def xr(self, group=""):
         """Converts a group of outputs to xarray. Output group needs to contain an
-        element called "t" or it will not recognize any time axis.
+        element that starts with the letter "t" or it will not recognize any time axis.
 
-        :param group: Output group name, example:  "BOLD". Leave blank for top group.
+        :param group: Output group name, example:  "BOLD". Leave empty for top group.
         :type group: str
         """
         assert isinstance(group, str), "Group name must be a string."
