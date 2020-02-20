@@ -11,11 +11,13 @@ class BOLDModel:
     BOLD simulation results are saved in t_BOLD, BOLD instance attributes.
     """
 
-    def __init__(self, N, dt):
+    def __init__(self, N, dt, normalize_input=False, normalize_max=50):
         self.N = N
         self.dt = dt  # dt of input activity in ms
         self.samplingRate_NDt = int(round(2000 / dt))  # downsample (0.5 Hz fMRI sampling rate)
 
+        self.normalize_input = normalize_input
+        self.normalize_max = normalize_max
         # return arrays
         self.t_BOLD = np.array([], dtype="f", ndmin=2)
         self.BOLD = np.array([], dtype="f", ndmin=2)
@@ -34,7 +36,7 @@ class BOLDModel:
         self.V_BOLD = np.ones((N,))
         # Blood volume
 
-    def run(self, activity, normalize=False, normalize_max=50):
+    def run(self, activity):
         """Runs the Balloon-Windkessel BOLD simulation.
 
         Parameters:
@@ -47,14 +49,14 @@ class BOLDModel:
         :param normalize_max: Maximum of input after normalization, corresponds to maximal firing rate in Hz. The minimum will be normalized to 0.
         :type normalize_max: float
         """
-        if normalize:
-            assert isinstance(normalize, (float, int)), "normalize_max must be a scalar."
-            assert normalize_max > 0, "normalize_max must be greater than 0."
+        if self.normalize_input:
+            assert isinstance(self.normalize_max, (float, int)), "normalize_max must be a scalar."
+            assert self.normalize_max > 0, "normalize_max must be greater than 0."
             # dermine the minimum and the maxmimum of the input
             min_input = np.min(activity)
             max_input = np.max(activity)
             # rescale activity to range [0, normalize_max]
-            activity = (activity - min_input) / (max_input - min_input) * normalize_max
+            activity = (activity - min_input) / (max_input - min_input) * self.normalize_max
 
         # Compute the BOLD signal for the chunk
         BOLD_chunk, self.X_BOLD, self.F_BOLD, self.Q_BOLD, self.V_BOLD = simulateBOLD(

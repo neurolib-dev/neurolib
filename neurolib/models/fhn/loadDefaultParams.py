@@ -1,7 +1,8 @@
 import numpy as np
-
 import h5py
 import scipy.io
+
+from neurolib.utils.collections import dotdict
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
@@ -18,10 +19,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     :rtype: dict
     """
 
-    class struct(object):
-        pass
-
-    params = struct()
+    params = dotdict({})
 
     ### runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
@@ -59,8 +57,8 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # external input parameters:
     params.tau_ou = 5.0  # ms Timescale of the Ornstein-Uhlenbeck noise process
     params.sigma_ou = 0.0  # mV/ms/sqrt(ms) noise intensity
-    params.x_ext_mean = 0.0  # mV/ms (OU process) [0-5]
-    params.y_ext_mean = 0.0  # mV/ms (OU process) [0-5]
+    params.x_ou_mean = 0.0  # mV/ms (OU process) [0-5]
+    params.y_ou_mean = 0.0  # mV/ms (OU process) [0-5]
 
     # neural mass model parameters
     params.alpha = 3.0  # Eqpsilon in Kostova et al. (2004) FitzHugh–Nagumo revisited: Types of bifurcations, periodical forcing and stability regions by a Lyapunov functional
@@ -74,9 +72,15 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.xs_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
     params.ys_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
 
-    params_dict = params.__dict__
+    # Ornstein-Uhlenbeck noise state variables
+    params.x_ou = np.zeros((params.N,))
+    params.y_ou = np.zeros((params.N,))
 
-    return params_dict
+    # values of the external inputs
+    params.x_ext = np.zeros((params.N,))
+    params.y_ext = np.zeros((params.N,))
+
+    return params
 
 
 def computeDelayMatrix(lengthMat, signalV, segmentLength=1):

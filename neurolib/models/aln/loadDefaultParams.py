@@ -1,8 +1,8 @@
 import os
-
 import numpy as np
-
 import h5py
+
+from neurolib.utils.collections import dotdict
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None):
@@ -20,10 +20,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     :rtype: dict
     """
 
-    class struct(object):
-        pass
-
-    params = struct()
+    params = dotdict({})
 
     # Todo: Model metadata
     # recently added for easier simulation of aln and brian in pypet
@@ -185,9 +182,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     params.precalc_tau_mu = hf.get("tau_mu_exp")[()]
     params.precalc_tau_sigma = hf.get("tau_sigma_exp")[()]
 
-    params_dict = params.__dict__
-
-    return params_dict
+    return params
 
 
 def computeDelayMatrix(lengthMat, signalV, segmentLength=1):

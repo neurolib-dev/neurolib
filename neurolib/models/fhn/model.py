@@ -12,9 +12,18 @@ class FHNModel(Model):
     name = "fhn"
     description = "Fitz-Hugh Nagumo oscillator"
 
-    modelOutputs = {"activity": ["x", "y"]}
+    integration = ti.timeIntegration
 
+    init_vars = ["xs_init", "ys_init", "x_ou", "y_ou"]
+    state_vars = ["x", "y", "x_ou", "y_ou"]
+    output_vars = ["x", "y"]
     defaultOutput = "x"
+    input_vars = ["x_ext", "y_ext"]
+    defaultInput = "x_ext"
+
+    # because this is not a rate model, the input
+    # to the bold model must be normalized
+    normalize_bold_input = True
 
     def __init__(
         self,
@@ -28,13 +37,7 @@ class FHNModel(Model):
         simulateBOLD=False,
         saveAllActivity=False,
     ):
-        # Initialize base class Model
-        super().__init__(self.name)
 
-        if Cmat is None:
-            self.singleNode = True
-        else:
-            self.singleNode = False
         self.Cmat = Cmat
         self.Dmat = Dmat
         self.seed = seed
@@ -49,30 +52,40 @@ class FHNModel(Model):
 
         # load default parameters if none were given
         if params is None:
-            self.params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
-        else:
-            self.params = params
+            params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
 
-        # set default output
-        self.setDefaultOutput(self.defaultOutput)
+        # Initialize base class Model
+        super().__init__(
+            integration=ti.timeIntegration,
+            params=params,
+            state_vars=self.state_vars,
+            init_vars=self.init_vars,
+            output_vars=self.output_vars,
+            input_vars=self.input_vars,
+            default_output=self.defaultOutput,
+            simulate_bold=self.simulateBOLD,
+            normalize_bold_input=self.normalize_bold_input,
+            name=self.name,
+            description=self.description,
+        )
 
-    def run(self):
-        """
-        Runs the aLN mean-field model simulation
-        """
-        if self.simulateChunkwise:
-            t, x, y, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(
-                self.params,
-                chunkSize=self.chunkSize,
-                simulateBOLD=self.simulateBOLD,
-                saveAllActivity=self.saveAllActivity,
-            )
-            self.setOutput("BOLD.t", t_BOLD)
-            self.setOutput("BOLD.BOLD", BOLD)
+    # def run(self):
+    #     """
+    #     Runs the aLN mean-field model simulation
+    #     """
+    #     if self.simulateChunkwise:
+    #         t, x, y, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(
+    #             self.params,
+    #             chunkSize=self.chunkSize,
+    #             simulateBOLD=self.simulateBOLD,
+    #             saveAllActivity=self.saveAllActivity,
+    #         )
+    #         self.setOutput("BOLD.t", t_BOLD)
+    #         self.setOutput("BOLD.BOLD", BOLD)
 
-        else:
-            t, x, y = ti.timeIntegration(self.params)
+    #     else:
+    #         t, x, y = ti.timeIntegration(self.params)
 
-        self.setOutput("t", t)
-        self.setOutput("x", x)
-        self.setOutput("y", y)
+    #     self.setOutput("t", t)
+    #     self.setOutput("x", x)
+    #     self.setOutput("y", y)

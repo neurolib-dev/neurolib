@@ -82,10 +82,7 @@ def timeIntegration(params):
     xs = np.zeros((N, len(t)))
     ys = np.zeros((N, len(t)))
 
-    # Set the initial firing rates.
-    # xs_init = np.dot(params["xs_init"], np.ones((1, startind)))  # params["xs_init"]
-    # ys_init = np.dot(params["ys_init"], np.ones((1, startind)))  # params["ys_init"]
-
+    # ------------------------------------------------------------------------
     # Set initial values
     # if initial values are just a Nx1 array
     if np.shape(params["xs_init"])[1] == 1:
@@ -100,27 +97,18 @@ def timeIntegration(params):
     xs_input_d = np.zeros(N)  # delayed input to x
     ys_input_d = np.zeros(N)  # delayed input to y
 
-    # Save the noise in the rates array to save memory
     if RNGseed:
         np.random.seed(RNGseed)
 
+    # Save the noise in the activity array to save memory
     xs[:, startind:] = np.random.standard_normal((N, len(t) - startind))
     ys[:, startind:] = np.random.standard_normal((N, len(t) - startind))
 
     xs[:, :startind] = xs_init
     ys[:, :startind] = ys_init
 
-    # xs = np.hstack((xs_init, xs))
-    # ys = np.hstack((ys_init, ys))
-
     noise_xs = np.zeros((N,))
     noise_ys = np.zeros((N,))
-
-    # tile external inputs to appropriate shape
-    # ext_exc_current = adjust_shape(params['ext_exc_current'], xs)
-    # ext_inh_current = adjust_shape(params['ext_inh_current'], xs)
-    # ext_exc_rate = adjust_shape(params['ext_exc_rate'], xs)
-    # ext_inh_rate = adjust_shape(params['ext_inh_rate'], xs)
 
     # ------------------------------------------------------------------------
 
@@ -193,7 +181,7 @@ def timeIntegration_njit_elementwise(
         # loop through all the nodes
         for no in range(N):
 
-            # To save memory, noise is saved in the rates array
+            # To save memory, noise is saved in the activity array
             noise_xs[no] = xs[no, i]
             noise_ys[no] = ys[no, i]
 
