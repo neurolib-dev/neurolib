@@ -69,8 +69,8 @@ class TestALNEvolution(unittest.TestCase):
             fitness_tuple += (fitness,)
             return fitness_tuple, model.outputs
 
-        alnModel = ALNModel(bold=False)
-        alnModel.run(simulate_bold=True)
+        alnModel = ALNModel()
+        alnModel.run(bold=True)
 
         pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
         evolution = Evolution(
