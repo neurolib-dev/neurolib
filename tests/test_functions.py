@@ -23,13 +23,13 @@ class TestFunctions(unittest.TestCase):
         aln.params["sigma_ou"] = 0.09
         aln.params["b"] = 5.0
         aln.params["duration"] = 0.2 * 60 * 1000
-        aln.run(simulate_bold=True, chunkwise=True, chunksize=1000)
+        aln.run(simulate_bold=True, chunkwise=True)
 
         cls.model = aln
         cls.ds = Dataset("gw")
 
     def test_kuramoto(self):
-        kuramoto = func.kuramoto(self.model.rates_exc[:, ::10], dt=self.model.params["dt"], smoothing=5.0)
+        kuramoto = func.kuramoto(self.model.rates_exc[:, ::10], dt=self.model.params["dt"], smoothing=1.0)
 
     def test_fc(self):
         FC = func.fc(self.model.BOLD.BOLD)
