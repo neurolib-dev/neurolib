@@ -1,6 +1,5 @@
 import numpy as np
 
-import neurolib.models.hopf.chunkwiseIntegration as cw
 import neurolib.models.hopf.loadDefaultParams as dp
 import neurolib.models.hopf.timeIntegration as ti
 from neurolib.models.model import Model

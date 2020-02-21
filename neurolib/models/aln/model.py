@@ -1,6 +1,5 @@
 import numpy as np
 
-import neurolib.models.aln.chunkwiseIntegration as cw
 import neurolib.models.aln.loadDefaultParams as dp
 import neurolib.models.aln.timeIntegration as ti
 from neurolib.models.model import Model
