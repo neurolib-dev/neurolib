@@ -242,8 +242,9 @@ class Evolution:
         traj.f_add_result_group("outputs", comment="Contains simulation results")
 
         # if a model was given, save its parameters
+        # NOTE: Convert model.params to dict() since it is a dotdict() and pypet doesn't like that
         if model is not None:
-            traj.f_add_result("params", model.params, comment="Default parameters")
+            traj.f_add_result("params", dict(model.params), comment="Default parameters")
 
         # todo: initialize this after individuals have been defined!
         traj.f_add_parameter("id", 0, comment="Index of individual")

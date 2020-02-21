@@ -20,7 +20,7 @@ class Model:
         output_vars=None,
         input_vars=None,
         default_output=None,
-        simulate_bold=False,
+        bold=False,
         normalize_bold_input=False,
         normalize_bold_input_max=50,
         name=None,
@@ -50,24 +50,37 @@ class Model:
 
         # set up bold model
         self.bold_initialized = False
-        if simulate_bold:
-            self.normalize_bold_input = normalize_bold_input
-            self.normalize_bold_input_max = normalize_bold_input_max
-            if self.normalize_bold_input:
-                logging.info(f"{name}: BOLD input will be normalized to a maxmimum of {normalize_bold_input_max} Hz")
-
-            self.boldModel = bold.BOLDModel(
-                self.params["N"], self.params["dt"], normalize_bold_input, normalize_bold_input_max
-            )
-            self.bold_initialized = True
-            logging.info(f"{name}: BOLD model initialized.")
+        if bold:
+            self.initialize_bold(normalize_bold_input, normalize_bold_input_max)
 
         logging.info(f"{name}: Model initialized.")
 
+    def initialize_bold(self, normalize_bold_input, normalize_bold_input_max):
+        self.normalize_bold_input = normalize_bold_input
+        self.normalize_bold_input_max = normalize_bold_input_max
+        if self.normalize_bold_input:
+            logging.info(f"{self.name}: BOLD input will be normalized to a maxmimum of {normalize_bold_input_max} Hz")
+
+        self.boldModel = bold.BOLDModel(
+            self.params["N"], self.params["dt"], normalize_bold_input, normalize_bold_input_max
+        )
+        self.bold_initialized = True
+        logging.info(f"{self.name}: BOLD model initialized.")
+
     def run(self, chunkwise=False, chunksize=10000, simulate_bold=False, append_outputs=False):
+        # override chunkwise integration if bold shall be simulated
+        if simulate_bold and not chunkwise:
+            logging.warn(
+                f"{self.name}: BOLD simulation is supported only with chunkwise integration. Enabling chunkwise integration."
+            )
+            chunkwise = True
+
         if chunkwise is False:
             self.integrate()
         else:
+            if simulate_bold and not self.bold_initialized:
+                logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD")
+                simulate_bold = False
             self.integrate_chunkwise(chunksize=chunksize, simulate_bold=simulate_bold, append_outputs=append_outputs)
 
     def integrate(self, append_outputs=False):

@@ -36,7 +36,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     # signal transmission speec between areas
     params.signalV = 20.0
-    params.K_gl = 250.0  # global coupling strength
+    params.K_gl = 0.6  # global coupling strength
 
     if Cmat is None:
         params.N = 1
@@ -77,7 +77,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.y_ou = np.zeros((params.N,))
 
     # values of the external inputs
-    params.x_ext = np.zeros((params.N,))
+    params.x_ext = np.ones((params.N,))
     params.y_ext = np.zeros((params.N,))
 
     return params

@@ -24,13 +24,16 @@ class ALNModel(Model):
         "IA_init",
         "seem_init",
         "seim_init",
-        "siim_init",
         "siem_init",
+        "siim_init",
         "seev_init",
         "seiv_init",
-        "siiv_init",
         "siev_init",
+        "siiv_init",
+        "mue_ext",
+        "mui_ext",
     ]
+
     state_vars = [
         "rates_exc",
         "rates_inh",
@@ -39,12 +42,14 @@ class ALNModel(Model):
         "IA",
         "seem",
         "seim",
-        "siim",
         "siem",
+        "siim",
         "seev",
         "seiv",
-        "siiv",
         "siev",
+        "siiv",
+        "mue_ext",
+        "mui_ext",
     ]
     output_vars = ["rates_exc", "rates_inh"]
     defaultOutput = "rates_exc"
@@ -55,16 +60,7 @@ class ALNModel(Model):
     modelOutputNames = ["rates_exc", "rates_inh"]
 
     def __init__(
-        self,
-        params=None,
-        Cmat=None,
-        Dmat=None,
-        lookupTableFileName=None,
-        seed=None,
-        simulateChunkwise=False,
-        chunkSize=10000,
-        simulateBOLD=False,
-        saveAllActivity=False,
+        self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
     ):
         """
         :param params: parameter dictionary of the model
@@ -84,16 +80,6 @@ class ALNModel(Model):
         self.lookupTableFileName = lookupTableFileName  # Filename for aLN lookup functions
         self.seed = seed  # Random seed
 
-        # Chunkwise simulation and BOLD
-        self.simulateChunkwise = simulateChunkwise  # Chunkwise time integration
-        self.simulateBOLD = simulateBOLD  # BOLD
-        if simulateBOLD:
-            self.simulateChunkwise = True  # Override this setting if BOLD is simulated!
-        # Size of integration chunks in chunkwise integration in case of simulateBOLD == True
-        self.chunkSize = chunkSize
-        # Save data from all chunks? Can be very memory demanding if simulations are long or large
-        self.saveAllActivity = saveAllActivity
-
         # load default parameters if none were given
         if params is None:
             params = dp.loadDefaultParams(
@@ -109,7 +95,7 @@ class ALNModel(Model):
             output_vars=self.output_vars,
             input_vars=self.input_vars,
             default_output=self.defaultOutput,
-            simulate_bold=self.simulateBOLD,
+            bold=bold,
             name=self.name,
             description=self.description,
         )
@@ -124,42 +110,3 @@ class ALNModel(Model):
         max_global_delay = int(max(np.amax(Dmat_ndt), ndt_de, ndt_di))
         return max_global_delay
 
-    # def run(self):
-    #     """
-    #     Runs an aLN mean-field model simulation.
-    #     """
-
-    #     if self.simulateChunkwise:
-    #         t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(
-    #             self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity
-    #         )
-    #         (t, rates_exc, rates_inh, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv,) = return_tuple
-    #         self.t_BOLD = t_BOLD
-    #         self.BOLD = BOLD
-    #         self.setOutput("BOLD.t_BOLD", t_BOLD)
-    #         self.setOutput("BOLD.BOLD", BOLD)
-    #     else:
-    #         (
-    #             t,
-    #             rates_exc,
-    #             rates_inh,
-    #             mufe,
-    #             mufi,
-    #             IA,
-    #             seem,
-    #             seim,
-    #             siem,
-    #             siim,
-    #             seev,
-    #             seiv,
-    #             siev,
-    #             siiv,
-    #         ) = ti.timeIntegration(self.params)
-
-    #     # convert output from kHz to Hz
-    #     rates_exc = rates_exc * 1000.0
-    #     rates_inh = rates_inh * 1000.0
-
-    #     self.setOutput("t", t)
-    #     self.setOutput("rates_exc", rates_exc)
-    #     self.setOutput("rates_inh", rates_inh)

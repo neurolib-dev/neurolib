@@ -15,7 +15,7 @@ class TestFunctions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         ds = Dataset("gw")
-        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, chunkSize=1000)
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, bold=True)
 
         # Resting state fits
         aln.params["mue_ext_mean"] = 1.57
@@ -23,7 +23,7 @@ class TestFunctions(unittest.TestCase):
         aln.params["sigma_ou"] = 0.09
         aln.params["b"] = 5.0
         aln.params["duration"] = 0.2 * 60 * 1000
-        aln.run()
+        aln.run(simulate_bold=True, chunkwise=True, chunksize=1000)
 
         cls.model = aln
         cls.ds = Dataset("gw")

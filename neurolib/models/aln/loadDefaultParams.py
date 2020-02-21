@@ -27,8 +27,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     params.model = "aln"
     params.name = "aln"
     params.description = "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
-    params.inputs = "ext_exc_rate"  # in Hz
-    params.outputs = "rates_exc"  # in Hz
 
     # runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
@@ -58,10 +56,9 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
         params.N = len(params.Cmat)  # number of nodes
         params.lengthMat = Dmat  # delay matrix
 
-    # if 1, use INTER-areal delay (from lengthMat) NOTE: value 0 doesn'twork
-    # yet, don't change!!!
-    params.global_delay = 1
-    params.signalV = 20.0  # Signal transmission speed in mm/ms
+    # Signal transmission speed in mm/ms
+    params.signalV = 20.0
+
     # PSP current amplitude in (mV/ms) (or nA/[C]) for global coupling
     # connections between areas
     params.c_gl = 0.4
@@ -77,6 +74,11 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     params.sigma_ou = 0.0  # mV/ms/sqrt(ms) intensity of OU oise
     params.mue_ext_mean = 0.4  # mV/ms mean external input current to E
     params.mui_ext_mean = 0.3  # mV/ms mean external input current to I
+
+    # Ornstein-Uhlenbeck noise state variables, set to mean input
+    # mue_ext will fluctuate around mue_ext_mean (mean of the OU process)
+    params.mue_ext = params.mue_ext_mean * np.ones((params.N,))  # np.zeros((params.N,))
+    params.mui_ext = params.mui_ext_mean * np.ones((params.N,))  # np.zeros((params.N,))
 
     # external neuronal firing rate input
     params.ext_exc_rate = 0.0  # kHz external excitatory rate drive
@@ -154,8 +156,8 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     ) = generateRandomICs(params.N, seed)
 
     params.mufe_init = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
-    params.IA_init = IA_init  # adaptation current
     params.mufi_init = mufi_init  #
+    params.IA_init = IA_init  # adaptation current
     params.seem_init = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
     params.seim_init = seim_init  #
     params.seev_init = seev_init  # variance of fraction of active synapses [0-1]
@@ -248,39 +250,3 @@ def generateRandomICs(N, seed=None):
         rates_inh_init,
     )
 
-
-def loadICs(params, seed=None):
-    # Generate and set random initial conditions
-    N = params["N"]
-
-    (
-        mufe_init,
-        IA_init,
-        mufi_init,
-        seem_init,
-        seim_init,
-        seev_init,
-        seiv_init,
-        siim_init,
-        siem_init,
-        siiv_init,
-        siev_init,
-        rates_exc_init,
-        rates_inh_init,
-    ) = generateRandomICs(N, seed)
-
-    params["mufe_init"] = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
-    params["IA_init"] = IA_init  # adaptation current
-    params["mufi_init"] = mufi_init  #
-    params["seem_init"] = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
-    params["seim_init"] = seim_init  #
-    params["seev_init"] = seev_init  # variance of fraction of active synapses [0-1]
-    params["seiv_init"] = seiv_init  #
-    params["siim_init"] = siim_init  #
-    params["siem_init"] = siem_init  #
-    params["siiv_init"] = siiv_init  #
-    params["siev_init"] = siev_init  #
-    params["rates_exc_init"] = rates_exc_init  #
-    params["rates_inh_init"] = rates_inh_init  #
-
-    return params
