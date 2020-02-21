@@ -21,10 +21,13 @@ class TestAln(unittest.TestCase):
         start = time.time()
 
         aln = ALNModel()
-        aln.params["duration"] = 2.0 * 1000
+        aln.params["duration"] = 10.0 * 1000
         aln.params["sigma_ou"] = 0.1  # add some noise
         # load new initial parameters
-        aln.run()
+        aln.run(bold=True)
+        # access outputs
+        aln.xr()
+        aln.xr("BOLD")
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
@@ -36,7 +39,7 @@ class TestAln(unittest.TestCase):
         ds = Dataset("gw")
 
         aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, bold=True)
-        # in ms, simulates for 5 minutes
+
         aln.params["duration"] = 10 * 1000
 
         aln.run(chunkwise=True, simulate_bold=True, append_outputs=True)

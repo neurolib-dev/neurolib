@@ -47,15 +47,26 @@ class Model:
         # create output and state dictionary
         self.outputs = dotdict({})
         self.state = dotdict({})
+        self.max_delay = None
 
         # set up bold model
+        # NOTE: obsolete, will be called if run(bold==True)
         self.bold_initialized = False
+        self.normalize_bold_input = normalize_bold_input
+        self.normalize_bold_input_max = normalize_bold_input_max
         if bold:
-            self.initialize_bold(normalize_bold_input, normalize_bold_input_max)
+            self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
 
         logging.info(f"{name}: Model initialized.")
 
     def initialize_bold(self, normalize_bold_input, normalize_bold_input_max):
+        """Initialize BOLD model.
+        
+        :param normalize_bold_input: whether or not to normalize the output of the model to a range between 0 and normalize_bold_input_max (in Hz)
+        :type normalize_bold_input: bool
+        :param normalize_bold_input_max: maximum value in Hz to normalize input to
+        :type normalize_bold_input_max: float
+        """
         self.normalize_bold_input = normalize_bold_input
         self.normalize_bold_input_max = normalize_bold_input_max
         if self.normalize_bold_input:
@@ -67,23 +78,60 @@ class Model:
         self.bold_initialized = True
         logging.info(f"{self.name}: BOLD model initialized.")
 
-    def run(self, chunkwise=False, chunksize=10000, simulate_bold=False, append_outputs=False):
-        # override chunkwise integration if bold shall be simulated
-        if simulate_bold and not chunkwise:
-            logging.warn(
-                f"{self.name}: BOLD simulation is supported only with chunkwise integration. Enabling chunkwise integration."
-            )
-            chunkwise = True
+    def simulate_bold(self):
+        """Gets the default output of the model and simulates the BOLD model. 
+        Adds the simulated BOLD signal to outputs.
+        """
+        if self.bold_initialized:
+            self.boldModel.run(self.state[self.default_output])
+            t_BOLD = self.boldModel.t_BOLD
+            BOLD = self.boldModel.BOLD
+            self.setOutput("BOLD.t", t_BOLD)
+            self.setOutput("BOLD.BOLD", BOLD)
+        else:
+            logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
+
+    def initialize_run(self, initialize_bold):
+        """Initialization before each run.
+        """
+        self.max_delay = self.getMaxDelay()
+        if initialize_bold and not self.bold_initialized:
+            self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
+
+    def run(self, chunkwise=False, chunksize=10000, bold=False, simulate_bold=False, append_outputs=False):
+        """Main function to run a model. 
+        
+        :param chunkwise: simulate model chunkwise or in one single run, defaults to False
+        :type chunkwise: bool, optional
+        :param chunksize: size of the chunk to simulate in dt, defaults to 10000
+        :type chunksize: int, optional
+        :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
+        :type bold: bool, optional
+        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :type append_outputs: bool, optional
+        """
+        # TODO: legacy, remove this from tests and notebooks, use bold
+        if simulate_bold:
+            bold = simulate_bold
+        self.initialize_run(bold)
 
         if chunkwise is False:
             self.integrate()
+            if bold:
+                self.simulate_bold()
         else:
-            if simulate_bold and not self.bold_initialized:
-                logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD")
-                simulate_bold = False
-            self.integrate_chunkwise(chunksize=chunksize, simulate_bold=simulate_bold, append_outputs=append_outputs)
+            if bold and not self.bold_initialized:
+                logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
+                bold = False
+            self.integrate_chunkwise(chunksize=chunksize, bold=bold, append_outputs=append_outputs)
 
     def integrate(self, append_outputs=False):
+        """Calls each models `integration` function and saves the state and the outputs of the model.
+        
+        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :type append_outputs: bool, optional
+        """
+        # run integration
         t, *variables = self.integration(self.params)
 
         # save time array
@@ -95,7 +143,17 @@ class Model:
                 self.setOutput(svn, sv, append=append_outputs)
             self.setStateVariables(svn, sv)
 
-    def integrate_chunkwise(self, chunksize, simulate_bold=False, append_outputs=False):
+    def integrate_chunkwise(self, chunksize, bold=False, append_outputs=False):
+        """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
+        If `bold==True`, the BOLD model is simulated after each chunk.     
+        
+        :param chunksize: size of each chunk to simulate in units of dt
+        :type chunksize: int
+        :param bold: simulate BOLD model after each chunk, defaults to False
+        :type bold: bool, optional
+        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
+        :type append_outputs: bool, optional
+        """
         totalDuration = self.params["duration"]
 
         dt = self.params["dt"]
@@ -104,22 +162,29 @@ class Model:
         while lastT < totalDuration:
             # Determine the size of the next chunk
             currentChunkSize = min(chunksize, (totalDuration - lastT) / dt)
-            currentChunkSize += self.getMaxDelay() + 1
+            currentChunkSize += self.max_delay + 1
 
             self.autochunk(duration=currentChunkSize * dt, append_outputs=append_outputs)
 
-            if simulate_bold and self.bold_initialized:
-                self.boldModel.run(self.state[self.default_output])
-                t_BOLD = self.boldModel.t_BOLD
-                BOLD = self.boldModel.BOLD
-                self.setOutput("BOLD.t", t_BOLD)
-                self.setOutput("BOLD.BOLD", BOLD)
+            if bold and self.bold_initialized:
+                self.simulate_bold()
 
             # we save the last simulated time step
             lastT += self.state["t"][-1]
 
     def autochunk(self, inputs=None, duration=None, append_outputs=False):
-        startindt = self.getMaxDelay() + 1
+        """Executes a single chunk of integration, either for a given duration
+        or a single timestep `dt`. Gathers all inputs to the model and resets
+        the initial conditions as a preparation for the next chunk. 
+        
+        :param inputs: list of input values, ordered according to self.input_vars, defaults to None
+        :type inputs: list[np.ndarray|], optional
+        :param duration: length of a chunk to simulate in ms, defaults to a single dt, defaults to None
+        :type duration: float, optional
+        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
+        :type append_outputs: bool, optional
+        """
+        startindt = self.max_delay + 1
         if duration is not None:
             chunkDuration = duration
         else:
@@ -130,27 +195,48 @@ class Model:
             for i, iv in enumerate(self.input_vars):
                 self.params[iv] = inputs[i]
 
+        # run integration
         self.integrate(append_outputs=append_outputs)
 
         # reset initial conditions to last state
         for iv, sv in zip(self.init_vars, self.state_vars):
-            # if output variables are one-dimensional (in space only)
+            # if state variables are one-dimensional (in space only)
             if len(self.state[sv].shape) == 1:
                 self.params[iv] = self.state[sv]
             # if they are space-time arrays
             else:
-                # we set the next initial condition to the output
+                # we set the next initial condition to the last state
                 self.params[iv] = self.state[sv][:, -startindt:]
 
     def getMaxDelay(self):
-        """Needs to over overloaded. Maxmimum delay in units of dt!
+        """Computes the maximum delay of the model. This function should be overloaded
+        if the model has internal delays (additional to delay between nodes defined by Dmat)
+        such as the delay between an excitatory and inhibitory population within each brain area. 
+        If this function is not overloaded, the maximum delay is assumed to be defined from the 
+        global delay matrix `Dmat`. 
         
-        :return: [description]
-        :rtype: [type]
+        Note: Maxmimum delay is given in units of dt.
+        
+        :return: maxmimum delay of the model in units of dt
+        :rtype: int
         """
-        return 0
+        dt = self.params["dt"]
+        Dmat = dp.computeDelayMatrix(self.params["lengthMat"], self.params["signalV"])
+        Dmat_ndt = np.around(Dmat / dt)  # delay matrix in multiples of dt
+        max_global_delay = int(np.amax(Dmat_ndt))
+        return max_global_delay
 
     def setStateVariables(self, name, data):
+        """Saves the models current state variables. 
+        
+        TODO: Cut state variables to length of self.max_delay
+        However, this could be time-memory tradeoff
+        
+        :param name: name of the state variable
+        :type name: str
+        :param data: value of the variable
+        :type data: np.ndarray
+        """
         self.state[name] = data.copy()
 
     def setOutput(self, name, data, append=False, remove_ics=True):
@@ -171,7 +257,7 @@ class Model:
                     assert isinstance(data, np.ndarray), "Cannot append output, not the old type np.ndarray."
                     # remove initial conditions from data
                     if remove_ics:
-                        startindt = self.getMaxDelay() + 1
+                        startindt = self.max_delay + 1
                         # if data is one-dim (for example time array)
                         if len(data.shape) == 1:
                             # cut off initial condition
