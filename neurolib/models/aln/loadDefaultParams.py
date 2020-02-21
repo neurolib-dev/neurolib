@@ -76,9 +76,9 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     params.mui_ext_mean = 0.3  # mV/ms mean external input current to I
 
     # Ornstein-Uhlenbeck noise state variables, set to mean input
-    # mue_ext will fluctuate around mue_ext_mean (mean of the OU process)
-    params.mue_ext = params.mue_ext_mean * np.ones((params.N,))  # np.zeros((params.N,))
-    params.mui_ext = params.mui_ext_mean * np.ones((params.N,))  # np.zeros((params.N,))
+    # mue_ou will fluctuate around mue_ext_mean (mean of the OU process)
+    params.mue_ou = params.mue_ext_mean * np.ones((params.N,))  # np.zeros((params.N,))
+    params.mui_ou = params.mui_ext_mean * np.ones((params.N,))  # np.zeros((params.N,))
 
     # external neuronal firing rate input
     params.ext_exc_rate = 0.0  # kHz external excitatory rate drive
