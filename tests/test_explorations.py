@@ -72,7 +72,7 @@ class TestALNExploration(unittest.TestCase):
             # ---------------------------------------
             model.params["dt"] = 0.2
             model.params["duration"] = 20 * 1000.0
-            model.run(simulate_bold=True)
+            model.run(bold=True)
 
             if np.std(model.BOLD.BOLD[:, 5:10]) < 0.001:
                 search.saveOutputsToPypet(invalid_result, traj)
