@@ -29,8 +29,8 @@ class ALNModel(Model):
         "seiv_init",
         "siev_init",
         "siiv_init",
-        "mue_ext",
-        "mui_ext",
+        "mue_ou",
+        "mui_ou",
     ]
 
     state_vars = [
@@ -47,8 +47,8 @@ class ALNModel(Model):
         "seiv",
         "siev",
         "siiv",
-        "mue_ext",
-        "mui_ext",
+        "mue_ou",
+        "mui_ou",
     ]
     output_vars = ["rates_exc", "rates_inh"]
     defaultOutput = "rates_exc"

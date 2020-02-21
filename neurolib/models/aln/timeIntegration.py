@@ -187,8 +187,8 @@ def timeIntegration(params):
     siiv = params["siiv_init"].copy()  # Inh synaptic input variance
     siev = params["siev_init"].copy()
 
-    mue_ext = params["mue_ext"]  # mue_ext_mean * np.ones((N,))  # Mean external exc input (mV/ms)
-    mui_ext = params["mui_ext"]  # mui_ext_mean * np.ones((N,))  # Mean external inh inout (mV/ms)
+    mue_ou = params["mue_ou"]  # Mean external exc input (mV/ms)
+    mui_ou = params["mui_ou"]  # Mean external inh inout (mV/ms)
 
     # Set the initial firing rates.
     # if initial values are just a Nx1 array
@@ -298,8 +298,8 @@ def timeIntegration(params):
         startind,
         ndt_de,
         ndt_di,
-        mue_ext,
-        mui_ext,
+        mue_ou,
+        mui_ou,
         ext_exc_rate,
         ext_inh_rate,
         ext_exc_current,
@@ -386,8 +386,8 @@ def timeIntegration_njit_elementwise(
     startind,
     ndt_de,
     ndt_di,
-    mue_ext,
-    mui_ext,
+    mue_ou,
+    mui_ou,
     ext_exc_rate,
     ext_inh_rate,
     ext_exc_current,
@@ -432,7 +432,7 @@ def timeIntegration_njit_elementwise(
                 # Warning: this is a vector and not a matrix as rd_exc
                 rd_inh[no] = rates_inh[no, i - ndt_di - 1] * 1e-3
 
-            mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ext[no] + ext_exc_current[no, i]
+            mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ou[no] + ext_exc_current[no, i]
             mui = Jie_max * siem[no] + Jii_max * siim[no] + mui_ext[no] + ext_inh_current[no, i]
 
             # compute row sum of Cmat*rd_exc and Cmat**2*rd_exc
@@ -568,8 +568,8 @@ def timeIntegration_njit_elementwise(
                 siiv[no] = 0.0
 
             # ornstein-uhlenberg process
-            mue_ext[no] = (
-                mue_ext[no] + (mue_ext_mean - mue_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[no]
+            mue_ou[no] = (
+                mue_ou[no] + (mue_ext_mean - mue_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[no]
             )  # mV/ms
             mui_ext[no] = (
                 mui_ext[no] + (mui_ext_mean - mui_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[no]
@@ -578,7 +578,7 @@ def timeIntegration_njit_elementwise(
     # convert kHz to Hz:
     # rates_exc = rates_exc * 1e3
     # rates_inh = rates_inh * 1e3
-    return t, rates_exc, rates_inh, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, mue_ext, mui_ext
+    return t, rates_exc, rates_inh, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, mue_ou, mui_ou
 
 
 @numba.njit(locals={"idxX": numba.int64, "idxY": numba.int64})
