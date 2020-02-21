@@ -108,12 +108,12 @@ The dataset that we just loaded, looks like this:
 We can now initialise the model with the dataset:
 
 ```python
-aln = ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat, bold=True)
+aln = ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat)
 aln.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
 
-aln.run(simulate_bold=True)
+aln.run(bold=True)
 ```
-This can take several minutes to compute, since we are simulating 90 nodes for 5 minutes realtime. Here, we have created a network model in which each brain area is an `aln` node. Note that we specified `bold=True` to initialize the BOLD model and `simulate_bold=True` which simulates the BOLD model in parallel to the firing rate model. The resulting firing rates and BOLD functional connectivity looks like this:
+This can take several minutes to compute, since we are simulating 90 nodes for 5 minutes realtime. Here, we have created a network model in which each brain area is an `aln` node. Note that we specified `bold=True` which simulates the BOLD model in parallel to the firing rate model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
   <img src="resources/gw_simulated.png">
 </p>
