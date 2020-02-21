@@ -8,7 +8,7 @@ from neurolib.models.model import Model
 
 class HopfModel(Model):
     """
-    Todo.
+    Stuart-Landau model with Hopf bifurcation.
     """
 
     name = "hopf"
@@ -28,33 +28,12 @@ class HopfModel(Model):
     normalize_bold_input = True
 
     def __init__(
-        self,
-        params=None,
-        Cmat=None,
-        Dmat=None,
-        lookupTableFileName=None,
-        seed=None,
-        simulateChunkwise=False,
-        chunkSize=10000,
-        simulateBOLD=False,
-        saveAllActivity=False,
+        self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
     ):
 
-        # if Cmat is None:
-        #     self.singleNode = True
-        # else:
-        #     self.singleNode = False
         self.Cmat = Cmat
         self.Dmat = Dmat
         self.seed = seed
-
-        self.simulateChunkwise = simulateChunkwise
-        self.chunkSize = chunkSize  # Size of integration chunks in chunkwise integration
-        self.simulateBOLD = simulateBOLD  # BOLD
-        if simulateBOLD:
-            self.simulateChunkwise = True  # Override this setting if BOLD is simulated!
-        # Save data from all chunks? Can be very memory demanding if simulations are long or large
-        self.saveAllActivity = saveAllActivity
 
         # load default parameters if none were given
         if params is None:
@@ -69,7 +48,7 @@ class HopfModel(Model):
             output_vars=self.output_vars,
             input_vars=self.input_vars,
             default_output=self.defaultOutput,
-            simulate_bold=self.simulateBOLD,
+            bold=bold,
             normalize_bold_input=self.normalize_bold_input,
             name=self.name,
             description=self.description,
@@ -82,26 +61,3 @@ class HopfModel(Model):
         Dmat_ndt = np.around(Dmat / dt)  # delay matrix in multiples of dt
         max_global_delay = int(np.amax(Dmat_ndt))
         return max_global_delay
-
-    # def run(self, chunkwise=False):
-    #     """Run the model.
-    #     """
-    #     if chunkwise:
-    #         t, x, y, x_ou, y_ou, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(
-    #             self.params,
-    #             chunkSize=self.chunkSize,
-    #             simulateBOLD=self.simulateBOLD,
-    #             saveAllActivity=self.saveAllActivity,
-    #         )
-    #         self.setOutput("BOLD.t", t_BOLD)
-    #         self.setOutput("BOLD.BOLD", BOLD)
-
-    #     else:
-    #         t, x, y, x_ou, y_ou = ti.timeIntegration(self.params)
-
-    #     self.setOutput("t", t)
-    #     self.setOutput("x", x)
-    #     self.setOutput("y", y)
-    #     self.setOutput("x_ou", x_ou)
-    #     self.setOutput("y_ou", y_ou)
-

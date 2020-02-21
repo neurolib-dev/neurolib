@@ -24,7 +24,6 @@ class TestAln(unittest.TestCase):
         aln.params["duration"] = 2.0 * 1000
         aln.params["sigma_ou"] = 0.1  # add some noise
         # load new initial parameters
-        aln.params = dp.loadICs(aln.params)
         aln.run()
 
         end = time.time()
@@ -36,11 +35,11 @@ class TestAln(unittest.TestCase):
 
         ds = Dataset("gw")
 
-        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, saveAllActivity=True)
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, bold=True)
         # in ms, simulates for 5 minutes
         aln.params["duration"] = 10 * 1000
 
-        aln.run()
+        aln.run(chunkwise=True, simulate_bold=True, append_outputs=True)
 
         # access outputs
         aln.xr()
@@ -71,14 +70,15 @@ class TestHopf(unittest.TestCase):
         logging.info("\t > Hopf: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
         start = time.time()
         ds = Dataset("gw")
-        hopf = HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, saveAllActivity=True)
+        hopf = HopfModel(Cmat=ds.Cmat, Dmat=ds.Dmat, bold=True)
         hopf.params["w"] = 1.0
         hopf.params["signalV"] = 0
         hopf.params["duration"] = 10 * 1000
         hopf.params["sigma_ou"] = 0.14
         hopf.params["K_gl"] = 0.6
 
-        hopf.run()
+        hopf.run(chunkwise=True, simulate_bold=True, append_outputs=True)
+
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
@@ -104,14 +104,14 @@ class TestFHN(unittest.TestCase):
         logging.info("\t > FHN: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
         start = time.time()
         ds = Dataset("gw")
-        fhn = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True, saveAllActivity=True)
+        fhn = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, bold=True)
         fhn.params["signalV"] = 4.0
         fhn.params["duration"] = 10 * 1000
         fhn.params["sigma_ou"] = 0.1
         fhn.params["K_gl"] = 0.6
         fhn.params["x_ext_mean"] = 0.72
 
-        fhn.run()
+        fhn.run(chunkwise=True, simulate_bold=True, append_outputs=True)
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
