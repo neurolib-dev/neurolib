@@ -1,6 +1,6 @@
 import numpy as np
 
-from neurolib.models.bold.timeIntegration import simulateBOLD
+from .timeIntegration import simulateBOLD
 
 
 class BOLDModel:

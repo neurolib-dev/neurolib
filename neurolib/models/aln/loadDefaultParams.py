@@ -2,7 +2,7 @@ import os
 import numpy as np
 import h5py
 
-from neurolib.utils.collections import dotdict
+from ...utils.collections import dotdict
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None):
