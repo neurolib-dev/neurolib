@@ -32,6 +32,7 @@ class FHNModel(Model):
         self.Dmat = Dmat
         self.seed = seed
 
+        # the integration function must be passed
         integration = ti.timeIntegration
 
         # load default parameters if none were given
@@ -52,11 +53,3 @@ class FHNModel(Model):
             name=self.name,
             description=self.description,
         )
-
-    def getMaxDelay(self):
-        # compute maximum delay of model
-        dt = self.params["dt"]
-        Dmat = dp.computeDelayMatrix(self.params["lengthMat"], self.params["signalV"])
-        Dmat_ndt = np.around(Dmat / dt)  # delay matrix in multiples of dt
-        max_global_delay = int(np.amax(Dmat_ndt))
-        return max_global_delay
