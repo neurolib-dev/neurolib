@@ -39,12 +39,12 @@ jobs:
         - pip install virtualenv
         - virtualenv -p python3 ~/venv
         - source ~/venv/bin/activate
-
-    - stage: test
-      os: windows
-      language: sh
-      env:
-        - PATH="/c/Python37:/c/Python37/Scripts:$PATH"
-      before_install: 
-        - choco install python --version 3.7.3
-        - python -m pip install --upgrade pip
+        
+    # - stage: test
+    #   os: windows
+    #   language: sh
+    #   env:
+    #     - PATH="/c/Python37:/c/Python37/Scripts:$PATH"
+    #   before_install: 
+    #     - choco install python --version 3.7.3
+    #     - python -m pip install --upgrade pip
