@@ -98,7 +98,7 @@ class TestALNExploration(unittest.TestCase):
 
         # define and run exploration
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
-        search = BoxSearch(evalFunction=evaluateSimulation, model=aln, exploreParameters=parameters)
+        search = BoxSearch(evalFunction=evaluateSimulation, model=aln, parameterSpace=parameters)
         search.run()
         # postprocessing
         # search.loadResults()
@@ -122,7 +122,7 @@ class TestCustomParameterExploration(unittest.TestCase):
             search.saveOutputsToPypet(result_dict, traj)
 
         parameters = ParameterSpace({"x": np.linspace(-2, 2, 2), "y": np.linspace(-2, 2, 2)})
-        search = BoxSearch(evalFunction=explore_me, exploreParameters=parameters)
+        search = BoxSearch(evalFunction=explore_me, parameterSpace=parameters)
         search.run()
         search.loadResults()
 
