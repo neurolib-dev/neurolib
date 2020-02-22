@@ -13,8 +13,6 @@ class ALNModel(Model):
     name = "aln"
     description = "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
 
-    integration = ti.timeIntegration
-
     init_vars = [
         "rates_exc_init",
         "rates_inh_init",
@@ -79,6 +77,8 @@ class ALNModel(Model):
         self.lookupTableFileName = lookupTableFileName  # Filename for aLN lookup functions
         self.seed = seed  # Random seed
 
+        integration = ti.timeIntegration
+
         # load default parameters if none were given
         if params is None:
             params = dp.loadDefaultParams(
@@ -87,7 +87,7 @@ class ALNModel(Model):
 
         # Initialize base class Model
         super().__init__(
-            integration=ti.timeIntegration,
+            integration=integration,
             params=params,
             state_vars=self.state_vars,
             init_vars=self.init_vars,
