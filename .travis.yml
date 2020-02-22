@@ -25,14 +25,15 @@ after_success:
 jobs:
   allow_failures:
     - os: osx
+    - os: windows
 
   include:
     - stage: test
       os: osx
-      language: sh
+      language: python
       addons:
         homebrew:
-          update: true
+          update: false
           packages: python3
       before_install:
         - pip3 install virtualenv
@@ -41,15 +42,14 @@ jobs:
 
     - stage: test
       os: windows
-      language: sh
+      language: python
       env:
-        - TOXENV=py3
         - PATH="/c/Python37:/c/Python37/Scripts:$PATH"
       before_cache: rm -f "$LOCALAPPDATA/pip/Cache/log/debug.log"
       cache:
         directories: "$LOCALAPPDATA/pip/Cache"
-      # addons:
-        # chocolatey:
-          # update: true
-          # packages: python3
+      addons:
+        chocolatey:
+          update: false
+          packages: python3
       before_install: choco install -y python3
