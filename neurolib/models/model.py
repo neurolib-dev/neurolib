@@ -49,6 +49,7 @@ class Model:
         self.outputs = dotdict({})
         self.state = dotdict({})
         self.max_delay = None
+        self.initialize_run()
 
         # set up bold model
         # NOTE: obsolete, will be called if run(bold==True)
@@ -99,16 +100,30 @@ class Model:
         assert self.init_vars is not None, "Initial value variable names not given."
         assert len(self.state_vars) == len(self.init_vars), "State variables are not same length as initial values."
 
-    def initialize_run(self, initialize_bold):
+    def initialize_run(self, initialize_bold=False):
         """Initialization before each run.
         """
-        self.max_delay = self.getMaxDelay()
+        if self.max_delay is None:
+            self.max_delay = self.getMaxDelay()
         if initialize_bold and not self.bold_initialized:
             self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
 
-    def run(self, chunkwise=False, chunksize=10000, bold=False, simulate_bold=False, append_outputs=False):
+    def run(
+        self,
+        inputs=None,
+        onedt=False,
+        chunkwise=False,
+        chunksize=10000,
+        bold=False,
+        simulate_bold=False,
+        append_outputs=False,
+    ):
         """Main function to run a model. 
         
+        :param inputs: list of inputs to the model, must have the same order as model.input_vars. Note: no sanity check is performed for performance reasons. Take care of the inputs yourself.
+        :type inputs: list[np.ndarray|]
+        :param onedt: simulate for a single dt
+        :type onedt: bool
         :param chunkwise: simulate model chunkwise or in one single run, defaults to False
         :type chunkwise: bool, optional
         :param chunksize: size of the chunk to simulate in dt, defaults to 10000
@@ -123,10 +138,16 @@ class Model:
             bold = simulate_bold
         self.initialize_run(bold)
 
+        # override some settings if onedt==True
+        if onedt:
+            self.autochunk(inputs=inputs, append_outputs=append_outputs)
+            return
+
         if chunkwise is False:
             self.integrate()
             if bold:
                 self.simulate_bold()
+            return
         else:
             # check if model is safe for chunkwise integration
             self.check_chunkwise()
@@ -134,6 +155,7 @@ class Model:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
             self.integrate_chunkwise(chunksize=chunksize, bold=bold, append_outputs=append_outputs)
+            return
 
     def integrate(self, append_outputs=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.

@@ -41,3 +41,24 @@ class TestAutochunk(unittest.TestCase):
             self.assertEqual(difference, 0.0)
             logging.info(f"Difference of output arrays = {difference}")
 
+    def test_onstep_input_autochunk(self):
+        """Tests passing an input array to a model.
+        """
+        model = HopfModel()
+        model.params["duration"] = 1000
+        duration_dt = int(model.params["duration"] / model.params["dt"])
+        ous = np.zeros((model.params["N"], duration_dt))
+
+        # prepare input
+        inp_x = np.zeros((model.params["N"], duration_dt))
+        inp_y = np.zeros((model.params["N"], duration_dt))
+
+        for n in range(model.params["N"]):
+            fr = 1
+            inp_x[n, :] = np.sin(np.linspace(0, fr * 2 * np.pi, duration_dt)) * 0.1
+
+        for i in range(duration_dt):
+            inputs = [inp_x[:, i], inp_y[:, i]]
+            # model.autochunk(inputs=inputs, append_outputs=True)
+            model.run(onedt=True, inputs=inputs, append_outputs=True)
+
