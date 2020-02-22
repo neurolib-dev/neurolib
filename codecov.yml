@@ -2,6 +2,7 @@ coverage:
   precision: 2
   round: nearest
   range: "40...100"
+  target: 90%
   ignore: 
     - "neurolib/models/aln/timeIntegration.py"
     - "neurolib/models/bold/timeIntegration.py"
