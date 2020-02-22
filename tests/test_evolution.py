@@ -1,7 +1,8 @@
 import logging
-
 import time
+import sys
 import unittest
+import pytest
 
 import numpy as np
 
@@ -17,6 +18,7 @@ class TestVanillaEvolution(unittest.TestCase):
     """Test of the evolutionary optimization without a neural model 
     """
 
+    @pytest.mark.skipif(sys.platform == "darwin", reason="Forking this process does not work on macOS")
     def test_circle_optimization(self):
         logging.info("\t > Evolution: Testing vanilla optimization of a circle ...")
         start = time.time()
