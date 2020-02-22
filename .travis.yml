@@ -1,5 +1,9 @@
 language: python
 
+os:
+  - linux
+  - osx
+
 python:
   - "3.6"
   - "3.7"
@@ -18,3 +22,7 @@ script:
 
 after_success:
   - codecov
+
+jobs:
+  allow_failures:
+    - os: osx
