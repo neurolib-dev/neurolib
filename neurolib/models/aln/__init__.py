@@ -1,1 +1,1 @@
-from neurolib.models.aln.model import ALNModel
+from .model import ALNModel

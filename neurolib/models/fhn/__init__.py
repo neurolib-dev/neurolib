@@ -1,1 +1,1 @@
-from neurolib.models.fhn.model import FHNModel
+from .model import FHNModel

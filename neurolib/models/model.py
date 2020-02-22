@@ -2,9 +2,9 @@ import logging
 import xarray as xr
 import numpy as np
 
-from neurolib.models import bold
+from ..models import bold
 
-from neurolib.utils.collections import dotdict
+from ..utils.collections import dotdict
 
 
 class Model:

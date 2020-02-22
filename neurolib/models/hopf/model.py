@@ -1,8 +1,8 @@
 import numpy as np
 
-import neurolib.models.hopf.loadDefaultParams as dp
-import neurolib.models.hopf.timeIntegration as ti
-from neurolib.models.model import Model
+from . import loadDefaultParams as dp
+from . import timeIntegration as ti
+from ..model import Model
 
 
 class HopfModel(Model):
