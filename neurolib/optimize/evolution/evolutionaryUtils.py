@@ -48,11 +48,6 @@ def saveToPypet(traj, pop, gIdx):
 
 
 def printParamDist(pop=None, paramInterval=None, gIdx=None):
-    if pop == None:
-        pop = self.pop
-    if paramInterval == None:
-        paramInterval = self.paramInterval
-
     print("Parameter dictribution (Generation {}):".format(gIdx))
     for idx, k in enumerate(paramInterval._fields):
         print(
@@ -62,7 +57,7 @@ def printParamDist(pop=None, paramInterval=None, gIdx=None):
         )
 
 
-def printIndividuals(pop, paramInterval, stats=False):
+def printIndividuals(pop, paramInterval, stats=True):
     print("Printing {} individuals".format(len(pop)))
     pars = []
     for i, ind in enumerate(pop):
