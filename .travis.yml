@@ -2,7 +2,6 @@ language: python
 
 os:
   - linux
-  - osx
 
 python:
   - "3.6"
@@ -28,7 +27,7 @@ jobs:
     - os: osx
 
   include:
-    - stage: osx
+    - stage: test
       os: osx
       language: sh
       addons:
@@ -39,3 +38,18 @@ jobs:
         - pip3 install virtualenv
         - virtualenv -p python3 ~/venv
         - source ~/venv/bin/activate
+
+    - stage: test
+      os: windows
+      language: sh
+      env:
+        - TOXENV=py3
+        - PATH="/c/Python37:/c/Python37/Scripts:$PATH"
+      before_cache: rm -f "$LOCALAPPDATA/pip/Cache/log/debug.log"
+      cache:
+        directories: "$LOCALAPPDATA/pip/Cache"
+      # addons:
+        # chocolatey:
+          # update: true
+          # packages: python3
+      before_install: choco install -y python3
