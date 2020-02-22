@@ -30,7 +30,7 @@ jobs:
   include:
     - stage: test
       os: osx
-      language: python
+      language: sh
       addons:
         homebrew:
           update: false
@@ -42,7 +42,7 @@ jobs:
 
     - stage: test
       os: windows
-      language: python
+      language: sh
       env:
         - PATH="/c/Python37:/c/Python37/Scripts:$PATH"
       before_cache: rm -f "$LOCALAPPDATA/pip/Cache/log/debug.log"
@@ -53,5 +53,5 @@ jobs:
           update: false
           packages: python3
       before_install: 
-        - choco install -y python3
+        - choco install -y python
         - python -m pip install -U pip
