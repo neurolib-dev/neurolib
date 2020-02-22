@@ -8,7 +8,7 @@ from functools import partial
 
 import numpy as np
 import xarray as xr
-from neurolib.models.model import Model
+from ..models.model import Model
 from scipy.signal import butter, detrend, get_window, hilbert
 from scipy.signal import resample as scipy_resample
 from scipy.signal import sosfiltfilt
