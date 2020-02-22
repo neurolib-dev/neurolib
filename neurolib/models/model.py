@@ -231,7 +231,15 @@ class Model:
         :rtype: int
         """
         dt = self.params["dt"]
-        Dmat = dp.computeDelayMatrix(self.params["lengthMat"], self.params["signalV"])
+        Dmat = self.params["lengthMat"]
+
+        if "signalV" in self.params:
+            signalV = self.params["signalV"]
+            if signalV > 0:
+                Dmat = Dmat / signalV
+            else:
+                Dmat = Dmat * 0.0
+
         Dmat_ndt = np.around(Dmat / dt)  # delay matrix in multiples of dt
         max_global_delay = int(np.amax(Dmat_ndt))
         return max_global_delay
