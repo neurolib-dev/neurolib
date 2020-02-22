@@ -13,11 +13,11 @@ import numpy as np
 import pypet as pp
 import pandas as pd
 
-import neurolib.utils.paths as paths
+from ...utils import paths as paths
+from ...utils import pypetUtils as pu
 
-import neurolib.optimize.evolution.evolutionaryUtils as eu
-import neurolib.optimize.evolution.deapUtils as du
-import neurolib.utils.pypetUtils as pu
+from . import evolutionaryUtils as eu
+from . import deapUtils as du
 
 
 class Evolution:

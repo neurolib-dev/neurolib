@@ -9,10 +9,10 @@ import pypet
 import pandas as pd
 import tqdm
 
-import neurolib.utils.paths as paths
-import neurolib.utils.pypetUtils as pu
+from ...utils import paths
+from ...utils import pypetUtils as pu
 
-from neurolib.utils.collections import dotdict
+from ...utils.collections import dotdict
 
 
 class BoxSearch:
@@ -20,7 +20,7 @@ class BoxSearch:
     Paremter box search for a given model and a range of parameters.
     """
 
-    def __init__(self, model=None, exploreParameters=None, evalFunction=None):
+    def __init__(self, model=None, parameterSpace=None, evalFunction=None):
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the 
         evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current 
@@ -31,8 +31,8 @@ class BoxSearch:
 
         :param model: Model to run for each parameter (or model to pass to the evaluation funciton if an evaluation function is used), defaults to None
         :type model: `neurolib.models.model.Model`, optional
-        :param exploreParameters: Parameter space to explore, defaults to None
-        :type exploreParameters: `neurolib.utils.parameterSpace.ParameterSpace`, optional
+        :param parameterSpace: Parameter space to explore, defaults to None
+        :type parameterSpace: `neurolib.utils.parameterSpace.ParameterSpace`, optional
         :param evalFunction: Evaluation function to call for each run., defaults to None
         :type evalFunction: function, optional
         """
@@ -46,10 +46,10 @@ class BoxSearch:
             model is not None
         ), "Either a model has to be specified or an evalFunction."
 
-        assert exploreParameters is not None, "No parameters to explore."
+        assert parameterSpace is not None, "No parameters to explore."
 
-        self.parameterSpace = exploreParameters
-        self.exploreParameters = exploreParameters.dict()
+        self.parameterSpace = parameterSpace
+        self.exploreParameters = parameterSpace.dict()
 
         # todo: use random ICs for every explored point or rather reuse the ones that are generated at model initialization
         self.useRandomICs = False

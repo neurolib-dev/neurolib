@@ -1,1 +1,1 @@
-from neurolib.optimize.exploration.exploration import BoxSearch
+from .exploration import BoxSearch

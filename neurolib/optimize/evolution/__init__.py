@@ -1,1 +1,1 @@
-from neurolib.optimize.evolution.evolution import Evolution
+from .evolution import Evolution
