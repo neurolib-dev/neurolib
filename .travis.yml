@@ -2,6 +2,7 @@ language: python
 
 os:
   - linux
+  - osx
 
 python:
   - "3.6"
@@ -25,26 +26,3 @@ after_success:
 jobs:
   allow_failures:
     - os: osx
-    - os: windows
-
-  include:
-    - stage: test
-      os: osx
-      language: sh
-      addons:
-        homebrew:
-          update: false
-          packages: python3
-      before_install:
-        - pip install virtualenv
-        - virtualenv -p python3 ~/venv
-        - source ~/venv/bin/activate
-        
-    # - stage: test
-    #   os: windows
-    #   language: sh
-    #   env:
-    #     - PATH="/c/Python37:/c/Python37/Scripts:$PATH"
-    #   before_install: 
-    #     - choco install python --version 3.7.3
-    #     - python -m pip install --upgrade pip
