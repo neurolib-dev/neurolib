@@ -103,8 +103,12 @@ class Model:
     def initialize_run(self, initialize_bold=False):
         """Initialization before each run.
         """
-        if self.max_delay is None:
-            self.max_delay = self.getMaxDelay()
+        # NOTE: this if clause causes an error if signalV or Dmat has changed since
+        # last calulcateion of max_delay. For every run, we need to compute the new
+        # max delay (which is not very good for performance).
+
+        # if self.max_delay is None:
+        self.max_delay = self.getMaxDelay()
         if initialize_bold and not self.bold_initialized:
             self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
 
@@ -115,7 +119,7 @@ class Model:
         chunkwise=False,
         chunksize=10000,
         bold=False,
-        simulate_bold=False,
+        # simulate_bold=False,
         append_outputs=False,
     ):
         """Main function to run a model. 
@@ -134,8 +138,8 @@ class Model:
         :type append_outputs: bool, optional
         """
         # TODO: legacy, remove this from tests and notebooks, use bold
-        if simulate_bold:
-            bold = simulate_bold
+        # if simulate_bold:
+        #    bold = simulate_bold
         self.initialize_run(bold)
 
         # override some settings if onedt==True
