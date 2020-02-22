@@ -45,13 +45,6 @@ jobs:
       language: sh
       env:
         - PATH="/c/Python37:/c/Python37/Scripts:$PATH"
-      before_cache: rm -f "$LOCALAPPDATA/pip/Cache/log/debug.log"
-      cache:
-        directories: "$LOCALAPPDATA/pip/Cache"
-      addons:
-        chocolatey:
-          update: false
-          packages: python3
       before_install: 
-        - choco install -y python
-        - python -m pip install -U pip
+        - choco install python
+        - python -m pip install --upgrade pip
