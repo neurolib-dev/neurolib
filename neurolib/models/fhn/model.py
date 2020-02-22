@@ -1,3 +1,4 @@
+import numpy as np
 from . import loadDefaultParams as dp
 from . import timeIntegration as ti
 from ..model import Model
