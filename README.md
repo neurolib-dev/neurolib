@@ -1,5 +1,4 @@
 [![Build](https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master)](https://travis-ci.org/neurolib-dev/neurolib) 
-[![Python 3.7](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/release/python-370/)
 [![Release](https://img.shields.io/github/v/release/neurolib-dev/neurolib)](https://github.com/neurolib-dev/neurolib/releases) 
 [![PyPI](https://img.shields.io/pypi/v/neurolib) ](https://pypi.org/project/neurolib/)
 [![codecov](https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg)](https://codecov.io/gh/neurolib-dev/neurolib) 
@@ -45,7 +44,7 @@ Below is an animation in which the neural activity from such a model is plotted 
 </p>
 
 # Installation
-`neurolib` requires at least `python 3.7`. The easiest way to get going is to install the pypi package using `pip`:
+The easiest way to get going is to install the pypi package using `pip`:
 
 ```
 pip install neurolib
@@ -149,7 +148,7 @@ search = BoxSearch(aln, parameters)
 search.initializeExploration()
 search.run()                
 ```
-That's it!. You can now use the builtin functionality to read the simulation results from disk and do your analysis:
+That's it!. You can now use the builtin functions to load the simulation results from disk and perform your analysis:
 
 ```python
 search.loadResults()
