@@ -156,16 +156,16 @@ def plotPopulation(
         plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots)
 
 
-def plotProgress(evolution, drop_first=True):
-    gens, all_scores = evolution.getScoresDuringEvolution(reverse=False, drop_first=drop_first)
-    import matplotlib.pyplot as plt
+# def plotProgress(evolution, drop_first=True):
+#     gens, all_scores = evolution.getScoresDuringEvolution(reverse=False, drop_first=drop_first)
+#     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(8, 4), dpi=200)
-    plt.plot(gens, np.nanmean(all_scores, axis=1))
-    plt.fill_between(gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3)
-    plt.xlabel("Generation #")
-    plt.ylabel("Score")
-    plt.show()
+#     plt.figure(figsize=(8, 4), dpi=200)
+#     plt.plot(gens, np.nanmean(all_scores, axis=1))
+#     plt.fill_between(gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3)
+#     plt.xlabel("Generation #")
+#     plt.ylabel("Score")
+#     plt.show()
 
 
 def printEvolutionInfo(evolution):

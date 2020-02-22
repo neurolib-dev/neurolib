@@ -56,7 +56,6 @@ class TestEvolutinUtils(unittest.TestCase):
     def test_plots(self):
         matplotlib = pytest.importorskip("matplotlib")
         eu.plotPopulation(self.pop, self.evolution.paramInterval, plotScattermatrix=True)
-        eu.plotProgress(self.evolution, drop_first=True)
 
 
 class TestEvolutionCrossover(unittest.TestCase):
