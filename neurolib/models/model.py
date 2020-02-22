@@ -30,6 +30,7 @@ class Model:
             assert isinstance(name, str), f"Model name is not a string."
             self.name = name
 
+        assert integration is not None, "Model integration function not given."
         self.integration = integration
 
         assert isinstance(params, dict), "Parameters must be a dictionary."
@@ -91,6 +92,13 @@ class Model:
         else:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
 
+    def check_chunkwise(self):
+        """Checks if the model fulfills requirements for chunkwise simulation. Throws errors if not.
+        """
+        assert self.state_vars is not None, "State variable names not given."
+        assert self.init_vars is not None, "Initial value variable names not given."
+        assert len(self.state_vars) == len(self.init_vars), "State variables are not same length as initial values."
+
     def initialize_run(self, initialize_bold):
         """Initialization before each run.
         """
@@ -120,6 +128,8 @@ class Model:
             if bold:
                 self.simulate_bold()
         else:
+            # check if model is safe for chunkwise integration
+            self.check_chunkwise()
             if bold and not self.bold_initialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False

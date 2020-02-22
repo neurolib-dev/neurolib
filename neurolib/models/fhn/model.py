@@ -13,8 +13,6 @@ class FHNModel(Model):
     name = "fhn"
     description = "Fitz-Hugh Nagumo oscillator"
 
-    integration = ti.timeIntegration
-
     init_vars = ["xs_init", "ys_init", "x_ou", "y_ou"]
     state_vars = ["x", "y", "x_ou", "y_ou"]
     output_vars = ["x", "y"]
@@ -34,13 +32,15 @@ class FHNModel(Model):
         self.Dmat = Dmat
         self.seed = seed
 
+        integration = ti.timeIntegration
+
         # load default parameters if none were given
         if params is None:
             params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
 
         # Initialize base class Model
         super().__init__(
-            integration=ti.timeIntegration,
+            integration=integration,
             params=params,
             state_vars=self.state_vars,
             init_vars=self.init_vars,
