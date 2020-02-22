@@ -104,7 +104,7 @@ class TestFHN(unittest.TestCase):
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
     def test_network(self):
-        logging.info("\t > FHN: Testing brain network (chunkwise integration and BOLD" " simulation) ...")
+        logging.info("\t > FHN: Testing brain network (chunkwise integration and BOLD simulation) ...")
         start = time.time()
         ds = Dataset("gw")
         fhn = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
