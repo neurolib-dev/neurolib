@@ -2,7 +2,7 @@ import numpy as np
 import h5py
 import scipy.io
 
-from neurolib.utils.collections import dotdict
+from ...utils.collections import dotdict
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):

@@ -9,8 +9,8 @@ import numpy as np
 import pypet as pp
 import pandas as pd
 
-import neurolib.utils.paths as paths
-import neurolib.optimize.evolution.deapUtils as du
+from ...utils import paths as paths
+from . import deapUtils as du
 
 
 def saveToPypet(traj, pop, gIdx):

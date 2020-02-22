@@ -1,8 +1,8 @@
 import numpy as np
 
-import neurolib.models.fhn.loadDefaultParams as dp
-import neurolib.models.fhn.timeIntegration as ti
-from neurolib.models.model import Model
+from . import loadDefaultParams as dp
+from . import timeIntegration as ti
+from ..model import Model
 
 
 class FHNModel(Model):
