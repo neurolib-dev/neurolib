@@ -1,7 +1,7 @@
 import numpy as np
 import numba
 
-import neurolib.models.aln.loadDefaultParams as dp
+from . import loadDefaultParams as dp
 
 
 def timeIntegration(params):
