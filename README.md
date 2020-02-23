@@ -1,10 +1,26 @@
-[![Build](https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master)](https://travis-ci.org/neurolib-dev/neurolib) 
-[![Release](https://img.shields.io/github/v/release/neurolib-dev/neurolib)](https://github.com/neurolib-dev/neurolib/releases) 
-[![PyPI](https://img.shields.io/pypi/v/neurolib) ](https://pypi.org/project/neurolib/)
-[![codecov](https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg)](https://codecov.io/gh/neurolib-dev/neurolib) 
-[![Downloads](https://pepy.tech/badge/neurolib)](https://pepy.tech/project/neurolib) 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
+<p align="center">
+  <a href="https://www.python.org/downloads/release/python-360/">
+  	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg">
+  </a>
+  <a href="https://www.python.org/downloads/release/python-360/">
+  	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master">
+  </a>
+  <a href="https://www.python.org/downloads/release/python-360/">
+  	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib">
+  </a>
+  <a href="https://www.python.org/downloads/release/python-360/">
+  	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib">
+  </a>
+  <a href="https://www.python.org/downloads/release/python-360/">
+  	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg">
+  </a>
+  <a href="https://www.python.org/downloads/release/python-360/">
+  	<img alt="Downloads" src="https://pepy.tech/badge/neurolib">
+  </a>
+  <a href="https://www.python.org/downloads/release/python-360/">
+  	<img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg">
+  </a>
+</p>
 
 # neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
