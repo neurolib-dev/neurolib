@@ -1,6 +1,4 @@
 import numpy as np
-import h5py
-import scipy.io
 
 from ...utils.collections import dotdict
 
