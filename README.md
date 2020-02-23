@@ -22,7 +22,6 @@
   </a>
 </p>
 
-
 # neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
@@ -37,7 +36,7 @@ Please reference the following paper if you use `neurolib` for your own research
 The figure below shows a schematic of how a brain network can be constructed:
 
 <p align="center">
-  <img src="resources/pipeline.png" width="700">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/pipeline.png" width="700">
 </p>
 
 <p align="center">
@@ -60,7 +59,7 @@ The resulting whole-brain model consists of interconnected brain areas, with eac
 Below is an animation of the neuronal activity of a whole-brain model plotted on a brain.
 
 <p align="center">
-  <img src="resources/brain_slow_waves_small.gif">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/brain_slow_waves_small.gif">
 </p>
 
 # Installation
@@ -104,7 +103,7 @@ plt.plot(aln.t, aln.rates_exc.T)
 
 ```
 <p align="left">
-  <img src="resources/single_timeseries.png">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/single_timeseries.png">
 </p>
 
 ## Whole-brain network
@@ -121,7 +120,7 @@ ds = Dataset("gw")
 The dataset that we just loaded, looks like this:
 
 <p align="center">
-  <img src="resources/gw_data.png">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/gw_data.png">
 </p>
 
 We initialize a model with the dataset and run it:
@@ -134,7 +133,7 @@ aln.run(bold=True)
 ```
 This can take several minutes to compute, since we are simulating 82 nodes for 5 minutes realtime. Note that we specified `bold=True` which simulates the BOLD model in parallel to the neuronal model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
-  <img src="resources/gw_simulated.png">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/gw_simulated.png">
 </p>
 
 The quality of the fit of this simulation can be computed by correlating the simulated functional connectivity matrix above to the empirical resting-state functional connectivity for each subject of the dataset. This gives us an estimate of how well the model reproduces inter-areal BOLD correlations. As a rule of thumb, a value above 0.5 is considered good. 
@@ -180,7 +179,7 @@ for i in search.dfResults.index:
 We can plot the results to get something close to a bifurcation diagram!
 
 <p align="center">
-  <img src="resources/exploration_aln.png">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/exploration_aln.png">
 </p>
 
 ## Evolutionary optimization
@@ -190,7 +189,7 @@ A detailed example is available as a [IPython Notebook](examples/example-2-evolu
 `neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual and the parameters of the simulation, for example coupling strengths or noise level values, are represented as the genes of each individual. An individual is a part of a population. In each generation, individuals are evaluated and ranked according to a fitness criterion. For whole-brain network simulations, this could be the fit of the simulated activity to empirical data. Then, individuals with a high fitness value are `selected` as parents and `mate` to create offspring. These offspring undergo random `mutations` of their genes. After all offspring are evaluated, the best individuals of the population are selected to transition into the next generation. This process goes on for a given amount generations until a stopping criterion is reached. This could be a predefined maximum number of generations or when a large enough population with high fitness values is found.
 
 <p align="center">
-  <img src="resources/evolutionary-algorithm.svg", width="600">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolutionary-algorithm.svg", width="600">
 </p>
 
 `neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. Of course, if you like, you can dig deeper, define your own selection, mutation and mating operators. In the following demonstration, we will simply evaluate the fitness of each individual as the distance to the unit circle. After a couple of generations of mating, mutating and selecting, only individuals who are close to the circle should survive:
@@ -229,7 +228,7 @@ evolution.info(plot=True)
 This will gives us a summary of the last generation and plots a distribution of the individuals (and their parameters). Below is an animation of 10 generations of the evolutionary process. As you can see, after a couple of generations, all remaining individuals lie very close to the unit circle.
 
 <p align="center">
-  <img src="resources/evolution_animated.gif">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolution_animated.gif">
 </p>
 
 ## More information
