@@ -9,13 +9,15 @@
 # neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
-`neurolib` allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and inhibitory neurons. 
+`neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. The main implementation features an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `aln` model can be found in our [paper](https://arxiv.org/abs/1906.00676) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
-An extensive analysis of this model can be found in our paper and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+`neurolib` provides a simulation and optimization framework which allows you to easily implement your own neural mass model, simulate fMRI BOLD activity, analyse the results and fit your model to empirical data.
+
+Please reference the following paper if you use `neurolib` for your own research:
 
 **Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation ([ArXiv](https://arxiv.org/abs/1906.00676)).
 
-The figure below shows a schematic of how a brain network is constructed:
+The figure below shows a schematic of how a brain network can be constructed:
 
 <p align="center">
   <img src="resources/pipeline.png" width="700">
@@ -33,11 +35,12 @@ Examples:
 
 ## Whole-brain modeling
 
-In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and functional resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) time series data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, represented for example by the number of axonal fibers between each two brain areas and 2) the signal transmission delays measured from the length of the axonal fibers. 
+Typically, in whole-brain modeling, diffusion tensor imaging (DTI) is used to infer the structural connectivity (the connection strength) between different brain areas. In a DTI scan, the direction of the diffusion of molecules is measured across the whole brain. Using [tractography](https://en.wikipedia.org/wiki/Tractography), this information can yield the distribution of axonal fibers in the brain that connect distant brain areas, called the connectome. Together with an atlas that divides the brain into distinct areas, a matrix can be computed that encodes how many fibers go from one area to another, the so-called structural connectivity (SC) matrix. This matrix acts as an adjacency matrix of the brain network. The length of the fibers determine the signal transmission delay between all brain areas. When the structural data is combined with a computational model of the neuronal activity of the cortex, we can create a dynamical model of the whole brain.
 
-The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The neural activity is used to simulate BOLD activity using the Balloon-Windkessel model. The resulting simulated [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional) can then be used to fit the model to empirical functional brain data. 
+The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The simulated neural activity is used to simulate hemodynamic [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) activity using the Balloon-Windkessel model. The simulated BOLD activity is used to compute correlations of activity between all brain areas, the so called [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional), which can be fitted to empirical fMRI data.
 
-Below is an animation in which the neural activity from such a model is plotted on a brain network for visualisation.
+
+Below is an animation of the neuronal activity of a whole-brain model plotted on a brain.
 
 <p align="center">
   <img src="resources/brain_slow_waves_small.gif">
@@ -59,11 +62,11 @@ pip install .
 ```
 
 # Usage
-Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory, don't forget to check them out! A basic overview of the functionality that `neurolib` provides is given here. 
+Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory, don't forget to check them out! A basic overview of the functionality that `neurolib` provides is also given here. 
 
 ## Single node
 
-A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
+This example is available in detail as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
 To create a single `aln` model with the default parameters, simply run
 
@@ -91,7 +94,7 @@ plt.plot(aln.t, aln.rates_exc.T)
 
 A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
-To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (an example dataset called `gw` is provided in the `neurolib/data/datasets/` directory).
+To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset. `neurolib` already provides some example data for you:
 
 ```python
 from neurolib.utils.loadData import Dataset
@@ -104,7 +107,7 @@ The dataset that we just loaded, looks like this:
   <img src="resources/gw_data.png">
 </p>
 
-We can now initialise the model with the dataset:
+We initialize a model with the dataset and run it:
 
 ```python
 aln = ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat)
@@ -112,14 +115,14 @@ aln.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
 
 aln.run(bold=True)
 ```
-This can take several minutes to compute, since we are simulating 90 nodes for 5 minutes realtime. Here, we have created a network model in which each brain area is an `aln` node. Note that we specified `bold=True` which simulates the BOLD model in parallel to the firing rate model. The resulting firing rates and BOLD functional connectivity looks like this:
+This can take several minutes to compute, since we are simulating 82 nodes for 5 minutes realtime. Note that we specified `bold=True` which simulates the BOLD model in parallel to the neuronal model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
   <img src="resources/gw_simulated.png">
 </p>
 
 The quality of the fit of this simulation can be computed by correlating the simulated functional connectivity matrix above to the empirical resting-state functional connectivity for each subject. This gives us an estimate of how well the model reproduces inter-areal BOLD correlations. As a rule of thumb, a value above 0.5 is considered good. 
 
-We can compute this by using the builtin functions `func.fc` to calculate a functional connectivity from `N` (`N` = number of regions) time series and and `fund.matrix_correlation` to compare this to the empirical data.
+We can compute the quality of the fit of the simulated data using `func.fc` to calculate a functional connectivity of `N` (`N` = number of brain regions) time series and and `fund.matrix_correlation` to compare this matrix to empirical data.
 
 ```python
 scores = [func.matrix_correlation(func.fc(aln.BOLD.BOLD[:, 5:]), fcemp) for fcemp in ds.FCs]
@@ -134,7 +137,7 @@ Mean FC/FC correlation: 0.58
 ## Parameter exploration
 A detailed example is available as a [IPython Notebook](examples/example-1-aln-parameter-exploration.ipynb). 
 
-Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameter. For this, it is useful to get an overview of the state space of a given model. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `neurolib` makes it very easy to quickly explore parameter spaces of a given model:
+Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameters. I is usually useful to get an overview of the state space of a given model of interest. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `neurolib` makes it very easy to quickly explore parameter spaces of a given model:
 
 ```python
 # create model
