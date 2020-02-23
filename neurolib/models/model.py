@@ -7,6 +7,20 @@ from ..models import bold
 from ..utils.collections import dotdict
 
 
+RAY_NOT_FOUND = None
+try:
+    import ray
+except ImportError:
+    RAY_NOT_FOUND = True
+    logging.warning("`ray` module not found. BOLD simulation won't be run in parallel.")
+
+    class Object(object):
+        pass
+
+    ray = Object()
+    ray.remote = lambda f: f
+
+
 class Model:
     """The Model superclass manages inputs and outputs of all models.
     """
@@ -23,6 +37,7 @@ class Model:
         bold=False,
         normalize_bold_input=False,
         normalize_bold_input_max=50,
+        parallelize_bold=True,
         name=None,
         description=None,
     ):
@@ -56,9 +71,22 @@ class Model:
         self.bold_initialized = False
         self.normalize_bold_input = normalize_bold_input
         self.normalize_bold_input_max = normalize_bold_input_max
+
         if bold:
             self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
 
+        self.parallelize_bold = parallelize_bold
+        if RAY_NOT_FOUND:
+            self.parallelize_bold = False
+        self.ray_initialized = False
+        if self.parallelize_bold and not RAY_NOT_FOUND:
+            try:
+                ray.shutdown()
+                ray.init()
+                self.ray_initialized = True
+            except:
+                logging.warning("`ray` module initialization failed, falling back to serial BOLD simulation.")
+                self.parallelize_bold = False
         logging.info(f"{name}: Model initialized.")
 
     def initialize_bold(self, normalize_bold_input, normalize_bold_input_max):
@@ -80,16 +108,20 @@ class Model:
         self.bold_initialized = True
         logging.info(f"{self.name}: BOLD model initialized.")
 
+    @ray.remote
+    def bold_ray(self, bold_model):
+        bold_model.run(self.state[self.default_output])
+        return bold_model
+
     def simulate_bold(self):
         """Gets the default output of the model and simulates the BOLD model. 
         Adds the simulated BOLD signal to outputs.
         """
         if self.bold_initialized:
-            self.boldModel.run(self.state[self.default_output])
-            t_BOLD = self.boldModel.t_BOLD
-            BOLD = self.boldModel.BOLD
-            self.setOutput("BOLD.t", t_BOLD)
-            self.setOutput("BOLD.BOLD", BOLD)
+            if self.parallelize_bold and self.ray_initialized:
+                self.boldModel = self.bold_ray.remote(self, self.boldModel)
+            else:
+                self.boldModel.run(self.state[self.default_output])
         else:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
 
@@ -142,16 +174,25 @@ class Model:
         if chunkwise is False:
             self.integrate()
             if bold:
+                # run the bold simulation. Will be serial or parallel, depending on self.parallelize_bold
                 self.simulate_bold()
-            return
         else:
             # check if model is safe for chunkwise integration
             self.check_chunkwise()
             if bold and not self.bold_initialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
+            # run the chunkwise integrator, will run bold simulation internatlly if bold==True
             self.integrate_chunkwise(chunksize=chunksize, bold=bold, append_outputs=append_outputs)
-            return
+
+        # gather all parallel simulation results (if self.parallelize_bold) and set BOLD outputs
+        if bold:
+            # when done with everyting, gather all parallel bold simulation results
+            if self.parallelize_bold and self.ray_initialized:
+                self.boldModel = ray.get(self.boldModel)
+            # set the BOLD outputs for easy access
+            self.setOutput("BOLD.t", self.boldModel.t_BOLD)
+            self.setOutput("BOLD.BOLD", self.boldModel.BOLD)
 
     def integrate(self, append_outputs=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
@@ -199,6 +240,9 @@ class Model:
 
             # we save the last simulated time step
             lastT += self.state["t"][-1]
+
+        # set the duration back to its original value
+        self.params["duration"] = totalDuration
 
     def autochunk(self, inputs=None, duration=None, append_outputs=False):
         """Executes a single chunk of integration, either for a given duration

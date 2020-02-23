@@ -11,7 +11,7 @@ python:
 install:
   - pip install -r requirements.txt
   - pip install pytest flake8 codecov pytest-cov wheel setuptools
-  - pip install jupyterlab nbconvert nbformat matplotlib seaborn mne
+  - pip install jupyterlab nbconvert nbformat matplotlib seaborn mne ray
   - python setup.py sdist bdist_wheel
   - pip install --upgrade dist/*
 
