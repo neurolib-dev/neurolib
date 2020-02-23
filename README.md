@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.python.org/downloads/release/python-360/">
+  <a href="https://www.python.org/downloads/release">
   	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg">
   </a>
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
