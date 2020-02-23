@@ -11,7 +11,7 @@ with open("requirements.txt") as f:
 
 setuptools.setup(
     name="neurolib",
-    version="0.3",
+    version="0.4",
     description="Easy whole-brain neural mass modeling",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -23,7 +23,7 @@ setuptools.setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
+        "Operating System :: Linux, macOS",
     ],
     python_requires=">=3.6",
     install_requires=requirements,
