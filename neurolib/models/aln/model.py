@@ -87,11 +87,8 @@ class ALNModel(Model):
 
     def getMaxDelay(self):
         # compute maximum delay of model
-        dt = self.params["dt"]
-        Dmat = dp.computeDelayMatrix(self.params["lengthMat"], self.params["signalV"])
-        Dmat_ndt = np.around(Dmat / dt)  # delay matrix in multiples of dt
         ndt_de = round(self.params["de"] / dt)
         ndt_di = round(self.params["di"] / dt)
-        max_global_delay = int(max(np.amax(Dmat_ndt), ndt_de, ndt_di))
-        return max_global_delay
+        max_dmat_delay = super().getMaxDelay()
+        return int(max(max_dmat_delay, ndt_de, ndt_di))
 
