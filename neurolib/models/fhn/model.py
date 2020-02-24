@@ -16,9 +16,9 @@ class FHNModel(Model):
     init_vars = ["xs_init", "ys_init", "x_ou", "y_ou"]
     state_vars = ["x", "y", "x_ou", "y_ou"]
     output_vars = ["x", "y"]
-    defaultOutput = "x"
+    default_output = "x"
     input_vars = ["x_ext", "y_ext"]
-    defaultInput = "x_ext"
+    default_input = "x_ext"
 
     # because this is not a rate model, the input
     # to the bold model must be normalized
@@ -41,15 +41,5 @@ class FHNModel(Model):
 
         # Initialize base class Model
         super().__init__(
-            integration=integration,
-            params=params,
-            state_vars=self.state_vars,
-            init_vars=self.init_vars,
-            output_vars=self.output_vars,
-            input_vars=self.input_vars,
-            default_output=self.defaultOutput,
-            bold=bold,
-            normalize_bold_input=self.normalize_bold_input,
-            name=self.name,
-            description=self.description,
+            integration=integration, params=params, bold=bold,
         )
