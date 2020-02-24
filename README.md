@@ -1,10 +1,10 @@
 <p align="center">
-  <a href="https://www.python.org/downloads/release">
-  	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg">
-  </a>
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
   	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master">
   </a>
+  <a href="https://www.python.org/downloads/release">
+  	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg">
+  </a>  
   <a href="https://github.com/neurolib-dev/neurolib/releases">
   	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib">
   </a>
