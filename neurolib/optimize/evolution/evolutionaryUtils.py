@@ -48,11 +48,6 @@ def saveToPypet(traj, pop, gIdx):
 
 
 def printParamDist(pop=None, paramInterval=None, gIdx=None):
-    if pop == None:
-        pop = self.pop
-    if paramInterval == None:
-        paramInterval = self.paramInterval
-
     print("Parameter dictribution (Generation {}):".format(gIdx))
     for idx, k in enumerate(paramInterval._fields):
         print(
@@ -62,7 +57,7 @@ def printParamDist(pop=None, paramInterval=None, gIdx=None):
         )
 
 
-def printIndividuals(pop, paramInterval, stats=False):
+def printIndividuals(pop, paramInterval, stats=True):
     print("Printing {} individuals".format(len(pop)))
     pars = []
     for i, ind in enumerate(pop):
@@ -161,16 +156,16 @@ def plotPopulation(
         plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots)
 
 
-def plotProgress(evolution, drop_first=True):
-    gens, all_scores = evolution.getScoresDuringEvolution(reverse=False, drop_first=drop_first)
-    import matplotlib.pyplot as plt
+# def plotProgress(evolution, drop_first=True):
+#     gens, all_scores = evolution.getScoresDuringEvolution(reverse=False, drop_first=drop_first)
+#     import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(8, 4), dpi=200)
-    plt.plot(gens, np.nanmean(all_scores, axis=1))
-    plt.fill_between(gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3)
-    plt.xlabel("Generation #")
-    plt.ylabel("Score")
-    plt.show()
+#     plt.figure(figsize=(8, 4), dpi=200)
+#     plt.plot(gens, np.nanmean(all_scores, axis=1))
+#     plt.fill_between(gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3)
+#     plt.xlabel("Generation #")
+#     plt.ylabel("Score")
+#     plt.show()
 
 
 def printEvolutionInfo(evolution):

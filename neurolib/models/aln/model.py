@@ -1,4 +1,5 @@
-import neurolib.models.aln.chunkwiseIntegration as cw
+import numpy as np
+
 import neurolib.models.aln.loadDefaultParams as dp
 import neurolib.models.aln.timeIntegration as ti
 from neurolib.models.model import Model
@@ -12,20 +13,48 @@ class ALNModel(Model):
     name = "aln"
     description = "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
 
-    modelInputNames = ["ext_exc_current", "ext_exc_rate"]
-    modelOutputNames = ["rates_exc", "rates_inh"]
+    init_vars = [
+        "rates_exc_init",
+        "rates_inh_init",
+        "mufe_init",
+        "mufi_init",
+        "IA_init",
+        "seem_init",
+        "seim_init",
+        "siem_init",
+        "siim_init",
+        "seev_init",
+        "seiv_init",
+        "siev_init",
+        "siiv_init",
+        "mue_ou",
+        "mui_ou",
+    ]
+
+    state_vars = [
+        "rates_exc",
+        "rates_inh",
+        "mufe",
+        "mufi",
+        "IA",
+        "seem",
+        "seim",
+        "siem",
+        "siim",
+        "seev",
+        "seiv",
+        "siev",
+        "siiv",
+        "mue_ou",
+        "mui_ou",
+    ]
+    output_vars = ["rates_exc", "rates_inh"]
+    default_output = "rates_exc"
+    input_vars = ["ext_exc_current", "ext_exc_rate"]
+    default_input = "ext_exc_rate"
 
     def __init__(
-        self,
-        params=None,
-        Cmat=None,
-        Dmat=None,
-        lookupTableFileName=None,
-        seed=None,
-        simulateChunkwise=False,
-        chunkSize=10000,
-        simulateBOLD=False,
-        saveAllActivity=False,
+        self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
     ):
         """
         :param params: parameter dictionary of the model
@@ -36,9 +65,6 @@ class ALNModel(Model):
         :param simulateChunkwise: Chunkwise time integration (for lower memory use)
         :param simulateBOLD: Parallel (chunkwise) BOLD simulation
         """
-        # Initialize base class Model
-        super().__init__(self.name)
-        # Model.addOutputs(self, self.outputNames, self.outputNames)
 
         # Global attributes
         self.Cmat = Cmat  # Connectivity matrix
@@ -46,61 +72,23 @@ class ALNModel(Model):
         self.lookupTableFileName = lookupTableFileName  # Filename for aLN lookup functions
         self.seed = seed  # Random seed
 
-        # Chunkwise simulation and BOLD
-        self.simulateChunkwise = simulateChunkwise  # Chunkwise time integration
-        self.simulateBOLD = simulateBOLD  # BOLD
-        if simulateBOLD:
-            self.simulateChunkwise = True  # Override this setting if BOLD is simulated!
-        self.chunkSize = (
-            chunkSize  # Size of integration chunks in chunkwise integration in case of simulateBOLD == True
-        )
-        # Save data from all chunks? Can be very memory demanding if simulations are long or large
-        self.saveAllActivity = saveAllActivity
+        integration = ti.timeIntegration
 
         # load default parameters if none were given
         if params is None:
-            self.params = dp.loadDefaultParams(
-                Cmat=self.Cmat, Dmat=self.Dmat, lookupTableFileName=self.lookupTableFileName, seed=self.seed,
+            params = dp.loadDefaultParams(
+                Cmat=self.Cmat, Dmat=self.Dmat, lookupTableFileName=self.lookupTableFileName, seed=self.seed
             )
-        else:
-            self.params = params
 
-    def run(self):
-        """
-        Runs an aLN mean-field model simulation.
-        """
+        # Initialize base class Model
+        super().__init__(
+            integration=integration, params=params, bold=bold,
+        )
 
-        if self.simulateChunkwise:
-            t_BOLD, BOLD, return_tuple = cw.chunkwiseTimeIntAndBOLD(
-                self.params, self.chunkSize, self.simulateBOLD, self.saveAllActivity
-            )
-            (rates_exc, rates_inh, t, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv,) = return_tuple
-            self.t_BOLD = t_BOLD
-            self.BOLD = BOLD
-            self.setOutput("BOLD.t_BOLD", t_BOLD)
-            self.setOutput("BOLD.BOLD", BOLD)
-        else:
-            (
-                rates_exc,
-                rates_inh,
-                t,
-                mufe,
-                mufi,
-                IA,
-                seem,
-                seim,
-                siem,
-                siim,
-                seev,
-                seiv,
-                siev,
-                siiv,
-            ) = ti.timeIntegration(self.params)
+    def getMaxDelay(self):
+        # compute maximum delay of model
+        ndt_de = round(self.params["de"] / self.params["dt"])
+        ndt_di = round(self.params["di"] / self.params["dt"])
+        max_dmat_delay = super().getMaxDelay()
+        return int(max(max_dmat_delay, ndt_de, ndt_di))
 
-        # convert output from kHz to Hz
-        rates_exc = rates_exc * 1000.0
-        rates_inh = rates_inh * 1000.0
-
-        self.setOutput("t", t)
-        self.setOutput("rates_exc", rates_exc)
-        self.setOutput("rates_inh", rates_inh)

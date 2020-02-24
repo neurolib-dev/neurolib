@@ -314,7 +314,7 @@ class TestSignal(unittest.TestCase):
 
         # now proper example with network - 3D case
         ds = Dataset("gw")
-        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True)
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
         # in ms, simulates for 2 minutes
         aln.params["duration"] = 2 * 1000
         aln.run()
