@@ -218,7 +218,7 @@ class Model:
         # reset initial conditions to last state
         for iv, sv in zip(self.init_vars, self.state_vars):
             # if state variables are one-dimensional (in space only)
-            if len(self.state[sv].shape) == 1:
+            if self.state[sv].ndim == 1:
                 self.params[iv] = self.state[sv]
             # if they are space-time arrays
             else:

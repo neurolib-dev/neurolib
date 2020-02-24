@@ -87,8 +87,8 @@ class ALNModel(Model):
 
     def getMaxDelay(self):
         # compute maximum delay of model
-        ndt_de = round(self.params["de"] / dt)
-        ndt_di = round(self.params["di"] / dt)
+        ndt_de = round(self.params["de"] / self.params["dt"])
+        ndt_di = round(self.params["di"] / self.params["dt"])
         max_dmat_delay = super().getMaxDelay()
         return int(max(max_dmat_delay, ndt_de, ndt_di))
 

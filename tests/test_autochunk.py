@@ -23,9 +23,9 @@ class TestAutochunk(unittest.TestCase):
 
         for model_class in [ALNModel, HopfModel, FHNModel]:
             logging.info(f"Testing {model_class}...")
-            ModelClass = model_class
+
             duration = 200
-            model = ModelClass(Cmat=ds.Cmat, Dmat=ds.Dmat)
+            model = model_class(Cmat=ds.Cmat, Dmat=ds.Dmat)
             model.params["duration"] = duration
 
             # run classical integration
