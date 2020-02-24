@@ -49,12 +49,9 @@ class ALNModel(Model):
         "mui_ou",
     ]
     output_vars = ["rates_exc", "rates_inh"]
-    defaultOutput = "rates_exc"
+    default_output = "rates_exc"
     input_vars = ["ext_exc_current", "ext_exc_rate"]
-    defaultInput = "ext_exc_rate"
-
-    modelInputNames = ["ext_exc_current", "ext_exc_rate"]
-    modelOutputNames = ["rates_exc", "rates_inh"]
+    default_input = "ext_exc_rate"
 
     def __init__(
         self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
@@ -68,8 +65,6 @@ class ALNModel(Model):
         :param simulateChunkwise: Chunkwise time integration (for lower memory use)
         :param simulateBOLD: Parallel (chunkwise) BOLD simulation
         """
-
-        # Model.addOutputs(self, self.outputNames, self.outputNames)
 
         # Global attributes
         self.Cmat = Cmat  # Connectivity matrix
@@ -87,16 +82,7 @@ class ALNModel(Model):
 
         # Initialize base class Model
         super().__init__(
-            integration=integration,
-            params=params,
-            state_vars=self.state_vars,
-            init_vars=self.init_vars,
-            output_vars=self.output_vars,
-            input_vars=self.input_vars,
-            default_output=self.defaultOutput,
-            bold=bold,
-            name=self.name,
-            description=self.description,
+            integration=integration, params=params, bold=bold,
         )
 
     def getMaxDelay(self):

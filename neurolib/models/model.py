@@ -12,23 +12,10 @@ class Model:
     """
 
     def __init__(
-        self,
-        integration,
-        params,
-        state_vars,
-        init_vars=None,
-        output_vars=None,
-        input_vars=None,
-        default_output=None,
-        bold=False,
-        normalize_bold_input=False,
-        normalize_bold_input_max=50,
-        name=None,
-        description=None,
+        self, integration, params, bold=False,
     ):
-        if name is not None:
-            assert isinstance(name, str), f"Model name is not a string."
-            self.name = name
+        if self.name is not None:
+            assert isinstance(self.name, str), f"Model name is not a string."
 
         assert integration is not None, "Model integration function not given."
         self.integration = integration
@@ -36,14 +23,16 @@ class Model:
         assert isinstance(params, dict), "Parameters must be a dictionary."
         self.params = dotdict(params)
 
-        self.state_vars = state_vars
-        self.init_vars = init_vars
-        self.output_vars = output_vars
-        self.input_vars = input_vars
+        # assert self.state_vars not None:
+        assert hasattr(
+            self, "state_vars"
+        ), f"Model {self.name} has no attribute `state_vars`, which should be alist of strings containing all variable names."
+        assert np.all([type(s) is str for s in self.state_vars]), "All entries in state_vars must be strings."
 
-        # possibly redundant
-        self.default_output = default_output
-        self.setDefaultOutput(default_output)
+        assert hasattr(
+            self, "default_output"
+        ), f"Model {self.name} needs to define a default output variable in `default_output`."
+        assert isinstance(self.default_output, str), "`default_output` must be a string."
 
         # create output and state dictionary
         self.outputs = dotdict({})
@@ -54,12 +43,12 @@ class Model:
         # set up bold model
         # NOTE: obsolete, will be called if run(bold==True)
         self.bold_initialized = False
-        self.normalize_bold_input = normalize_bold_input
-        self.normalize_bold_input_max = normalize_bold_input_max
+        # self.normalize_bold_input = normalize_bold_input
+        # self.normalize_bold_input_max = normalize_bold_input_max
         if bold:
             self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
 
-        logging.info(f"{name}: Model initialized.")
+        logging.info(f"{self.name}: Model initialized.")
 
     def initialize_bold(self, normalize_bold_input, normalize_bold_input_max):
         """Initialize BOLD model.
@@ -393,19 +382,19 @@ class Model:
         # filter out all output *groups* that might be in this node and return only output data
         return filterOutputsFromGroupDict(lastOutput)
 
-    def setDefaultOutput(self, name):
-        """Sets the default output of the model.
-        :param name: Name of the default output.
-        :type name: str
-        """
-        assert isinstance(name, str), "Default output name must be a string."
-        self.defaultOutput = name
+    # def setDefaultOutput(self, name):
+    #     """Sets the default output of the model.
+    #     :param name: Name of the default output.
+    #     :type name: str
+    #     """
+    #     assert isinstance(name, str), "Default output name must be a string."
+    #     self.defaultOutput = name
 
     def getDefaultOutput(self):
         """Returns value of default output.
         """
-        assert self.defaultOutput is not None, "Default output has not been set yet. Use `setDefaultOutput()`."
-        return self.getOutput(self.defaultOutput)
+        assert self.default_output is not None, "Default output has not been set yet. Use `setDefaultOutput()`."
+        return self.getOutput(self.default_output)
 
     def xr(self, group=""):
         """Converts a group of outputs to xarray. Output group needs to contain an
