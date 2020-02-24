@@ -41,10 +41,15 @@ class Model:
         self.initialize_run()
 
         # set up bold model
-        # NOTE: obsolete, will be called if run(bold==True)
         self.bold_initialized = False
-        # self.normalize_bold_input = normalize_bold_input
-        # self.normalize_bold_input_max = normalize_bold_input_max
+        if not hasattr(self, "normalize_bold_input"):
+            self.normalize_bold_input = False
+        if not hasattr(self, "normalize_bold_input_max"):
+            self.normalize_bold_input_max = 50
+
+        # bold initialization at model init
+        # if not initialized yet, it will be done when run(bold=True) is called
+        # for the first time.
         if bold:
             self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
 
