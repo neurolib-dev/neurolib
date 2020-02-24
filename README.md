@@ -1,25 +1,25 @@
 <p align="center">
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
-  	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master">
-  </a>
+  	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master"></a>
+  
   <a href="https://www.python.org/downloads/release">
-  	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg">
-  </a>  
+  	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg"></a>
+    
   <a href="https://github.com/neurolib-dev/neurolib/releases">
-  	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib">
-  </a>
+  	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib"></a>
+  
   <a href="https://pypi.org/project/neurolib/">
-  	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib">
-  </a>
+  	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib"></a>
+  
   <a href="https://codecov.io/gh/neurolib-dev/neurolib">
-  	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg">
-  </a>
+  	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg"></a>
+  
   <a href="https://pepy.tech/project/neurolib">
-  	<img alt="Downloads" src="https://pepy.tech/badge/neurolib">
-  </a>
+  	<img alt="Downloads" src="https://pepy.tech/badge/neurolib"></a>
+  
   <a href="https://github.com/psf/black">
-  	<img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg">
-  </a>
+  	<img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+  
 </p>
 
 # neurolib
