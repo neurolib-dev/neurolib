@@ -45,7 +45,7 @@ def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
                 lastMax = m
             phases[n].append(2 * np.pi)
         else:
-            logging.warn("Kuramoto: No peaks found, returning 0.")
+            logging.warning("Kuramoto: No peaks found, returning 0.")
             return 0
 
     # determine kuramoto order paramter
