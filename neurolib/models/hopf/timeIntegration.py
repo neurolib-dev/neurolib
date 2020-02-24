@@ -28,9 +28,9 @@ def timeIntegration(params):
     # Parameter of the Ornstein-Uhlenbeck (OU) process for the external input ( mV/ms/sqrt(ms) )
     sigma_ou = params["sigma_ou"]
     # Mean external excitatory input (OU process) (mV/ms)
-    x_ext_mean = params["x_ext_mean"]
+    x_ou_mean = params["x_ou_mean"]
     # Mean external inhibitory input (OU process) (mV/ms)
-    y_ext_mean = params["y_ext_mean"]
+    y_ou_mean = params["y_ou_mean"]
 
     # ------------------------------------------------------------------------
     # global coupling parameters
@@ -66,46 +66,49 @@ def timeIntegration(params):
 
     # Initialization
     t = np.arange(0, duration, dt)  # Time variable (ms)
+
     sqrt_dt = np.sqrt(dt)
 
     max_global_delay = np.max(Dmat_ndt)
     startind = int(max_global_delay + 1)  # timestep to start integration at
 
-    x_ext = np.zeros((N,))
-    y_ext = np.zeros((N,))
+    x_ou = params["x_ou"]
+    y_ou = params["y_ou"]
 
-    # Set the initial firing rates.
+    x_ext = params["x_ext"]
+    y_ext = params["y_ext"]
+
+    # set of the state variable arrays
+    xs = np.zeros((N, len(t)))
+    ys = np.zeros((N, len(t)))
+
+    # ------------------------------------------------------------------------
+    # Set initial values
+    # if initial values are just a Nx1 array
     if np.shape(params["xs_init"])[1] == 1:
-        # If the initial firing rate is a 1D array, we use a fixed firing for a time "max_delay" before the simulation
-        xs = np.dot(params["xs_init"], np.ones((1, len(t))))
-        ys = np.dot(params["ys_init"], np.ones((1, len(t))))
+        xs_init = np.dot(params["xs_init"], np.ones((1, startind)))
+        ys_init = np.dot(params["ys_init"], np.ones((1, startind)))
+    # if initial values are a Nxt array
     else:
-        # Reuse the firing rates computed in a precedent simulation
-        xs = np.zeros((N, len(t)))
-        ys = np.zeros((N, len(t)))
-        xs[:, :startind] = params["xs_init"][:, -startind:]
-        ys[:, :startind] = params["ys_init"][:, -startind:]
+        xs_init = params["xs_init"][:, -startind:]
+        ys_init = params["ys_init"][:, -startind:]
 
     # xsd = np.zeros((N,N))  # delayed activity
     xs_input_d = np.zeros(N)  # delayed input to x
-    ys_input_d = np.zeros(N)  # delayed input to x
+    ys_input_d = np.zeros(N)  # delayed input to y
 
-    # Save the noise in the rates array to save memory
     if RNGseed:
         np.random.seed(RNGseed)
-    xs[:, startind:] = np.random.standard_normal((N, len(range(startind, len(t)))))
-    ys[:, startind:] = np.random.standard_normal((N, len(range(startind, len(t)))))
+
+    # Save the noise in the activity array to save memory
+    xs[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+    ys[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+
+    xs[:, :startind] = xs_init
+    ys[:, :startind] = ys_init
 
     noise_xs = np.zeros((N,))
     noise_ys = np.zeros((N,))
-
-    zeros4 = np.zeros((4,))
-
-    # tile external inputs to appropriate shape
-    # ext_exc_current = adjust_shape(params['ext_exc_current'], xs)
-    # ext_inh_current = adjust_shape(params['ext_inh_current'], xs)
-    # ext_exc_rate = adjust_shape(params['ext_exc_rate'], xs)
-    # ext_inh_rate = adjust_shape(params['ext_inh_rate'], xs)
 
     # ------------------------------------------------------------------------
 
@@ -126,14 +129,16 @@ def timeIntegration(params):
         ys,
         xs_input_d,
         ys_input_d,
+        x_ext,
+        y_ext,
         a,
         w,
         noise_xs,
         noise_ys,
-        x_ext,
-        y_ext,
-        x_ext_mean,
-        y_ext_mean,
+        x_ou,
+        y_ou,
+        x_ou_mean,
+        y_ou_mean,
         tau_ou,
         sigma_ou,
     )
@@ -157,14 +162,16 @@ def timeIntegration_njit_elementwise(
     ys,
     xs_input_d,
     ys_input_d,
+    x_ext,
+    y_ext,
     a,
     w,
     noise_xs,
     noise_ys,
-    x_ext,
-    y_ext,
-    x_ext_mean,
-    y_ext_mean,
+    x_ou,
+    y_ou,
+    x_ou_mean,
+    y_ou_mean,
     tau_ou,
     sigma_ou,
 ):
@@ -174,7 +181,7 @@ def timeIntegration_njit_elementwise(
         # loop through all the nodes
         for no in range(N):
 
-            # To save memory, noise is saved in the rates array
+            # To save memory, noise is saved in the activity array
             noise_xs[no] = xs[no, i]
             noise_ys[no] = ys[no, i]
 
@@ -198,13 +205,15 @@ def timeIntegration_njit_elementwise(
                 (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * xs[no, i - 1]
                 - w * ys[no, i - 1]
                 + xs_input_d[no]  # input from other nodes
-                + x_ext[no]  # input from external sources / noise
+                + x_ou[no]  # ou noise
+                + x_ext[no]  # external input
             )
             y_rhs = (
                 (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
                 + w * xs[no, i - 1]
                 + ys_input_d[no]  # input from other nodes
-                + y_ext[no]  # input from external sources / noise
+                + y_ou[no]  # ou noise
+                + y_ext[no]  # external input
             )
 
             # Euler integration
@@ -212,7 +221,7 @@ def timeIntegration_njit_elementwise(
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
             # Ornstein-Uhlenberg process
-            x_ext[no] = x_ext[no] + (x_ext_mean - x_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
-            y_ext[no] = y_ext[no] + (y_ext_mean - y_ext[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
+            x_ou[no] = x_ou[no] + (x_ou_mean - x_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
+            y_ou[no] = y_ou[no] + (y_ou_mean - y_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
 
-    return t, xs, ys
+    return t, xs, ys, x_ou, y_ou

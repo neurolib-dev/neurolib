@@ -1,4 +1,3 @@
-import neurolib.models.fhn.chunkwiseIntegration as cw
 import neurolib.models.fhn.loadDefaultParams as dp
 import neurolib.models.fhn.timeIntegration as ti
 from neurolib.models.model import Model
@@ -6,73 +5,40 @@ from neurolib.models.model import Model
 
 class FHNModel(Model):
     """
-    Todo.
+    Fitz-Hugh Nagumo oscillator.
     """
 
     name = "fhn"
     description = "Fitz-Hugh Nagumo oscillator"
 
-    modelOutputs = {"activity": ["x", "y"]}
+    init_vars = ["xs_init", "ys_init", "x_ou", "y_ou"]
+    state_vars = ["x", "y", "x_ou", "y_ou"]
+    output_vars = ["x", "y"]
+    default_output = "x"
+    input_vars = ["x_ext", "y_ext"]
+    default_input = "x_ext"
 
-    defaultOutput = "x"
+    # because this is not a rate model, the input
+    # to the bold model must be normalized
+    normalize_bold_input = True
+    normalize_bold_input_max = 50
 
     def __init__(
-        self,
-        params=None,
-        Cmat=None,
-        Dmat=None,
-        lookupTableFileName=None,
-        seed=None,
-        simulateChunkwise=False,
-        chunkSize=10000,
-        simulateBOLD=False,
-        saveAllActivity=False,
+        self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
     ):
-        # Initialize base class Model
-        super().__init__(self.name)
 
-        if Cmat is None:
-            self.singleNode = True
-        else:
-            self.singleNode = False
         self.Cmat = Cmat
         self.Dmat = Dmat
         self.seed = seed
 
-        self.simulateChunkwise = simulateChunkwise
-        self.chunkSize = chunkSize  # Size of integration chunks in chunkwise integration
-        self.simulateBOLD = simulateBOLD  # BOLD
-        if simulateBOLD:
-            self.simulateChunkwise = True  # Override this setting if BOLD is simulated!
-        # Save data from all chunks? Can be very memory demanding if simulations are long or large
-        self.saveAllActivity = saveAllActivity
+        # the integration function must be passed
+        integration = ti.timeIntegration
 
         # load default parameters if none were given
         if params is None:
-            self.params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
-        else:
-            self.params = params
+            params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
 
-        # set default output
-        self.setDefaultOutput(self.defaultOutput)
-
-    def run(self):
-        """
-        Runs the aLN mean-field model simulation
-        """
-        if self.simulateChunkwise:
-            t, x, y, t_BOLD, BOLD = cw.chunkwiseTimeIntegration(
-                self.params,
-                chunkSize=self.chunkSize,
-                simulateBOLD=self.simulateBOLD,
-                saveAllActivity=self.saveAllActivity,
-            )
-            self.setOutput("BOLD.t", t_BOLD)
-            self.setOutput("BOLD.BOLD", BOLD)
-
-        else:
-            t, x, y = ti.timeIntegration(self.params)
-
-        self.setOutput("t", t)
-        self.setOutput("x", x)
-        self.setOutput("y", y)
+        # Initialize base class Model
+        super().__init__(
+            integration=integration, params=params, bold=bold,
+        )

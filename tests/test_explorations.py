@@ -7,6 +7,7 @@ import numpy as np
 from neurolib.models.aln import ALNModel
 from neurolib.optimize.exploration import BoxSearch
 from neurolib.utils.parameterSpace import ParameterSpace
+import neurolib.utils.functions as func
 
 
 class TestALNExploration(unittest.TestCase):
@@ -36,9 +37,7 @@ class TestALNExploration(unittest.TestCase):
         from neurolib.utils.loadData import Dataset
 
         ds = Dataset("hcp")
-        aln = ALNModel(
-            Cmat=ds.Cmat, Dmat=ds.Dmat, simulateBOLD=True
-        )  # simulates the whole-brain model in 10s chunks by default if simulateBOLD == True
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, bold=True)
         # Resting state fits
         aln.params["mue_ext_mean"] = 1.57
         aln.params["mui_ext_mean"] = 1.6
@@ -62,11 +61,10 @@ class TestALNExploration(unittest.TestCase):
             # ---------------------------------------
             model.params["dt"] = 0.1
             model.params["duration"] = 3 * 1000.0
-            model.simulateBOLD = False
             model.run()
 
             # check if stage 1 was successful
-            if np.max(aln.rates_exc[:, aln.t > 500]) > 300 or np.max(aln.rates_exc[:, aln.t > 500]) < 10:
+            if np.max(model.rates_exc[:, model.t > 500]) > 300 or np.max(model.rates_exc[:, model.t > 500]) < 10:
                 search.saveOutputsToPypet(invalid_result, traj)
                 return invalid_result, {}
 
@@ -74,10 +72,9 @@ class TestALNExploration(unittest.TestCase):
             # ---------------------------------------
             model.params["dt"] = 0.2
             model.params["duration"] = 20 * 1000.0
-            model.simulateBOLD = True
-            model.run()
+            model.run(bold=True)
 
-            if np.std(aln.BOLD.BOLD[:, 5:10]) < 0.001:
+            if np.std(model.BOLD.BOLD[:, 5:10]) < 0.001:
                 search.saveOutputsToPypet(invalid_result, traj)
                 return invalid_result, {}
 
