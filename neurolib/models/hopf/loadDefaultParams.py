@@ -1,6 +1,6 @@
 import numpy as np
 
-from neurolib.utils.collections import dotdict
+from ...utils.collections import dotdict
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):

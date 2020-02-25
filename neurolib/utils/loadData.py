@@ -7,8 +7,8 @@ import numpy as np
 import h5py
 import scipy.io
 
-import neurolib.utils.functions as func
-from neurolib.utils.collections import dotdict
+from . import functions as func
+from .collections import dotdict
 
 
 class Dataset:

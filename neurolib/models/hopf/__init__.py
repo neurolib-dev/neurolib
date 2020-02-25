@@ -1,1 +1,1 @@
-from neurolib.models.hopf.model import HopfModel
+from .model import HopfModel

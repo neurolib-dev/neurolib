@@ -17,7 +17,7 @@ class ParameterSpace:
         
         :param parameters: parameter dictionary or list of names of parameters e.g. `['x', 'y']`
         :type parameters: `dict, list[str, str]`
-        :param parameterValues: list of parameter values e.g. `[[x_min, x_max], [y_min, y_max], ...]`
+        :param parameterValues: list of parameter values (must be floats) e.g. `[[x_min, x_max], [y_min, y_max], ...]`
         :type parameterValues: `list[list[float, float]]`
         :param kind: string describing the kind of parameter space. Supports "point", "bound", "grid"
         :type kind: str
@@ -82,22 +82,17 @@ class ParameterSpace:
         """
         randomPar = {}
         if safe:
-            for key, value in self.safe.items():
-                randomPar[key] = float(np.random.choice(value))
+            for key, value in self.parameters.items():
+                random_value = np.random.choice(value)
+                if isinstance(random_value, np.float64):
+                    random_value = float(random_value)
+                elif isinstance(random_value, np.int64):
+                    random_value = int(random_value)
+                randomPar[key] = random_value
         else:
             for key, value in self.parameters.items():
                 randomPar[key] = np.random.choice(value)
         return randomPar
-
-    @property
-    def safe(self):
-        """Returns the parameter dict but with python types instead of the original ones
-        which could be of type numpy.float64 for example. This is necessary for pypet.
-        """
-        safeDict = self.parameters.copy()
-        for key, value in safeDict.items():
-            safeDict[key] = [float(v) for v in value]
-        return safeDict
 
     @property
     def ndims(self):
