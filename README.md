@@ -1,25 +1,42 @@
-[![Build](https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master)](https://travis-ci.org/neurolib-dev/neurolib) 
-[![Python 3.7](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/release/python-370/)
-[![Release](https://img.shields.io/github/v/release/neurolib-dev/neurolib)](https://github.com/neurolib-dev/neurolib/releases) 
-[![PyPI](https://img.shields.io/pypi/v/neurolib) ](https://pypi.org/project/neurolib/)
-[![codecov](https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg)](https://codecov.io/gh/neurolib-dev/neurolib) 
-[![Downloads](https://pepy.tech/badge/neurolib)](https://pepy.tech/project/neurolib) 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
+<p align="center">
+  <a href="https://travis-ci.org/neurolib-dev/neurolib">
+  	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master"></a>
+  
+  <a href="https://www.python.org/downloads/release">
+  	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg"></a>
+    
+  <a href="https://github.com/neurolib-dev/neurolib/releases">
+  	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib"></a>
+  
+  <a href="https://pypi.org/project/neurolib/">
+  	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib"></a>
+  
+  <a href="https://codecov.io/gh/neurolib-dev/neurolib">
+  	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg"></a>
+  
+  <a href="https://pepy.tech/project/neurolib">
+  	<img alt="Downloads" src="https://pepy.tech/badge/neurolib"></a>
+  
+  <a href="https://github.com/psf/black">
+  	<img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+  
+</p>
 
 # neurolib
 *Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
-`neurolib` allows you to easily create your own state-of-the-art whole-brain models. The main implementation is a neural mass firing rate model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln` which consists of two populations of excitatory and inhibitory neurons. 
+`neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `aln` model can be found in our [paper](https://arxiv.org/abs/1906.00676) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
-An extensive analysis of this model can be found in our paper and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+`neurolib` provides a simulation and optimization framework which allows you to easily implement your own neural mass model, simulate fMRI BOLD activity, analyse the results and fit your model to empirical data.
+
+Please reference the following paper if you use `neurolib` for your own research:
 
 **Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation ([ArXiv](https://arxiv.org/abs/1906.00676)).
 
-The figure below shows a schematic of how a brain network is constructed:
+The figure below shows a schematic of how a brain network can be constructed:
 
 <p align="center">
-  <img src="resources/pipeline.png" width="700">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/pipeline.png" width="700">
 </p>
 
 <p align="center">
@@ -34,18 +51,19 @@ Examples:
 
 ## Whole-brain modeling
 
-In combination with structural brain data, for example from diffusion tensor imaging (DTI) [tractography](https://en.wikipedia.org/wiki/Tractography), and functional resting state [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) time series data from magnetic resonance imaging (rs-fMRI), a network model of a whole brain can be created. Structural connectivity matrices from DTI tractography define 1) the connection strengths between areas, represented for example by the number of axonal fibers between each two brain areas and 2) the signal transmission delays measured from the length of the axonal fibers. 
+Typically, in whole-brain modeling, diffusion tensor imaging (DTI) is used to infer the structural connectivity (the connection strength) between different brain areas. In a DTI scan, the direction of the diffusion of molecules is measured across the whole brain. Using [tractography](https://en.wikipedia.org/wiki/Tractography), this information can yield the distribution of axonal fibers in the brain that connect distant brain areas, called the connectome. Together with an atlas that divides the brain into distinct areas, a matrix can be computed that encodes how many fibers go from one area to another, the so-called structural connectivity (SC) matrix. This matrix defines the coupling strengths between brain areas and acts as an adjacency matrix of the brain network. The length of the fibers determine the signal transmission delay between all brain areas. When the structural data is combined with a computational model of the neuronal activity of the cortex, we can create a dynamical model of the whole brain.
 
-The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The neural activity is used to simulate BOLD activity using the Balloon-Windkessel model. The resulting simulated [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional) can then be used to fit the model to empirical functional brain data. 
+The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The neural activity is used to simulate hemodynamic [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) activity using the Balloon-Windkessel model, which can be compared to empirical fMRI data. The simulated BOLD activity is used to compute correlations of activity between all brain areas, the so called [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional), which can then be fitted to empirical fMRI resting-state data.
 
-Below is an animation in which the neural activity from such a model is plotted on a brain network for visualisation.
+
+Below is an animation of the neuronal activity of a whole-brain model plotted on a brain.
 
 <p align="center">
-  <img src="resources/brain_slow_waves_small.gif">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/brain_slow_waves_small.gif">
 </p>
 
 # Installation
-`neurolib` requires at least `python 3.7`. The easiest way to get going is to install the pypi package using `pip`:
+The easiest way to get going is to install the pypi package using `pip`:
 
 ```
 pip install neurolib
@@ -60,11 +78,11 @@ pip install .
 ```
 
 # Usage
-Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory, don't forget to check them out! A basic overview of the functionality that `neurolib` provides is given here. 
+Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory, don't forget to check them out! A basic overview of the functionality that `neurolib` provides is also given here. 
 
 ## Single node
 
-A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
+This example is available in detail as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
 To create a single `aln` model with the default parameters, simply run
 
@@ -85,14 +103,14 @@ plt.plot(aln.t, aln.rates_exc.T)
 
 ```
 <p align="left">
-  <img src="resources/single_timeseries.png">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/single_timeseries.png">
 </p>
 
 ## Whole-brain network
 
 A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
-To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset (an example dataset called `gw` is provided in the `neurolib/data/datasets/` directory).
+To simulate a whole-brain network model, first we need to load a DTI and a resting-state fMRI dataset. `neurolib` already provides some example data for you:
 
 ```python
 from neurolib.utils.loadData import Dataset
@@ -102,10 +120,10 @@ ds = Dataset("gw")
 The dataset that we just loaded, looks like this:
 
 <p align="center">
-  <img src="resources/gw_data.png">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/gw_data.png">
 </p>
 
-We can now initialise the model with the dataset:
+We initialize a model with the dataset and run it:
 
 ```python
 aln = ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat)
@@ -113,14 +131,14 @@ aln.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
 
 aln.run(bold=True)
 ```
-This can take several minutes to compute, since we are simulating 90 nodes for 5 minutes realtime. Here, we have created a network model in which each brain area is an `aln` node. Note that we specified `bold=True` which simulates the BOLD model in parallel to the firing rate model. The resulting firing rates and BOLD functional connectivity looks like this:
+This can take several minutes to compute, since we are simulating 82 nodes for 5 minutes realtime. Note that we specified `bold=True` which simulates the BOLD model in parallel to the neuronal model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
-  <img src="resources/gw_simulated.png">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/gw_simulated.png">
 </p>
 
-The quality of the fit of this simulation can be computed by correlating the simulated functional connectivity matrix above to the empirical resting-state functional connectivity for each subject. This gives us an estimate of how well the model reproduces inter-areal BOLD correlations. As a rule of thumb, a value above 0.5 is considered good. 
+The quality of the fit of this simulation can be computed by correlating the simulated functional connectivity matrix above to the empirical resting-state functional connectivity for each subject of the dataset. This gives us an estimate of how well the model reproduces inter-areal BOLD correlations. As a rule of thumb, a value above 0.5 is considered good. 
 
-We can compute this by using the builtin functions `func.fc` to calculate a functional connectivity from `N` (`N` = number of regions) time series and and `fund.matrix_correlation` to compare this to the empirical data.
+We can compute the quality of the fit of the simulated data using `func.fc()` which calculates a functional connectivity matrix of `N` (`N` = number of brain regions) time series. We use `func.matrix_correlation()` to compare this matrix to empirical data.
 
 ```python
 scores = [func.matrix_correlation(func.fc(aln.BOLD.BOLD[:, 5:]), fcemp) for fcemp in ds.FCs]
@@ -135,7 +153,7 @@ Mean FC/FC correlation: 0.58
 ## Parameter exploration
 A detailed example is available as a [IPython Notebook](examples/example-1-aln-parameter-exploration.ipynb). 
 
-Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameter. For this, it is useful to get an overview of the state space of a given model. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `neurolib` makes it very easy to quickly explore parameter spaces of a given model:
+Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameters. It is often useful to get an overview of the state space of a given model of interest. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `neurolib` makes it very easy to quickly explore parameter spaces of a given model:
 
 ```python
 # create model
@@ -146,10 +164,10 @@ parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 21),  # input to 
 
 # define exploration              
 search = BoxSearch(aln, parameters)
-search.initializeExploration()
+
 search.run()                
 ```
-That's it!. You can now use the builtin functionality to read the simulation results from disk and do your analysis:
+That's it!. You can now use the builtin functions to load the simulation results from disk and perform your analysis:
 
 ```python
 search.loadResults()
@@ -161,16 +179,20 @@ for i in search.dfResults.index:
 We can plot the results to get something close to a bifurcation diagram!
 
 <p align="center">
-  <img src="resources/exploration_aln.png">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/exploration_aln.png">
 </p>
 
 ## Evolutionary optimization
 
 A detailed example is available as a [IPython Notebook](examples/example-2-evolutionary-optimization-minimal.ipynb). 
 
-`neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual and the parameters of the simulation, for example coupling strengths or noise level values, are represented as genes of each offspring. An individual is a part of a population. In each generation, individuals are evaluated and ranked according to a fitness criterion. For whole-brain network simulations, this could be the fit of the activity to empirical data. Then, individuals with a high fitness value are `selected` as parents and `mate` to create offspring. These offspring undergo random `mutations` of their genes. After all offspring are evaluated, the best individuals of the population are selected to transition into the next generation. This process goes on for a given amount generations until a stopping criterion is reached. This could be a predefined maximum number of generations or when a large enough population with high fitness values is found.
+`neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual and the parameters of the simulation, for example coupling strengths or noise level values, are represented as the genes of each individual. An individual is a part of a population. In each generation, individuals are evaluated and ranked according to a fitness criterion. For whole-brain network simulations, this could be the fit of the simulated activity to empirical data. Then, individuals with a high fitness value are `selected` as parents and `mate` to create offspring. These offspring undergo random `mutations` of their genes. After all offspring are evaluated, the best individuals of the population are selected to transition into the next generation. This process goes on for a given amount generations until a stopping criterion is reached. This could be a predefined maximum number of generations or when a large enough population with high fitness values is found.
 
-`neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. Of course, if you like, you can dig deeper, define your own selection, mutation and mating operators. In the following example, we will simply evaluate the fitness of each individual as the distance to the unit circle. After a couple of generations of mating, mutating and selecting, only individuals who are close to the circle should survive:
+<p align="center">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolutionary-algorithm.svg", width="600">
+</p>
+
+`neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. Of course, if you like, you can dig deeper, define your own selection, mutation and mating operators. In the following demonstration, we will simply evaluate the fitness of each individual as the distance to the unit circle. After a couple of generations of mating, mutating and selecting, only individuals who are close to the circle should survive:
 
 ```python
 from neurolib.utils.parameterSpace import ParameterSpace
@@ -206,7 +228,7 @@ evolution.info(plot=True)
 This will gives us a summary of the last generation and plots a distribution of the individuals (and their parameters). Below is an animation of 10 generations of the evolutionary process. As you can see, after a couple of generations, all remaining individuals lie very close to the unit circle.
 
 <p align="center">
-  <img src="resources/evolution_animated.gif">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolution_animated.gif">
 </p>
 
 ## More information

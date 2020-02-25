@@ -1,11 +1,16 @@
 language: python
 
+os:
+  - linux
+
 python:
+  - "3.6"
   - "3.7"
+  - "3.8"
 
 install:
   - pip install -r requirements.txt
-  - pip install pytest flake8 codecov pytest-cov
+  - pip install pytest flake8 codecov pytest-cov wheel setuptools
   - pip install jupyterlab nbconvert nbformat matplotlib seaborn mne
   - python setup.py sdist bdist_wheel
   - pip install --upgrade dist/*
@@ -16,3 +21,30 @@ script:
 
 after_success:
   - codecov
+
+jobs:
+  allow_failures:
+    - os: osx
+    - os: windows
+
+  include:
+    - stage: test
+      os: osx
+      language: sh
+      addons:
+        homebrew:
+          update: false
+          packages: python3
+      before_install:
+        - pip install virtualenv
+        - virtualenv -p python3 ~/venv
+        - source ~/venv/bin/activate
+        
+    # - stage: test
+    #   os: windows
+    #   language: sh
+    #   env:
+    #     - PATH="/c/Python37:/c/Python37/Scripts:$PATH"
+    #   before_install: 
+    #     - choco install python --version 3.7.3
+    #     - python -m pip install --upgrade pip
