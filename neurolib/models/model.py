@@ -8,14 +8,15 @@ from ..utils.collections import dotdict
 
 
 class Model:
-    """The Model superclass manages inputs and outputs of all models.
+    """The Model superclass runs simulations and manages inputs and outputs of all models.
     """
 
     def __init__(
         self, integration, params, bold=False,
     ):
-        if self.name is not None:
-            assert isinstance(self.name, str), f"Model name is not a string."
+        if hasattr(self, "name"):
+            if self.name is not None:
+                assert isinstance(self.name, str), f"Model name is not a string."
 
         assert integration is not None, "Model integration function not given."
         self.integration = integration
@@ -32,6 +33,7 @@ class Model:
         assert hasattr(
             self, "default_output"
         ), f"Model {self.name} needs to define a default output variable in `default_output`."
+
         assert isinstance(self.default_output, str), "`default_output` must be a string."
 
         # create output and state dictionary
@@ -74,12 +76,12 @@ class Model:
         self.bold_initialized = True
         logging.info(f"{self.name}: BOLD model initialized.")
 
-    def simulate_bold(self):
+    def simulate_bold(self, append=False):
         """Gets the default output of the model and simulates the BOLD model. 
         Adds the simulated BOLD signal to outputs.
         """
         if self.bold_initialized:
-            self.boldModel.run(self.state[self.default_output])
+            self.boldModel.run(self.state[self.default_output], append=append)
             t_BOLD = self.boldModel.t_BOLD
             BOLD = self.boldModel.BOLD
             self.setOutput("BOLD.t", t_BOLD)
@@ -109,7 +111,9 @@ class Model:
         if initialize_bold and not self.bold_initialized:
             self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
 
-    def run(self, inputs=None, onedt=False, chunkwise=False, chunksize=10000, bold=False, append_outputs=False):
+    def run(
+        self, inputs=None, onedt=False, chunkwise=False, chunksize=10000, bold=False, append=False, append_outputs=False
+    ):
         """Main function to run a model. 
         
         :param inputs: list of inputs to the model, must have the same order as model.input_vars. Note: no sanity check is performed for performance reasons. Take care of the inputs yourself.
@@ -122,15 +126,17 @@ class Model:
         :type chunksize: int, optional
         :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
         :type bold: bool, optional
-        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
-        :type append_outputs: bool, optional
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :type append: bool, optional
         """
+        # override legacy argument
+        append = append_outputs
 
         self.initialize_run(bold)
 
         # override some settings if onedt==True
         if onedt:
-            self.autochunk(inputs=inputs, append_outputs=append_outputs)
+            self.autochunk(inputs=inputs, append=append)
             return
 
         if chunkwise is False:
@@ -144,28 +150,28 @@ class Model:
             if bold and not self.bold_initialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
-            self.integrate_chunkwise(chunksize=chunksize, bold=bold, append_outputs=append_outputs)
+            self.integrate_chunkwise(chunksize=chunksize, bold=bold, append=append)
             return
 
-    def integrate(self, append_outputs=False):
+    def integrate(self, append=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
         
-        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
-        :type append_outputs: bool, optional
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :type append: bool, optional
         """
         # run integration
         t, *variables = self.integration(self.params)
 
         # save time array
-        self.setOutput("t", t, append=append_outputs)
+        self.setOutput("t", t, append=append)
         self.setStateVariables("t", t)
         # save outputs
         for svn, sv in zip(self.state_vars, variables):
             if svn in self.output_vars:
-                self.setOutput(svn, sv, append=append_outputs)
+                self.setOutput(svn, sv, append=append)
             self.setStateVariables(svn, sv)
 
-    def integrate_chunkwise(self, chunksize, bold=False, append_outputs=False):
+    def integrate_chunkwise(self, chunksize, bold=False, append=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
         If `bold==True`, the BOLD model is simulated after each chunk.     
         
@@ -173,8 +179,8 @@ class Model:
         :type chunksize: int
         :param bold: simulate BOLD model after each chunk, defaults to False
         :type bold: bool, optional
-        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
-        :type append_outputs: bool, optional
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False
+        :type append: bool, optional
         """
         totalDuration = self.params["duration"]
 
@@ -186,15 +192,15 @@ class Model:
             currentChunkSize = min(chunksize, (totalDuration - lastT) / dt)
             currentChunkSize += self.max_delay + 1
 
-            self.autochunk(duration=currentChunkSize * dt, append_outputs=append_outputs)
+            self.autochunk(duration=currentChunkSize * dt, append=append)
 
             if bold and self.bold_initialized:
-                self.simulate_bold()
+                self.simulate_bold(append=True)
 
             # we save the last simulated time step
             lastT += self.state["t"][-1]
 
-    def autochunk(self, inputs=None, duration=None, append_outputs=False):
+    def autochunk(self, inputs=None, duration=None, append=False):
         """Executes a single chunk of integration, either for a given duration
         or a single timestep `dt`. Gathers all inputs to the model and resets
         the initial conditions as a preparation for the next chunk. 
@@ -203,8 +209,8 @@ class Model:
         :type inputs: list[np.ndarray|], optional
         :param duration: length of a chunk to simulate in ms, defaults to a single dt, defaults to None
         :type duration: float, optional
-        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
-        :type append_outputs: bool, optional
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False
+        :type append: bool, optional
         """
         startindt = self.max_delay + 1
         if duration is not None:
@@ -218,7 +224,7 @@ class Model:
                 self.params[iv] = inputs[i]
 
         # run integration
-        self.integrate(append_outputs=append_outputs)
+        self.integrate(append=append)
 
         # reset initial conditions to last state
         for iv, sv in zip(self.init_vars, self.state_vars):
