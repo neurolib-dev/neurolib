@@ -127,7 +127,29 @@ def fcd(ts, windowsize=30, stepsize=5):
         return 0
 
 
-def kolmogorov(ts1, ts2, stepsize=5, windowsize=1.0):
+def matrix_kolmogorov(m1, m2):
+    """Computes the Kolmogorov distance between the distributions of lower-triangular entries of two matrices
+    See: https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test#Two-sample_Kolmogorov%E2%80%93Smirnov_test
+
+    :param m1: matrix 1
+    :type m1: np.ndarray
+    :param m2: matrix 2
+    :type m2: np.ndarray
+    :return: 2-sample KS statistics
+    :rtype: float
+    """
+    # get the values of the lower triangle
+    triu_ind1 = np.triu_indices(m1.shape[0], k=1)
+    m1_vals = m1[triu_ind1]
+
+    triu_ind2 = np.triu_indices(m2.shape[0], k=1)
+    m2_vals = m2[triu_ind2]
+
+    # return the distance, omit p-value
+    return scipy.stats.ks_2samp(m1_vals, m2_vals)[0]
+
+
+def ts_kolmogorov(ts1, ts2, **fcd_kwargs):
     """Computes kolmogorov distance between two timeseries. 
     This is done by first computing two FCD matrices (one for each timeseries)
     and then measuring the Kolmogorov distance of the upper triangle of these matrices.
@@ -136,56 +158,92 @@ def kolmogorov(ts1, ts2, stepsize=5, windowsize=1.0):
     :type ts1: np.ndarray
     :param ts2: Timeseries 2
     :type ts2: np.ndarray
-    :param stepsize: Step size for FCD matrix calculation, defaults to 5
-    :type stepsize: int, optional
-    :param windowsize: Window size for FCD matrix calculation, defaults to 1.0
-    :type windowsize: float, optional
-    :return: Kolmogorov distance
+    :return: 2-sample KS statistics
     :rtype: float
     """
-    empiricalFCD = fcd(ts2[:, : len(ts1[0, :])], stepsize, windowsize)
-    FCD = fcd(ts1, stepsize, windowsize)
+    fcd1 = fcd(ts1, **fcd_kwargs)
+    fcd2 = fcd(ts2, **fcd_kwargs)
 
-    triUFCD = np.triu(FCD)
-    triUFCD = triUFCD[(triUFCD > 0.0) & (triUFCD < 1.0)]
-
-    emptriUFCD = np.triu(empiricalFCD)
-    emptriUFCD = emptriUFCD[(emptriUFCD > 0.0) & (emptriUFCD < 1.0)]
-
-    return scipy.stats.ks_2samp(triUFCD, emptriUFCD)[0]
+    return matrix_kolmogorov(fcd1, fcd2)
 
 
-def print_params(params):
-    """
-    Helpfer function for printing a subset of the paramters of the aln model.
-    Todo: This function should not be here, it is too specific for the aln model.
-    Idea: A model could register "parameters of interest" and be printed with this function. 
-    However, this should be placed in the Model class in any case
-    """
-    paramsOfInterest = [
-        "dt",
-        "Ke_gl",
-        "mue_ext_mean",
-        "mui_ext_mean",
-        "sigma_ou",
-        "signalV",
-        "a",
-        "b",
-        "Jee_max",
-        "Jie_max",
-        "Jii_max",
-        "Jei_max",
-        "cee",
-        "cie",
-        "cii",
-        "cei",
-        "Ke",
-        "Ki",
-        "de",
-        "di",
-    ]
-    for p in paramsOfInterest:
-        print("params['%s'] = %0.3f" % (p, params[p]))
+# def max_distance_cumulative(data1, data2):
+#     """
+#     From: https://github.com/scipy/scipy/issues/9389
+
+#     Computes the maximal vertical distance between cumulative distributions
+#     (this is the statistic for KS tests). Code mostly copied from
+#     scipy.stats.ks_twosamp
+
+#     Parameters
+#     ----------
+#     data1 : array_like
+#         First data set
+#     data2 : array_like
+#         Second data set
+#     Returns
+#     -------
+#     d : float
+#         Max distance, i.e. value of the Kolmogorov Smirnov test. Sign is + if
+#         the cumulative of data1 < the one of data2 at that location, else -.
+#     x : float
+#         Value of x where maximal distance d is reached.
+#     """
+#     from numpy import ma
+
+#     (data1, data2) = (ma.asarray(data1), ma.asarray(data2))
+#     (n1, n2) = (data1.count(), data2.count())
+#     mix = ma.concatenate((data1.compressed(), data2.compressed()))
+#     mixsort = mix.argsort(kind="mergesort")
+#     csum = np.where(mixsort < n1, 1.0 / n1, -1.0 / n2).cumsum()
+
+#     # Check for ties
+#     if len(np.unique(mix)) < (n1 + n2):
+#         ind = np.r_[np.diff(mix[mixsort]).nonzero()[0], -1]
+#         csum = csum[ind]
+#         mixsort = mixsort[ind]
+
+#     csumabs = ma.abs(csum)
+#     i = csumabs.argmax()
+
+#     d = csum[i]
+#     # mixsort[i] contains the index of mix with the max distance
+#     x = mix[mixsort[i]]
+
+#     return (d, x)
+
+
+# def print_params(params):
+#     """
+#     Helpfer function for printing a subset of the paramters of the aln model.
+#     Todo: This function should not be here, it is too specific for the aln model.
+#     Idea: A model could register "parameters of interest" and be printed with this function.
+#     However, this should be placed in the Model class in any case
+#     """
+#     paramsOfInterest = [
+#         "dt",
+#         "Ke_gl",
+#         "mue_ext_mean",
+#         "mui_ext_mean",
+#         "sigma_ou",
+#         "signalV",
+#         "a",
+#         "b",
+#         "Jee_max",
+#         "Jie_max",
+#         "Jii_max",
+#         "Jei_max",
+#         "cee",
+#         "cie",
+#         "cii",
+#         "cei",
+#         "Ke",
+#         "Ki",
+#         "de",
+#         "di",
+#     ]
+#     for p in paramsOfInterest:
+#         print("params['%s'] = %0.3f" % (p, params[p]))
 
 
 def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
