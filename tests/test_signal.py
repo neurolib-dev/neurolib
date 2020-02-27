@@ -32,7 +32,7 @@ class TestSignal(unittest.TestCase):
         aln.params["sigma_ou"] = 0.1  # add some noise
         aln.run()
         # init RatesSignal
-        cls.signal = RatesSignal.from_model_result(aln)
+        cls.signal = RatesSignal.from_model_output(aln)
         os.makedirs(cls.TEST_FOLDER)
 
     @classmethod
@@ -318,7 +318,7 @@ class TestSignal(unittest.TestCase):
         # in ms, simulates for 2 minutes
         aln.params["duration"] = 2 * 1000
         aln.run()
-        network_sig = RatesSignal.from_model_result(aln)
+        network_sig = RatesSignal.from_model_output(aln)
         fcs = network_sig.functional_connectivity()
         self.assertTrue(isinstance(fcs, xr.DataArray))
         correct_shape = (network_sig.shape[0], network_sig.shape[1], network_sig.shape[1])
