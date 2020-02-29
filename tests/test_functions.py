@@ -41,11 +41,11 @@ class TestFunctions(unittest.TestCase):
         FC = func.fc(self.model.BOLD.BOLD)
         cc = func.matrix_correlation(FC, self.ds.FCs[0])
 
-    def test_kolmogorov(self):
-        func.kolmogorov(self.model.rates_exc[::20, :], self.model.rates_exc, stepsize=250, windowsize=30)
+    def test_ts_kolmogorov(self):
+        func.ts_kolmogorov(self.model.rates_exc[::20, :], self.model.rates_exc, stepsize=250, windowsize=30)
 
-    def test_print_params(self):
-        func.print_params(self.model.params)
+    def test_matrix_kolmogorov(self):
+        func.matrix_kolmogorov(func.fc(self.model.rates_exc[::20, :]), func.fc(self.model.rates_exc[::20, :]))
 
     def test_getPowerSpectrum(self):
         fr, pw = func.getPowerSpectrum(self.model.rates_exc[0, :], dt=self.model.params["dt"])
