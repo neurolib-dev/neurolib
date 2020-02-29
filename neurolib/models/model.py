@@ -129,7 +129,7 @@ class Model:
         :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
         :type append: bool, optional
         """
-        # override legacy argument
+        # TODO legacy argument for compatibility
         append = append_outputs
 
         self.initialize_run(bold)
