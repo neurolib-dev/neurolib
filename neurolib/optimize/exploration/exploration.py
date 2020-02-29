@@ -85,6 +85,7 @@ class BoxSearch:
             ncores=nprocesses,
             complevel=9,
             log_stdout=False,
+            log_multiproc=False,
         )
         self.env = env
         # Get the trajectory from the environment
