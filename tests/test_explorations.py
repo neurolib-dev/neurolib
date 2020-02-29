@@ -49,8 +49,6 @@ class TestALNExploration(unittest.TestCase):
 
         # multi stage evaluation function
         def evaluateSimulation(traj):
-            print("asd")
-            print("I'm hereee")
             model = search.getModelFromTraj(traj)
             defaultDuration = model.params["duration"]
             invalid_result = {"fc": [0] * len(ds.BOLDs)}
