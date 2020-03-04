@@ -4,7 +4,7 @@ from neurolib.models.model import Model
 
 
 
-class CWModel(Model):
+class WCModel(Model):
     """
     The  standard two-population Wilson-Cowan model
     """
