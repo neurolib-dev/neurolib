@@ -567,7 +567,7 @@ def timeIntegration_njit_elementwise(
             if siiv[no] < 0:
                 siiv[no] = 0.0
 
-            # ornstein-uhlenberg process
+            # ornstein-uhlenbeck process
             mue_ou[no] = (
                 mue_ou[no] + (mue_ext_mean - mue_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[no]
             )  # mV/ms
