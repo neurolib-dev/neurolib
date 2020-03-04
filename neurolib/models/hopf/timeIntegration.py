@@ -220,7 +220,7 @@ def timeIntegration_njit_elementwise(
             xs[no, i] = xs[no, i - 1] + dt * x_rhs
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
-            # Ornstein-Uhlenberg process
+            # Ornstein-Uhlenbeck process
             x_ou[no] = x_ou[no] + (x_ou_mean - x_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
             y_ou[no] = y_ou[no] + (y_ou_mean - y_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
 
