@@ -224,7 +224,7 @@ def timeIntegration_njit_elementwise(
                 + (1-ys[no, i - 1])*S_I(c_ei*xs[no, i - 1]  # input from the excitatory population
                                        - c_ii*ys[no, i - 1]  # input from within the inhibitory population
                                        + xs_input_d[no]  # input from other nodes
-                                       + x_ext[no])  # external input
+                                       + y_ext[no])  # external input
                 + x_ou[no]  # ou noise
 
             )
