@@ -1,1 +1,1 @@
-from neurolib.models.wc.model import WCModel
+from .model import WCModel
