@@ -126,7 +126,6 @@ class TestWC(unittest.TestCase):
     """
 
     def test_single_node(self):
-        # todo: adapt parameters
         logging.info("\t > WC: Testing single node ...")
         start = time.time()
         wc = WCModel()
@@ -139,7 +138,6 @@ class TestWC(unittest.TestCase):
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
     def test_network(self):
-        # todo: adapt parameters
         logging.info("\t > WC: Testing brain network (chunkwise integration and BOLD simulation) ...")
         start = time.time()
         ds = Dataset("gw")
