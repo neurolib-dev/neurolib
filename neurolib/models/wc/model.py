@@ -1,4 +1,4 @@
-import neurolib.models.wc.loadDefaultParams as dp
+import .loadDefaultParams as dp
 import neurolib.models.wc.timeIntegration as ti
 from neurolib.models.model import Model
 
