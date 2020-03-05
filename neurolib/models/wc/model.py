@@ -1,6 +1,6 @@
 import .loadDefaultParams as dp
 import .timeIntegration as ti
-from neurolib.models.model import Model
+from ...model import Model
 
 
 
