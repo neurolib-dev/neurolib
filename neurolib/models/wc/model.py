@@ -1,5 +1,5 @@
-import .loadDefaultParams as dp
-import .timeIntegration as ti
+from . import loadDefaultParams as dp
+from . import timeIntegration as ti
 from ..model import Model
 
 
