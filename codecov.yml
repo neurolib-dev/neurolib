@@ -8,3 +8,4 @@ coverage:
     - "neurolib/models/bold/timeIntegration.py"
     - "neurolib/models/hopf/timeIntegration.py"
     - "neurolib/models/fhn/timeIntegration.py"
+    - "neurolib/models/wc/timeIntegration.py"
