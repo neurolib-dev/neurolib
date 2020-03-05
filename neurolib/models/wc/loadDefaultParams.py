@@ -32,7 +32,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # "diffusive" for diffusive coupling, "additive" for additive coupling
     params.coupling = "diffusive"
 
-    # signal transmission speec between areas
+    # signal transmission speed between areas
     params.signalV = 20.0
     params.K_gl = 0.6  # global coupling strength
 
