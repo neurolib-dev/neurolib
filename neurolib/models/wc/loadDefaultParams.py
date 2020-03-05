@@ -22,7 +22,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     ### runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
     params.duration = 2000  # Simulation duration (ms)
-    params.seed = np.int64(0)  # seed for RNG of noise and ICs
+    params.seed = 0  # seed for RNG of noise and ICs
 
     # ------------------------------------------------------------------------
     # global whole-brain network parameters
@@ -32,7 +32,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # "diffusive" for diffusive coupling, "additive" for additive coupling
     params.coupling = "diffusive"
 
-    # signal transmission speec between areas
+    # signal transmission speed between areas
     params.signalV = 20.0
     params.K_gl = 0.6  # global coupling strength
 
