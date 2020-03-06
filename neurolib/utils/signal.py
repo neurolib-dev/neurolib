@@ -77,9 +77,9 @@ class Signal:
     PROCESS_STEPS_KEY = "process_steps"
 
     @classmethod
-    def from_model_result(cls, model, group="", time_in_ms=True):
+    def from_model_output(cls, model, group="", time_in_ms=True):
         """
-        Initial Signal from modelling results.
+        Initial Signal from modelling output.
         """
         assert isinstance(model, Model)
         return cls(model.xr(group=group), time_in_ms=time_in_ms)

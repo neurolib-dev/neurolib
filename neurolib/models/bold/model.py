@@ -36,7 +36,7 @@ class BOLDModel:
         self.V_BOLD = np.ones((N,))
         # Blood volume
 
-    def run(self, activity):
+    def run(self, activity, append=False):
         """Runs the Balloon-Windkessel BOLD simulation.
 
         Parameters:
@@ -79,10 +79,10 @@ class BOLDModel:
             * self.dt
         )
 
-        if self.BOLD.shape[1] == 0:
+        if self.BOLD.shape[1] == 0 or append is False:
             self.t_BOLD = t_BOLD_resampled
             self.BOLD = BOLD_resampled
-        else:
+        elif append is True:
             self.t_BOLD = np.hstack((self.t_BOLD, t_BOLD_resampled))
             self.BOLD = np.hstack((self.BOLD, BOLD_resampled))
 
