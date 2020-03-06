@@ -32,7 +32,6 @@ def timeIntegration(params):
     mu_e = params["mu_e"]  #
     mu_i = params["mu_i"]  #
 
-
     # external input parameters:
     # Parameter of the Ornstein-Uhlenbeck process for the external input(ms)
     tau_ou = params["tau_ou"]
@@ -110,7 +109,6 @@ def timeIntegration(params):
     noise_xs = np.zeros((N,))
     noise_ys = np.zeros((N,))
 
-
     # ------------------------------------------------------------------------
 
     return timeIntegration_njit_elementwise(
@@ -151,47 +149,46 @@ def timeIntegration(params):
 
 @numba.njit
 def timeIntegration_njit_elementwise(
-        startind,
-        t,
-        dt,
-        sqrt_dt,
-        N,
-        Cmat,
-        K_gl,
-        Dmat_ndt,
-        xs,
-        ys,
-        xs_input_d,
-        ys_input_d,
-        x_ext,
-        y_ext,
-        tau_e,
-        tau_i,
-        a_e,
-        a_i,
-        mu_e,
-        mu_i,
-        c_ee,
-        c_ei,
-        c_ie,
-        c_ii,
-        noise_xs,
-        noise_ys,
-        x_ou,
-        y_ou,
-        x_ou_mean,
-        y_ou_mean,
-        tau_ou,
-        sigma_ou,
+    startind,
+    t,
+    dt,
+    sqrt_dt,
+    N,
+    Cmat,
+    K_gl,
+    Dmat_ndt,
+    xs,
+    ys,
+    xs_input_d,
+    ys_input_d,
+    x_ext,
+    y_ext,
+    tau_e,
+    tau_i,
+    a_e,
+    a_i,
+    mu_e,
+    mu_i,
+    c_ee,
+    c_ei,
+    c_ie,
+    c_ii,
+    noise_xs,
+    noise_ys,
+    x_ou,
+    y_ou,
+    x_ou_mean,
+    y_ou_mean,
+    tau_ou,
+    sigma_ou,
 ):
     ### integrate ODE system:
 
-
     def S_E(x):
-        return 1. / (1. + np.exp(-a_e * (x - mu_e)))
+        return 1.0 / (1.0 + np.exp(-a_e * (x - mu_e)))
 
     def S_I(x):
-        return 1. / (1. + np.exp(-a_i * (x - mu_i)))
+        return 1.0 / (1.0 + np.exp(-a_i * (x - mu_i)))
 
     for i in range(startind, len(t)):
 
@@ -207,26 +204,38 @@ def timeIntegration_njit_elementwise(
             ys_input_d[no] = 0
 
             for l in range(N):
-                 xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] )
+                xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
 
             # Wilson-Cowan model
-            x_rhs = 1/tau_e*(
-                - xs[no, i - 1]
-                + (1-xs[no, i - 1])*S_E(c_ee*xs[no, i - 1]  # input from within the excitatory population
-                                       - c_ie*ys[no, i - 1]  # input from the inhibitory population
-                                       + xs_input_d[no]  # input from other nodes
-                                       + x_ext[no])  # external input
-                + x_ou[no]  # ou noise
-
+            x_rhs = (
+                1
+                / tau_e
+                * (
+                    -xs[no, i - 1]
+                    + (1 - xs[no, i - 1])
+                    * S_E(
+                        c_ee * xs[no, i - 1]  # input from within the excitatory population
+                        - c_ie * ys[no, i - 1]  # input from the inhibitory population
+                        + xs_input_d[no]  # input from other nodes
+                        + x_ext[no]
+                    )  # external input
+                    + x_ou[no]  # ou noise
+                )
             )
-            y_rhs = 1/tau_i*(
-                - ys[no, i - 1]
-                + (1-ys[no, i - 1])*S_I(c_ei*xs[no, i - 1]  # input from the excitatory population
-                                       - c_ii*ys[no, i - 1]  # input from within the inhibitory population
-                                       + xs_input_d[no]  # input from other nodes
-                                       + y_ext[no])  # external input
-                + x_ou[no]  # ou noise
-
+            y_rhs = (
+                1
+                / tau_i
+                * (
+                    -ys[no, i - 1]
+                    + (1 - ys[no, i - 1])
+                    * S_I(
+                        c_ei * xs[no, i - 1]  # input from the excitatory population
+                        - c_ii * ys[no, i - 1]  # input from within the inhibitory population
+                        + xs_input_d[no]  # input from other nodes
+                        + y_ext[no]
+                    )  # external input
+                    + x_ou[no]  # ou noise
+                )
             )
 
             # Euler integration

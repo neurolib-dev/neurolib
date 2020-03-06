@@ -3,7 +3,6 @@ from . import timeIntegration as ti
 from ..model import Model
 
 
-
 class WCModel(Model):
     """
     The  standard two-population Wilson-Cowan model
@@ -18,7 +17,6 @@ class WCModel(Model):
     default_output = "x"
     input_vars = ["x_ext", "y_ext"]
     default_input = "x_ext"
-
 
     def __init__(
         self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
