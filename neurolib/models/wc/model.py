@@ -18,6 +18,11 @@ class WCModel(Model):
     input_vars = ["x_ext", "y_ext"]
     default_input = "x_ext"
 
+    # because this is not a rate model, the input
+    # to the bold model must be normalized
+    normalize_bold_input = True
+    normalize_bold_input_max = 50
+
     def __init__(
         self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
     ):
