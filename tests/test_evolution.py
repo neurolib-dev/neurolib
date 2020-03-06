@@ -18,7 +18,6 @@ class TestVanillaEvolution(unittest.TestCase):
     """Test of the evolutionary optimization without a neural model 
     """
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="Forking this process does not work on macOS")
     def test_circle_optimization(self):
         logging.info("\t > Evolution: Testing vanilla optimization of a circle ...")
         start = time.time()
@@ -32,7 +31,7 @@ class TestVanillaEvolution(unittest.TestCase):
 
         pars = ParameterSpace(["x", "y"], [[-5.0, 5.0], [-5.0, 5.0]])
         evolution = Evolution(optimize_me, pars, weightList=[-1.0], POP_INIT_SIZE=8, POP_SIZE=8, NGEN=2)
-        evolution.run(verbose=True)
+        evolution.run(verbose=False)
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))

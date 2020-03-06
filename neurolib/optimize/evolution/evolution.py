@@ -92,6 +92,8 @@ class Evolution:
             use_pool=False,
             multiproc=True,
             ncores=ncores,
+            log_stdout=False,
+            log_multiproc=False,
             complevel=9,
         )
 
