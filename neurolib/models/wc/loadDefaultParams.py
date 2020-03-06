@@ -4,7 +4,7 @@ from ...utils.collections import dotdict
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
-    """Load default parameters for the FHN model
+    """Load default parameters for the Wilson-Cowan model
     
     :param Cmat: Structural connectivity matrix (adjacency matrix) of coupling strengths, will be normalized to 1. If not given, then a single node simulation will be assumed, defaults to None
     :type Cmat: numpy.ndarray, optional
