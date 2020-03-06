@@ -3,10 +3,5 @@ coverage:
   round: nearest
   range: "90...100"
   threshold: 3%
-  ignore: 
-    - "neurolib/models/aln/timeIntegration.py"
-    - "neurolib/models/bold/timeIntegration.py"
-    - "neurolib/models/hopf/timeIntegration.py"
-    - "neurolib/models/fhn/timeIntegration.py"
-    - "neurolib/models/wc/timeIntegration.py"
-
+  ignore:
+    - "**/timeIntegration.py" 
