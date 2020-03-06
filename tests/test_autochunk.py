@@ -59,6 +59,5 @@ class TestAutochunk(unittest.TestCase):
 
         for i in range(duration_dt):
             inputs = [inp_x[:, i], inp_y[:, i]]
-            # model.autochunk(inputs=inputs, append_outputs=True)
-            model.run(cont=True, inputs=inputs, append_outputs=True)
+            model.autochunk(inputs=inputs, append=True)
 
