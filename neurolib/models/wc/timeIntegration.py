@@ -6,7 +6,7 @@ from . import loadDefaultParams as dp
 
 def timeIntegration(params):
     """Sets up the parameters for time integration
-    
+
     :param params: Parameter dictionary of the model
     :type params: dict
     :return: Integrated activity variables of the model
@@ -19,8 +19,18 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
     # local parameters
-    a = params["a"]  # Hopf bifurcation parameter
-    w = params["w"]  # Oscillator frequency
+    # See Papadopoulos et al., Relations between large-scale brain connectivity and effects of regional stimulation
+    # depend on collective dynamical state, arXiv, 2020
+    tau_e = params["tau_e"]  #
+    tau_i = params["tau_i"]  #
+    c_ee = params["c_ee"]  #
+    c_ei = params["c_ei"]  #
+    c_ie = params["c_ie"]  #
+    c_ii = params["c_ii"]  #
+    a_e = params["a_e"]  #
+    a_i = params["a_i"]  #
+    mu_e = params["mu_e"]  #
+    mu_i = params["mu_i"]  #
 
     # external input parameters:
     # Parameter of the Ornstein-Uhlenbeck process for the external input(ms)
@@ -36,23 +46,13 @@ def timeIntegration(params):
     # global coupling parameters
 
     # Connectivity matrix
-    # Interareal relative coupling strengths (values between 0 and 1), Cmat(i,j) connnection from jth to ith
+    # Interareal relative coupling strengths (values between 0 and 1), Cmat(i,j) connection from jth to ith
     Cmat = params["Cmat"]
     N = len(Cmat)  # Number of nodes
     K_gl = params["K_gl"]  # global coupling strength
     # Interareal connection delay
     lengthMat = params["lengthMat"]
     signalV = params["signalV"]
-
-    # Additive or diffusive coupling scheme
-    coupling = params["coupling"]
-    # convert to integer for faster integration later
-    if coupling == "diffusive":
-        coupling = 0
-    elif coupling == "additive":
-        coupling = 1
-    else:
-        raise ValueError('Paramter "coupling" must be either "diffusive" or "additive"')
 
     if N == 1:
         Dmat = np.zeros((N, N))
@@ -63,7 +63,6 @@ def timeIntegration(params):
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
     params["Dmat_ndt"] = Dmat_ndt
     # ------------------------------------------------------------------------
-
     # Initialization
     t = np.arange(0, duration, dt)  # Time variable (ms)
 
@@ -117,13 +116,9 @@ def timeIntegration(params):
         t,
         dt,
         sqrt_dt,
-        duration,
         N,
         Cmat,
-        Dmat,
         K_gl,
-        signalV,
-        coupling,
         Dmat_ndt,
         xs,
         ys,
@@ -131,8 +126,16 @@ def timeIntegration(params):
         ys_input_d,
         x_ext,
         y_ext,
-        a,
-        w,
+        tau_e,
+        tau_i,
+        a_e,
+        a_i,
+        mu_e,
+        mu_i,
+        c_ee,
+        c_ei,
+        c_ie,
+        c_ii,
         noise_xs,
         noise_ys,
         x_ou,
@@ -150,13 +153,9 @@ def timeIntegration_njit_elementwise(
     t,
     dt,
     sqrt_dt,
-    duration,
     N,
     Cmat,
-    Dmat,
     K_gl,
-    signalV,
-    coupling,
     Dmat_ndt,
     xs,
     ys,
@@ -164,8 +163,16 @@ def timeIntegration_njit_elementwise(
     ys_input_d,
     x_ext,
     y_ext,
-    a,
-    w,
+    tau_e,
+    tau_i,
+    a_e,
+    a_i,
+    mu_e,
+    mu_i,
+    c_ee,
+    c_ei,
+    c_ie,
+    c_ii,
     noise_xs,
     noise_ys,
     x_ou,
@@ -176,6 +183,13 @@ def timeIntegration_njit_elementwise(
     sigma_ou,
 ):
     ### integrate ODE system:
+
+    def S_E(x):
+        return 1.0 / (1.0 + np.exp(-a_e * (x - mu_e)))
+
+    def S_I(x):
+        return 1.0 / (1.0 + np.exp(-a_i * (x - mu_i)))
+
     for i in range(startind, len(t)):
 
         # loop through all the nodes
@@ -189,31 +203,39 @@ def timeIntegration_njit_elementwise(
             xs_input_d[no] = 0
             ys_input_d[no] = 0
 
-            # diffusive coupling
-            if coupling == 0:
-                for l in range(N):
-                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
-                    # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1] - ys[no, i - 1])
-            # additive coupling
-            elif coupling == 1:
-                for l in range(N):
-                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
-                    # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1])
+            for l in range(N):
+                xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
 
-            # Stuart-Landau / Hopf Oscillator
+            # Wilson-Cowan model
             x_rhs = (
-                (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * xs[no, i - 1]
-                - w * ys[no, i - 1]
-                + xs_input_d[no]  # input from other nodes
-                + x_ou[no]  # ou noise
-                + x_ext[no]  # external input
+                1
+                / tau_e
+                * (
+                    -xs[no, i - 1]
+                    + (1 - xs[no, i - 1])
+                    * S_E(
+                        c_ee * xs[no, i - 1]  # input from within the excitatory population
+                        - c_ie * ys[no, i - 1]  # input from the inhibitory population
+                        + xs_input_d[no]  # input from other nodes
+                        + x_ext[no]
+                    )  # external input
+                    + x_ou[no]  # ou noise
+                )
             )
             y_rhs = (
-                (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
-                + w * xs[no, i - 1]
-                + ys_input_d[no]  # input from other nodes
-                + y_ou[no]  # ou noise
-                + y_ext[no]  # external input
+                1
+                / tau_i
+                * (
+                    -ys[no, i - 1]
+                    + (1 - ys[no, i - 1])
+                    * S_I(
+                        c_ei * xs[no, i - 1]  # input from the excitatory population
+                        - c_ii * ys[no, i - 1]  # input from within the inhibitory population
+                        + xs_input_d[no]  # input from other nodes
+                        + y_ext[no]
+                    )  # external input
+                    + x_ou[no]  # ou noise
+                )
             )
 
             # Euler integration
