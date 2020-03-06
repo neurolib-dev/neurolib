@@ -1,7 +1,7 @@
 coverage:
   precision: 2
   round: nearest
-  range: "40...100"
+  range: "90...100"
   threshold: 3%
   ignore: 
     - "neurolib/models/aln/timeIntegration.py"
@@ -9,3 +9,4 @@ coverage:
     - "neurolib/models/hopf/timeIntegration.py"
     - "neurolib/models/fhn/timeIntegration.py"
     - "neurolib/models/wc/timeIntegration.py"
+
