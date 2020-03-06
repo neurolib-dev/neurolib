@@ -5,7 +5,7 @@ from ..model import Model
 
 class WCModel(Model):
     """
-    The  standard two-population Wilson-Cowan model
+    The two-population Wilson-Cowan model
     """
 
     name = "wc"
