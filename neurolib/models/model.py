@@ -112,9 +112,7 @@ class Model:
         if initializeBold and not self.boldInitialized:
             self.initializeBold(self.normalize_bold_input, self.normalize_bold_input_max)
 
-    def run(
-        self, inputs=None, cont=False, chunkwise=False, chunksize=10000, bold=False, append=False, append_outputs=False
-    ):
+    def run(self, inputs=None, chunkwise=False, chunksize=10000, bold=False, append=False, append_outputs=None):
         """Main interfacing function to run a model. 
         The model can be run in three different ways:
         1) `model.run()` starts a new run.
@@ -134,16 +132,11 @@ class Model:
         :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
         :type append: bool, optional
         """
-        # TODO legacy argument for compatibility
-        append = append_outputs
+        # TODO: legacy argument support
+        if append_outputs is not None:
+            append = append_outputs
 
         self.initializeRun(bold)
-
-        # override some settings if cont==True
-        # simulates one dt
-        if cont:
-            self.autochunk(inputs=inputs, append=append)
-            return
 
         if chunkwise is False:
             self.integrate()
@@ -159,15 +152,7 @@ class Model:
             self.integrateChunkwise(chunksize=chunksize, bold=bold, append=append)
             return
 
-    def integrate(self, append=False):
-        """Calls each models `integration` function and saves the state and the outputs of the model.
-        
-        :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
-        :type append: bool, optional
-        """
-        # run integration
-        t, *variables = self.integration(self.params)
-
+    def storeOutputs(self, t, variables, append=False):
         # save time array
         self.setOutput("t", t, append=append)
         self.setStateVariables("t", t)
@@ -176,6 +161,16 @@ class Model:
             if svn in self.output_vars:
                 self.setOutput(svn, sv, append=append)
             self.setStateVariables(svn, sv)
+
+    def integrate(self, append=False):
+        """Calls each models `integration` function and saves the state and the outputs of the model.
+        
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :type append: bool, optional
+        """
+        # run integration
+        t, *variables = self.integration(self.params)
+        self.storeOutputs(t, variables, append=append)
 
     def integrateChunkwise(self, chunksize, bold=False, append=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
@@ -194,17 +189,21 @@ class Model:
         dt = self.params["dt"]
         # create a shallow copy of the parameters
         lastT = 0
+        print("totalDuration", totalDuration)
         while lastT < totalDuration:
             # Determine the size of the next chunk
             currentChunkSize = min(chunksize, (totalDuration - lastT) / dt)
             # currentChunkSize += self.maxDelay + 1
+            # print("currentChunkSize", currentChunkSize)
             self.autochunk(chunksize=currentChunkSize, append=append)
 
             if bold and self.boldInitialized:
                 self.simulateBold(append=True)
 
             # we save the last simulated time step
-            lastT += self.state["t"][-1]
+            # lastT += self.state["t"][-1]
+            lastT += chunksize * dt
+            # print("lastT", lastT)
         # set duration back to its original value
         self.params["duration"] = totalDuration
 
