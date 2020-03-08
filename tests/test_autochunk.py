@@ -31,7 +31,7 @@ class TestAutochunk(unittest.TestCase):
             # run classical integration
             model.run()
             single_integration_output = model.outputs[model.default_output]
-
+            del(model.outputs[model.default_output])			
             # run one-step autochunk integration
             model.run(chunkwise=True, chunksize=1, append_outputs=True)
             chunkwise_output = model.outputs[model.default_output]
