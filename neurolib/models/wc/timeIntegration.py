@@ -64,7 +64,8 @@ def timeIntegration(params):
     params["Dmat_ndt"] = Dmat_ndt
     # ------------------------------------------------------------------------
     # Initialization
-    t = np.arange(0, duration, dt)  # Time variable (ms)
+    # Floating point issue in np.arange() workaraound: use integers in np.arange()
+    t = np.arange(1, round(duration, 6) / dt + 1) * dt  # Time variable (ms)
 
     sqrt_dt = np.sqrt(dt)
 
@@ -77,9 +78,10 @@ def timeIntegration(params):
     x_ext = params["x_ext"]
     y_ext = params["y_ext"]
 
-    # set of the state variable arrays
-    xs = np.zeros((N, len(t)))
-    ys = np.zeros((N, len(t)))
+    # state variable arrays, have length of t + startind
+    # they store initial conditions AND simulated data
+    xs = np.zeros((N, startind + len(t)))
+    ys = np.zeros((N, startind + len(t)))
 
     # ------------------------------------------------------------------------
     # Set initial values
@@ -100,8 +102,8 @@ def timeIntegration(params):
         np.random.seed(RNGseed)
 
     # Save the noise in the activity array to save memory
-    xs[:, startind:] = np.random.standard_normal((N, len(t) - startind))
-    ys[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+    xs[:, startind:] = np.random.standard_normal((N, len(t)))
+    ys[:, startind:] = np.random.standard_normal((N, len(t)))
 
     xs[:, :startind] = xs_init
     ys[:, :startind] = ys_init
@@ -190,7 +192,7 @@ def timeIntegration_njit_elementwise(
     def S_I(x):
         return 1.0 / (1.0 + np.exp(-a_i * (x - mu_i)))
 
-    for i in range(startind, len(t)):
+    for i in range(startind, startind + len(t)):
 
         # loop through all the nodes
         for no in range(N):

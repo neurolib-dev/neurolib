@@ -44,7 +44,7 @@ class TestAutochunk(unittest.TestCase):
     def test_onstep_input_autochunk(self):
         """Tests passing an input array to a model.
         """
-        model = HopfModel()
+        model = ALNModel()
         model.params["duration"] = 1000
         duration_dt = int(model.params["duration"] / model.params["dt"])
         ous = np.zeros((model.params["N"], duration_dt))
@@ -59,5 +59,5 @@ class TestAutochunk(unittest.TestCase):
 
         for i in range(duration_dt):
             inputs = [inp_x[:, i], inp_y[:, i]]
-            model.autochunk(inputs=inputs, append=True)
+            model.autochunk(inputs=inputs, append_outputs=True)
 

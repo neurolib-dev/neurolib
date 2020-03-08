@@ -41,7 +41,7 @@ def timeIntegration(params):
     # Connectivity matric
     # Interareal relative coupling strengths (values between 0 and 1), Cmat(i,j) connnection from jth to ith
     Cmat = params["Cmat"]
-    c_gl = params["c_gl"]  # global coupling strength between areas(unitless)
+    c_gl = params["c_gl"]  # EPSP amplitude between areas
     Ke_gl = params["Ke_gl"]  # number of incoming E connections (to E population) from each area
 
     N = len(Cmat)  # Number of areas
@@ -152,8 +152,8 @@ def timeIntegration(params):
     Irange = params["Irange"]
 
     # Initialization
-    t = np.arange(0, duration, dt)  # Time variable (ms)
-
+    # Floating point issue in np.arange() workaraound: use integers in np.arange()
+    t = np.arange(1, round(duration, 6) / dt + 1) * dt  # Time variable (ms)
     sqrt_dt = np.sqrt(dt)
 
     ndt_de = np.around(de / dt).astype(int)
@@ -162,21 +162,21 @@ def timeIntegration(params):
     rd_exc = np.zeros((N, N))  # kHz  rd_exc(i,j): Connection from jth node to ith
     rd_inh = np.zeros(N)
 
-    for l in range(N):
-        Dmat_ndt[l, l] = ndt_de  # if no distributed, this is a fixed value (E-E coupling)
+    # for l in range(N):
+    #    Dmat_ndt[l, l] = ndt_de  # if no distributed, this is a fixed value (E-E coupling)
 
     max_global_delay = max(np.max(Dmat_ndt), ndt_de, ndt_di)
     startind = int(max_global_delay + 1)
 
-    rates_exc = np.zeros((N, len(t)))
-    rates_inh = np.zeros((N, len(t)))
+    # state variable arrays, have length of t + startind
+    # they store initial conditions AND simulated data
+    rates_exc = np.zeros((N, startind + len(t)))
+    rates_inh = np.zeros((N, startind + len(t)))
 
     # ------------------------------------------------------------------------
     # Set initial values
     mufe = params["mufe_init"].copy()  # Filtered mean input (mu) for exc. population
     mufi = params["mufi_init"].copy()  # Filtered mean input (mu) for inh. population
-    mufe_dosc = params["mufe_init"].copy() + np.zeros(N) * (1j)  #  (mV/ms)
-    mufi_dosc = params["mufi_init"].copy() + np.zeros(N) * (1j)  #  (mV/ms)
     IA = params["IA_init"].copy()  # Adaptation current (pA)
     seem = params["seem_init"].copy()  # Mean exc synaptic input
     seim = params["seim_init"].copy()
@@ -187,8 +187,8 @@ def timeIntegration(params):
     siiv = params["siiv_init"].copy()  # Inh synaptic input variance
     siev = params["siev_init"].copy()
 
-    mue_ou = params["mue_ou"]  # Mean external exc input (mV/ms)
-    mui_ou = params["mui_ou"]  # Mean external inh inout (mV/ms)
+    mue_ou = params["mue_ou"]  # Mean of external exc OU input (mV/ms)
+    mui_ou = params["mui_ou"]  # Mean of external inh ON inout (mV/ms)
 
     # Set the initial firing rates.
     # if initial values are just a Nx1 array
@@ -205,8 +205,8 @@ def timeIntegration(params):
         np.random.seed(RNGseed)
 
     # Save the noise in the rates array to save memory
-    rates_exc[:, startind:] = np.random.standard_normal((N, len(t) - startind))
-    rates_inh[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+    rates_exc[:, startind:] = np.random.standard_normal((N, len(t)))
+    rates_inh[:, startind:] = np.random.standard_normal((N, len(t)))
 
     rates_exc[:, :startind] = rates_exc_init
     rates_inh[:, :startind] = rates_inh_init
@@ -268,8 +268,6 @@ def timeIntegration(params):
         taum,
         mufe,
         mufi,
-        mufe_dosc,
-        mufi_dosc,
         IA,
         seem,
         seim,
@@ -356,8 +354,6 @@ def timeIntegration_njit_elementwise(
     taum,
     mufe,
     mufi,
-    mufe_dosc,
-    mufi_dosc,
     IA,
     seem,
     seim,
@@ -413,7 +409,7 @@ def timeIntegration_njit_elementwise(
         sigmai_f = sigmai_ext
 
     ### integrate ODE system:
-    for i in range(startind, len(t)):
+    for i in range(startind, startind + len(t)):
 
         # loop through all the nodes
         for no in range(N):
@@ -575,9 +571,6 @@ def timeIntegration_njit_elementwise(
                 mui_ou[no] + (mui_ext_mean - mui_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[no]
             )  # mV/ms
 
-    # convert kHz to Hz:
-    # rates_exc = rates_exc * 1e3
-    # rates_inh = rates_inh * 1e3
     return t, rates_exc, rates_inh, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, mue_ou, mui_ou
 
 
