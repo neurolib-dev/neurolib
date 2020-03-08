@@ -108,11 +108,23 @@ class Model:
         # get the maxDelay of the system
         self.maxDelay = self.getMaxDelay()
 
+        # length of the initial condition
+        self.startindt = self.maxDelay + 1
+
         # set up the bold model, if it didn't happen yet
         if initializeBold and not self.boldInitialized:
             self.initializeBold(self.normalize_bold_input, self.normalize_bold_input_max)
 
-    def run(self, inputs=None, chunkwise=False, chunksize=10000, bold=False, append=False, append_outputs=None):
+    def run(
+        self,
+        inputs=None,
+        chunkwise=False,
+        chunksize=10000,
+        bold=False,
+        append=False,
+        append_outputs=None,
+        continue_run=False,
+    ):
         """Main interfacing function to run a model. 
         The model can be run in three different ways:
         1) `model.run()` starts a new run.
@@ -136,10 +148,17 @@ class Model:
         if append_outputs is not None:
             append = append_outputs
 
-        self.initializeRun(bold)
+        # if a previous run is not to be continued
+        # clear the model's state
+        if continue_run is False:
+            self.clearModelState()
+
+        self.initializeRun(initializeBold=bold)
 
         if chunkwise is False:
-            self.integrate()
+            self.integrate(append_outputs=append)
+            if continue_run:
+                self.setInitialValuesToLastState()
             if bold:
                 self.simulateBold()
             return
@@ -149,8 +168,14 @@ class Model:
             if bold and not self.boldInitialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
-            self.integrateChunkwise(chunksize=chunksize, bold=bold, append=append)
+            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
             return
+
+    def clearModelState(self):
+        """Clears the model's state to create a fresh one
+        """
+        self.state = dotdict({})
+        self.outputs = dotdict({})
 
     def storeOutputs(self, t, variables, append=False):
         # save time array
@@ -162,7 +187,7 @@ class Model:
                 self.setOutput(svn, sv, append=append)
             self.setStateVariables(svn, sv)
 
-    def integrate(self, append=False):
+    def integrate(self, append_outputs=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
         
         :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
@@ -170,9 +195,9 @@ class Model:
         """
         # run integration
         t, *variables = self.integration(self.params)
-        self.storeOutputs(t, variables, append=append)
+        self.storeOutputs(t, variables, append=append_outputs)
 
-    def integrateChunkwise(self, chunksize, bold=False, append=False):
+    def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
         If `bold==True`, the BOLD model is simulated after each chunk.     
         
@@ -180,34 +205,65 @@ class Model:
         :type chunksize: int
         :param bold: simulate BOLD model after each chunk, defaults to False
         :type bold: bool, optional
-        :param append: append the chunkwise outputs to the outputs attribute, defaults to False
-        :type append: bool, optional
+        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
+        :type append_outputs: bool, optional
         """
+        # import ipdb
+        # ipdb.set_trace()
 
         totalDuration = self.params["duration"]
 
         dt = self.params["dt"]
         # create a shallow copy of the parameters
         lastT = 0
-        print("totalDuration", totalDuration)
-        while lastT < totalDuration:
+
+        while totalDuration - lastT >= dt - 1e-6:
             # Determine the size of the next chunk
-            currentChunkSize = min(chunksize, (totalDuration - lastT) / dt)
-            # currentChunkSize += self.maxDelay + 1
-            # print("currentChunkSize", currentChunkSize)
-            self.autochunk(chunksize=currentChunkSize, append=append)
+            # account for floating point errors
+            remainingChunkSize = int(round((totalDuration - lastT) / dt))
+            currentChunkSize = min(chunksize, remainingChunkSize)
+
+            self.autochunk(chunksize=currentChunkSize, append_outputs=append_outputs)
 
             if bold and self.boldInitialized:
                 self.simulateBold(append=True)
 
             # we save the last simulated time step
-            # lastT += self.state["t"][-1]
-            lastT += chunksize * dt
-            # print("lastT", lastT)
+            lastT += currentChunkSize * dt
+            # or
+            # lastT = self.state["t"][-1]
+
         # set duration back to its original value
         self.params["duration"] = totalDuration
 
-    def autochunk(self, inputs=None, chunksize=1, append=False):
+    def setInitialValuesToState(self, state):
+        for iv, sv in zip(self.init_vars, self.state_vars):
+            # if state variables are one-dimensional (in space only)
+            if state[sv].ndim == 1:
+                self.params[iv] = state[sv].copy()
+            # if they are space-time arrays
+            else:
+                # we set the next initial condition to the last state
+                print("setInitialValuesToState", iv, "is 2-dim")
+                self.params[iv] = state[sv][:, -self.startindt :].copy()
+
+    def setInitialValuesToLastState(self):
+        for iv, sv in zip(self.init_vars, self.state_vars):
+            # if state variables are one-dimensional (in space only)
+            if self.state[sv].ndim == 1:
+                # print("setInitialValuesToLastState", iv, "is 1-dim")
+                self.params[iv] = self.state[sv]
+            # if they are space-time arrays
+            else:
+                # print("setInitialValuesToLastState", iv, "is 2-dim")
+                # we set the next initial condition to the last state
+                self.params[iv] = self.state[sv][:, -self.startindt :]
+
+    def setInputs(self, inputs):
+        for i, iv in enumerate(self.input_vars):
+            self.params[iv] = inputs[i]
+
+    def autochunk(self, inputs=None, chunksize=1, append_outputs=False):
         """Executes a single chunk of integration, either for a given duration
         or a single timestep `dt`. Gathers all inputs to the model and resets
         the initial conditions as a preparation for the next chunk. 
@@ -216,33 +272,22 @@ class Model:
         :type inputs: list[np.ndarray|], optional
         :param chunksize: length of a chunk to simulate in dt, defaults 1
         :type chunksize: int, optional
-        :param append: append the chunkwise outputs to the outputs attribute, defaults to False
-        :type append: bool, optional
+        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
+        :type append_outputs: bool, optional
         """
 
-        # number of time steps of the initialization
-        startindt = self.maxDelay + 1
         # set the duration for this chunk
-        chunkDuration = startindt + chunksize
-        self.params["duration"] = chunkDuration * self.params["dt"]
+        self.params["duration"] = chunksize * self.params["dt"]
 
         # set inputs
         if inputs is not None:
-            for i, iv in enumerate(self.input_vars):
-                self.params[iv] = inputs[i]
+            self.setInputs(inputs)
 
         # run integration
-        self.integrate(append=append)
+        self.integrate(append_outputs=append_outputs)
 
-        # reset initial conditions to last state
-        for iv, sv in zip(self.init_vars, self.state_vars):
-            # if state variables are one-dimensional (in space only)
-            if self.state[sv].ndim == 1:
-                self.params[iv] = self.state[sv]
-            # if they are space-time arrays
-            else:
-                # we set the next initial condition to the last state
-                self.params[iv] = self.state[sv][:, -startindt:]
+        # set initial conditions to last state for the next chunk
+        self.setInitialValuesToLastState()
 
     def getMaxDelay(self):
         """Computes the maximum delay of the model. This function should be overloaded
@@ -281,7 +326,17 @@ class Model:
         :param data: value of the variable
         :type data: np.ndarray
         """
-        self.state[name] = data.copy()
+        # if the data is temporal, cut off initial values
+        # NOTE: this shuold actually check for
+        # if data.shape[1] > 1:
+        # else: data.copy()
+        # there coulb be (N, 1)-dimensional output, right now
+        # it is requred to be of shape (N, )
+        # print("setStateVariables", name, "is:", data.shape)
+        if data.ndim == 2:
+            self.state[name] = data[:, -self.startindt :].copy()
+        else:
+            self.state[name] = data.copy()
 
     def setOutput(self, name, data, append=False, removeICs=True):
         """Adds an output to the model, typically a simulation result.
@@ -292,36 +347,26 @@ class Model:
         """
         assert not isinstance(data, dict), "Output data cannot be a dictionary."
         assert isinstance(name, str), "Output name must be a string."
+        assert isinstance(data, np.ndarray), "Output must be a `numpy.ndarray`."
+
+        # remove initial conditions from output
+        if removeICs and name is not "t":
+            if data.ndim == 1:
+                data = data[self.startindt :]
+            elif data.ndim == 2:
+                data = data[:, self.startindt :]
+            else:
+                raise ValueError(f"Don't know how to truncate data of shape {data.shape}.")
 
         # if the output is a single name (not dot.separated)
         if "." not in name:
             # append data
             if append and name in self.outputs:
-                if isinstance(self.outputs[name], np.ndarray):
-                    assert isinstance(data, np.ndarray), "Cannot append output, not the old type np.ndarray."
-                    # remove initial conditions from data
-                    if removeICs:
-                        startindt = self.maxDelay + 1
-                        # if data is one-dim (for example time array)
-                        if len(data.shape) == 1:
-                            # cut off initial condition
-                            data = data[startindt:].copy()
-                            # if data is a time array, we need to treat it specially
-                            # and increment the time by the last recorded duration
-                            if name == "t":
-                                data += self.outputs[name][-1] - (startindt - 1) * self.params["dt"]
-                        elif len(data.shape) == 2:
-                            data = data[:, startindt:].copy()
-                        else:
-                            raise ValueError(f"Don't know how to truncate data of shape {data.shape}.")
-                    self.outputs[name] = np.hstack((self.outputs[name], data))
-                # if isinstance(self.outputs[name], list):
-                #     assert isinstance(data, np.ndarray), "Cannot append output, not the old type list."
-                #     self.outputs[name] = self.outputs[name] + data
-                else:
-                    raise TypeError(
-                        f"Previous output {name} if of type {type(self.outputs[name])}. I can't append to it."
-                    )
+                # special treatment for time data:
+                # increment the time by the last recorded duration
+                if name == "t":
+                    data += self.outputs[name][-1]
+                self.outputs[name] = np.hstack((self.outputs[name], data))
             else:
                 # save all data into output dict
                 self.outputs[name] = data
@@ -335,8 +380,8 @@ class Model:
             for i, k in enumerate(keys):
                 # if it's the last iteration, store data
                 if i == len(keys) - 1:
-                    # todo: this needs to be append-aware like above
-                    # todo: for dotted outputs
+                    # TODO: this needs to be append-aware like above
+                    # TODO: for dotted outputs
                     level[k] = data
                 # if key is in outputs, then go deeper
                 elif k in level:
