@@ -55,7 +55,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     else:
         params.Cmat = Cmat.copy()  # coupling matrix
         np.fill_diagonal(Cmat, 0)  # no self connections
-        params.Cmat = Cmat / np.max(Cmat)  # normalize matrix
         params.N = len(params.Cmat)  # number of nodes
         params.lengthMat = Dmat  # delay matrix
 
