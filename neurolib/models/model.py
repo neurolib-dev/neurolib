@@ -129,12 +129,12 @@ class Model:
         The model can be run in three different ways:
         1) `model.run()` starts a new run.
         2) `model.run(chunkwise=True)` runs the simulation in chunks of length `chunksize`.
-        3) `mode.run(cont=True)` continues the simulation of a previous run.
+        3) `mode.run(continue_run=True)` continues the simulation of a previous run.
         
         :param inputs: list of inputs to the model, must have the same order as model.input_vars. Note: no sanity check is performed for performance reasons. Take care of the inputs yourself.
         :type inputs: list[np.ndarray|]
-        :param cont: continue a simulation by using the initial values from a previous simulation
-        :type cont: bool
+        :param continue_run: continue a simulation by using the initial values from a previous simulation
+        :type continue_run: bool
         :param chunkwise: simulate model chunkwise or in one single run, defaults to False
         :type chunkwise: bool, optional
         :param chunksize: size of the chunk to simulate in dt, defaults to 10000
@@ -148,8 +148,7 @@ class Model:
         if append_outputs is not None:
             append = append_outputs
 
-        # if a previous run is not to be continued
-        # clear the model's state
+        # if a previous run is not to be continued clear the model's state
         if continue_run is False:
             self.clearModelState()
 
@@ -171,22 +170,6 @@ class Model:
             self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
             return
 
-    def clearModelState(self):
-        """Clears the model's state to create a fresh one
-        """
-        self.state = dotdict({})
-        self.outputs = dotdict({})
-
-    def storeOutputs(self, t, variables, append=False):
-        # save time array
-        self.setOutput("t", t, append=append)
-        self.setStateVariables("t", t)
-        # save outputs
-        for svn, sv in zip(self.state_vars, variables):
-            if svn in self.output_vars:
-                self.setOutput(svn, sv, append=append)
-            self.setStateVariables(svn, sv)
-
     def integrate(self, append_outputs=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
         
@@ -195,7 +178,7 @@ class Model:
         """
         # run integration
         t, *variables = self.integration(self.params)
-        self.storeOutputs(t, variables, append=append_outputs)
+        self.storeOutputsAndStates(t, variables, append=append_outputs)
 
     def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
@@ -208,9 +191,6 @@ class Model:
         :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
         :type append_outputs: bool, optional
         """
-        # import ipdb
-        # ipdb.set_trace()
-
         totalDuration = self.params["duration"]
 
         dt = self.params["dt"]
@@ -236,32 +216,52 @@ class Model:
         # set duration back to its original value
         self.params["duration"] = totalDuration
 
-    def setInitialValuesToState(self, state):
-        for iv, sv in zip(self.init_vars, self.state_vars):
-            # if state variables are one-dimensional (in space only)
-            if state[sv].ndim == 1:
-                self.params[iv] = state[sv].copy()
-            # if they are space-time arrays
-            else:
-                # we set the next initial condition to the last state
-                print("setInitialValuesToState", iv, "is 2-dim")
-                self.params[iv] = state[sv][:, -self.startindt :].copy()
+    def clearModelState(self):
+        """Clears the model's state to create a fresh one
+        """
+        self.state = dotdict({})
+        self.outputs = dotdict({})
+
+    def storeOutputsAndStates(self, t, variables, append=False):
+        """Takes the simulated variables of the integration and stores it to the appropriate model output and state object.
+        
+        :param t: time vector
+        :type t: list
+        :param variables: variable from time integration
+        :type variables: numpy.ndarray
+        :param append: append output to existing output or overwrite, defaults to False
+        :type append: bool, optional
+        """
+        # save time array
+        self.setOutput("t", t, append=append)
+        self.setStateVariables("t", t)
+        # save outputs
+        for svn, sv in zip(self.state_vars, variables):
+            if svn in self.output_vars:
+                self.setOutput(svn, sv, append=append)
+            self.setStateVariables(svn, sv)
 
     def setInitialValuesToLastState(self):
+        """Reads the last state of the model and sets the initial conditions to that state for continuing a simulation.
+        """
         for iv, sv in zip(self.init_vars, self.state_vars):
             # if state variables are one-dimensional (in space only)
             if self.state[sv].ndim == 1:
-                # print("setInitialValuesToLastState", iv, "is 1-dim")
                 self.params[iv] = self.state[sv]
             # if they are space-time arrays
             else:
-                # print("setInitialValuesToLastState", iv, "is 2-dim")
                 # we set the next initial condition to the last state
                 self.params[iv] = self.state[sv][:, -self.startindt :]
 
     def setInputs(self, inputs):
+        """Take inputs from a list and store it in the appropriate model parameter for external input.
+        TODO: This is not safe yet, checks should be implemented whether the model has inputs defined or not for example.
+        
+        :param inputs: list of inputs
+        :type inputs: list[np.ndarray(), ...]
+        """
         for i, iv in enumerate(self.input_vars):
-            self.params[iv] = inputs[i]
+            self.params[iv] = inputs[i].copy()
 
     def autochunk(self, inputs=None, chunksize=1, append_outputs=False):
         """Executes a single chunk of integration, either for a given duration
@@ -332,7 +332,6 @@ class Model:
         # else: data.copy()
         # there coulb be (N, 1)-dimensional output, right now
         # it is requred to be of shape (N, )
-        # print("setStateVariables", name, "is:", data.shape)
         if data.ndim == 2:
             self.state[name] = data[:, -self.startindt :].copy()
         else:
