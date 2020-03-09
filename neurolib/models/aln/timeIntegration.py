@@ -411,22 +411,22 @@ def timeIntegration_njit_elementwise(
     ### integrate ODE system:
     for i in range(startind, startind + len(t)):
 
+        # Get the input from one node into another from the rates at time t - connection_delay - 1
+        # remark: assume Kie == Kee and Kei == Kii
+        for no in range(N):
+            # interareal coupling
+            for l in range(N):
+                # rd_exc(i,j) delayed input rate from population j to population i
+                rd_exc[l, no] = rates_exc[no, i - Dmat_ndt[l, no] - 1] * 1e-3  # convert Hz to kHz
+            # Warning: this is a vector and not a matrix as rd_exc
+            rd_inh[no] = rates_inh[no, i - ndt_di - 1] * 1e-3  # convert Hz to kHz
+
         # loop through all the nodes
         for no in range(N):
 
             # To save memory, noise is saved in the rates array
             noise_exc[no] = rates_exc[no, i]
             noise_inh[no] = rates_inh[no, i]
-
-            # Get the input from one node into another from the rates at time t - connection_delay
-            # remark: assume Kie == Kee and Kei == Kii
-            if not distr_delay:
-                # interareal coupling
-                for l in range(N):
-                    # rd_exc(i,j) delayed input rate from population j to population i
-                    rd_exc[l, no] = rates_exc[no, i - Dmat_ndt[l, no] - 1] * 1e-3  # convert Hz to kHz
-                # Warning: this is a vector and not a matrix as rd_exc
-                rd_inh[no] = rates_inh[no, i - ndt_di - 1] * 1e-3
 
             mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ou[no] + ext_exc_current[no, i]
             mui = Jie_max * siem[no] + Jii_max * siim[no] + mui_ou[no] + ext_inh_current[no, i]
