@@ -412,10 +412,7 @@ class Evolution:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
 
         # save all simulation data to pypet
-        try:
-            self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-        except:
-            logging.warn("Error: Write to pypet failed!")
+        self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
         # Only the best indviduals are selected for the population the others do not survive
         self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
@@ -481,10 +478,7 @@ class Evolution:
             self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
             # self.history.update(self.getValidPopulation(self.pop))
             # save all simulation data to pypet
-            try:
-                self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-            except:
-                logging.warn("Error: Write to pypet failed!")
+            self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
             # select best individual for logging
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
