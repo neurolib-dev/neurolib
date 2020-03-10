@@ -287,7 +287,7 @@ class TestSignal(unittest.TestCase):
         # assert log warning was issued
         root_logger = logging.getLogger()
         with self.assertLogs(root_logger, level="WARNING") as cm:
-            operation = self.signal.apply(func=do_operation)
+            operation = self.signal.apply(func=do_operation_2)
             self.assertEqual(
                 cm.output,
                 [
