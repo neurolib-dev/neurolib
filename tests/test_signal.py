@@ -85,8 +85,8 @@ class TestSignal(unittest.TestCase):
     def test_isel(self):
         selected = self.signal.isel([12143, 16424], inplace=False)
         # test correct indices
-        self.assertEqual(selected.data.time.values[0], 12143 / self.signal.sampling_frequency)
-        self.assertEqual(selected.data.time.values[-1], (16424 - 1) / self.signal.sampling_frequency)
+        self.assertEqual(selected.data.time.values[0], (12143 + 1) / self.signal.sampling_frequency)
+        self.assertEqual(selected.data.time.values[-1], (16424) / self.signal.sampling_frequency)
         # test inplace
         sig = deepcopy(self.signal)
         sig.isel([12143, 16424], inplace=True)
