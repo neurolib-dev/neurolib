@@ -118,6 +118,9 @@ class Evolution:
         self.POP_INIT_SIZE = POP_INIT_SIZE
         self.ncores = ncores
 
+        # comment string for storing info
+        self.comments = "no comments"
+
         self.traj = env.traj
         self.env = env
         self.trajectoryName = trajectoryName
@@ -155,9 +158,6 @@ class Evolution:
             matingFunction=self.matingFunction,
             selectionFunction=self.selectionFunction,
         )
-
-        # comment string for storing info
-        self.comments = ""
 
         # set up pypet trajectory
         self.initPypetTrajectory(
