@@ -31,7 +31,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     # runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
     params.duration = 2000  # Simulation duration (ms)
-    params.seed = np.int64(0)  # seed for RNG of noise and ICs
+    params.seed = seed  # seed for RNG of noise and ICs
 
     # options
     params.warn = 0  # warn if limits of lookup tables are exceeded
@@ -217,8 +217,6 @@ def generateRandomICs(N, seed=None):
                         mufe_init, IA_init, mufi_init, sem_init, sev_init,
                         sim_init, siv_init, rates_exc_init, rates_inh_init
     """
-    if seed:
-        np.random.seed(seed)
 
     mufe_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms  if DOSC_version: complex variable
     IA_init = 200.0 * np.random.uniform(0, 1, (N,))  # pA
