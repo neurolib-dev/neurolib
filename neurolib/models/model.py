@@ -76,16 +76,36 @@ class Model:
         self.boldInitialized = True
         logging.info(f"{self.name}: BOLD model initialized.")
 
-    def simulateBold(self, append=False):
+    def simulateBold(self, t, variables, append=False):
         """Gets the default output of the model and simulates the BOLD model. 
         Adds the simulated BOLD signal to outputs.
         """
         if self.boldInitialized:
-            self.boldModel.run(self.state[self.default_output], append=append)
-            t_BOLD = self.boldModel.t_BOLD
-            BOLD = self.boldModel.BOLD
-            self.setOutput("BOLD.t", t_BOLD)
-            self.setOutput("BOLD.BOLD", BOLD)
+            # first we loop through all variables
+            for svn, sv in zip(self.state_vars, variables):
+                # if we found the default output
+                if svn == self.default_output:
+                    bold_input = sv[:, self.startindt :]
+                    logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
+                    # if the length of the output has a zero mod to the sampling rate,
+                    # only then is the downsampled output from the boldModel actually correct
+                    # so we are lazy here and simply disallow everything else... sry
+                    if bold_input.shape[1] >= self.boldModel.samplingRate_NDt:
+                        if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
+                            append = False
+                            logging.warn(
+                                f"Will not append to BOLD signal if the duration of the run/chunk is not a multiple of { self.boldModel.samplingRate_NDt * self.params['dt']}"
+                            )
+                        logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+                        self.boldModel.run(bold_input, append=append)
+                        t_BOLD = self.boldModel.t_BOLD
+                        BOLD = self.boldModel.BOLD
+                        self.setOutput("BOLD.t", t_BOLD)
+                        self.setOutput("BOLD.BOLD", BOLD)
+                    else:
+                        logging.warn(
+                            f"Will not simulate BOLD if the run / chunk is not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
+                        )
         else:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
 
@@ -119,7 +139,7 @@ class Model:
         self,
         inputs=None,
         chunkwise=False,
-        chunksize=10000,
+        chunksize=100000,
         bold=False,
         append=False,
         append_outputs=None,
@@ -155,11 +175,9 @@ class Model:
         self.initializeRun(initializeBold=bold)
 
         if chunkwise is False:
-            self.integrate(append_outputs=append)
+            self.integrate(append_outputs=append, simulate_bold=bold)
             if continue_run:
                 self.setInitialValuesToLastState()
-            if bold:
-                self.simulateBold()
             return
         else:
             # check if model is safe for chunkwise integration
@@ -170,7 +188,7 @@ class Model:
             self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
             return
 
-    def integrate(self, append_outputs=False):
+    def integrate(self, append_outputs=False, simulate_bold=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
         
         :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
@@ -179,6 +197,10 @@ class Model:
         # run integration
         t, *variables = self.integration(self.params)
         self.storeOutputsAndStates(t, variables, append=append_outputs)
+
+        # bold simulation after integration
+        if simulate_bold and self.boldInitialized:
+            self.simulateBold(t, variables, append=True)
 
     def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
@@ -196,18 +218,13 @@ class Model:
         dt = self.params["dt"]
         # create a shallow copy of the parameters
         lastT = 0
-
         while totalDuration - lastT >= dt - 1e-6:
             # Determine the size of the next chunk
             # account for floating point errors
             remainingChunkSize = int(round((totalDuration - lastT) / dt))
             currentChunkSize = min(chunksize, remainingChunkSize)
 
-            self.autochunk(chunksize=currentChunkSize, append_outputs=append_outputs)
-
-            if bold and self.boldInitialized:
-                self.simulateBold(append=True)
-
+            self.autochunk(chunksize=currentChunkSize, append_outputs=append_outputs, bold=bold)
             # we save the last simulated time step
             lastT += currentChunkSize * dt
             # or
@@ -233,12 +250,12 @@ class Model:
         :type append: bool, optional
         """
         # save time array
-        self.setOutput("t", t, append=append)
+        self.setOutput("t", t, append=append, removeICs=True)
         self.setStateVariables("t", t)
         # save outputs
         for svn, sv in zip(self.state_vars, variables):
             if svn in self.output_vars:
-                self.setOutput(svn, sv, append=append)
+                self.setOutput(svn, sv, append=append, removeICs=True)
             self.setStateVariables(svn, sv)
 
     def setInitialValuesToLastState(self):
@@ -263,7 +280,7 @@ class Model:
         for i, iv in enumerate(self.input_vars):
             self.params[iv] = inputs[i].copy()
 
-    def autochunk(self, inputs=None, chunksize=1, append_outputs=False):
+    def autochunk(self, inputs=None, chunksize=1, append_outputs=False, bold=False):
         """Executes a single chunk of integration, either for a given duration
         or a single timestep `dt`. Gathers all inputs to the model and resets
         the initial conditions as a preparation for the next chunk. 
@@ -284,7 +301,7 @@ class Model:
             self.setInputs(inputs)
 
         # run integration
-        self.integrate(append_outputs=append_outputs)
+        self.integrate(append_outputs=append_outputs, simulate_bold=bold)
 
         # set initial conditions to last state for the next chunk
         self.setInitialValuesToLastState()
@@ -326,6 +343,9 @@ class Model:
         :param data: value of the variable
         :type data: np.ndarray
         """
+        # old
+        # self.state[name] = data.copy()
+
         # if the data is temporal, cut off initial values
         # NOTE: this shuold actually check for
         # if data.shape[1] > 1:
@@ -337,7 +357,7 @@ class Model:
         else:
             self.state[name] = data.copy()
 
-    def setOutput(self, name, data, append=False, removeICs=True):
+    def setOutput(self, name, data, append=False, removeICs=False):
         """Adds an output to the model, typically a simulation result.
         :params name: Name of the output in dot.notation, a la "outputgroup.output"
         :type name: str
@@ -380,7 +400,12 @@ class Model:
                 # if it's the last iteration, store data
                 if i == len(keys) - 1:
                     # TODO: this needs to be append-aware like above
-                    # TODO: for dotted outputs
+                    # if append:
+                    #     if k == "t":
+                    #         data += level[k][-1]
+                    #     level[k] = np.hstack((level[k], data))
+                    # else:
+                    #     level[k] = data
                     level[k] = data
                 # if key is in outputs, then go deeper
                 elif k in level:
