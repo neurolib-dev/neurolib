@@ -9,33 +9,36 @@ from . import deapUtils as du
 
 
 def saveToPypet(traj, pop, gIdx):
-    traj.f_add_result_group("{}.gen_{:06d}".format("evolution", gIdx))
-    traj.f_add_result("{}.gen_{:06d}.fitness".format("evolution", gIdx), np.array([p.fitness.values for p in pop]))
-    traj.f_add_result("{}.gen_{:06d}.scores".format("evolution", gIdx), np.array([p.fitness.score for p in pop]))
-    traj.f_add_result("{}.gen_{:06d}.population".format("evolution", gIdx), np.array([list(p) for p in pop]))
-    traj.f_add_result("{}.gen_{:06d}.ind_ids".format("evolution", gIdx), np.array([p.id for p in pop]))
-    # recursively store all simulated outputs into hdf
-    for i, p in enumerate(pop):
-        if not np.any(np.isnan(p.fitness.values)) and not p.simulation_stored:
-            pop[i].simulation_stored = True
+    try:
+        traj.f_add_result_group("{}.gen_{:06d}".format("evolution", gIdx))
+        traj.f_add_result("{}.gen_{:06d}.fitness".format("evolution", gIdx), np.array([p.fitness.values for p in pop]))
+        traj.f_add_result("{}.gen_{:06d}.scores".format("evolution", gIdx), np.array([p.fitness.score for p in pop]))
+        traj.f_add_result("{}.gen_{:06d}.population".format("evolution", gIdx), np.array([list(p) for p in pop]))
+        traj.f_add_result("{}.gen_{:06d}.ind_ids".format("evolution", gIdx), np.array([p.id for p in pop]))
+        # recursively store all simulated outputs into hdf
+        for i, p in enumerate(pop):
+            if not np.any(np.isnan(p.fitness.values)) and not p.simulation_stored:
+                pop[i].simulation_stored = True
 
-            traj.f_add_result_group("{}.ind_{:06d}".format("outputs", p.id))
+                traj.f_add_result_group("{}.ind_{:06d}".format("outputs", p.id))
 
-            assert isinstance(p.outputs, dict), "outputs are not a dict, can't unpack!"
+                assert isinstance(p.outputs, dict), "outputs are not a dict, can't unpack!"
 
-            def unpackOutputsAndStore(outputs, save_string):
-                new_save_string = save_string
-                for key, value in outputs.items():
-                    if isinstance(value, dict):
-                        new_save_string = save_string + "." + key
-                        traj.f_add_result_group(new_save_string)
-                        unpackOutputsAndStore(value, new_save_string)
-                    else:
-                        traj.f_add_result("{}.{}".format(new_save_string, key), value)
+                def unpackOutputsAndStore(outputs, save_string):
+                    new_save_string = save_string
+                    for key, value in outputs.items():
+                        if isinstance(value, dict):
+                            new_save_string = save_string + "." + key
+                            traj.f_add_result_group(new_save_string)
+                            unpackOutputsAndStore(value, new_save_string)
+                        else:
+                            traj.f_add_result("{}.{}".format(new_save_string, key), value)
 
-            unpackOutputsAndStore(p.outputs, save_string="{}.ind_{:06d}".format("outputs", p.id))
+                unpackOutputsAndStore(p.outputs, save_string="{}.ind_{:06d}".format("outputs", p.id))
 
-    traj.f_store()
+        traj.f_store()
+    except:
+        logging.warn("Error: Write to pypet failed!")
     return pop
 
 
