@@ -22,10 +22,8 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     ### runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
     params.duration = 2000  # Simulation duration (ms)
-    if seed is not None:
-        params.seet = seed
-    else:
-        params.seed = np.int64(0)  # seed for RNG of noise and ICs
+    params.seed = seed  # seed for RNG of noise and ICs
+    np.random.seed(seed)
 
     # ------------------------------------------------------------------------
     # global whole-brain network parameters
