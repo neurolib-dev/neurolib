@@ -82,6 +82,8 @@ class TestALNEvolution(unittest.TestCase):
         traj = evolution.loadResults()
         gens, all_scores = evolution.getScoresDuringEvolution()
 
+        evolution.dfPop
+
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
