@@ -559,7 +559,7 @@ class Evolution:
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
         scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
         # gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
-        dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameter_names).T
+        dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameterNames).T
         dfPop["score"] = scores
         dfPop["id"] = indIds
         return dfPop
