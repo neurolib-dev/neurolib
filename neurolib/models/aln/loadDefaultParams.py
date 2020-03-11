@@ -31,7 +31,11 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     # runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
     params.duration = 2000  # Simulation duration (ms)
-    params.seed = np.int64(0)  # seed for RNG of noise and ICs
+    np.random.seed(seed)  # seed for RNG of noise and ICs
+    # set seed to 0, pypet will complain otherwise
+    if seed == None:
+        seed = 0
+    params.seed = seed
 
     # options
     params.warn = 0  # warn if limits of lookup tables are exceeded
@@ -52,7 +56,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     else:
         params.Cmat = Cmat.copy()  # coupling matrix
         np.fill_diagonal(Cmat, 0)  # no self connections
-        params.Cmat = Cmat / np.max(Cmat)  # normalize matrix
         params.N = len(params.Cmat)  # number of nodes
         params.lengthMat = Dmat  # delay matrix
 
@@ -61,7 +64,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
 
     # PSP current amplitude in (mV/ms) (or nA/[C]) for global coupling
     # connections between areas
-    params.c_gl = 0.4
+    params.c_gl = 0.3
     # number of incoming E connections (to E population) from each area
     params.Ke_gl = 250.0
 
@@ -135,14 +138,14 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     params.Vr = -70.0  # mV
     params.Vs = -40.0  # mV
     params.Tref = 1.5  # ms
-    # ------------------------------------------------------------------------
+
     # ------------------------------------------------------------------------
 
     # Generate and set random initial conditions
     (
         mufe_init,
-        IA_init,
         mufi_init,
+        IA_init,
         seem_init,
         seim_init,
         seev_init,
@@ -155,7 +158,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
         rates_inh_init,
     ) = generateRandomICs(params.N, seed)
 
-    params.mufe_init = mufe_init  # aLN linear-filtered mean input dmu_f/ dt = mu_syn - mu_f / t_eff
+    params.mufe_init = mufe_init  # (linear) filtered mean input
     params.mufi_init = mufi_init  #
     params.IA_init = IA_init  # adaptation current
     params.seem_init = seem_init  # mean of fraction of active synapses [0-1] (post-synaptic variable), chap. 4.2
@@ -200,9 +203,9 @@ def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
         :returns:    A matrix of connexion delay in ms
     """
 
-    normalizedLenMat = lengthMat * segmentLength  # Each segment is ~1.8mm
+    normalizedLenMat = lengthMat * segmentLength
     if signalV > 0:
-        Dmat = normalizedLenMat / signalV  # Interareal connection delays, Dmat(i,j) in ms
+        Dmat = normalizedLenMat / signalV  # Interareal delays in ms
     else:
         Dmat = lengthMat * 0.0
     return Dmat
@@ -217,12 +220,11 @@ def generateRandomICs(N, seed=None):
                         mufe_init, IA_init, mufi_init, sem_init, sev_init,
                         sim_init, siv_init, rates_exc_init, rates_inh_init
     """
-    if seed:
-        np.random.seed(seed)
+    np.random.seed(seed)
 
-    mufe_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms  if DOSC_version: complex variable
+    mufe_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms
+    mufi_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms
     IA_init = 200.0 * np.random.uniform(0, 1, (N,))  # pA
-    mufi_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms  if DOSC_version: complex variable
     seem_init = 0.5 * np.random.uniform(0, 1, (N,))
     seim_init = 0.5 * np.random.uniform(0, 1, (N,))
     seev_init = 0.001 * np.random.uniform(0, 1, (N,))
@@ -236,8 +238,8 @@ def generateRandomICs(N, seed=None):
 
     return (
         mufe_init,
-        IA_init,
         mufi_init,
+        IA_init,
         seem_init,
         seim_init,
         seev_init,

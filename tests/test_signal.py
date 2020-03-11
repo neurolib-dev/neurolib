@@ -85,8 +85,8 @@ class TestSignal(unittest.TestCase):
     def test_isel(self):
         selected = self.signal.isel([12143, 16424], inplace=False)
         # test correct indices
-        self.assertEqual(selected.data.time.values[0], 12143 / self.signal.sampling_frequency)
-        self.assertEqual(selected.data.time.values[-1], (16424 - 1) / self.signal.sampling_frequency)
+        self.assertEqual(selected.data.time.values[0], (12143 + 1) / self.signal.sampling_frequency)
+        self.assertEqual(selected.data.time.values[-1], (16424) / self.signal.sampling_frequency)
         # test inplace
         sig = deepcopy(self.signal)
         sig.isel([12143, 16424], inplace=True)
@@ -281,13 +281,13 @@ class TestSignal(unittest.TestCase):
         sig.apply(func=do_operation, inplace=True)
         self.assertEqual(sig, operation)
 
-        def do_operation(x):
+        def do_operation_2(x):
             return np.mean(x, axis=-1) - 8.0 + 19.0
 
         # assert log warning was issued
         root_logger = logging.getLogger()
         with self.assertLogs(root_logger, level="WARNING") as cm:
-            operation = self.signal.apply(func=do_operation)
+            operation = self.signal.apply(func=do_operation_2)
             self.assertEqual(
                 cm.output,
                 [
@@ -298,7 +298,7 @@ class TestSignal(unittest.TestCase):
             )
         self.assertTrue(isinstance(operation, xr.DataArray))
         xr.testing.assert_equal(
-            operation, xr.apply_ufunc(do_operation, self.signal.data, input_core_dims=[["time"]]),
+            operation, xr.apply_ufunc(do_operation_2, self.signal.data, input_core_dims=[["time"]]),
         )
 
     def test_functional_connectivity(self):

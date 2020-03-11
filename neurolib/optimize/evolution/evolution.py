@@ -118,6 +118,9 @@ class Evolution:
         self.POP_INIT_SIZE = POP_INIT_SIZE
         self.ncores = ncores
 
+        # comment string for storing info
+        self.comments = "no comments"
+
         self.traj = env.traj
         self.env = env
         self.trajectoryName = trajectoryName
@@ -155,9 +158,6 @@ class Evolution:
             matingFunction=self.matingFunction,
             selectionFunction=self.selectionFunction,
         )
-
-        # comment string for storing info
-        self.comments = ""
 
         # set up pypet trajectory
         self.initPypetTrajectory(
@@ -412,10 +412,7 @@ class Evolution:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
 
         # save all simulation data to pypet
-        try:
-            self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-        except:
-            logging.warn("Error: Write to pypet failed!")
+        self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
         # Only the best indviduals are selected for the population the others do not survive
         self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
@@ -481,10 +478,7 @@ class Evolution:
             self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
             # self.history.update(self.getValidPopulation(self.pop))
             # save all simulation data to pypet
-            try:
-                self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-            except:
-                logging.warn("Error: Write to pypet failed!")
+            self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
             # select best individual for logging
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
@@ -565,7 +559,7 @@ class Evolution:
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
         scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
         # gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
-        dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameter_names).T
+        dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameterNames).T
         dfPop["score"] = scores
         dfPop["id"] = indIds
         return dfPop
