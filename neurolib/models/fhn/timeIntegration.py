@@ -48,6 +48,16 @@ def timeIntegration(params):
     lengthMat = params["lengthMat"]
     signalV = params["signalV"]
 
+    if N == 1:
+        Dmat = np.zeros((N, N))
+    else:
+        # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
+        Dmat = dp.computeDelayMatrix(lengthMat, signalV)
+        # no self-feedback delay
+        Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
+    Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
+    params["Dmat_ndt"] = Dmat_ndt
+
     # Additive or diffusive coupling scheme
     coupling = params["coupling"]
     # convert to integer for faster integration later
@@ -58,18 +68,11 @@ def timeIntegration(params):
     else:
         raise ValueError('Paramter "coupling" must be either "diffusive" or "additive"')
 
-    if N == 1:
-        Dmat = np.zeros((N, N))
-    else:
-        # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
-        Dmat = dp.computeDelayMatrix(lengthMat, signalV)
-        Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
-    Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
-    params["Dmat_ndt"] = Dmat_ndt
     # ------------------------------------------------------------------------
 
     # Initialization
-    t = np.arange(0, duration, dt)  # Time variable (ms)
+    # Floating point issue in np.arange() workaraound: use integers in np.arange()
+    t = np.arange(1, round(duration, 6) / dt + 1) * dt  # Time variable (ms)
 
     sqrt_dt = np.sqrt(dt)
 
@@ -82,9 +85,10 @@ def timeIntegration(params):
     x_ext = params["x_ext"]
     y_ext = params["y_ext"]
 
-    # set of the state variable arrays
-    xs = np.zeros((N, len(t)))
-    ys = np.zeros((N, len(t)))
+    # state variable arrays, have length of t + startind
+    # they store initial conditions AND simulated data
+    xs = np.zeros((N, startind + len(t)))
+    ys = np.zeros((N, startind + len(t)))
 
     # ------------------------------------------------------------------------
     # Set initial values
@@ -105,8 +109,8 @@ def timeIntegration(params):
         np.random.seed(RNGseed)
 
     # Save the noise in the activity array to save memory
-    xs[:, startind:] = np.random.standard_normal((N, len(t) - startind))
-    ys[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+    xs[:, startind:] = np.random.standard_normal((N, len(t)))
+    ys[:, startind:] = np.random.standard_normal((N, len(t)))
 
     xs[:, :startind] = xs_init
     ys[:, :startind] = ys_init
@@ -193,7 +197,7 @@ def timeIntegration_njit_elementwise(
     dw/dt = 1/tau (u + delta  - epsilon w)
     """
     ### integrate ODE system:
-    for i in range(startind, len(t)):
+    for i in range(startind, startind + len(t)):
 
         # loop through all the nodes
         for no in range(N):
