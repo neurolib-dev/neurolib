@@ -86,7 +86,7 @@ class Model:
                 # if we found the default output
                 if svn == self.default_output:
                     bold_input = sv[:, self.startindt :]
-                    logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
+                    # logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
                     # if the length of the output has a zero mod to the sampling rate,
                     # only then is the downsampled output from the boldModel actually correct
                     # so we are lazy here and simply disallow everything else... sry
@@ -96,7 +96,7 @@ class Model:
                             logging.warn(
                                 f"Will not append to BOLD signal if the duration of the run/chunk is not a multiple of { self.boldModel.samplingRate_NDt * self.params['dt']}"
                             )
-                        logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+                        # logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
                         self.boldModel.run(bold_input, append=append)
                         t_BOLD = self.boldModel.t_BOLD
                         BOLD = self.boldModel.BOLD
