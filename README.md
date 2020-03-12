@@ -83,7 +83,7 @@ Example [IPython Notebooks](examples/) on how to use the library can be found in
 You can run the examples hosted on [Binder](https://mybinder.org/) by clicking the links below:
 
 - [Example 0.0](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-0-aln-minimal.ipynb) - Basic use of the `aln` model
-- [Example 0.3](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-0.3-fhn-minimal.ipynb) - Fitz-Hugh Nagumo model on a brain network
+- [Example 0.3](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-0.3-fhn-minimal.ipynb) - Fitz-Hugh Nagumo model `fhn` on a brain network
 - [Example 1.2](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-1.2-brain-network-exploration.ipynb) - Parameter exploration of a brain network
 - [Example 2.0](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-2-evolutionary-optimization-minimal.ipynb) - A simple example of the evolutionary optimization framework 
 
