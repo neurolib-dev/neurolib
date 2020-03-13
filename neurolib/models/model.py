@@ -136,7 +136,7 @@ class Model:
         self,
         inputs=None,
         chunkwise=False,
-        chunksize=100000,
+        chunksize=10000,
         bold=False,
         append=False,
         append_outputs=None,
