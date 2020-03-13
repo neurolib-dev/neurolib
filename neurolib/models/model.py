@@ -52,7 +52,8 @@ class Model:
         # bold initialization at model init
         # if not initialized yet, it will be done when run(bold=True) is called
         # for the first time.
-        if bold:
+        self.simulateBold = bold
+        if self.simulateBold:
             self.initializeBold(self.normalize_bold_input, self.normalize_bold_input_max)
 
         logging.info(f"{self.name}: Model initialized.")
@@ -97,7 +98,14 @@ class Model:
                                 f"Output size {bold_input.shape[1]} is not a multiple of BOLD sample length { self.boldModel.samplingRate_NDt}, will not append data."
                             )
                         # logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+
+                        # simulate bold model
                         self.boldModel.run(bold_input, append=append)
+
+                        # check if there was a problem with the simulated data
+                        if np.isnan(np.sum(self.boldModel.BOLD)):
+                            logging.warn("nan in BOLD output!")
+
                         t_BOLD = self.boldModel.t_BOLD
                         BOLD = self.boldModel.BOLD
                         self.setOutput("BOLD.t", t_BOLD)
@@ -237,6 +245,8 @@ class Model:
         """
         self.state = dotdict({})
         self.outputs = dotdict({})
+        # reinitialize bold model
+        self.initializeBold(self.normalize_bold_input, self.normalize_bold_input_max)
 
     def storeOutputsAndStates(self, t, variables, append=False):
         """Takes the simulated variables of the integration and stores it to the appropriate model output and state object.
