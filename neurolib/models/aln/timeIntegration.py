@@ -479,7 +479,7 @@ def timeIntegration_njit_elementwise(
             # -------------------------------------------------------------
 
             # ------- excitatory population
-
+            # mufe[no] - IA[no] / C is the total current of the excitatory population
             xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no] / C)
             xid1, yid1 = int(xid1), int(yid1)
 
@@ -490,7 +490,7 @@ def timeIntegration_njit_elementwise(
                 tau_sigmae_eff = interpolate_values(precalc_tau_sigma, xid1, yid1, dxid, dyid)
 
             # ------- inhibitory population
-
+            #  mufi[no] are the (filtered) currents of the inhibitory population
             xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, mufi[no])
             xid1, yid1 = int(xid1), int(yid1)
 
