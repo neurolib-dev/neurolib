@@ -52,8 +52,8 @@ class Model:
         # bold initialization at model init
         # if not initialized yet, it will be done when run(bold=True) is called
         # for the first time.
-        self.simulateBold = bold
-        if self.simulateBold:
+        self.enableBold = bold
+        if self.enableBold:
             self.initializeBold(self.normalize_bold_input, self.normalize_bold_input_max)
 
         logging.info(f"{self.name}: Model initialized.")
