@@ -81,20 +81,20 @@ class Model:
         Adds the simulated BOLD signal to outputs.
         """
         if self.boldInitialized:
-            # first we loop through all variables
+            # first we loop through all state variables
             for svn, sv in zip(self.state_vars, variables):
-                # if we found the default output
+                # the default output is used as the input for the bold model
                 if svn == self.default_output:
                     bold_input = sv[:, self.startindt :]
                     # logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
-                    # if the length of the output has a zero mod to the sampling rate,
-                    # only then is the downsampled output from the boldModel actually correct
-                    # so we are lazy here and simply disallow everything else... sry
                     if bold_input.shape[1] >= self.boldModel.samplingRate_NDt:
+                        # only if the length of the output has a zero mod to the sampling rate,
+                        # the downsampled output from the boldModel can correctly appended to previous data
+                        # so: we are lazy here and simply disable appending in that case ...
                         if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
                             append = False
                             logging.warn(
-                                f"Will not append to BOLD signal if the duration of the run/chunk is not a multiple of { self.boldModel.samplingRate_NDt * self.params['dt']}"
+                                f"Output size {bold_input.shape[1]} is not a multiple of BOLD sample length { self.boldModel.samplingRate_NDt}, will not append data."
                             )
                         # logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
                         self.boldModel.run(bold_input, append=append)
@@ -104,7 +104,7 @@ class Model:
                         self.setOutput("BOLD.BOLD", BOLD)
                     else:
                         logging.warn(
-                            f"Will not simulate BOLD if the run / chunk is not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
+                            f"Will not simulate BOLD if output {bold_input.shape[1]} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
                         )
         else:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
@@ -136,7 +136,7 @@ class Model:
         self,
         inputs=None,
         chunkwise=False,
-        chunksize=10000,
+        chunksize=None,
         bold=False,
         append=False,
         append_outputs=None,
@@ -154,7 +154,7 @@ class Model:
         :type continue_run: bool
         :param chunkwise: simulate model chunkwise or in one single run, defaults to False
         :type chunkwise: bool, optional
-        :param chunksize: size of the chunk to simulate in dt, defaults to 10000
+        :param chunksize: size of the chunk to simulate in dt, defaults to 2s
         :type chunksize: int, optional
         :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
         :type bold: bool, optional
@@ -177,6 +177,8 @@ class Model:
                 self.setInitialValuesToLastState()
             return
         else:
+            if chunksize is None:
+                chunksize = int(2000 / self.params["dt"])
             # check if model is safe for chunkwise integration
             self.checkChunkwise()
             if bold and not self.boldInitialized:
