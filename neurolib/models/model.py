@@ -122,9 +122,6 @@ class Model:
         :param initializeBold: initialize BOLD model
         :type initializeBold: bool
         """
-        # NOTE: this if clause causes an error if signalV or Dmat has changed since
-        # last calulcateion of max_delay. For every run, we need to compute the new
-        # max delay (which is not very good for performance).
         # get the maxDelay of the system
         self.maxDelay = self.getMaxDelay()
 

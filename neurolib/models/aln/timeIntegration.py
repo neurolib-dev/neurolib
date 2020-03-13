@@ -188,8 +188,8 @@ def timeIntegration(params):
     siiv = params["siiv_init"].copy()  # Inh synaptic input variance
     siev = params["siev_init"].copy()
 
-    mue_ou = params["mue_ou"]  # Mean of external exc OU input (mV/ms)
-    mui_ou = params["mui_ou"]  # Mean of external inh ON inout (mV/ms)
+    mue_ou = params["mue_ou"].copy()  # Mean of external exc OU input (mV/ms)
+    mui_ou = params["mui_ou"].copy()  # Mean of external inh ON inout (mV/ms)
 
     # Set the initial firing rates.
     # if initial values are just a Nx1 array
