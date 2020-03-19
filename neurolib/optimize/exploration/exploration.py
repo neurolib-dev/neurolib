@@ -20,7 +20,7 @@ class BoxSearch:
     Paremter box search for a given model and a range of parameters.
     """
 
-    def __init__(self, model=None, parameterSpace=None, evalFunction=None):
+    def __init__(self, model=None, parameterSpace=None, evalFunction=None, fileName=None):
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the 
         evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current 
@@ -35,6 +35,8 @@ class BoxSearch:
         :type parameterSpace: `neurolib.utils.parameterSpace.ParameterSpace`, optional
         :param evalFunction: Evaluation function to call for each run., defaults to None
         :type evalFunction: function, optional
+        :param fileName: HDF5 storage file name, if left empty, defaults to ``exploration.hdf``
+        :type fileName: str
         """
         self.model = model
         if evalFunction is None and model is not None:
@@ -54,9 +56,13 @@ class BoxSearch:
         # todo: use random ICs for every explored point or rather reuse the ones that are generated at model initialization
         self.useRandomICs = False
 
+        if fileName is None:
+            fileName = "exploration.hdf"
+        self.fileName = fileName
+
         # bool to check whether pypet was initialized properly
         self.initialized = False
-        self.initializeExploration()
+        self.initializeExploration(self.fileName)
 
     def initializeExploration(self, fileName="exploration.hdf"):
         """Initialize the pypet environment
