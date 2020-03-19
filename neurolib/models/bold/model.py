@@ -79,12 +79,18 @@ class BOLDModel:
             * self.dt
         )
 
-        if self.BOLD.shape[1] == 0 or append is False:
+        if self.BOLD.shape[1] == 0:
+            # add new data
             self.t_BOLD = t_BOLD_resampled
             self.BOLD = BOLD_resampled
         elif append is True:
+            # append new data to old data
             self.t_BOLD = np.hstack((self.t_BOLD, t_BOLD_resampled))
             self.BOLD = np.hstack((self.BOLD, BOLD_resampled))
+        else:
+            # overwrite old data
+            self.t_BOLD = t_BOLD_resampled
+            self.BOLD = BOLD_resampled
 
         self.BOLD_chunk = BOLD_resampled
 
