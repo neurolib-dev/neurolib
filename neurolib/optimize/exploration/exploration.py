@@ -3,6 +3,7 @@ import datetime
 import os
 import logging
 import pathlib
+import copy
 
 import h5py
 import pypet
