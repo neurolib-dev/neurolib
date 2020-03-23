@@ -98,13 +98,6 @@ class TestALNExploration(unittest.TestCase):
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
         search = BoxSearch(evalFunction=evaluateSimulation, model=aln, parameterSpace=parameters)
         search.run()
-        # postprocessing
-        # search.loadResults()
-        # print("Number of results: {}".format(len(search.results)))
-        # self.assertTrue(len(search.results) > 0)
-        # for i in search.dfResults.index:
-        #     search.dfResults.loc[i, "fc"] = np.mean(search.results[i]["fc"])
-        # search.dfResults
 
 
 class TestCustomParameterExploration(unittest.TestCase):
@@ -122,7 +115,7 @@ class TestCustomParameterExploration(unittest.TestCase):
         parameters = ParameterSpace({"x": np.linspace(-2, 2, 2), "y": np.linspace(-2, 2, 2)})
         search = BoxSearch(evalFunction=explore_me, parameterSpace=parameters)
         search.run()
-        search.loadResults()
+        search.loadResults(pypetShortNames=False)
 
         for i in search.dfResults.index:
             search.dfResults.loc[i, "distance"] = search.results[i]["distance"]
