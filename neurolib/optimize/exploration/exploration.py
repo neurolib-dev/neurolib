@@ -220,13 +220,15 @@ class BoxSearch:
         assert self.initialized, "Pypet environment not initialized yet."
         self.env.run(self.evalFunction)
 
-    def loadResults(self, filename=None, trajectoryName=None):
+    def loadResults(self, filename=None, trajectoryName=None, pypetShortNames=True):
         """Load results from a hdf file of a previous simulation.
         
         :param filename: hdf filename in which results are stored, defaults to None
         :type filename: str, optional
         :param trajectoryName: name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
         :type trajectoryName: str, optional
+        :param pypetShortNames: use pypet short names as keys for the results dictionary
+        :type pypetShortNames: boolean
         """
         # chose
         if filename == None:
@@ -248,7 +250,20 @@ class BoxSearch:
         self.results = []
         for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
             trajLoaded.results[rInd].f_load()
-            result = trajLoaded.results[rInd].f_to_dict(fast_access=True, short_names=True)
+            result = trajLoaded.results[rInd].f_to_dict(fast_access=True, short_names=pypetShortNames)
             trajLoaded.results[rInd].f_remove()
             self.results.append(result)
+
+        # Postprocess result keys if pypet short names aren't used
+        # Before: results.run_00000001.outputs.rates_inh 
+        # After: outputs.rates_inh
+        if pypetShortNames == False:
+            for i, r in enumerate(self.results):
+                new_dict = {}
+                for key, value in r.items():
+                    #print(key)
+                    new_key = "".join(key.split(".",2)[2:])
+                    new_dict[new_key] = r[key]
+                self.results[i] = copy.deepcopy(new_dict)
+
         logging.info("All results loaded.")
