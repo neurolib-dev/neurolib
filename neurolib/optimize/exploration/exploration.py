@@ -257,14 +257,14 @@ class BoxSearch:
             self.results.append(result)
 
         # Postprocess result keys if pypet short names aren't used
-        # Before: results.run_00000001.outputs.rates_inh
         # Before: results.run_00000001.outputs.rates_inh 
         # After: outputs.rates_inh
         if pypetShortNames == False:
             for i, r in enumerate(self.results):
                 new_dict = {}
                 for key, value in r.items():
-                    new_key = "".join(key.split(".", 2)[2:])
+                    #print(key)
+                    new_key = "".join(key.split(".",2)[2:])
                     new_dict[new_key] = r[key]
                 self.results[i] = copy.deepcopy(new_dict)
 
