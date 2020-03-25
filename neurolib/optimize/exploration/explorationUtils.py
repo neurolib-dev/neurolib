@@ -1,159 +1,56 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import logging
-import tqdm
 
-from ...utils import functions as func
-
-
-def plotExplorationResults(
-    dfResults,
-    par1,
-    par2,
-    plot_key,
-    by=None,
-    by_label=None,
-    plot_key_label=None,
-    symmetric_colorbar=False,
-    one_figure=False,
-):
-
-    dfResults = dfResults.copy()
-    if isinstance(par1, str):
-        par1_label = par1
-    elif isinstance(par1, (list, tuple)):
-        par1_label = par1[1]
-        par1 = par1[0]
-
-    if isinstance(par2, str):
-        par2_label = par2
-    elif isinstance(par2, (list, tuple)):
-        par2_label = par2[1]
-        par2 = par2[0]
-
-    # if no by value was given, create a dummy value
-    if by is None:
-        dfResults["_by"] = 0
-        by = ["_by"]
-
+def pivot_plots(dfResults, by, par1, par2, plot_key, plot_key_label="", symmetric_colorbar=False, one_figure=False):
     n_plots = len(dfResults.groupby(by=by))
-
-    if by_label is None:
-        by_label = by
-
-    # if by is not None:
-    #     n_plots = len(dfResults.groupby(by=by))
-    # else:
-    #     n_plots = 1
-
     if one_figure == True:
-        fig, axs = plt.subplots(nrows=1, ncols=n_plots, figsize=(n_plots * 4, 4), dpi=150)
-
-    # if by is not None:
-    #     _dfResults = dfResults.groupby(by=by)
-    # else:
-    #     _dfResults = dfResults
-
+        fig, axs = plt.subplots(nrows=1, ncols=n_plots, figsize=(n_plots*4, 4), dpi=150)
     axi = 0
-    for i, df in dfResults.groupby(by=by):
-
+    for i,k in dfResults.groupby(by=by):
+        
         if one_figure == True:
-            if n_plots > 1:
-                ax = axs[axi]
-            else:
-                ax = axs
+            ax = axs[axi]
+            
+        df = k
 
-        df_pivot = df.pivot_table(values=plot_key, index=par2, columns=par1)
-
+        df_pivot = df.pivot_table(values=plot_key, index = par2, columns=par1)
+        
         plot_clim = None
         if symmetric_colorbar:
             plot_clim = (-np.max(df_pivot.values), np.max(df_pivot.values))
-
+        
         if one_figure == False:
             fig = plt.figure(figsize=(5, 4), dpi=150)
             ax = plt.gca()
-
-        im = ax.imshow(
-            df_pivot,
-            extent=[min(df[par1]), max(df[par1]), min(df[par2]), max(df[par2])],
-            origin="lower",
-            aspect="auto",
-            clim=plot_clim,
-        )
-
+            
+        im = ax.imshow(df_pivot, \
+               extent = [min(df[par1]), max(df[par1]),
+                         min(df[par2]), max(df[par2])], origin='lower', aspect='equal', clim=plot_clim)
+        
+        #divider = make_axes_locatable(ax)
+        #cax = divider.append_axes('right', size='5%', pad=0.05)
         if one_figure == False:
-            cbar = plt.colorbar(im, ax=ax, orientation="vertical", label=plot_key_label)
-
+            plt.colorbar(im, ax=ax, orientation='vertical');        
         else:
             # if this is the last plot
             if axi == n_plots - 1:
-                cbar_ax = fig.add_axes([0.91, 0.18, 0.005, 0.65])
-                cbar = fig.colorbar(im, cax=cbar_ax, label=plot_key_label)
+                #plt.colorbar(im, ax=ax, orientation='vertical');   
+                cbar_ax = fig.add_axes([0.92, 0.18, 0.01, 0.65])
+                fig.colorbar(im, cax=cbar_ax)
+        
+        ax.set_xlabel(par1)
+        ax.set_ylabel(par2)
 
-        ax.set_xlabel(par1_label)
-        ax.set_ylabel(par2_label)
-
-        # single by-values need to become tuple
+        # single by-values need to become tuple    
         if not isinstance(i, tuple):
             i = (i,)
 
-        ax.set_title(" ".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)]))
+        ax.set_title(" ".join([f"{bb}={bi}" for bb, bi in zip(by, i)]))
         if one_figure == False:
             plt.show()
         else:
             axi += 1
-
+            
     if one_figure == True:
         plt.show()
         plt.tight_layout()
-
-
-def processExplorationResults(results, dfResults, **kwargs):
-    if "bold_transient" in kwargs:
-        bold_transient = kwargs["bold_transient"]
-        logging.info(f"Bold transient: {bold_transient} ms")
-    else:
-        bold_transient = 10000
-
-    for i in tqdm.tqdm(dfResults.index):
-        if "outputs.t" in results[i].keys():
-            if "ds" in kwargs:
-                ds = kwargs["ds"]
-                dfResults.loc[i, "fc"] = np.mean(
-                    [
-                        func.matrix_correlation(
-                            func.fc(
-                                results[i]["outputs.BOLD.BOLD"][:, results[i]["outputs.BOLD.t_BOLD"] > bold_transient]
-                            ),
-                            fc,
-                        )
-                        for fc in ds.FCs
-                    ]
-                )
-            if "model" in kwargs:
-                model = kwargs["model"]
-                if "output" in kwargs:
-                    output_name = kwargs["output"]
-                else:
-                    output_name = model.default_output
-                dfResults.loc[i, "max_" + output_name] = np.max(
-                    results[i]["outputs." + output_name][:, -int(1000 / model.params["dt"]) :]
-                )
-    return dfResults
-
-
-def findCloseResults(dfResults, dist=0.01, **kwargs):
-    """Usage: findCloseResults(search.dfResults, mue_ext_mean=2.0, mui_ext_mean=2.5)
-    """
-    # dist = 0.01
-    selectors = True
-    for key, value in kwargs.items():
-        new_selector = abs(dfResults[key] - value) < dist
-        selectors = selectors & new_selector
-    filtered_df = dfResults[selectors]
-    return filtered_df
-
-
-def paramsRun(dfResults, runNr):
-    return dfResults.loc[1935].to_dict()
