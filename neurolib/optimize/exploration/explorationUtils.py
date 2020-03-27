@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
-def pivot_plots(dfResults, by, par1, par2, plot_key, plot_key_label="", symmetric_colorbar=False, one_figure=False):
+def plot_pivots(dfResults, by, par1, par2, plot_key, plot_key_label="", symmetric_colorbar=False, one_figure=False):
     n_plots = len(dfResults.groupby(by=by))
     if one_figure == True:
         fig, axs = plt.subplots(nrows=1, ncols=n_plots, figsize=(n_plots*4, 4), dpi=150)
@@ -9,7 +10,10 @@ def pivot_plots(dfResults, by, par1, par2, plot_key, plot_key_label="", symmetri
     for i,k in dfResults.groupby(by=by):
         
         if one_figure == True:
-            ax = axs[axi]
+            if n_plots > 1:
+                ax = axs[axi]
+            else:
+                ax = axs
             
         df = k
 
@@ -28,15 +32,14 @@ def pivot_plots(dfResults, by, par1, par2, plot_key, plot_key_label="", symmetri
                          min(df[par2]), max(df[par2])], origin='lower', aspect='equal', clim=plot_clim)
         
         #divider = make_axes_locatable(ax)
-        #cax = divider.append_axes('right', size='5%', pad=0.05)
         if one_figure == False:
-            plt.colorbar(im, ax=ax, orientation='vertical');        
+            cbar = plt.colorbar(im, ax=ax, orientation='vertical', label=plot_key_label); 
+
         else:
             # if this is the last plot
             if axi == n_plots - 1:
-                #plt.colorbar(im, ax=ax, orientation='vertical');   
-                cbar_ax = fig.add_axes([0.92, 0.18, 0.01, 0.65])
-                fig.colorbar(im, cax=cbar_ax)
+                cbar_ax = fig.add_axes([0.91, 0.18, 0.005, 0.65])
+                cbar = fig.colorbar(im, cax=cbar_ax, label=plot_key_label)
         
         ax.set_xlabel(par1)
         ax.set_ylabel(par2)
@@ -54,3 +57,4 @@ def pivot_plots(dfResults, by, par1, par2, plot_key, plot_key_label="", symmetri
     if one_figure == True:
         plt.show()
         plt.tight_layout()
+        
