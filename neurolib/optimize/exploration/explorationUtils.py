@@ -156,4 +156,4 @@ def findCloseResults(dfResults, dist=0.01, **kwargs):
 
 
 def paramsRun(dfResults, runNr):
-    return dfResults.loc[1935].to_dict()
+    return dfResults.loc[runNr].to_dict()
