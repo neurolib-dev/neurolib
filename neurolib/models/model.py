@@ -108,7 +108,7 @@ class Model:
 
                         t_BOLD = self.boldModel.t_BOLD
                         BOLD = self.boldModel.BOLD
-                        self.setOutput("BOLD.t", t_BOLD)
+                        self.setOutput("BOLD.t_BOLD", t_BOLD)
                         self.setOutput("BOLD.BOLD", BOLD)
                     else:
                         logging.warn(
