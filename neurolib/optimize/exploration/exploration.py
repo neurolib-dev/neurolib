@@ -92,6 +92,7 @@ class BoxSearch:
             ncores=nprocesses,
             complevel=9,
             log_stdout=False,
+            log_levels=(logging.INFO),
             log_multiproc=False,
         )
         self.env = env
