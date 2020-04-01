@@ -52,11 +52,12 @@ class BOLDModel:
         if self.normalize_input:
             assert isinstance(self.normalize_max, (float, int)), "normalize_max must be a scalar."
             assert self.normalize_max > 0, "normalize_max must be greater than 0."
-            # dermine the minimum and the maxmimum of the input
-            min_input = np.min(activity)
-            max_input = np.max(activity)
-            # rescale activity to range [0, normalize_max]
-            activity = (activity - min_input) / (max_input - min_input) * self.normalize_max
+            # # dermine the minimum and the maxmimum of the input
+            # min_input = np.min(activity)
+            # max_input = np.max(activity)
+            # # rescale activity to range [0, normalize_max]
+            # activity = (activity - min_input) / (max_input - min_input) * self.normalize_max
+            activity = activity * self.normalize_max
 
         # Compute the BOLD signal for the chunk
         BOLD_chunk, self.X_BOLD, self.F_BOLD, self.Q_BOLD, self.V_BOLD = simulateBOLD(
