@@ -279,6 +279,17 @@ class Model:
                 # we set the next initial condition to the last state
                 self.params[iv] = self.state[sv][:, -self.startindt :]
 
+    def randomICs(self):
+        """Generates a new set of random initial conditions for the model.
+        TODO: Each variable should be able to have a fixed range from which
+        the random value is drawn.
+        """
+        for iv in self.init_vars:
+            if self.params[iv].ndim == 1:
+                self.params[iv] = np.random.uniform(0, 1, (self.params["N"]))
+            elif self.params[iv].ndim == 2:
+                self.params[iv] = np.random.uniform(0, 1, (self.params["N"], 1))
+
     def setInputs(self, inputs):
         """Take inputs from a list and store it in the appropriate model parameter for external input.
         TODO: This is not safe yet, checks should be implemented whether the model has inputs defined or not for example.
