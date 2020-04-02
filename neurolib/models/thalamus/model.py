@@ -11,7 +11,23 @@ class ThalamicMassModel(Model):
     name = "thalamus"
     description = "Two population thalamic mass model"
 
-    init_vars = []
+    init_vars = [
+        "V_t_init"
+        "V_r_init"
+        "Ca_init"
+        "h_T_t_init"
+        "h_T_r_init"
+        "m_h1_init"
+        "m_h2_init"
+        "s_et_init"
+        "s_gt_init"
+        "s_er_init"
+        "s_gr_init"
+        "ds_et_init"
+        "ds_gt_init"
+        "ds_er_init"
+        "ds_gr_init"
+    ]
     state_vars = ["V_t", "V_r", "Q_t", "Q_r"]
     output_vars = ["V_t", "V_r", "Q_t", "Q_r"]
     default_output = "V_t"

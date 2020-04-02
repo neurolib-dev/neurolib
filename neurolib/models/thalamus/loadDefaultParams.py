@@ -56,17 +56,29 @@ def loadDefaultParams(seed=None):
     params.N_tr = 5.0
     # noise
     params.d_phi = 0.0
-    # init
-    params.tcr_V_init = -68.0
-    params.Ca_init = 2.4e-4
 
     # specific thalamic reticular nuclei population - TRN (inhibitory)
     params.g_T_r = 2.3  # mS/cm^2
     # connectivity
     params.N_rt = 3.0
     params.N_rr = 25.0
+
     # init
-    params.trn_V_init = -68.0
+    params.V_t_init = -68.0
+    params.V_r_init = -68.0
+    params.Ca_init = 2.4e-4
+    params.h_T_t_init = 0.0
+    params.h_T_r_init = 0.0
+    params.m_h1_init = 0.0
+    params.m_h2_init = 0.0
+    params.s_et_init = 0.0
+    params.s_gt_init = 0.0
+    params.s_er_init = 0.0
+    params.s_gr_init = 0.0
+    params.ds_et_init = 0.0
+    params.ds_gt_init = 0.0
+    params.ds_er_init = 0.0
+    params.ds_gr_init = 0.0
 
     # always 1 node only - no network of multiple "thalamuses"
     params.N = 1

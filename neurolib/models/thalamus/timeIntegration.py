@@ -57,25 +57,25 @@ def timeIntegration(params):
 
     # model output
     V_t = np.zeros((startind + len(t),))
-    V_t[0] = params["tcr_V_init"]
     V_r = np.zeros((startind + len(t),))
-    V_r[0] = params["trn_V_init"]
     Q_t = np.zeros((startind + len(t),))
     Q_r = np.zeros((startind + len(t),))
     # init
+    V_t[:startind] = params["V_t_init"]
+    V_r[:startind] = params["V_r_init"]
     Ca = params["Ca_init"]
-    h_T_t = 0.0
-    h_T_r = 0.0
-    m_h1 = 0.0
-    m_h2 = 0.0
-    s_et = 0.0
-    s_gt = 0.0
-    s_er = 0.0
-    s_gr = 0.0
-    ds_et = 0.0
-    ds_gt = 0.0
-    ds_er = 0.0
-    ds_gr = 0.0
+    h_T_t = params["h_T_t_init"]
+    h_T_r = params["h_T_r_init"]
+    m_h1 = params["m_h1_init"]
+    m_h2 = params["m_h2_init"]
+    s_et = params["s_et_init"]
+    s_gt = params["s_gt_init"]
+    s_er = params["s_er_init"]
+    s_gr = params["s_gr_init"]
+    ds_et = params["ds_et_init"]
+    ds_gt = params["ds_gt_init"]
+    ds_er = params["ds_er_init"]
+    ds_gr = params["ds_gr_init"]
 
     if RNGseed:
         np.random.seed(RNGseed)
