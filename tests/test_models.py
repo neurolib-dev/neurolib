@@ -3,10 +3,10 @@ import time
 import unittest
 
 from neurolib.models.aln import ALNModel
-from neurolib.models.hopf import HopfModel
 from neurolib.models.fhn import FHNModel
+from neurolib.models.hopf import HopfModel
+from neurolib.models.thalamus import ThalamicMassModel
 from neurolib.models.wc import WCModel
-
 from neurolib.utils.loadData import Dataset
 
 
@@ -151,6 +151,24 @@ class TestWC(unittest.TestCase):
         wc.run(chunkwise=True, bold=True, append_outputs=True)
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+class TestThalamus(unittest.TestCase):
+    """
+    Basic test for thalamic mass model.
+    """
+
+    def test_single_node(self):
+        logging.info("\t > Thalamus: Testing single node ...")
+        start = time.time()
+        thalamus = ThalamicMassModel()
+        thalamus.params["duration"] = 2.0 * 1000
+
+        thalamus.run()
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
 
 if __name__ == "__main__":
     unittest.main()
