@@ -12,10 +12,10 @@ def plot_outputs(model, bold_transient=10000):
         axs[0, 0].plot(model.outputs.t, model.output.T)
     if "BOLD" in model.outputs:
         axs[1, 0].plot(
-            model.outputs.BOLD.t[model.outputs.BOLD.t > bold_transient],
-            model.outputs.BOLD.BOLD[:, model.outputs.BOLD.t > bold_transient].T,
+            model.outputs.BOLD.t_BOLD[model.outputs.BOLD.t_BOLD > bold_transient],
+            model.outputs.BOLD.BOLD[:, model.outputs.BOLD.t_BOLD > bold_transient].T,
         )
-        axs[1, 1].imshow(func.fc(model.outputs.BOLD.BOLD[:, model.outputs.BOLD.t > bold_transient]))
+        axs[1, 1].imshow(func.fc(model.outputs.BOLD.BOLD[:, model.outputs.BOLD.t_BOLD > bold_transient]))
     plt.show()
 
 
@@ -23,7 +23,7 @@ def model_fit(model, ds, bold_transient=10000, fc=True, fcd=False):
     result = {}
     if fc:
         result["fc_scores"] = [
-            func.matrix_correlation(func.fc(model.BOLD.BOLD[:, model.BOLD.t > bold_transient]), fc)
+            func.matrix_correlation(func.fc(model.BOLD.BOLD[:, model.BOLD.t_BOLD > bold_transient]), fc)
             for i, fc in enumerate(ds.FCs)
         ]
         result["mean_fc_score"] = np.mean(result["fc_scores"])
