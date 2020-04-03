@@ -22,7 +22,7 @@ class FHNModel(Model):
     # to the bold model must be transformed
     boldInputTransform = lambda self, x: x * 50
 
-    def __init__(self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None):
+    def __init__(self, params=None, Cmat=None, Dmat=None, seed=None):
 
         self.Cmat = Cmat
         self.Dmat = Dmat
