@@ -14,7 +14,8 @@ def loadDefaultParams(seed=None):
     params = dotdict({})
 
     ### runtime parameters
-    params.dt = 0.1  # ms 0.1ms is reasonable
+    # thalamus is really sensitive, so either you integrate with very small dt or use an adaptive integration step
+    params.dt = 0.01  # ms
     params.duration = 60000  # Simulation duration (ms)
     np.random.seed(seed)  # seed for RNG of noise and ICs
     # set seed to 0, pypet will complain otherwise
@@ -62,6 +63,10 @@ def loadDefaultParams(seed=None):
     # connectivity
     params.N_rt = 3.0
     params.N_rr = 25.0
+
+    # external input
+    params.ext_current_t = 0.0
+    params.ext_current_r = 0.0
 
     # init
     params.V_t_init = -68.0

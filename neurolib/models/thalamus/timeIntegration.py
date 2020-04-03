@@ -1,5 +1,5 @@
-import numpy as np
 import numba
+import numpy as np
 
 
 def timeIntegration(params):
@@ -54,6 +54,9 @@ def timeIntegration(params):
     N_rt = params["N_rt"]
     N_tr = params["N_tr"]
     N_rr = params["N_rr"]
+
+    ext_current_t = params["ext_current_t"]
+    ext_current_r = params["ext_current_r"]
 
     # model output
     V_t = np.zeros((startind + len(t),))
@@ -118,6 +121,8 @@ def timeIntegration(params):
         gamma_r,
         d_phi,
         noise,
+        ext_current_t,
+        ext_current_r,
         N_rt,
         N_tr,
         N_rr,
@@ -179,6 +184,8 @@ def timeIntegration_njit_elementwise(
     gamma_r,
     d_phi,
     noise,
+    ext_current_t,
+    ext_current_r,
     N_rt,
     N_tr,
     N_rr,
@@ -241,8 +248,8 @@ def timeIntegration_njit_elementwise(
 
         ### define derivatives
         # membrane potential
-        d_V_t = -(I_leak_t + I_et + I_gt) / tau - (1.0 / C_m) * (I_LK_t + I_T_t + I_h)
-        d_V_r = -(I_leak_r + I_er + I_gr) / tau - (1.0 / C_m) * (I_LK_r + I_T_r)
+        d_V_t = -(I_leak_t + I_et + I_gt + ext_current_t) / tau - (1.0 / C_m) * (I_LK_t + I_T_t + I_h)
+        d_V_r = -(I_leak_r + I_er + I_gr + ext_current_r) / tau - (1.0 / C_m) * (I_LK_r + I_T_r)
         # Calcium concentration
         d_Ca = alpha_Ca * I_T_t - (Ca - Ca_0) / tau_Ca
         # channel dynamics
