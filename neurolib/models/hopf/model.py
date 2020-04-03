@@ -20,7 +20,7 @@ class HopfModel(Model):
 
     # because this is not a rate model, the input
     # to the bold model must be transformed
-    boldInputTransform = lambda self, x: (x + 2) * 70
+    boldInputTransform = lambda self, x: (x + 1) * 4
 
     def __init__(self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None):
 
