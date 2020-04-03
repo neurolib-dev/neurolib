@@ -19,13 +19,10 @@ class HopfModel(Model):
     default_input = "x_ext"
 
     # because this is not a rate model, the input
-    # to the bold model must be normalized
-    normalize_bold_input = True
-    normalize_bold_input_max = 50
+    # to the bold model must be transformed
+    boldInputTransform = lambda self, x: (x + 2) * 70
 
-    def __init__(
-        self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
-    ):
+    def __init__(self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None):
 
         self.Cmat = Cmat
         self.Dmat = Dmat
@@ -39,6 +36,4 @@ class HopfModel(Model):
             params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
 
         # Initialize base class Model
-        super().__init__(
-            integration=integration, params=params, bold=bold,
-        )
+        super().__init__(integration=integration, params=params)
