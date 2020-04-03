@@ -40,18 +40,6 @@ class Model:
         self.maxDelay = None
         self.initializeRun()
 
-        # # set up bold model
-        # if not hasattr(self, "normalize_bold_input"):
-        #     self.normalize_bold_input = False
-        # if not hasattr(self, "normalize_bold_input_max"):
-        #     self.normalize_bold_input_max = 50
-
-        # bold initialization at model init
-        # if not initialized yet, it will be done when run(bold=True) is called
-        # for the first time.
-        # self.enableBold = bold
-        # if self.enableBold:
-        #     self.initializeBold()
         self.boldInitialized = False
 
         logging.info(f"{self.name}: Model initialized.")
@@ -67,21 +55,7 @@ class Model:
         if self.boldInputTransform:
             logging.info(f"{self.name}: BOLD input transformed by {self.boldInputTransform}")
 
-        # # legacy bold rescaling
-        # if not hasattr(self, "normalize_bold_input"):
-        #     self.normalize_bold_input = False
-
-        # if not hasattr(self, "normalize_bold_input_max"):
-        #     self.normalize_bold_input_max = 50
-
-        # if self.normalize_bold_input:
-        #     logging.info(
-        #         f"{self.name}: BOLD input will be normalized to a maxmimum of {self.normalize_bold_input_max} Hz"
-        #     )
-
-        # self.boldModel = bold.BOLDModel(
-        #     self.params["N"], self.params["dt"], self.normalize_bold_input, self.normalize_bold_input_max
-        # )
+        self.boldModel = bold.BOLDModel(self.params["N"], self.params["dt"])
         self.boldInitialized = True
         logging.info(f"{self.name}: BOLD model initialized.")
 
