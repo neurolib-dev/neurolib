@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import logging
 import tqdm
 
@@ -18,8 +19,11 @@ def plotExplorationResults(
     symmetric_colorbar=False,
     one_figure=False,
 ):
-
+    """
+    """
+    # copy here, because we add another column that we do not want to keep later
     dfResults = dfResults.copy()
+
     if isinstance(par1, str):
         par1_label = par1
     elif isinstance(par1, (list, tuple)):
@@ -48,7 +52,7 @@ def plotExplorationResults(
     #     n_plots = 1
 
     if one_figure == True:
-        fig, axs = plt.subplots(nrows=1, ncols=n_plots, figsize=(n_plots * 4, 4), dpi=150)
+        fig, axs = plt.subplots(nrows=1, ncols=n_plots, figsize=(n_plots * 4, 3.5), dpi=150)
 
     # if by is not None:
     #     _dfResults = dfResults.groupby(by=by)
@@ -86,10 +90,17 @@ def plotExplorationResults(
             cbar = plt.colorbar(im, ax=ax, orientation="vertical", label=plot_key_label)
 
         else:
-            # if this is the last plot
-            if axi == n_plots - 1:
-                cbar_ax = fig.add_axes([0.91, 0.18, 0.005, 0.65])
-                cbar = fig.colorbar(im, cax=cbar_ax, label=plot_key_label)
+            # # below is code for one colorbar only but it only displays the values of
+            # # the last plot so it's useless
+            # # if this is the last plot
+            # if axi == n_plots - 1:
+            #     cbar_ax = fig.add_axes([0.91, 0.18, 0.005, 0.65])
+            #     cbar = fig.colorbar(im, cax=cbar_ax, label=plot_key_label)
+
+            # colorbar per plot
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            fig.colorbar(im, cax=cax, orientation="vertical")
 
         ax.set_xlabel(par1_label)
         ax.set_ylabel(par2_label)
@@ -105,21 +116,32 @@ def plotExplorationResults(
             axi += 1
 
     if one_figure == True:
-        plt.show()
         plt.tight_layout()
+        plt.show()
 
 
 def processExplorationResults(results, dfResults, **kwargs):
+    """Process results from the exploration. 
+    """
+
+    # if bold_transient is given as an argument
     if "bold_transient" in kwargs:
         bold_transient = kwargs["bold_transient"]
         logging.info(f"Bold transient: {bold_transient} ms")
     else:
+        # else, set it to 10 seconds
         bold_transient = 10000
 
+    # cycle through all results
     for i in tqdm.tqdm(dfResults.index):
+        # if the result has an output
         if "outputs.t" in results[i].keys():
+            # if a dataset was passed as an argument
             if "ds" in kwargs:
                 ds = kwargs["ds"]
+
+                # calculate mean correlation of functional connectivity
+                # of the simulation and the empirical data
                 dfResults.loc[i, "fc"] = np.mean(
                     [
                         func.matrix_correlation(
@@ -131,15 +153,33 @@ def processExplorationResults(results, dfResults, **kwargs):
                         for fc in ds.FCs
                     ]
                 )
+
+            # if the model is passed as an argument
             if "model" in kwargs:
                 model = kwargs["model"]
+
+                # get the output of the model
                 if "output" in kwargs:
                     output_name = kwargs["output"]
                 else:
                     output_name = model.default_output
+
+                # use the last x ms for analysis
+                if "output_last_ms" in kwargs:
+                    last_ms = kwargs["output_last_ms"]
+                    logging.info(f"Analyzing last {bold_transient} ms of the output {output_name}.")
+                else:
+                    last_ms = 1000
+
+                # calculate the maximum of the output
                 dfResults.loc[i, "max_" + output_name] = np.max(
-                    results[i]["outputs." + output_name][:, -int(1000 / model.params["dt"]) :]
+                    results[i]["outputs." + output_name][:, -int(last_ms / model.params["dt"]) :]
                 )
+
+                # calculate the amplitude of the output
+                dfResults.loc[i, "amp_" + output_name] = np.max(
+                    results[i]["outputs." + output_name][:, -int(last_ms / model.params["dt"]) :]
+                ) - np.min(results[i]["outputs." + output_name][:, -int(last_ms / model.params["dt"]) :])
     return dfResults
 
 
