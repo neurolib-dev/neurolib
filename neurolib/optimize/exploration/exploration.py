@@ -258,7 +258,6 @@ class BoxSearch:
 
         # Postprocess result keys if pypet short names aren't used
         # Before: results.run_00000001.outputs.rates_inh
-        # Before: results.run_00000001.outputs.rates_inh 
         # After: outputs.rates_inh
         if pypetShortNames == False:
             for i, r in enumerate(self.results):
