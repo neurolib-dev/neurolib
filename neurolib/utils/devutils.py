@@ -30,7 +30,7 @@ def model_fit(model, ds, bold_transient=10000, fc=True, fcd=False):
 
     if fcd:
         fcd_scores = [
-            func.ts_kolmogorov(model.BOLD.BOLD[:, model.BOLD.t > bold_transient], ds.BOLDs[i])
+            func.ts_kolmogorov(model.BOLD.BOLD[:, model.BOLD.t_BOLD > bold_transient], ds.BOLDs[i])
             for i in range(len(ds.BOLDs))
         ]
         fcd_meanScore = np.mean(fcd_scores)
