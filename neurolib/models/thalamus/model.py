@@ -45,6 +45,4 @@ class ThalamicMassModel(Model):
             params = dp.loadDefaultParams()
 
         # Initialize base class Model
-        super().__init__(
-            integration=integration, params=params, bold=False,
-        )
+        super().__init__(integration=integration, params=params)
