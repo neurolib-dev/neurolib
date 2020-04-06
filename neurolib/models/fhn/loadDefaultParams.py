@@ -24,7 +24,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.duration = 2000  # Simulation duration (ms)
     np.random.seed(seed)  # seed for RNG of noise and ICs
     # set seed to 0, pypet will complain otherwise
-    if seed == None:
+    if seed is None:
         seed = 0
     params.seed = seed
 
@@ -47,7 +47,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     else:
         params.Cmat = Cmat.copy()  # coupling matrix
-        np.fill_diagonal(Cmat, 0)  # no self connections
+        np.fill_diagonal(params.Cmat, 0)  # no self connections
         params.N = len(params.Cmat)  # number of nodes
         params.lengthMat = Dmat
 
