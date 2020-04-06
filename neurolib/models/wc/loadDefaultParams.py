@@ -79,7 +79,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.y_ou = np.zeros((params.N,))
 
     # values of the external inputs
-    params.x_ext = 0.6 * np.ones((params.N,))
+    params.x_ext = 1.0 * np.ones((params.N,))
     params.y_ext = np.zeros((params.N,))
 
     return params

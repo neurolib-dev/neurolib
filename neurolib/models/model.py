@@ -11,9 +11,7 @@ class Model:
     """The Model superclass runs simulations and manages inputs and outputs of all models.
     """
 
-    def __init__(
-        self, integration, params, bold=False,
-    ):
+    def __init__(self, integration, params):
         if hasattr(self, "name"):
             if self.name is not None:
                 assert isinstance(self.name, str), f"Model name is not a string."
@@ -42,38 +40,22 @@ class Model:
         self.maxDelay = None
         self.initializeRun()
 
-        # set up bold model
         self.boldInitialized = False
-        if not hasattr(self, "normalize_bold_input"):
-            self.normalize_bold_input = False
-        if not hasattr(self, "normalize_bold_input_max"):
-            self.normalize_bold_input_max = 50
-
-        # bold initialization at model init
-        # if not initialized yet, it will be done when run(bold=True) is called
-        # for the first time.
-        self.enableBold = bold
-        if self.enableBold:
-            self.initializeBold(self.normalize_bold_input, self.normalize_bold_input_max)
 
         logging.info(f"{self.name}: Model initialized.")
 
-    def initializeBold(self, normalize_bold_input, normalize_bold_input_max):
+    def initializeBold(self):
         """Initialize BOLD model.
-        
-        :param normalize_bold_input: whether or not to normalize the output of the model to a range between 0 and normalize_bold_input_max (in Hz)
-        :type normalize_bold_input: bool
-        :param normalize_bold_input_max: maximum value in Hz to normalize input to
-        :type normalize_bold_input_max: float
         """
-        self.normalize_bold_input = normalize_bold_input
-        self.normalize_bold_input_max = normalize_bold_input_max
-        if self.normalize_bold_input:
-            logging.info(f"{self.name}: BOLD input will be normalized to a maxmimum of {normalize_bold_input_max} Hz")
+        self.boldInitialized = False
 
-        self.boldModel = bold.BOLDModel(
-            self.params["N"], self.params["dt"], normalize_bold_input, normalize_bold_input_max
-        )
+        # function to transform model state before passing it to the bold model
+        if not hasattr(self, "boldInputTransform"):
+            self.boldInputTransform = None
+        if self.boldInputTransform:
+            logging.info(f"{self.name}: BOLD input transformed by {self.boldInputTransform}")
+
+        self.boldModel = bold.BOLDModel(self.params["N"], self.params["dt"])
         self.boldInitialized = True
         logging.info(f"{self.name}: BOLD model initialized.")
 
@@ -97,7 +79,11 @@ class Model:
                             logging.warn(
                                 f"Output size {bold_input.shape[1]} is not a multiple of BOLD sample length { self.boldModel.samplingRate_NDt}, will not append data."
                             )
-                        # logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+                        logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+
+                        # transform bold input according to self.boldInputTransform
+                        if self.boldInputTransform:
+                            bold_input = self.boldInputTransform(bold_input)
 
                         # simulate bold model
                         self.boldModel.run(bold_input, append=append)
@@ -138,7 +124,7 @@ class Model:
 
         # set up the bold model, if it didn't happen yet
         if initializeBold and not self.boldInitialized:
-            self.initializeBold(self.normalize_bold_input, self.normalize_bold_input_max)
+            self.initializeBold()
 
     def run(
         self,
@@ -246,7 +232,7 @@ class Model:
         self.state = dotdict({})
         self.outputs = dotdict({})
         # reinitialize bold model
-        self.initializeBold(self.normalize_bold_input, self.normalize_bold_input_max)
+        self.initializeBold()
 
     def storeOutputsAndStates(self, t, variables, append=False):
         """Takes the simulated variables of the integration and stores it to the appropriate model output and state object.

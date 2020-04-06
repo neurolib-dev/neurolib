@@ -37,7 +37,7 @@ class TestALNExploration(unittest.TestCase):
         from neurolib.utils.loadData import Dataset
 
         ds = Dataset("hcp")
-        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, bold=True)
+        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
         # Resting state fits
         aln.params["mue_ext_mean"] = 1.57
         aln.params["mui_ext_mean"] = 1.6
@@ -80,7 +80,7 @@ class TestALNExploration(unittest.TestCase):
             # ---------------------------------------
             model.params["dt"] = 0.2
             model.params["duration"] = defaultDuration
-            model.run()
+            model.run(chunkwise=True, bold=True)
 
             # -------- evaluation here --------
 
