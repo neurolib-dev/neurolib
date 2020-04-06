@@ -6,7 +6,6 @@ import neurolib.utils.functions as func
 
 def plot_outputs(model, bold_transient=10000):
     _, axs = plt.subplots(2, 3, figsize=(12, 6))
-    # axs[0].set_title(filtered_df.loc[ix, "sigma_ou"])
 
     if "t" in model.outputs:
         axs[0, 0].plot(model.outputs.t, model.output.T)
