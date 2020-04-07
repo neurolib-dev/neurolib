@@ -4,6 +4,7 @@ Class for representing a parameter space for exploration or optimization.
 
 import collections
 import numpy as np
+import logging
 
 
 class ParameterSpace:
@@ -107,9 +108,15 @@ class ParameterSpace:
         :param single_bound: single coordinate bound to validate
         :type single_bound: list|tuple
         """
-        assert isinstance(single_bound, (list, tuple)), "Pass parameter bounds as a list or tuple!"
-        assert len(single_bound) == 2, "Only two bounds (min and max) are allowed"
-        assert single_bound[1] > single_bound[0], "Minimum parameter value can't be larger than the maximum!"
+        assert isinstance(
+            single_bound, (list, tuple)
+        ), "An error occured while validating the ParameterSpace of kind 'bound': Pass parameter bounds as a list or tuple!"
+        assert (
+            len(single_bound) == 2
+        ), "An error occured while validating the ParameterSpace of kind 'bound': Only two bounds (min and max) are allowed"
+        assert (
+            single_bound[1] > single_bound[0]
+        ), "An error occured while validating the ParameterSpace of kind 'bound': Minimum parameter value can't be larger than the maximum!"
 
     def _validate_param_bounds(self, param_bounds):
         """
