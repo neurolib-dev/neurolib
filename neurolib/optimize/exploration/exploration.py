@@ -21,7 +21,9 @@ class BoxSearch:
     Paremter box search for a given model and a range of parameters.
     """
 
-    def __init__(self, model=None, parameterSpace=None, evalFunction=None, filename=None):
+    def __init__(
+        self, model=None, parameterSpace=None, evalFunction=None, filename=None, saveAllModelOutputs=False,
+    ):
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the 
         evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current 
@@ -38,6 +40,8 @@ class BoxSearch:
         :type evalFunction: function, optional
         :param filename: HDF5 storage file name, if left empty, defaults to ``exploration.hdf``
         :type filename: str
+        :param saveAllModelOutputs: If True, save all outputs of model, else only default output of the model will be saved. Note: if saveAllModelOutputs==False and the model's parameter model.params['bold']==rue, then BOLD output will be saved as well, defaults to False
+        :type saveAllModelOutputs: bool
         """
         self.model = model
         if evalFunction is None and model is not None:
@@ -60,6 +64,8 @@ class BoxSearch:
         if filename is None:
             filename = "exploration.hdf"
         self.filename = filename
+
+        self.saveAllModelOutputs = saveAllModelOutputs
 
         # bool to check whether pypet was initialized properly
         self.initialized = False
@@ -91,9 +97,10 @@ class BoxSearch:
             multiproc=True,
             ncores=nprocesses,
             complevel=9,
-            log_stdout=False,
-            log_levels=(logging.INFO),
-            log_multiproc=False,
+            # log_stdout=False,
+            # log_config=None,
+            # report_progress=True,
+            # log_multiproc=False,
         )
         self.env = env
         # Get the trajectory from the environment
@@ -188,10 +195,30 @@ class BoxSearch:
         runParams = traj.parameters.f_to_dict(short_names=True, fast_access=True)
         # set the parameters for the model
         self.model.params.update(runParams)
+
+        # get kwargs from Exploration.run()
+        runKwargs = {}
+        if hasattr(self, "runKwargs"):
+            runKwargs = self.runKwargs
         # run it
-        self.model.run()
-        # save all results from exploration
-        self.saveOutputsToPypet(self.model.outputs, traj)
+        self.model.run(**runKwargs)
+        # save outputs
+        self.saveModelOutputsToPypet(traj)
+
+    def saveModelOutputsToPypet(self, traj):
+        # save all data to the pypet trajectory
+        if self.saveAllModelOutputs:
+            # save all results from exploration
+            self.saveOutputsToPypet(self.model.outputs, traj)
+        else:
+            # save only the default output
+            self.saveOutputsToPypet({self.model.default_output: self.model.output, "t": self.model.outputs["t"]}, traj)
+            # save BOLD output
+            # if "bold" in self.model.params:
+            #     if self.model.params["bold"] and "BOLD" in self.model.outputs:
+            #         self.saveOutputsToPypet(self.model.outputs["BOLD"], traj)
+            if "BOLD" in self.model.outputs:
+                self.saveOutputsToPypet(self.model.outputs["BOLD"], traj)
 
     def getParametersFromTraj(self, traj):
         """Returns the parameters of the current run as a (dot.able) dictionary
@@ -215,10 +242,11 @@ class BoxSearch:
         model.params.update(runParams)
         return model
 
-    def run(self):
+    def run(self, **kwargs):
         """
         Call this function to run the exploration
         """
+        self.runKwargs = kwargs
         assert self.initialized, "Pypet environment not initialized yet."
         self.env.run(self.evalFunction)
 
@@ -253,6 +281,7 @@ class BoxSearch:
         for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
             self.pypetTrajectory.results[rInd].f_load()
             result = self.pypetTrajectory.results[rInd].f_to_dict(fast_access=True, short_names=pypetShortNames)
+            result = dotdict(result)
             self.pypetTrajectory.results[rInd].f_remove()
             self.results.append(result)
 
@@ -261,7 +290,7 @@ class BoxSearch:
         # After: outputs.rates_inh
         if pypetShortNames == False:
             for i, r in enumerate(self.results):
-                new_dict = {}
+                new_dict = dotdict({})
                 for key, value in r.items():
                     new_key = "".join(key.split(".", 2)[2:])
                     new_dict[new_key] = r[key]
