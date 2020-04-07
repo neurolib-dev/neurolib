@@ -9,6 +9,8 @@ from neurolib.optimize.exploration import BoxSearch
 from neurolib.utils.parameterSpace import ParameterSpace
 import neurolib.utils.functions as func
 
+import neurolib.optimize.exploration.explorationUtils as eu
+
 
 class TestALNExploration(unittest.TestCase):
     """
@@ -21,7 +23,7 @@ class TestALNExploration(unittest.TestCase):
 
         aln = ALNModel()
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
-        search = BoxSearch(aln, parameters)
+        search = BoxSearch(aln, parameters, filename="test_single_nodes.hdf")
         search.run()
         search.loadResults()
 
@@ -50,54 +52,32 @@ class TestALNExploration(unittest.TestCase):
         # multi stage evaluation function
         def evaluateSimulation(traj):
             model = search.getModelFromTraj(traj)
-            defaultDuration = model.params["duration"]
-            invalid_result = {"fc": [0] * len(ds.BOLDs)}
-
-            # -------- stage wise simulation --------
-
-            # Stage 1 : simulate for a few seconds to see if there is any activity
-            # ---------------------------------------
-            model.params["dt"] = 0.1
-            model.params["duration"] = 3 * 1000.0
-            model.run()
-
-            # check if stage 1 was successful
-            if np.max(model.rates_exc[:, model.t > 500]) > 300 or np.max(model.rates_exc[:, model.t > 500]) < 10:
-                search.saveOutputsToPypet(invalid_result, traj)
-                return invalid_result, {}
-
-            # Stage 2: simulate BOLD for a few seconds to see if it moves
-            # ---------------------------------------
+            model.randomICs()
             model.params["dt"] = 0.2
-            model.params["duration"] = 20 * 1000.0
+            model.params["duration"] = 4 * 1000.0
             model.run(bold=True)
 
-            if np.std(model.BOLD.BOLD[:, 5:10]) < 0.001:
-                search.saveOutputsToPypet(invalid_result, traj)
-                return invalid_result, {}
-
-            # Stage 3: full and final simulation
-            # ---------------------------------------
-            model.params["dt"] = 0.2
-            model.params["duration"] = defaultDuration
-            model.run(chunkwise=True, bold=True)
-
-            # -------- evaluation here --------
-
-            scores = []
-            for i, fc in enumerate(ds.FCs):  # range(len(ds.FCs)):
-                fc_score = func.matrix_correlation(func.fc(model.BOLD.BOLD[:, 5:]), fc)
-                scores.append(fc_score)
-
-            meanScore = np.mean(scores)
-            result_dict = {"fc": meanScore}
+            result_dict = {"outputs": model.outputs}
 
             search.saveOutputsToPypet(result_dict, traj)
 
         # define and run exploration
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
-        search = BoxSearch(evalFunction=evaluateSimulation, model=aln, parameterSpace=parameters)
+        search = BoxSearch(
+            evalFunction=evaluateSimulation, model=aln, parameterSpace=parameters, filename="test_brain_network.hdf"
+        )
         search.run()
+
+        # load results and process them
+        search.loadResults()
+        search.getRun(0)
+
+        # exploration utils
+        search.dfResults = eu.processExplorationResults(
+            search.results, search.dfResults, model=aln, ds=ds, bold_transient=0
+        )
+
+        eu.findCloseResults(search.dfResults, dist=1, mue_ext_mean=3.0, mui_ext_mean=1.0)
 
 
 class TestCustomParameterExploration(unittest.TestCase):
@@ -113,7 +93,7 @@ class TestCustomParameterExploration(unittest.TestCase):
             search.saveOutputsToPypet(result_dict, traj)
 
         parameters = ParameterSpace({"x": np.linspace(-2, 2, 2), "y": np.linspace(-2, 2, 2)})
-        search = BoxSearch(evalFunction=explore_me, parameterSpace=parameters)
+        search = BoxSearch(evalFunction=explore_me, parameterSpace=parameters, filename="test_circle_exploration.hdf")
         search.run()
         search.loadResults(pypetShortNames=False)
 
