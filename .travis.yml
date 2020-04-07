@@ -12,8 +12,8 @@ install:
   - pip install --upgrade pip setuptools wheel
   - pip install -r requirements.txt
   - pip install pytest 
-  - pip install --upgrade pytest 
-  - pytest-xdist treon flake8 codecov pytest-cov wheel setuptools jupyterlab matplotlib seaborn mne
+  - pip install --upgrade pytest setuptools
+  - pip install pytest-xdist treon flake8 codecov pytest-cov wheel setuptools jupyterlab matplotlib seaborn mne
   - python setup.py sdist bdist_wheel
   - pip install --upgrade dist/*
 
