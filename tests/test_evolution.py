@@ -30,7 +30,15 @@ class TestVanillaEvolution(unittest.TestCase):
             return fitness_tuple, result_dict
 
         pars = ParameterSpace(["x", "y"], [[-5.0, 5.0], [-5.0, 5.0]])
-        evolution = Evolution(optimize_me, pars, weightList=[-1.0], POP_INIT_SIZE=8, POP_SIZE=8, NGEN=2)
+        evolution = Evolution(
+            optimize_me,
+            pars,
+            weightList=[-1.0],
+            POP_INIT_SIZE=8,
+            POP_SIZE=8,
+            NGEN=2,
+            filename="test_circle_optimization.hdf",
+        )
         evolution.run(verbose=False)
 
         end = time.time()
@@ -75,7 +83,14 @@ class TestALNEvolution(unittest.TestCase):
 
         pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
         evolution = Evolution(
-            evaluateSimulation, pars, model=alnModel, weightList=[-1.0], POP_INIT_SIZE=6, POP_SIZE=4, NGEN=3,
+            evaluateSimulation,
+            pars,
+            model=alnModel,
+            weightList=[-1.0],
+            POP_INIT_SIZE=6,
+            POP_SIZE=4,
+            NGEN=3,
+            filename="test_single_node.hdf",
         )
         evolution.run(verbose=False)
         evolution.info(plot=False)

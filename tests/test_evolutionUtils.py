@@ -22,7 +22,15 @@ class TestEvolutinUtils(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean", "b"], [[0.0, 3.0], [0.0, 3.0], [0.0, 100.0]])
-        evolution = Evolution(lambda v: v, pars, weightList=[1.0], POP_INIT_SIZE=4, POP_SIZE=4, NGEN=2)
+        evolution = Evolution(
+            lambda v: v,
+            pars,
+            weightList=[1.0],
+            POP_INIT_SIZE=4,
+            POP_SIZE=4,
+            NGEN=2,
+            filename="TestEvolutinUtils.hdf",
+        )
 
         cls.evolution = evolution
 
@@ -64,7 +72,7 @@ class TestEvolutionCrossover(unittest.TestCase):
             return (1,), {}
 
         pars = ParameterSpace(["x"], [[0.0, 4.0]])
-        evolution = Evolution(evalFunction=evo, parameterSpace=pars)
+        evolution = Evolution(evalFunction=evo, parameterSpace=pars, filename="TestEvolutionCrossover.hdf")
         evolution.runInitial()
         init_pop = evolution.pop.copy()
 
