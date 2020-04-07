@@ -88,7 +88,6 @@ def plotExplorationResults(
 
         if one_figure == False:
             cbar = plt.colorbar(im, ax=ax, orientation="vertical", label=plot_key_label)
-
         else:
             # # below is code for one colorbar only but it only displays the values of
             # # the last plot so it's useless
@@ -124,6 +123,7 @@ def processExplorationResults(results, dfResults, **kwargs):
     """Process results from the exploration. 
     """
 
+    #
     # if bold_transient is given as an argument
     if "bold_transient" in kwargs:
         bold_transient = kwargs["bold_transient"]
