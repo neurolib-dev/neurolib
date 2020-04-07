@@ -116,6 +116,10 @@ class Model:
         # length of the initial condition
         self.startindt = self.maxDelay + 1
 
+        # force bold if params['bold'] == True
+        if "bold" in self.params:
+            if self.params["bold"]:
+                initializeBold = True
         # set up the bold model, if it didn't happen yet
         if initializeBold and not self.boldInitialized:
             self.initializeBold()
@@ -200,6 +204,11 @@ class Model:
         # run integration
         t, *variables = self.integration(self.params)
         self.storeOutputsAndStates(t, variables, append=append_outputs)
+
+        # force bold if params['bold'] == True
+        if "bold" in self.params:
+            if self.params["bold"]:
+                simulate_bold = True
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
