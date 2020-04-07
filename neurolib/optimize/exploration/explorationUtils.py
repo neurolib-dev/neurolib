@@ -135,7 +135,7 @@ def processExplorationResults(results, dfResults, **kwargs):
     # cycle through all results
     for i in tqdm.tqdm(dfResults.index):
         # if the result has an output
-        if "outputs.t" in results[i].keys():
+        if "t" in results[i].keys() or "outputs.t" in results[i].keys():
             # if a dataset was passed as an argument
             if "ds" in kwargs:
                 ds = kwargs["ds"]
@@ -145,10 +145,7 @@ def processExplorationResults(results, dfResults, **kwargs):
                 dfResults.loc[i, "fc"] = np.mean(
                     [
                         func.matrix_correlation(
-                            func.fc(
-                                results[i]["outputs.BOLD.BOLD"][:, results[i]["outputs.BOLD.t_BOLD"] > bold_transient]
-                            ),
-                            fc,
+                            func.fc(results[i]["BOLD"][:, results[i]["t_BOLD"] > bold_transient]), fc,
                         )
                         for fc in ds.FCs
                     ]
@@ -173,13 +170,13 @@ def processExplorationResults(results, dfResults, **kwargs):
 
                 # calculate the maximum of the output
                 dfResults.loc[i, "max_" + output_name] = np.max(
-                    results[i]["outputs." + output_name][:, -int(last_ms / model.params["dt"]) :]
+                    results[i][output_name][:, -int(last_ms / model.params["dt"]) :]
                 )
 
                 # calculate the amplitude of the output
                 dfResults.loc[i, "amp_" + output_name] = np.max(
-                    results[i]["outputs." + output_name][:, -int(last_ms / model.params["dt"]) :]
-                ) - np.min(results[i]["outputs." + output_name][:, -int(last_ms / model.params["dt"]) :])
+                    results[i][output_name][:, -int(last_ms / model.params["dt"]) :]
+                ) - np.min(results[i][output_name][:, -int(last_ms / model.params["dt"]) :])
     return dfResults
 
 
