@@ -10,12 +10,12 @@ python:
 
 install:
   - pip install -r requirements.txt
-  - pip install pytest treon flake8 codecov pytest-cov wheel setuptools jupyterlab matplotlib seaborn mne
+  - pip install pytest pytest-xdist treon flake8 codecov pytest-cov wheel setuptools jupyterlab matplotlib seaborn mne
   - python setup.py sdist bdist_wheel
   - pip install --upgrade dist/*
 
 script:
-  - PYTHONPATH=. pytest --durations=0 --cov=neurolib tests
+  - PYTHONPATH=. pytest --durations=0 --cov=neurolib -n 4 tests
   - flake8 . --max-line-length=1000 --exit-zero
 
 after_success:
