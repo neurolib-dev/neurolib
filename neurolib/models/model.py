@@ -52,12 +52,10 @@ class Model:
         # function to transform model state before passing it to the bold model
         if not hasattr(self, "boldInputTransform"):
             self.boldInputTransform = None
-        if self.boldInputTransform:
-            logging.info(f"{self.name}: BOLD input transformed by {self.boldInputTransform}")
 
         self.boldModel = bold.BOLDModel(self.params["N"], self.params["dt"])
         self.boldInitialized = True
-        logging.info(f"{self.name}: BOLD model initialized.")
+        # logging.info(f"{self.name}: BOLD model initialized.")
 
     def simulateBold(self, t, variables, append=False):
         """Gets the default output of the model and simulates the BOLD model. 
@@ -87,10 +85,6 @@ class Model:
 
                         # simulate bold model
                         self.boldModel.run(bold_input, append=append)
-
-                        # check if there was a problem with the simulated data
-                        if np.isnan(np.sum(self.boldModel.BOLD)):
-                            logging.warn("nan in BOLD output!")
 
                         t_BOLD = self.boldModel.t_BOLD
                         BOLD = self.boldModel.BOLD
@@ -169,7 +163,7 @@ class Model:
             self.integrate(append_outputs=append, simulate_bold=bold)
             if continue_run:
                 self.setInitialValuesToLastState()
-            return
+
         else:
             if chunksize is None:
                 chunksize = int(2000 / self.params["dt"])
@@ -179,7 +173,23 @@ class Model:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
             self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
-            return
+
+        # check if there was a problem with the simulated data
+        self.checkOutputs()
+
+    def checkOutputs(self):
+        # check nans in output
+        if np.isnan(np.sum(self.output)):
+            logging.error("nan in model output!")
+        else:
+            EXPLOSION_THRESHOLD = 1e20
+            if np.sum(self.output > EXPLOSION_THRESHOLD) > 0:
+                logging.error("nan in model output!")
+
+        # check nans in BOLD
+        if "BOLD" in self.outputs:
+            if np.isnan(np.sum(self.outputs.BOLD.BOLD)):
+                logging.error("nan in BOLD output!")
 
     def integrate(self, append_outputs=False, simulate_bold=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
@@ -265,16 +275,21 @@ class Model:
                 # we set the next initial condition to the last state
                 self.params[iv] = self.state[sv][:, -self.startindt :]
 
-    def randomICs(self):
-        """Generates a new set of random initial conditions for the model.
-        TODO: Each variable should be able to have a fixed range from which
-        the random value is drawn.
+    def randomICs(self, min=0, max=1):
+        """Generates a new set of uniformly-distributed random initial conditions for the model.
+        
+        TODO: All parameters are drawn from the same distribution / range. Allow for independent ranges.
+
+        :param min: Minium of uniform distribution
+        :type min: float
+        :param max: Maximum of uniform distribution
+        :type max: float
         """
         for iv in self.init_vars:
             if self.params[iv].ndim == 1:
-                self.params[iv] = np.random.uniform(0, 1, (self.params["N"]))
+                self.params[iv] = np.random.uniform(min, max, (self.params["N"]))
             elif self.params[iv].ndim == 2:
-                self.params[iv] = np.random.uniform(0, 1, (self.params["N"], 1))
+                self.params[iv] = np.random.uniform(min, max, (self.params["N"], 1))
 
     def setInputs(self, inputs):
         """Take inputs from a list and store it in the appropriate model parameter for external input.
