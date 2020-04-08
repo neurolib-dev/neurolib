@@ -78,3 +78,13 @@ class TestExplorationUtils(unittest.TestCase):
             plot_key_label="testlabel",
             one_figure=True,
         )
+
+        eu.plotExplorationResults(
+            self.search.dfResults,
+            par1=["x_ext", "$x_{ext}$"],
+            par2=["K_gl", "$K$"],
+            plot_key="max_" + self.model.default_output,
+            by_label=["coupling"],
+            plot_key_label="testlabel",
+            one_figure=False,
+        )
