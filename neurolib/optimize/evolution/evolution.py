@@ -31,7 +31,7 @@ class Evolution:
         parameterSpace,
         weightList=None,
         model=None,
-        hdf_filename="evolution.hdf",
+        filename="evolution.hdf",
         ncores=None,
         POP_INIT_SIZE=100,
         POP_SIZE=20,
@@ -50,8 +50,8 @@ class Evolution:
         :type weightList: list[float], optional
         :param model: Model to simulate, defaults to None
         :type model: `neurolib.models.model.Model`, optional
-        :param hdf_filename: HDF file to store all results in, defaults to "evolution.hdf"
-        :type hdf_filename: str, optional
+        :param filename: HDF file to store all results in, defaults to "evolution.hdf"
+        :type filename: str, optional
         :param ncores: Number of cores to simulate on (max cores default), defaults to None
         :type ncores: int, optional
         :param POP_INIT_SIZE: Size of first population to initialize evolution with (random, uniformly distributed), defaults to 100
@@ -75,7 +75,7 @@ class Evolution:
             weightList = [1.0]
 
         trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
-        self.HDF_FILE = os.path.join(paths.HDF_DIR, hdf_filename)
+        self.HDF_FILE = os.path.join(paths.HDF_DIR, filename)
         trajectoryFileName = self.HDF_FILE
 
         logging.info("Storing data to: {}".format(trajectoryFileName))
@@ -613,4 +613,3 @@ class Evolution:
             gens = np.add(gens, 1)
 
         return gens, all_scores
-

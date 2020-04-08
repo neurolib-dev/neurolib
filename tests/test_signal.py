@@ -33,13 +33,15 @@ class TestSignal(unittest.TestCase):
         aln.run()
         # init RatesSignal
         cls.signal = RatesSignal.from_model_output(aln)
-        os.makedirs(cls.TEST_FOLDER)
+        # os.makedirs(cls.TEST_FOLDER)
 
-    @classmethod
-    def tearDownClass(cls):
-        rmtree(cls.TEST_FOLDER)
+    # @classmethod
+    # def tearDownClass(cls):
+    #     rmtree(cls.TEST_FOLDER)
 
     def test_load_save(self):
+        # create temp folder
+        os.makedirs(self.TEST_FOLDER)
         # save
         filename = os.path.join(self.TEST_FOLDER, "temp")
         # do operation so we also test saving and loading of preprocessing steps
@@ -54,6 +56,8 @@ class TestSignal(unittest.TestCase):
         self.signal.save(filename)
         # load
         loaded = RatesSignal.from_file(filename)
+        # remove folder
+        rmtree(self.TEST_FOLDER)
         # compare they are equal
         self.assertEqual(self.signal, loaded)
 
