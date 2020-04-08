@@ -3,51 +3,91 @@ import time
 import unittest
 
 import numpy as np
+import os
 
 from neurolib.models.aln import ALNModel
+from neurolib.models.fhn import FHNModel
+
 from neurolib.optimize.exploration import BoxSearch
 from neurolib.utils.parameterSpace import ParameterSpace
 import neurolib.utils.functions as func
+from neurolib.utils.loadData import Dataset
 
 import neurolib.optimize.exploration.explorationUtils as eu
+import neurolib.utils.pypetUtils as pu
+import neurolib.utils.paths as paths
 
 
-class TestALNExploration(unittest.TestCase):
+class TestExplorationSingleNode(unittest.TestCase):
     """
-    ALN model parameter exploration with pypet.
+    ALN single node exploration.
     """
 
     def test_single_node(self):
-        logging.info("\t > BoxSearch: Testing ALN single node ...")
         start = time.time()
 
-        aln = ALNModel()
+        model = ALNModel()
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
-        search = BoxSearch(aln, parameters, filename="test_single_nodes.hdf")
+        search = BoxSearch(model, parameters, filename="test_single_nodes.hdf")
         search.run()
         search.loadResults()
 
         for i in search.dfResults.index:
             search.dfResults.loc[i, "max_r"] = np.max(
-                search.results[i]["rates_exc"][:, -int(1000 / aln.params["dt"]) :]
+                search.results[i]["rates_exc"][:, -int(1000 / model.params["dt"]) :]
             )
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
-    def test_brain_network(self):
-        from neurolib.utils.loadData import Dataset
 
+class TestExplorationBrainNetwork(unittest.TestCase):
+    """
+    FHN brain network simulation with BOLD simulation.
+    """
+
+    def test_fhn_brain_network_exploration(self):
         ds = Dataset("hcp")
-        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
+        model = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
+        model.params.duration = 10 * 1000  # ms
+        model.params.dt = 0.05
+        model.params.bold = True
+        parameters = ParameterSpace(
+            {
+                "x_ext": [np.ones((model.params["N"],)) * a for a in np.linspace(0, 2, 2)],
+                "K_gl": np.linspace(0, 2, 2),
+                "coupling": ["additive", "diffusive"],
+            },
+            kind="grid",
+        )
+        search = BoxSearch(model=model, parameterSpace=parameters, filename="test_fhn_brain_network_exploration.hdf")
+
+        search.run(chunkwise=True, bold=True)
+
+        pu.getTrajectorynamesInFile(os.path.join(paths.HDF_DIR, "test_fhn_brain_network_exploration.hdf"))
+        search.loadDfResults()
+        search.getRun(0).keys()
+        search.loadResults()
+
+
+class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
+    """
+    ALN brain network simulation with custom evaluation function.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # def test_brain_network_postprocessing(self):
+        ds = Dataset("hcp")
+        model = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
         # Resting state fits
-        aln.params["mue_ext_mean"] = 1.57
-        aln.params["mui_ext_mean"] = 1.6
-        aln.params["sigma_ou"] = 0.09
-        aln.params["b"] = 5.0
-        aln.params["signalV"] = 2
-        aln.params["dt"] = 0.2
-        aln.params["duration"] = 0.2 * 60 * 1000
+        model.params["mue_ext_mean"] = 1.57
+        model.params["mui_ext_mean"] = 1.6
+        model.params["sigma_ou"] = 0.09
+        model.params["b"] = 5.0
+        model.params["signalV"] = 2
+        model.params["dt"] = 0.2
+        model.params["duration"] = 0.2 * 60 * 1000
 
         # multi stage evaluation function
         def evaluateSimulation(traj):
@@ -64,20 +104,21 @@ class TestALNExploration(unittest.TestCase):
         # define and run exploration
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
         search = BoxSearch(
-            evalFunction=evaluateSimulation, model=aln, parameterSpace=parameters, filename="test_brain_network.hdf"
+            evalFunction=evaluateSimulation, model=model, parameterSpace=parameters, filename="test_brain_network.hdf"
         )
         search.run()
+        cls.model = model
+        cls.search = search
+        cls.ds = ds
 
-        # load results and process them
-        search.loadResults()
-        search.getRun(0)
+    def test_getRun(self):
+        self.search.getRun(0)
 
-        # exploration utils
-        search.dfResults = eu.processExplorationResults(
-            search.results, search.dfResults, model=aln, ds=ds, bold_transient=0
-        )
+    def test_loadDfResults(self):
+        self.search.loadDfResults()
 
-        eu.findCloseResults(search.dfResults, dist=1, mue_ext_mean=3.0, mui_ext_mean=1.0)
+    def test_loadResults(self):
+        self.search.loadResults()
 
 
 class TestCustomParameterExploration(unittest.TestCase):
