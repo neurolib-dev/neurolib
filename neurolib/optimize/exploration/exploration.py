@@ -61,8 +61,7 @@ class BoxSearch:
         # todo: use random ICs for every explored point or rather reuse the ones that are generated at model initialization
         self.useRandomICs = False
 
-        if filename is None:
-            filename = "exploration.hdf"
+        filename = filename or "exploration.hdf"
         self.filename = filename
 
         self.saveAllModelOutputs = saveAllModelOutputs
