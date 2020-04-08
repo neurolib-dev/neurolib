@@ -10,6 +10,15 @@ from neurolib.utils.loadData import Dataset
 
 import neurolib.optimize.exploration.explorationUtils as eu
 
+import random
+import string
+
+
+def randomString(stringLength=10):
+    """Generate a random string of fixed length """
+    letters = string.ascii_lowercase
+    return "".join(random.choice(letters) for i in range(stringLength))
+
 
 class TestExplorationUtils(unittest.TestCase):
     """
@@ -31,7 +40,9 @@ class TestExplorationUtils(unittest.TestCase):
             },
             kind="grid",
         )
-        search = BoxSearch(model=model, parameterSpace=parameters, filename="TestExplorationUtils.hdf")
+        search = BoxSearch(
+            model=model, parameterSpace=parameters, filename=f"test_exploration_utils_{randomString(20)}.hdf"
+        )
 
         search.run(chunkwise=True, bold=True)
 
@@ -53,11 +64,15 @@ class TestExplorationUtils(unittest.TestCase):
 
     @pytest.mark.skipif(sys.platform == "darwin", reason="plotting does not work on macOS")
     def test_plotExplorationResults(self):
+        self.search.dfResults = eu.processExplorationResults(
+            self.search.results, self.search.dfResults, model=self.model, ds=self.ds, bold_transient=0
+        )
+
         eu.plotExplorationResults(
             self.search.dfResults,
             par1=["x_ext", "$x_{ext}$"],
             par2=["K_gl", "$K$"],
-            plot_key="max_x",
+            plot_key="max_" + self.model.default_output,
             by=["coupling"],
             by_label=["coupling"],
             plot_key_label="testlabel",
