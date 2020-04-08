@@ -10,4 +10,5 @@ coverage:
 	- "neurolib/models/hopf/timeIntegration.py" 
 	- "neurolib/models/wc/timeIntegration.py" 
 	- "neurolib/models/thalamus/timeIntegration.py" 
+	- "neurolib/models/bold/timeIntegration.py" 
 	- "neurolib/utils/devUtils.py"
