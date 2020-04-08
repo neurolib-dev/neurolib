@@ -17,6 +17,13 @@ import neurolib.optimize.exploration.explorationUtils as eu
 import neurolib.utils.pypetUtils as pu
 import neurolib.utils.paths as paths
 
+import string
+import random
+def randomString(stringLength=10):
+    """Generate a random string of fixed length """
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(stringLength))
+
 
 class TestExplorationSingleNode(unittest.TestCase):
     """
@@ -104,7 +111,7 @@ class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
         # define and run exploration
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
         search = BoxSearch(
-            evalFunction=evaluateSimulation, model=model, parameterSpace=parameters, filename="test_brain_network.hdf"
+            evalFunction=evaluateSimulation, model=model, parameterSpace=parameters, filename=f"test_brain_postprocessing_{randomString(20)}.hdf"
         )
         search.run()
         cls.model = model
