@@ -3,6 +3,7 @@ import datetime
 import os
 import logging
 import pathlib
+import copy
 
 import h5py
 import pypet
@@ -20,7 +21,9 @@ class BoxSearch:
     Paremter box search for a given model and a range of parameters.
     """
 
-    def __init__(self, model=None, parameterSpace=None, evalFunction=None):
+    def __init__(
+        self, model=None, parameterSpace=None, evalFunction=None, filename=None, saveAllModelOutputs=False,
+    ):
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the 
         evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current 
@@ -35,6 +38,10 @@ class BoxSearch:
         :type parameterSpace: `neurolib.utils.parameterSpace.ParameterSpace`, optional
         :param evalFunction: Evaluation function to call for each run., defaults to None
         :type evalFunction: function, optional
+        :param filename: HDF5 storage file name, if left empty, defaults to ``exploration.hdf``
+        :type filename: str
+        :param saveAllModelOutputs: If True, save all outputs of model, else only default output of the model will be saved. Note: if saveAllModelOutputs==False and the model's parameter model.params['bold']==rue, then BOLD output will be saved as well, defaults to False
+        :type saveAllModelOutputs: bool
         """
         self.model = model
         if evalFunction is None and model is not None:
@@ -54,25 +61,30 @@ class BoxSearch:
         # todo: use random ICs for every explored point or rather reuse the ones that are generated at model initialization
         self.useRandomICs = False
 
+        filename = filename or "exploration.hdf"
+        self.filename = filename
+
+        self.saveAllModelOutputs = saveAllModelOutputs
+
         # bool to check whether pypet was initialized properly
         self.initialized = False
-        self.initializeExploration()
+        self.initializeExploration(self.filename)
 
-    def initializeExploration(self, fileName="exploration.hdf"):
+    def initializeExploration(self, filename="exploration.hdf"):
         """Initialize the pypet environment
         
-        :param fileName: hdf filename to store the results in , defaults to "exploration.hdf"
-        :type fileName: str, optional
+        :param filename: hdf filename to store the results in , defaults to "exploration.hdf"
+        :type filename: str, optional
         """
         # create hdf file path if it does not exist yet
         pathlib.Path(paths.HDF_DIR).mkdir(parents=True, exist_ok=True)
 
         # set default hdf filename
-        self.HDF_FILE = os.path.join(paths.HDF_DIR, fileName)
+        self.HDF_FILE = os.path.join(paths.HDF_DIR, filename)
 
         # initialize pypet environment
         trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
-        trajectoryFileName = self.HDF_FILE
+        trajectoryfilename = self.HDF_FILE
 
         nprocesses = multiprocessing.cpu_count()
         logging.info("Number of processes: {}".format(nprocesses))
@@ -80,12 +92,14 @@ class BoxSearch:
         # set up the pypet environment
         env = pypet.Environment(
             trajectory=trajectoryName,
-            filename=trajectoryFileName,
+            filename=trajectoryfilename,
             multiproc=True,
             ncores=nprocesses,
             complevel=9,
-            log_stdout=False,
-            log_multiproc=False,
+            # log_stdout=False,
+            # log_config=None,
+            # report_progress=True,
+            # log_multiproc=False,
         )
         self.env = env
         # Get the trajectory from the environment
@@ -180,10 +194,30 @@ class BoxSearch:
         runParams = traj.parameters.f_to_dict(short_names=True, fast_access=True)
         # set the parameters for the model
         self.model.params.update(runParams)
+
+        # get kwargs from Exploration.run()
+        runKwargs = {}
+        if hasattr(self, "runKwargs"):
+            runKwargs = self.runKwargs
         # run it
-        self.model.run()
-        # save all results from exploration
-        self.saveOutputsToPypet(self.model.outputs, traj)
+        self.model.run(**runKwargs)
+        # save outputs
+        self.saveModelOutputsToPypet(traj)
+
+    def saveModelOutputsToPypet(self, traj):
+        # save all data to the pypet trajectory
+        if self.saveAllModelOutputs:
+            # save all results from exploration
+            self.saveOutputsToPypet(self.model.outputs, traj)
+        else:
+            # save only the default output
+            self.saveOutputsToPypet({self.model.default_output: self.model.output, "t": self.model.outputs["t"]}, traj)
+            # save BOLD output
+            # if "bold" in self.model.params:
+            #     if self.model.params["bold"] and "BOLD" in self.model.outputs:
+            #         self.saveOutputsToPypet(self.model.outputs["BOLD"], traj)
+            if "BOLD" in self.model.outputs:
+                self.saveOutputsToPypet(self.model.outputs["BOLD"], traj)
 
     def getParametersFromTraj(self, traj):
         """Returns the parameters of the current run as a (dot.able) dictionary
@@ -207,28 +241,65 @@ class BoxSearch:
         model.params.update(runParams)
         return model
 
-    def run(self):
+    def run(self, **kwargs):
         """
         Call this function to run the exploration
         """
+        self.runKwargs = kwargs
         assert self.initialized, "Pypet environment not initialized yet."
         self.env.run(self.evalFunction)
 
-    def loadResults(self, filename=None, trajectoryName=None):
+    def loadResults(self, filename=None, trajectoryName=None, pypetShortNames=True):
         """Load results from a hdf file of a previous simulation.
         
-        :param filename: hdf filename in which results are stored, defaults to None
+        :param filename: hdf file name in which results are stored, defaults to None
         :type filename: str, optional
-        :param trajectoryName: name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
+        :param trajectoryName: Name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
+        :type trajectoryName: str, optional
+        :param pypetShortNames: Use pypet short names as keys for the results dictionary. Use if you are experiencing errors due to natural naming collisions.
+        :type pypetShortNames: boolean
+        """
+
+        self.loadDfResults(filename, trajectoryName)
+
+        # make a list of dictionaries with results
+        logging.info("Creating results dictionary ...")
+        self.results = []
+        for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
+            self.pypetTrajectory.results[rInd].f_load()
+            result = self.pypetTrajectory.results[rInd].f_to_dict(fast_access=True, short_names=pypetShortNames)
+            result = dotdict(result)
+            self.pypetTrajectory.results[rInd].f_remove()
+            self.results.append(result)
+
+        # Postprocess result keys if pypet short names aren't used
+        # Before: results.run_00000001.outputs.rates_inh
+        # After: outputs.rates_inh
+        if pypetShortNames == False:
+            for i, r in enumerate(self.results):
+                new_dict = dotdict({})
+                for key, value in r.items():
+                    new_key = "".join(key.split(".", 2)[2:])
+                    new_dict[new_key] = r[key]
+                self.results[i] = copy.deepcopy(new_dict)
+
+        logging.info("All results loaded.")
+
+    def loadDfResults(self, filename=None, trajectoryName=None):
+        """Load results from a hdf file of a previous simulation.
+        
+        :param filename: hdf file name in which results are stored, defaults to None
+        :type filename: str, optional
+        :param trajectoryName: Name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
         :type trajectoryName: str, optional
         """
-        # chose
+        # chose HDF file to load
         if filename == None:
             filename = self.HDF_FILE
-        trajLoaded = pu.loadPypetTrajectory(filename, trajectoryName)
-        self.nResults = len(trajLoaded.f_get_run_names())
+        self.pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
+        self.nResults = len(self.pypetTrajectory.f_get_run_names())
 
-        exploredParameters = trajLoaded.f_get_explored_parameters()
+        exploredParameters = self.pypetTrajectory.f_get_explored_parameters()
 
         # create pandas dataframe of all runs with parameters as keys
         logging.info("Creating pandas dataframe ...")
@@ -237,12 +308,28 @@ class BoxSearch:
         for nicep, p in zip(niceParKeys, exploredParameters.keys()):
             self.dfResults[nicep] = exploredParameters[p].f_get_range()
 
-        # make a list of dictionaries with results
-        logging.info("Creating results dictionary ...")
-        self.results = []
-        for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
-            trajLoaded.results[rInd].f_load()
-            result = trajLoaded.results[rInd].f_to_dict(fast_access=True, short_names=True)
-            trajLoaded.results[rInd].f_remove()
-            self.results.append(result)
-        logging.info("All results loaded.")
+    def getRun(self, runId, filename=None, trajectoryName=None, pypetShortNames=True):
+        """Load the simulated data of a run and its parameters from a pypetTrajectory.
+
+        :param runId: ID of the run
+        :type runId: int
+
+        :return: Dictionary with simulated data and parameters of the run.
+        :type return: dict        
+        """
+        # chose HDF file to load
+        if filename == None:
+            filename = self.HDF_FILE
+
+        pypetTrajectory = None
+        if hasattr(self, "pypetTrajectory"):
+            pypetTrajectory = self.pypetTrajectory
+
+        # if there was no pypetTrajectory loaded before
+        if pypetTrajectory is None:
+            # chose HDF file to load
+            if filename == None:
+                filename = self.HDF_FILE
+            pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
+
+        return pu.getRun(runId, pypetTrajectory, pypetShortNames=pypetShortNames)

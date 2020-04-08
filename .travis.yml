@@ -9,14 +9,16 @@ python:
   - "3.8"
 
 install:
+  - pip install --upgrade pip setuptools wheel
   - pip install -r requirements.txt
-  - pip install pytest treon flake8 codecov pytest-cov wheel setuptools jupyterlab matplotlib seaborn mne
+  - pip install --upgrade pytest
+  - pip install treon flake8 codecov pytest-cov wheel setuptools jupyterlab matplotlib seaborn mne
   - python setup.py sdist bdist_wheel
   - pip install --upgrade dist/*
 
 script:
   - PYTHONPATH=. pytest --durations=0 --cov=neurolib tests
-  - flake8 . --max-line-length=1000 --exit-zero
+  #- flake8 . --max-line-length=120 --exit-zero
 
 after_success:
   - codecov
