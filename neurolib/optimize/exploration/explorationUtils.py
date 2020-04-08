@@ -175,8 +175,9 @@ def processExplorationResults(results, dfResults, **kwargs):
 
                 # calculate the amplitude of the output
                 dfResults.loc[i, "amp_" + output_name] = np.max(
-                    results[i][output_name][:, -int(last_ms / model.params["dt"]) :]
-                ) - np.min(results[i][output_name][:, -int(last_ms / model.params["dt"]) :])
+                    np.max(results[i][output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
+                    - np.min(results[i][output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
+                )
     return dfResults
 
 
