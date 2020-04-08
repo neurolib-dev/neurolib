@@ -301,4 +301,8 @@ def timeIntegration_njit_elementwise(
         ds_er = ds_er + dt * d_ds_er
         ds_gr = ds_gr + dt * d_ds_gr
 
+    # kHz -> Hz for firing rates
+    Q_t *= 1000.0
+    Q_r *= 1000.0
+
     return t, V_t, V_r, Q_t, Q_r
