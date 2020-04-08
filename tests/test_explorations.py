@@ -19,10 +19,12 @@ import neurolib.utils.paths as paths
 
 import string
 import random
+
+
 def randomString(stringLength=10):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(stringLength))
+    return "".join(random.choice(letters) for i in range(stringLength))
 
 
 class TestExplorationSingleNode(unittest.TestCase):
@@ -73,7 +75,8 @@ class TestExplorationBrainNetwork(unittest.TestCase):
 
         pu.getTrajectorynamesInFile(os.path.join(paths.HDF_DIR, "test_fhn_brain_network_exploration.hdf"))
         search.loadDfResults()
-        search.getRun(0).keys()
+        search.getRun(0, pypetShortNames=True)
+        search.getRun(0, pypetShortNames=False)
         search.loadResults()
 
 
@@ -111,7 +114,10 @@ class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
         # define and run exploration
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
         search = BoxSearch(
-            evalFunction=evaluateSimulation, model=model, parameterSpace=parameters, filename=f"test_brain_postprocessing_{randomString(20)}.hdf"
+            evalFunction=evaluateSimulation,
+            model=model,
+            parameterSpace=parameters,
+            filename=f"test_brain_postprocessing_{randomString(20)}.hdf",
         )
         search.run()
         cls.model = model
