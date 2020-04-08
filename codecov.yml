@@ -4,4 +4,10 @@ coverage:
   range: "90...100"
   threshold: 3%
   ignore:
-    - "**/timeIntegration.py" 
+    - "neurolib/models/**/timeIntegration.py" 
+	- "neurolib/models/aln/timeIntegration.py" 
+	- "neurolib/models/fhn/timeIntegration.py" 
+	- "neurolib/models/hopf/timeIntegration.py" 
+	- "neurolib/models/wc/timeIntegration.py" 
+	- "neurolib/models/thalamus/timeIntegration.py" 
+	- "neurolib/utils/devUtils.py"
