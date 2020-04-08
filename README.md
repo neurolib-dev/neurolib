@@ -35,7 +35,7 @@
 
 Please reference the following paper if you use `neurolib` for your own research:
 
-**Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation ([ArXiv](https://arxiv.org/abs/1906.00676)).
+**Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation. PLOS Computational Biology ([ArXiv](https://arxiv.org/abs/1906.00676)).
 
 The figure below shows a schematic of how a brain network can be constructed:
 
