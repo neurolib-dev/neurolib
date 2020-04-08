@@ -260,20 +260,8 @@ class BoxSearch:
         :param pypetShortNames: Use pypet short names as keys for the results dictionary. Use if you are experiencing errors due to natural naming collisions.
         :type pypetShortNames: boolean
         """
-        # chose HDF file to load
-        if filename == None:
-            filename = self.HDF_FILE
-        self.pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
-        self.nResults = len(self.pypetTrajectory.f_get_run_names())
 
-        exploredParameters = self.pypetTrajectory.f_get_explored_parameters()
-
-        # create pandas dataframe of all runs with parameters as keys
-        logging.info("Creating pandas dataframe ...")
-        niceParKeys = [p.split(".")[-1] for p in exploredParameters.keys()]
-        self.dfResults = pd.DataFrame(columns=niceParKeys, dtype=object)
-        for nicep, p in zip(niceParKeys, exploredParameters.keys()):
-            self.dfResults[nicep] = exploredParameters[p].f_get_range()
+        self.loadDfResults(filename, trajectoryName)
 
         # make a list of dictionaries with results
         logging.info("Creating results dictionary ...")
@@ -297,6 +285,29 @@ class BoxSearch:
                 self.results[i] = copy.deepcopy(new_dict)
 
         logging.info("All results loaded.")
+
+    def loadDfResults(self, filename=None, trajectoryName=None):
+        """Load results from a hdf file of a previous simulation.
+        
+        :param filename: hdf file name in which results are stored, defaults to None
+        :type filename: str, optional
+        :param trajectoryName: Name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
+        :type trajectoryName: str, optional
+        """
+        # chose HDF file to load
+        if filename == None:
+            filename = self.HDF_FILE
+        self.pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
+        self.nResults = len(self.pypetTrajectory.f_get_run_names())
+
+        exploredParameters = self.pypetTrajectory.f_get_explored_parameters()
+
+        # create pandas dataframe of all runs with parameters as keys
+        logging.info("Creating pandas dataframe ...")
+        niceParKeys = [p.split(".")[-1] for p in exploredParameters.keys()]
+        self.dfResults = pd.DataFrame(columns=niceParKeys, dtype=object)
+        for nicep, p in zip(niceParKeys, exploredParameters.keys()):
+            self.dfResults[nicep] = exploredParameters[p].f_get_range()
 
     def getRun(self, runId, filename=None, trajectoryName=None, pypetShortNames=True):
         """Load the simulated data of a run and its parameters from a pypetTrajectory.
