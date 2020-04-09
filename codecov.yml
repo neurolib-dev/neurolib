@@ -2,7 +2,7 @@ coverage:
   precision: 2
   round: nearest
   range: "90...100"
-  threshold: 3%
+  threshold: 5%
   ignore:
     - "neurolib/models/**/timeIntegration.py" 
 	- "neurolib/models/aln/timeIntegration.py" 
@@ -12,3 +12,11 @@ coverage:
 	- "neurolib/models/thalamus/timeIntegration.py" 
 	- "neurolib/models/bold/timeIntegration.py" 
 	- "neurolib/utils/devUtils.py"
+  status:
+    project: # settings affecting project coverage
+      default:
+        target: auto # auto % coverage target
+        threshold: 5%  # allow for 5% reduction of coverage without failing
+
+    # do not run coverage on patch nor changes
+    patch: false
