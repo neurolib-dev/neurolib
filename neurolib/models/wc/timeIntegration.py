@@ -78,8 +78,8 @@ def timeIntegration(params):
     i_ext = params["i_ext"]
 
     # set of the state variable arrays
-    est = np.zeros((N, len(t)))
-    ist = np.zeros((N, len(t)))
+    exc = np.zeros((N, len(t)))
+    inh = np.zeros((N, len(t)))
 
     # ------------------------------------------------------------------------
     # Set initial values
@@ -99,11 +99,11 @@ def timeIntegration(params):
         np.random.seed(RNGseed)
 
     # Save the noise in the activity array to save memory
-    est[:, startind:] = np.random.standard_normal((N, len(t) - startind))
-    ist[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+    exc[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+    inh[:, startind:] = np.random.standard_normal((N, len(t) - startind))
 
-    est[:, :startind] = es_init
-    ist[:, :startind] = is_init
+    exc[:, :startind] = es_init
+    inh[:, :startind] = is_init
 
     noise_es = np.zeros((N,))
     noise_is = np.zeros((N,))
@@ -119,8 +119,8 @@ def timeIntegration(params):
         Cmat,
         K_gl,
         Dmat_ndt,
-        est,
-        ist,
+        exc,
+        inh,
         es_input_d,
         is_input_d,
         e_ext,
@@ -156,8 +156,8 @@ def timeIntegration_njit_elementwise(
     Cmat,
     K_gl,
     Dmat_ndt,
-    est,
-    ist,
+    exc,
+    inh,
     es_input_d,
     is_input_d,
     e_ext,
@@ -195,26 +195,26 @@ def timeIntegration_njit_elementwise(
         for no in range(N):
 
             # To save memory, noise is saved in the activity array
-            noise_es[no] = est[no, i]
-            noise_is[no] = ist[no, i]
+            noise_es[no] = exc[no, i]
+            noise_is[no] = inh[no, i]
 
             # delayed input to each node
             es_input_d[no] = 0
             is_input_d[no] = 0
 
             for l in range(N):
-                es_input_d[no] += K_gl * Cmat[no, l] * (est[l, i - Dmat_ndt[no, l] - 1])
+                es_input_d[no] += K_gl * Cmat[no, l] * (exc[l, i - Dmat_ndt[no, l] - 1])
 
             # Wilson-Cowan model
             e_rhs = (
                 1
                 / tau_e
                 * (
-                    -est[no, i - 1]
-                    + (1 - est[no, i - 1])
+                    -exc[no, i - 1]
+                    + (1 - exc[no, i - 1])
                     * S_E(
-                        c_ee * est[no, i - 1]  # input from within the excitatory population
-                        - c_ie * ist[no, i - 1]  # input from the inhibitory population
+                        c_ee * exc[no, i - 1]  # input from within the excitatory population
+                        - c_ie * inh[no, i - 1]  # input from the inhibitory population
                         + es_input_d[no]  # input from other nodes
                         + e_ext[no]
                     )  # external input
@@ -225,11 +225,11 @@ def timeIntegration_njit_elementwise(
                 1
                 / tau_i
                 * (
-                    -ist[no, i - 1]
-                    + (1 - ist[no, i - 1])
+                    -inh[no, i - 1]
+                    + (1 - inh[no, i - 1])
                     * S_I(
-                        c_ei * est[no, i - 1]  # input from the excitatori population
-                        - c_ii * ist[no, i - 1]  # input from within the inhibitori population
+                        c_ei * exc[no, i - 1]  # input from the excitatori population
+                        - c_ii * inh[no, i - 1]  # input from within the inhibitori population
                         + es_input_d[no]  # input from other nodes
                         + i_ext[no]
                     )  # external input
@@ -238,11 +238,11 @@ def timeIntegration_njit_elementwise(
             )
 
             # Euler integration
-            est[no, i] = est[no, i - 1] + dt * e_rhs
-            ist[no, i] = ist[no, i - 1] + dt * i_rhs
+            exc[no, i] = exc[no, i - 1] + dt * e_rhs
+            inh[no, i] = inh[no, i - 1] + dt * i_rhs
 
             # Ornstein-Uhlenbeck process
             e_ou[no] = e_ou[no] + (e_ou_mean - e_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_es[no]  # mV/ms
             i_ou[no] = i_ou[no] + (i_ou_mean - i_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_is[no]  # mV/ms
 
-    return t, est, ist, e_ou, i_ou
+    return t, exc, inh, e_ou, i_ou
