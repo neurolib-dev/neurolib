@@ -36,7 +36,7 @@ class BOLDModel:
         self.V_BOLD = np.ones((N,))
         # Blood volume
 
-    def run(self, activity):
+    def run(self, activity, append=False):
         """Runs the Balloon-Windkessel BOLD simulation.
 
         Parameters:
@@ -44,19 +44,7 @@ class BOLDModel:
         
         :param activity: Neuronal firing rate in Hz
         :type activity: numpy.ndarray
-        :param normalize: Normalize input to generate sensible amplitudes for BOLD model input, defaults to False
-        :type normalize: bool, optional
-        :param normalize_max: Maximum of input after normalization, corresponds to maximal firing rate in Hz. The minimum will be normalized to 0.
-        :type normalize_max: float
         """
-        if self.normalize_input:
-            assert isinstance(self.normalize_max, (float, int)), "normalize_max must be a scalar."
-            assert self.normalize_max > 0, "normalize_max must be greater than 0."
-            # dermine the minimum and the maxmimum of the input
-            min_input = np.min(activity)
-            max_input = np.max(activity)
-            # rescale activity to range [0, normalize_max]
-            activity = (activity - min_input) / (max_input - min_input) * self.normalize_max
 
         # Compute the BOLD signal for the chunk
         BOLD_chunk, self.X_BOLD, self.F_BOLD, self.Q_BOLD, self.V_BOLD = simulateBOLD(
@@ -80,11 +68,17 @@ class BOLDModel:
         )
 
         if self.BOLD.shape[1] == 0:
+            # add new data
             self.t_BOLD = t_BOLD_resampled
             self.BOLD = BOLD_resampled
-        else:
+        elif append is True:
+            # append new data to old data
             self.t_BOLD = np.hstack((self.t_BOLD, t_BOLD_resampled))
             self.BOLD = np.hstack((self.BOLD, BOLD_resampled))
+        else:
+            # overwrite old data
+            self.t_BOLD = t_BOLD_resampled
+            self.BOLD = BOLD_resampled
 
         self.BOLD_chunk = BOLD_resampled
 

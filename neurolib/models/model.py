@@ -8,14 +8,13 @@ from ..utils.collections import dotdict
 
 
 class Model:
-    """The Model superclass manages inputs and outputs of all models.
+    """The Model superclass runs simulations and manages inputs and outputs of all models.
     """
 
-    def __init__(
-        self, integration, params, bold=False,
-    ):
-        if self.name is not None:
-            assert isinstance(self.name, str), f"Model name is not a string."
+    def __init__(self, integration, params):
+        if hasattr(self, "name"):
+            if self.name is not None:
+                assert isinstance(self.name, str), f"Model name is not a string."
 
         assert integration is not None, "Model integration function not given."
         self.integration = integration
@@ -32,140 +31,190 @@ class Model:
         assert hasattr(
             self, "default_output"
         ), f"Model {self.name} needs to define a default output variable in `default_output`."
+
         assert isinstance(self.default_output, str), "`default_output` must be a string."
 
         # create output and state dictionary
         self.outputs = dotdict({})
         self.state = dotdict({})
-        self.max_delay = None
-        self.initialize_run()
+        self.maxDelay = None
+        self.initializeRun()
 
-        # set up bold model
-        self.bold_initialized = False
-        if not hasattr(self, "normalize_bold_input"):
-            self.normalize_bold_input = False
-        if not hasattr(self, "normalize_bold_input_max"):
-            self.normalize_bold_input_max = 50
-
-        # bold initialization at model init
-        # if not initialized yet, it will be done when run(bold=True) is called
-        # for the first time.
-        if bold:
-            self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
+        self.boldInitialized = False
 
         logging.info(f"{self.name}: Model initialized.")
 
-    def initialize_bold(self, normalize_bold_input, normalize_bold_input_max):
+    def initializeBold(self):
         """Initialize BOLD model.
-        
-        :param normalize_bold_input: whether or not to normalize the output of the model to a range between 0 and normalize_bold_input_max (in Hz)
-        :type normalize_bold_input: bool
-        :param normalize_bold_input_max: maximum value in Hz to normalize input to
-        :type normalize_bold_input_max: float
         """
-        self.normalize_bold_input = normalize_bold_input
-        self.normalize_bold_input_max = normalize_bold_input_max
-        if self.normalize_bold_input:
-            logging.info(f"{self.name}: BOLD input will be normalized to a maxmimum of {normalize_bold_input_max} Hz")
+        self.boldInitialized = False
 
-        self.boldModel = bold.BOLDModel(
-            self.params["N"], self.params["dt"], normalize_bold_input, normalize_bold_input_max
-        )
-        self.bold_initialized = True
-        logging.info(f"{self.name}: BOLD model initialized.")
+        # function to transform model state before passing it to the bold model
+        if not hasattr(self, "boldInputTransform"):
+            self.boldInputTransform = None
 
-    def simulate_bold(self):
+        self.boldModel = bold.BOLDModel(self.params["N"], self.params["dt"])
+        self.boldInitialized = True
+        # logging.info(f"{self.name}: BOLD model initialized.")
+
+    def simulateBold(self, t, variables, append=False):
         """Gets the default output of the model and simulates the BOLD model. 
         Adds the simulated BOLD signal to outputs.
         """
-        if self.bold_initialized:
-            self.boldModel.run(self.state[self.default_output])
-            t_BOLD = self.boldModel.t_BOLD
-            BOLD = self.boldModel.BOLD
-            self.setOutput("BOLD.t", t_BOLD)
-            self.setOutput("BOLD.BOLD", BOLD)
+        if self.boldInitialized:
+            # first we loop through all state variables
+            for svn, sv in zip(self.state_vars, variables):
+                # the default output is used as the input for the bold model
+                if svn == self.default_output:
+                    bold_input = sv[:, self.startindt :]
+                    # logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
+                    if bold_input.shape[1] >= self.boldModel.samplingRate_NDt:
+                        # only if the length of the output has a zero mod to the sampling rate,
+                        # the downsampled output from the boldModel can correctly appended to previous data
+                        # so: we are lazy here and simply disable appending in that case ...
+                        if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
+                            append = False
+                            logging.warn(
+                                f"Output size {bold_input.shape[1]} is not a multiple of BOLD sample length { self.boldModel.samplingRate_NDt}, will not append data."
+                            )
+                        logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+
+                        # transform bold input according to self.boldInputTransform
+                        if self.boldInputTransform:
+                            bold_input = self.boldInputTransform(bold_input)
+
+                        # simulate bold model
+                        self.boldModel.run(bold_input, append=append)
+
+                        t_BOLD = self.boldModel.t_BOLD
+                        BOLD = self.boldModel.BOLD
+                        self.setOutput("BOLD.t_BOLD", t_BOLD)
+                        self.setOutput("BOLD.BOLD", BOLD)
+                    else:
+                        logging.warn(
+                            f"Will not simulate BOLD if output {bold_input.shape[1]} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
+                        )
         else:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
 
-    def check_chunkwise(self):
+    def checkChunkwise(self):
         """Checks if the model fulfills requirements for chunkwise simulation. Throws errors if not.
         """
         assert self.state_vars is not None, "State variable names not given."
         assert self.init_vars is not None, "Initial value variable names not given."
         assert len(self.state_vars) == len(self.init_vars), "State variables are not same length as initial values."
 
-    def initialize_run(self, initialize_bold=False):
+    def initializeRun(self, initializeBold=False):
         """Initialization before each run.
 
-        :param initialize_bold: initialize BOLD model
-        :type initialize_bold: bool
+        :param initializeBold: initialize BOLD model
+        :type initializeBold: bool
         """
-        # NOTE: this if clause causes an error if signalV or Dmat has changed since
-        # last calulcateion of max_delay. For every run, we need to compute the new
-        # max delay (which is not very good for performance).
+        # get the maxDelay of the system
+        self.maxDelay = self.getMaxDelay()
 
-        # if self.max_delay is None:
-        self.max_delay = self.getMaxDelay()
-        if initialize_bold and not self.bold_initialized:
-            self.initialize_bold(self.normalize_bold_input, self.normalize_bold_input_max)
+        # length of the initial condition
+        self.startindt = self.maxDelay + 1
 
-    def run(self, inputs=None, onedt=False, chunkwise=False, chunksize=10000, bold=False, append_outputs=False):
-        """Main function to run a model. 
+        # force bold if params['bold'] == True
+        if "bold" in self.params:
+            if self.params["bold"]:
+                initializeBold = True
+        # set up the bold model, if it didn't happen yet
+        if initializeBold and not self.boldInitialized:
+            self.initializeBold()
+
+    def run(
+        self,
+        inputs=None,
+        chunkwise=False,
+        chunksize=None,
+        bold=False,
+        append=False,
+        append_outputs=None,
+        continue_run=False,
+    ):
+        """Main interfacing function to run a model. 
+        The model can be run in three different ways:
+        1) `model.run()` starts a new run.
+        2) `model.run(chunkwise=True)` runs the simulation in chunks of length `chunksize`.
+        3) `mode.run(continue_run=True)` continues the simulation of a previous run.
         
         :param inputs: list of inputs to the model, must have the same order as model.input_vars. Note: no sanity check is performed for performance reasons. Take care of the inputs yourself.
         :type inputs: list[np.ndarray|]
-        :param onedt: simulate for a single dt
-        :type onedt: bool
+        :param continue_run: continue a simulation by using the initial values from a previous simulation
+        :type continue_run: bool
         :param chunkwise: simulate model chunkwise or in one single run, defaults to False
         :type chunkwise: bool, optional
-        :param chunksize: size of the chunk to simulate in dt, defaults to 10000
+        :param chunksize: size of the chunk to simulate in dt, defaults to 2s
         :type chunksize: int, optional
         :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
         :type bold: bool, optional
-        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
-        :type append_outputs: bool, optional
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :type append: bool, optional
         """
+        # TODO: legacy argument support
+        if append_outputs is not None:
+            append = append_outputs
 
-        self.initialize_run(bold)
+        # if a previous run is not to be continued clear the model's state
+        if continue_run is False:
+            self.clearModelState()
 
-        # override some settings if onedt==True
-        if onedt:
-            self.autochunk(inputs=inputs, append_outputs=append_outputs)
-            return
+        self.initializeRun(initializeBold=bold)
 
         if chunkwise is False:
-            self.integrate()
-            if bold:
-                self.simulate_bold()
-            return
+            self.integrate(append_outputs=append, simulate_bold=bold)
+            if continue_run:
+                self.setInitialValuesToLastState()
+
         else:
+            if chunksize is None:
+                chunksize = int(2000 / self.params["dt"])
             # check if model is safe for chunkwise integration
-            self.check_chunkwise()
-            if bold and not self.bold_initialized:
+            self.checkChunkwise()
+            if bold and not self.boldInitialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
-            self.integrate_chunkwise(chunksize=chunksize, bold=bold, append_outputs=append_outputs)
-            return
+            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
 
-    def integrate(self, append_outputs=False):
+        # check if there was a problem with the simulated data
+        self.checkOutputs()
+
+    def checkOutputs(self):
+        # check nans in output
+        if np.isnan(self.output).any():
+            logging.error("nan in model output!")
+        else:
+            EXPLOSION_THRESHOLD = 1e20
+            if (self.output > EXPLOSION_THRESHOLD).any() > 0:
+                logging.error("nan in model output!")
+
+        # check nans in BOLD
+        if "BOLD" in self.outputs:
+            if np.isnan(self.outputs.BOLD.BOLD).any():
+                logging.error("nan in BOLD output!")
+
+    def integrate(self, append_outputs=False, simulate_bold=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
         
-        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
-        :type append_outputs: bool, optional
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :type append: bool, optional
         """
         # run integration
         t, *variables = self.integration(self.params)
+        self.storeOutputsAndStates(t, variables, append=append_outputs)
 
-        # save time array
-        self.setOutput("t", t, append=append_outputs)
-        self.setStateVariables("t", t)
-        # save outputs
-        for svn, sv in zip(self.state_vars, variables):
-            if svn in self.output_vars:
-                self.setOutput(svn, sv, append=append_outputs)
-            self.setStateVariables(svn, sv)
+        # force bold if params['bold'] == True
+        if "bold" in self.params:
+            if self.params["bold"]:
+                simulate_bold = True
 
-    def integrate_chunkwise(self, chunksize, bold=False, append_outputs=False):
+        # bold simulation after integration
+        if simulate_bold and self.boldInitialized:
+            self.simulateBold(t, variables, append=True)
+
+    def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
         If `bold==True`, the BOLD model is simulated after each chunk.     
         
@@ -181,46 +230,51 @@ class Model:
         dt = self.params["dt"]
         # create a shallow copy of the parameters
         lastT = 0
-        while lastT < totalDuration:
+        while totalDuration - lastT >= dt - 1e-6:
             # Determine the size of the next chunk
-            currentChunkSize = min(chunksize, (totalDuration - lastT) / dt)
-            currentChunkSize += self.max_delay + 1
+            # account for floating point errors
+            remainingChunkSize = int(round((totalDuration - lastT) / dt))
+            currentChunkSize = min(chunksize, remainingChunkSize)
 
-            self.autochunk(duration=currentChunkSize * dt, append_outputs=append_outputs)
-
-            if bold and self.bold_initialized:
-                self.simulate_bold()
-
+            self.autochunk(chunksize=currentChunkSize, append_outputs=append_outputs, bold=bold)
             # we save the last simulated time step
-            lastT += self.state["t"][-1]
+            lastT += currentChunkSize * dt
+            # or
+            # lastT = self.state["t"][-1]
 
-    def autochunk(self, inputs=None, duration=None, append_outputs=False):
-        """Executes a single chunk of integration, either for a given duration
-        or a single timestep `dt`. Gathers all inputs to the model and resets
-        the initial conditions as a preparation for the next chunk. 
-        
-        :param inputs: list of input values, ordered according to self.input_vars, defaults to None
-        :type inputs: list[np.ndarray|], optional
-        :param duration: length of a chunk to simulate in ms, defaults to a single dt, defaults to None
-        :type duration: float, optional
-        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
-        :type append_outputs: bool, optional
+        # set duration back to its original value
+        self.params["duration"] = totalDuration
+
+    def clearModelState(self):
+        """Clears the model's state to create a fresh one
         """
-        startindt = self.max_delay + 1
-        if duration is not None:
-            chunkDuration = duration
-        else:
-            chunkDuration = startindt * self.params["dt"] + self.params["dt"]
-        self.params["duration"] = chunkDuration
-        # set inputs
-        if inputs is not None:
-            for i, iv in enumerate(self.input_vars):
-                self.params[iv] = inputs[i]
+        self.state = dotdict({})
+        self.outputs = dotdict({})
+        # reinitialize bold model
+        self.initializeBold()
 
-        # run integration
-        self.integrate(append_outputs=append_outputs)
+    def storeOutputsAndStates(self, t, variables, append=False):
+        """Takes the simulated variables of the integration and stores it to the appropriate model output and state object.
+        
+        :param t: time vector
+        :type t: list
+        :param variables: variable from time integration
+        :type variables: numpy.ndarray
+        :param append: append output to existing output or overwrite, defaults to False
+        :type append: bool, optional
+        """
+        # save time array
+        self.setOutput("t", t, append=append, removeICs=True)
+        self.setStateVariables("t", t)
+        # save outputs
+        for svn, sv in zip(self.state_vars, variables):
+            if svn in self.output_vars:
+                self.setOutput(svn, sv, append=append, removeICs=True)
+            self.setStateVariables(svn, sv)
 
-        # reset initial conditions to last state
+    def setInitialValuesToLastState(self):
+        """Reads the last state of the model and sets the initial conditions to that state for continuing a simulation.
+        """
         for iv, sv in zip(self.init_vars, self.state_vars):
             # if state variables are one-dimensional (in space only)
             if self.state[sv].ndim == 1:
@@ -228,7 +282,59 @@ class Model:
             # if they are space-time arrays
             else:
                 # we set the next initial condition to the last state
-                self.params[iv] = self.state[sv][:, -startindt:]
+                self.params[iv] = self.state[sv][:, -self.startindt :]
+
+    def randomICs(self, min=0, max=1):
+        """Generates a new set of uniformly-distributed random initial conditions for the model.
+        
+        TODO: All parameters are drawn from the same distribution / range. Allow for independent ranges.
+
+        :param min: Minium of uniform distribution
+        :type min: float
+        :param max: Maximum of uniform distribution
+        :type max: float
+        """
+        for iv in self.init_vars:
+            if self.params[iv].ndim == 1:
+                self.params[iv] = np.random.uniform(min, max, (self.params["N"]))
+            elif self.params[iv].ndim == 2:
+                self.params[iv] = np.random.uniform(min, max, (self.params["N"], 1))
+
+    def setInputs(self, inputs):
+        """Take inputs from a list and store it in the appropriate model parameter for external input.
+        TODO: This is not safe yet, checks should be implemented whether the model has inputs defined or not for example.
+        
+        :param inputs: list of inputs
+        :type inputs: list[np.ndarray(), ...]
+        """
+        for i, iv in enumerate(self.input_vars):
+            self.params[iv] = inputs[i].copy()
+
+    def autochunk(self, inputs=None, chunksize=1, append_outputs=False, bold=False):
+        """Executes a single chunk of integration, either for a given duration
+        or a single timestep `dt`. Gathers all inputs to the model and resets
+        the initial conditions as a preparation for the next chunk. 
+        
+        :param inputs: list of input values, ordered according to self.input_vars, defaults to None
+        :type inputs: list[np.ndarray|], optional
+        :param chunksize: length of a chunk to simulate in dt, defaults 1
+        :type chunksize: int, optional
+        :param append_outputs: append the chunkwise outputs to the outputs attribute, defaults to False
+        :type append_outputs: bool, optional
+        """
+
+        # set the duration for this chunk
+        self.params["duration"] = chunksize * self.params["dt"]
+
+        # set inputs
+        if inputs is not None:
+            self.setInputs(inputs)
+
+        # run integration
+        self.integrate(append_outputs=append_outputs, simulate_bold=bold)
+
+        # set initial conditions to last state for the next chunk
+        self.setInitialValuesToLastState()
 
     def getMaxDelay(self):
         """Computes the maximum delay of the model. This function should be overloaded
@@ -259,7 +365,7 @@ class Model:
     def setStateVariables(self, name, data):
         """Saves the models current state variables. 
         
-        TODO: Cut state variables to length of self.max_delay
+        TODO: Cut state variables to length of self.maxDelay
         However, this could be time-memory tradeoff
         
         :param name: name of the state variable
@@ -267,9 +373,21 @@ class Model:
         :param data: value of the variable
         :type data: np.ndarray
         """
-        self.state[name] = data.copy()
+        # old
+        # self.state[name] = data.copy()
 
-    def setOutput(self, name, data, append=False, remove_ics=True):
+        # if the data is temporal, cut off initial values
+        # NOTE: this shuold actually check for
+        # if data.shape[1] > 1:
+        # else: data.copy()
+        # there coulb be (N, 1)-dimensional output, right now
+        # it is requred to be of shape (N, )
+        if data.ndim == 2:
+            self.state[name] = data[:, -self.startindt :].copy()
+        else:
+            self.state[name] = data.copy()
+
+    def setOutput(self, name, data, append=False, removeICs=False):
         """Adds an output to the model, typically a simulation result.
         :params name: Name of the output in dot.notation, a la "outputgroup.output"
         :type name: str
@@ -278,36 +396,26 @@ class Model:
         """
         assert not isinstance(data, dict), "Output data cannot be a dictionary."
         assert isinstance(name, str), "Output name must be a string."
+        assert isinstance(data, np.ndarray), "Output must be a `numpy.ndarray`."
+
+        # remove initial conditions from output
+        if removeICs and name is not "t":
+            if data.ndim == 1:
+                data = data[self.startindt :]
+            elif data.ndim == 2:
+                data = data[:, self.startindt :]
+            else:
+                raise ValueError(f"Don't know how to truncate data of shape {data.shape}.")
 
         # if the output is a single name (not dot.separated)
         if "." not in name:
             # append data
             if append and name in self.outputs:
-                if isinstance(self.outputs[name], np.ndarray):
-                    assert isinstance(data, np.ndarray), "Cannot append output, not the old type np.ndarray."
-                    # remove initial conditions from data
-                    if remove_ics:
-                        startindt = self.max_delay + 1
-                        # if data is one-dim (for example time array)
-                        if len(data.shape) == 1:
-                            # cut off initial condition
-                            data = data[startindt:].copy()
-                            # if data is a time array, we need to treat it specially
-                            # and increment the time by the last recorded duration
-                            if name == "t":
-                                data += self.outputs[name][-1] - (startindt - 1) * self.params["dt"]
-                        elif len(data.shape) == 2:
-                            data = data[:, startindt:].copy()
-                        else:
-                            raise ValueError("Don't know how to truncate data.")
-                    self.outputs[name] = np.hstack((self.outputs[name], data))
-                # if isinstance(self.outputs[name], list):
-                #     assert isinstance(data, np.ndarray), "Cannot append output, not the old type list."
-                #     self.outputs[name] = self.outputs[name] + data
-                else:
-                    raise TypeError(
-                        f"Previous output {name} if of type {type(self.outputs[name])}. I can't append to it."
-                    )
+                # special treatment for time data:
+                # increment the time by the last recorded duration
+                if name == "t":
+                    data += self.outputs[name][-1]
+                self.outputs[name] = np.hstack((self.outputs[name], data))
             else:
                 # save all data into output dict
                 self.outputs[name] = data
@@ -321,8 +429,13 @@ class Model:
             for i, k in enumerate(keys):
                 # if it's the last iteration, store data
                 if i == len(keys) - 1:
-                    # todo: this needs to be append-aware like above
-                    # todo: for dotted outputs
+                    # TODO: this needs to be append-aware like above
+                    # if append:
+                    #     if k == "t":
+                    #         data += level[k][-1]
+                    #     level[k] = np.hstack((level[k], data))
+                    # else:
+                    #     level[k] = data
                     level[k] = data
                 # if key is in outputs, then go deeper
                 elif k in level:
@@ -387,15 +500,8 @@ class Model:
         # filter out all output *groups* that might be in this node and return only output data
         return filterOutputsFromGroupDict(lastOutput)
 
-    # def setDefaultOutput(self, name):
-    #     """Sets the default output of the model.
-    #     :param name: Name of the default output.
-    #     :type name: str
-    #     """
-    #     assert isinstance(name, str), "Default output name must be a string."
-    #     self.defaultOutput = name
-
-    def getDefaultOutput(self):
+    @property
+    def output(self):
         """Returns value of default output.
         """
         assert self.default_output is not None, "Default output has not been set yet. Use `setDefaultOutput()`."
