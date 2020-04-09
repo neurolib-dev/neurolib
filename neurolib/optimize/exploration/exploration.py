@@ -154,8 +154,12 @@ class BoxSearch:
 
         addParametersRecursively(traj, params, [])
 
+    # TODO: remove legacy
     def saveOutputsToPypet(self, outputs, traj):
-        """This function takes all outputs in the form of a nested dictionary
+        return self.saveToPypet(outputs, traj)
+
+    def saveToPypet(self, outputs, traj):
+        """This function takes simulation results in the form of a nested dictionary
         and stores all data into the pypet hdf file.
         
         :param outputs: Simulation outputs as a dictionary.
@@ -208,16 +212,16 @@ class BoxSearch:
         # save all data to the pypet trajectory
         if self.saveAllModelOutputs:
             # save all results from exploration
-            self.saveOutputsToPypet(self.model.outputs, traj)
+            self.saveToPypet(self.model.outputs, traj)
         else:
             # save only the default output
-            self.saveOutputsToPypet({self.model.default_output: self.model.output, "t": self.model.outputs["t"]}, traj)
+            self.saveToPypet({self.model.default_output: self.model.output, "t": self.model.outputs["t"]}, traj)
             # save BOLD output
             # if "bold" in self.model.params:
             #     if self.model.params["bold"] and "BOLD" in self.model.outputs:
-            #         self.saveOutputsToPypet(self.model.outputs["BOLD"], traj)
+            #         self.saveToPypet(self.model.outputs["BOLD"], traj)
             if "BOLD" in self.model.outputs:
-                self.saveOutputsToPypet(self.model.outputs["BOLD"], traj)
+                self.saveToPypet(self.model.outputs["BOLD"], traj)
 
     def getParametersFromTraj(self, traj):
         """Returns the parameters of the current run as a (dot.able) dictionary
