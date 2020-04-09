@@ -31,7 +31,7 @@ class Evolution:
         parameterSpace,
         weightList=None,
         model=None,
-        hdf_filename="evolution.hdf",
+        filename="evolution.hdf",
         ncores=None,
         POP_INIT_SIZE=100,
         POP_SIZE=20,
@@ -50,8 +50,8 @@ class Evolution:
         :type weightList: list[float], optional
         :param model: Model to simulate, defaults to None
         :type model: `neurolib.models.model.Model`, optional
-        :param hdf_filename: HDF file to store all results in, defaults to "evolution.hdf"
-        :type hdf_filename: str, optional
+        :param filename: HDF file to store all results in, defaults to "evolution.hdf"
+        :type filename: str, optional
         :param ncores: Number of cores to simulate on (max cores default), defaults to None
         :type ncores: int, optional
         :param POP_INIT_SIZE: Size of first population to initialize evolution with (random, uniformly distributed), defaults to 100
@@ -75,7 +75,7 @@ class Evolution:
             weightList = [1.0]
 
         trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
-        self.HDF_FILE = os.path.join(paths.HDF_DIR, hdf_filename)
+        self.HDF_FILE = os.path.join(paths.HDF_DIR, filename)
         trajectoryFileName = self.HDF_FILE
 
         logging.info("Storing data to: {}".format(trajectoryFileName))
@@ -92,6 +92,8 @@ class Evolution:
             use_pool=False,
             multiproc=True,
             ncores=ncores,
+            log_stdout=False,
+            log_multiproc=False,
             complevel=9,
         )
 
@@ -115,6 +117,9 @@ class Evolution:
         assert POP_INIT_SIZE % 2 == 0, "Please chose an even number for POP_INIT_SIZE!"
         self.POP_INIT_SIZE = POP_INIT_SIZE
         self.ncores = ncores
+
+        # comment string for storing info
+        self.comments = "no comments"
 
         self.traj = env.traj
         self.env = env
@@ -153,9 +158,6 @@ class Evolution:
             matingFunction=self.matingFunction,
             selectionFunction=self.selectionFunction,
         )
-
-        # comment string for storing info
-        self.comments = ""
 
         # set up pypet trajectory
         self.initPypetTrajectory(
@@ -410,10 +412,7 @@ class Evolution:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
 
         # save all simulation data to pypet
-        try:
-            self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-        except:
-            logging.warn("Error: Write to pypet failed!")
+        self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
         # Only the best indviduals are selected for the population the others do not survive
         self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
@@ -479,10 +478,7 @@ class Evolution:
             self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
             # self.history.update(self.getValidPopulation(self.pop))
             # save all simulation data to pypet
-            try:
-                self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
-            except:
-                logging.warn("Error: Write to pypet failed!")
+            self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
             # select best individual for logging
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
@@ -563,7 +559,7 @@ class Evolution:
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
         scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
         # gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
-        dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameter_names).T
+        dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameterNames).T
         dfPop["score"] = scores
         dfPop["id"] = indIds
         return dfPop
@@ -617,4 +613,3 @@ class Evolution:
             gens = np.add(gens, 1)
 
         return gens, all_scores
-

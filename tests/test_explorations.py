@@ -3,110 +3,135 @@ import time
 import unittest
 
 import numpy as np
+import os
 
 from neurolib.models.aln import ALNModel
+from neurolib.models.fhn import FHNModel
+
 from neurolib.optimize.exploration import BoxSearch
 from neurolib.utils.parameterSpace import ParameterSpace
 import neurolib.utils.functions as func
+from neurolib.utils.loadData import Dataset
+
+import neurolib.optimize.exploration.explorationUtils as eu
+import neurolib.utils.pypetUtils as pu
+import neurolib.utils.paths as paths
+
+import string
+import random
 
 
-class TestALNExploration(unittest.TestCase):
+def randomString(stringLength=10):
+    """Generate a random string of fixed length """
+    letters = string.ascii_lowercase
+    return "".join(random.choice(letters) for i in range(stringLength))
+
+
+class TestExplorationSingleNode(unittest.TestCase):
     """
-    ALN model parameter exploration with pypet.
+    ALN single node exploration.
     """
 
     def test_single_node(self):
-        logging.info("\t > BoxSearch: Testing ALN single node ...")
         start = time.time()
 
-        aln = ALNModel()
+        model = ALNModel()
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
-        search = BoxSearch(aln, parameters)
+        search = BoxSearch(model, parameters, filename="test_single_nodes.hdf")
         search.run()
         search.loadResults()
 
         for i in search.dfResults.index:
             search.dfResults.loc[i, "max_r"] = np.max(
-                search.results[i]["rates_exc"][:, -int(1000 / aln.params["dt"]) :]
+                search.results[i]["rates_exc"][:, -int(1000 / model.params["dt"]) :]
             )
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
-    def test_brain_network(self):
-        from neurolib.utils.loadData import Dataset
 
+class TestExplorationBrainNetwork(unittest.TestCase):
+    """
+    FHN brain network simulation with BOLD simulation.
+    """
+
+    def test_fhn_brain_network_exploration(self):
         ds = Dataset("hcp")
-        aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat, bold=True)
+        model = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
+        model.params.duration = 10 * 1000  # ms
+        model.params.dt = 0.05
+        model.params.bold = True
+        parameters = ParameterSpace(
+            {
+                "x_ext": [np.ones((model.params["N"],)) * a for a in np.linspace(0, 2, 2)],
+                "K_gl": np.linspace(0, 2, 2),
+                "coupling": ["additive", "diffusive"],
+            },
+            kind="grid",
+        )
+        search = BoxSearch(model=model, parameterSpace=parameters, filename="test_fhn_brain_network_exploration.hdf")
+
+        search.run(chunkwise=True, bold=True)
+
+        pu.getTrajectorynamesInFile(os.path.join(paths.HDF_DIR, "test_fhn_brain_network_exploration.hdf"))
+        search.loadDfResults()
+        search.getRun(0, pypetShortNames=True)
+        search.getRun(0, pypetShortNames=False)
+        search.loadResults()
+
+
+class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
+    """
+    ALN brain network simulation with custom evaluation function.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # def test_brain_network_postprocessing(self):
+        ds = Dataset("hcp")
+        model = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
         # Resting state fits
-        aln.params["mue_ext_mean"] = 1.57
-        aln.params["mui_ext_mean"] = 1.6
-        aln.params["sigma_ou"] = 0.09
-        aln.params["b"] = 5.0
-        aln.params["signalV"] = 2
-        aln.params["dt"] = 0.2
-        aln.params["duration"] = 0.2 * 60 * 1000
+        model.params["mue_ext_mean"] = 1.57
+        model.params["mui_ext_mean"] = 1.6
+        model.params["sigma_ou"] = 0.09
+        model.params["b"] = 5.0
+        model.params["signalV"] = 2
+        model.params["dt"] = 0.2
+        model.params["duration"] = 0.2 * 60 * 1000
 
         # multi stage evaluation function
         def evaluateSimulation(traj):
-            print("asd")
-            print("I'm hereee")
             model = search.getModelFromTraj(traj)
-            defaultDuration = model.params["duration"]
-            invalid_result = {"fc": [0] * len(ds.BOLDs)}
-
-            # -------- stage wise simulation --------
-
-            # Stage 1 : simulate for a few seconds to see if there is any activity
-            # ---------------------------------------
-            model.params["dt"] = 0.1
-            model.params["duration"] = 3 * 1000.0
-            model.run()
-
-            # check if stage 1 was successful
-            if np.max(model.rates_exc[:, model.t > 500]) > 300 or np.max(model.rates_exc[:, model.t > 500]) < 10:
-                search.saveOutputsToPypet(invalid_result, traj)
-                return invalid_result, {}
-
-            # Stage 2: simulate BOLD for a few seconds to see if it moves
-            # ---------------------------------------
+            model.randomICs()
             model.params["dt"] = 0.2
-            model.params["duration"] = 20 * 1000.0
+            model.params["duration"] = 4 * 1000.0
             model.run(bold=True)
 
-            if np.std(model.BOLD.BOLD[:, 5:10]) < 0.001:
-                search.saveOutputsToPypet(invalid_result, traj)
-                return invalid_result, {}
-
-            # Stage 3: full and final simulation
-            # ---------------------------------------
-            model.params["dt"] = 0.2
-            model.params["duration"] = defaultDuration
-            model.run()
-
-            # -------- evaluation here --------
-
-            scores = []
-            for i, fc in enumerate(ds.FCs):  # range(len(ds.FCs)):
-                fc_score = func.matrix_correlation(func.fc(model.BOLD.BOLD[:, 5:]), fc)
-                scores.append(fc_score)
-
-            meanScore = np.mean(scores)
-            result_dict = {"fc": meanScore}
+            result_dict = {"outputs": model.outputs}
 
             search.saveOutputsToPypet(result_dict, traj)
 
         # define and run exploration
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
-        search = BoxSearch(evalFunction=evaluateSimulation, model=aln, parameterSpace=parameters)
+        search = BoxSearch(
+            evalFunction=evaluateSimulation,
+            model=model,
+            parameterSpace=parameters,
+            filename=f"test_brain_postprocessing_{randomString(20)}.hdf",
+        )
         search.run()
-        # postprocessing
-        # search.loadResults()
-        # print("Number of results: {}".format(len(search.results)))
-        # self.assertTrue(len(search.results) > 0)
-        # for i in search.dfResults.index:
-        #     search.dfResults.loc[i, "fc"] = np.mean(search.results[i]["fc"])
-        # search.dfResults
+        cls.model = model
+        cls.search = search
+        cls.ds = ds
+
+    def test_getRun(self):
+        self.search.getRun(0)
+
+    def test_loadDfResults(self):
+        self.search.loadDfResults()
+
+    def test_loadResults(self):
+        self.search.loadResults()
 
 
 class TestCustomParameterExploration(unittest.TestCase):
@@ -122,9 +147,9 @@ class TestCustomParameterExploration(unittest.TestCase):
             search.saveOutputsToPypet(result_dict, traj)
 
         parameters = ParameterSpace({"x": np.linspace(-2, 2, 2), "y": np.linspace(-2, 2, 2)})
-        search = BoxSearch(evalFunction=explore_me, parameterSpace=parameters)
+        search = BoxSearch(evalFunction=explore_me, parameterSpace=parameters, filename="test_circle_exploration.hdf")
         search.run()
-        search.loadResults()
+        search.loadResults(pypetShortNames=False)
 
         for i in search.dfResults.index:
             search.dfResults.loc[i, "distance"] = search.results[i]["distance"]

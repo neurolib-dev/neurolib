@@ -53,9 +53,7 @@ class ALNModel(Model):
     input_vars = ["ext_exc_current", "ext_exc_rate"]
     default_input = "ext_exc_rate"
 
-    def __init__(
-        self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None, bold=False,
-    ):
+    def __init__(self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None):
         """
         :param params: parameter dictionary of the model
         :param Cmat: Global connectivity matrix (connects E to E)
@@ -63,7 +61,6 @@ class ALNModel(Model):
         :param lookupTableFileName: Filename for precomputed transfer functions and tables
         :param seed: Random number generator seed
         :param simulateChunkwise: Chunkwise time integration (for lower memory use)
-        :param simulateBOLD: Parallel (chunkwise) BOLD simulation
         """
 
         # Global attributes
@@ -81,9 +78,7 @@ class ALNModel(Model):
             )
 
         # Initialize base class Model
-        super().__init__(
-            integration=integration, params=params, bold=bold,
-        )
+        super().__init__(integration=integration, params=params)
 
     def getMaxDelay(self):
         # compute maximum delay of model
@@ -91,4 +86,3 @@ class ALNModel(Model):
         ndt_di = round(self.params["di"] / self.params["dt"])
         max_dmat_delay = super().getMaxDelay()
         return int(max(max_dmat_delay, ndt_de, ndt_di))
-

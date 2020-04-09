@@ -5,11 +5,15 @@
   <a href="https://www.python.org/downloads/release">
   	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg"></a>
     
+   <br> 
   <a href="https://github.com/neurolib-dev/neurolib/releases">
   	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib"></a>
   
   <a href="https://pypi.org/project/neurolib/">
   	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib"></a>
+	
+ <a href="https://github.com/neurolib-dev/neurolib/commits/master">
+  <img alt="GitHub commits since latest release (by date)" src="https://img.shields.io/github/commits-since/neurolib-dev/neurolib/latest"></a>
   
   <a href="https://codecov.io/gh/neurolib-dev/neurolib">
   	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg"></a>
@@ -31,7 +35,7 @@
 
 Please reference the following paper if you use `neurolib` for your own research:
 
-**Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation ([ArXiv](https://arxiv.org/abs/1906.00676)).
+**Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation. PLOS Computational Biology ([ArXiv](https://arxiv.org/abs/1906.00676)).
 
 The figure below shows a schematic of how a brain network can be constructed:
 
@@ -77,8 +81,17 @@ pip install -r requirements.txt
 pip install .
 ```
 
-# Usage
-Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory, don't forget to check them out! A basic overview of the functionality that `neurolib` provides is also given here. 
+# Examples
+Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory, don't forget to check them out! 
+
+You can run the examples hosted on [Binder](https://mybinder.org/) by clicking the links below:
+
+- [Example 0.0](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-0-aln-minimal.ipynb) - Basic use of the `aln` model
+- [Example 0.3](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-0.3-fhn-minimal.ipynb) - Fitz-Hugh Nagumo model `fhn` on a brain network
+- [Example 1.2](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-1.2-brain-network-exploration.ipynb) - Parameter exploration of a brain network and fitting to BOLD data
+- [Example 2.0](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-2-evolutionary-optimization-minimal.ipynb) - A simple example of the evolutionary optimization framework 
+
+A basic overview of the functionality that `neurolib` provides is also given here. 
 
 ## Single node
 
@@ -151,7 +164,7 @@ Correlation per subject: ['0.34', '0.61', '0.54', '0.7', '0.54', '0.64', '0.69',
 Mean FC/FC correlation: 0.58
 ```
 ## Parameter exploration
-A detailed example is available as a [IPython Notebook](examples/example-1-aln-parameter-exploration.ipynb). 
+A detailed example of a single-node exploration is available as a [IPython Notebook](examples/example-1-aln-parameter-exploration.ipynb). For an example of a brain network exploration, see [this Notebook](examples/example-1.2-brain-network-exploration.ipynb).
 
 Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameters. It is often useful to get an overview of the state space of a given model of interest. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `neurolib` makes it very easy to quickly explore parameter spaces of a given model:
 
