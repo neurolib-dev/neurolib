@@ -11,12 +11,12 @@ class WCModel(Model):
     name = "wc"
     description = "Wilson-Cowan model"
 
-    init_vars = ["xs_init", "ys_init", "x_ou", "y_ou"]
-    state_vars = ["x", "y", "x_ou", "y_ou"]
-    output_vars = ["x", "y"]
-    default_output = "x"
-    input_vars = ["x_ext", "y_ext"]
-    default_input = "x_ext"
+    init_vars = ["es_init", "is_init", "e_ou", "i_ou"]
+    state_vars = ["e", "i", "e_ou", "i_ou"]
+    output_vars = ["e", "i"]
+    default_output = "e"
+    input_vars = ["e_ext", "i_ext"]
+    default_input = "e_ext"
 
     # because this is not a rate model, the input
     # to the bold model must be normalized

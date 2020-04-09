@@ -38,9 +38,9 @@ def timeIntegration(params):
     # Parameter of the Ornstein-Uhlenbeck (OU) process for the external input ( mV/ms/sqrt(ms) )
     sigma_ou = params["sigma_ou"]
     # Mean external excitatory input (OU process) (mV/ms)
-    x_ou_mean = params["x_ou_mean"]
+    e_ou_mean = params["e_ou_mean"]
     # Mean external inhibitory input (OU process) (mV/ms)
-    y_ou_mean = params["y_ou_mean"]
+    i_ou_mean = params["i_ou_mean"]
 
     # ------------------------------------------------------------------------
     # global coupling parameters
@@ -71,43 +71,42 @@ def timeIntegration(params):
     max_global_delay = np.max(Dmat_ndt)
     startind = int(max_global_delay + 1)  # timestep to start integration at
 
-    x_ou = params["x_ou"]
-    y_ou = params["y_ou"]
+    e_ou = params["e_ou"]
+    i_ou = params["i_ou"]
 
-    x_ext = params["x_ext"]
-    y_ext = params["y_ext"]
+    e_ext = params["e_ext"]
+    i_ext = params["i_ext"]
 
     # set of the state variable arrays
-    xs = np.zeros((N, len(t)))
-    ys = np.zeros((N, len(t)))
+    est = np.zeros((N, len(t)))
+    ist = np.zeros((N, len(t)))
 
     # ------------------------------------------------------------------------
     # Set initial values
     # if initial values are just a Nx1 array
-    if np.shape(params["xs_init"])[1] == 1:
-        xs_init = np.dot(params["xs_init"], np.ones((1, startind)))
-        ys_init = np.dot(params["ys_init"], np.ones((1, startind)))
+    if np.shape(params["es_init"])[1] == 1:
+        es_init = np.dot(params["es_init"], np.ones((1, startind)))
+        is_init = np.dot(params["is_init"], np.ones((1, startind)))
     # if initial values are a Nxt array
     else:
-        xs_init = params["xs_init"][:, -startind:]
-        ys_init = params["ys_init"][:, -startind:]
+        es_init = params["es_init"][:, -startind:]
+        is_init = params["is_init"][:, -startind:]
 
-    # xsd = np.zeros((N,N))  # delayed activity
-    xs_input_d = np.zeros(N)  # delayed input to x
-    ys_input_d = np.zeros(N)  # delayed input to y
+    es_input_d = np.zeros(N)  # delayed input to e
+    is_input_d = np.zeros(N)  # delayed input to i
 
     if RNGseed:
         np.random.seed(RNGseed)
 
     # Save the noise in the activity array to save memory
-    xs[:, startind:] = np.random.standard_normal((N, len(t) - startind))
-    ys[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+    est[:, startind:] = np.random.standard_normal((N, len(t) - startind))
+    ist[:, startind:] = np.random.standard_normal((N, len(t) - startind))
 
-    xs[:, :startind] = xs_init
-    ys[:, :startind] = ys_init
+    est[:, :startind] = es_init
+    ist[:, :startind] = is_init
 
-    noise_xs = np.zeros((N,))
-    noise_ys = np.zeros((N,))
+    noise_es = np.zeros((N,))
+    noise_is = np.zeros((N,))
 
     # ------------------------------------------------------------------------
 
@@ -120,12 +119,12 @@ def timeIntegration(params):
         Cmat,
         K_gl,
         Dmat_ndt,
-        xs,
-        ys,
-        xs_input_d,
-        ys_input_d,
-        x_ext,
-        y_ext,
+        est,
+        ist,
+        es_input_d,
+        is_input_d,
+        e_ext,
+        i_ext,
         tau_e,
         tau_i,
         a_e,
@@ -136,12 +135,12 @@ def timeIntegration(params):
         c_ei,
         c_ie,
         c_ii,
-        noise_xs,
-        noise_ys,
-        x_ou,
-        y_ou,
-        x_ou_mean,
-        y_ou_mean,
+        noise_es,
+        noise_is,
+        e_ou,
+        i_ou,
+        e_ou_mean,
+        i_ou_mean,
         tau_ou,
         sigma_ou,
     )
@@ -157,12 +156,12 @@ def timeIntegration_njit_elementwise(
     Cmat,
     K_gl,
     Dmat_ndt,
-    xs,
-    ys,
-    xs_input_d,
-    ys_input_d,
-    x_ext,
-    y_ext,
+    est,
+    ist,
+    es_input_d,
+    is_input_d,
+    e_ext,
+    i_ext,
     tau_e,
     tau_i,
     a_e,
@@ -173,12 +172,12 @@ def timeIntegration_njit_elementwise(
     c_ei,
     c_ie,
     c_ii,
-    noise_xs,
-    noise_ys,
-    x_ou,
-    y_ou,
-    x_ou_mean,
-    y_ou_mean,
+    noise_es,
+    noise_is,
+    e_ou,
+    i_ou,
+    e_ou_mean,
+    i_ou_mean,
     tau_ou,
     sigma_ou,
 ):
@@ -196,54 +195,54 @@ def timeIntegration_njit_elementwise(
         for no in range(N):
 
             # To save memory, noise is saved in the activity array
-            noise_xs[no] = xs[no, i]
-            noise_ys[no] = ys[no, i]
+            noise_es[no] = est[no, i]
+            noise_is[no] = ist[no, i]
 
             # delayed input to each node
-            xs_input_d[no] = 0
-            ys_input_d[no] = 0
+            es_input_d[no] = 0
+            is_input_d[no] = 0
 
             for l in range(N):
-                xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
+                es_input_d[no] += K_gl * Cmat[no, l] * (est[l, i - Dmat_ndt[no, l] - 1])
 
             # Wilson-Cowan model
-            x_rhs = (
+            e_rhs = (
                 1
                 / tau_e
                 * (
-                    -xs[no, i - 1]
-                    + (1 - xs[no, i - 1])
+                    -est[no, i - 1]
+                    + (1 - est[no, i - 1])
                     * S_E(
-                        c_ee * xs[no, i - 1]  # input from within the excitatory population
-                        - c_ie * ys[no, i - 1]  # input from the inhibitory population
-                        + xs_input_d[no]  # input from other nodes
-                        + x_ext[no]
+                        c_ee * est[no, i - 1]  # input from within the excitatory population
+                        - c_ie * ist[no, i - 1]  # input from the inhibitory population
+                        + es_input_d[no]  # input from other nodes
+                        + e_ext[no]
                     )  # external input
-                    + x_ou[no]  # ou noise
+                    + e_ou[no]  # ou noise
                 )
             )
-            y_rhs = (
+            i_rhs = (
                 1
                 / tau_i
                 * (
-                    -ys[no, i - 1]
-                    + (1 - ys[no, i - 1])
+                    -ist[no, i - 1]
+                    + (1 - ist[no, i - 1])
                     * S_I(
-                        c_ei * xs[no, i - 1]  # input from the excitatory population
-                        - c_ii * ys[no, i - 1]  # input from within the inhibitory population
-                        + xs_input_d[no]  # input from other nodes
-                        + y_ext[no]
+                        c_ei * est[no, i - 1]  # input from the excitatori population
+                        - c_ii * ist[no, i - 1]  # input from within the inhibitori population
+                        + es_input_d[no]  # input from other nodes
+                        + i_ext[no]
                     )  # external input
-                    + x_ou[no]  # ou noise
+                    + e_ou[no]  # ou noise
                 )
             )
 
             # Euler integration
-            xs[no, i] = xs[no, i - 1] + dt * x_rhs
-            ys[no, i] = ys[no, i - 1] + dt * y_rhs
+            est[no, i] = est[no, i - 1] + dt * e_rhs
+            ist[no, i] = ist[no, i - 1] + dt * i_rhs
 
             # Ornstein-Uhlenbeck process
-            x_ou[no] = x_ou[no] + (x_ou_mean - x_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
-            y_ou[no] = y_ou[no] + (y_ou_mean - y_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
+            e_ou[no] = e_ou[no] + (e_ou_mean - e_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_es[no]  # mV/ms
+            i_ou[no] = i_ou[no] + (i_ou_mean - i_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_is[no]  # mV/ms
 
-    return t, xs, ys, x_ou, y_ou
+    return t, est, ist, e_ou, i_ou

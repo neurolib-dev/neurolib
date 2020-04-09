@@ -55,8 +55,8 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # external input parameters:
     params.tau_ou = 5.0  # ms Timescale of the Ornstein-Uhlenbeck noise process
     params.sigma_ou = 0.0  # mV/ms/sqrt(ms) noise intensity
-    params.x_ou_mean = 0.0  # mV/ms (OU process) [0-5]
-    params.y_ou_mean = 0.0  # mV/ms (OU process) [0-5]
+    params.e_ou_mean = 0.0  # mV/ms (OU process) [0-5]
+    params.i_ou_mean = 0.0  # mV/ms (OU process) [0-5]
 
     # neural mass model parameters
     params.tau_e = 2.5  # excitatory time constant
@@ -72,16 +72,16 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     # ------------------------------------------------------------------------
 
-    params.xs_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
-    params.ys_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
+    params.es_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
+    params.is_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
 
     # Ornstein-Uhlenbeck noise state variables
-    params.x_ou = np.zeros((params.N,))
-    params.y_ou = np.zeros((params.N,))
+    params.e_ou = np.zeros((params.N,))
+    params.i_ou = np.zeros((params.N,))
 
     # values of the external inputs
-    params.x_ext = 0.6 * np.ones((params.N,))
-    params.y_ext = np.zeros((params.N,))
+    params.e_ext = 0.6 * np.ones((params.N,))
+    params.i_ext = np.zeros((params.N,))
 
     return params
 
