@@ -1,19 +1,23 @@
 <p align="center">
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
+  	<img alt="Build" src="resources/icon_block.png"></a>
+</p> 
+
+<p align="center">
+  <a href="https://travis-ci.org/neurolib-dev/neurolib">
   	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master"></a>
   
   <a href="https://www.python.org/downloads/release">
   	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg"></a>
     
-   <br> 
+   
   <a href="https://github.com/neurolib-dev/neurolib/releases">
   	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib"></a>
   
   <a href="https://pypi.org/project/neurolib/">
   	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib"></a>
 	
- <a href="https://github.com/neurolib-dev/neurolib/commits/master">
-  <img alt="GitHub commits since latest release (by date)" src="https://img.shields.io/github/commits-since/neurolib-dev/neurolib/latest"></a>
+
   
   <a href="https://codecov.io/gh/neurolib-dev/neurolib">
   	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg"></a>
@@ -25,9 +29,6 @@
   	<img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
   
 </p>
-
-# neurolib
-*Easy whole-brain neural mass modeling* 👩‍🔬💻🧠
 
 `neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `aln` model can be found in our [paper](https://arxiv.org/abs/1906.00676) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
@@ -55,9 +56,9 @@ Examples:
 
 ## Whole-brain modeling
 
-Typically, in whole-brain modeling, diffusion tensor imaging (DTI) is used to infer the structural connectivity (the connection strength) between different brain areas. In a DTI scan, the direction of the diffusion of molecules is measured across the whole brain. Using [tractography](https://en.wikipedia.org/wiki/Tractography), this information can yield the distribution of axonal fibers in the brain that connect distant brain areas, called the connectome. Together with an atlas that divides the brain into distinct areas, a matrix can be computed that encodes how many fibers go from one area to another, the so-called structural connectivity (SC) matrix. This matrix defines the coupling strengths between brain areas and acts as an adjacency matrix of the brain network. The length of the fibers determine the signal transmission delay between all brain areas. When the structural data is combined with a computational model of the neuronal activity of the cortex, we can create a dynamical model of the whole brain.
+Typically, in whole-brain modeling, diffusion tensor imaging (DTI) is used to infer the structural connectivity (the connection strength) between different brain areas. In a DTI scan, the direction of the diffusion of molecules is measured across the whole brain. Using [tractography](https://en.wikipedia.org/wiki/Tractography), this information can yield the distribution of axonal fibers in the brain that connect distant brain areas, called the connectome. Together with an atlas that divides the brain into distinct areas, a matrix can be computed that encodes how many fibers go from one area to another, the so-called structural connectivity (SC) matrix. This matrix defines the coupling strengths between brain areas and acts as an adjacency matrix of the brain network. The fiber length determines the signal transmission delay between all brain areas. Combining the structural data with a computational model of the neuronal activity of each brain area, we can create a dynamical model of the whole brain.
 
-The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The neural activity is used to simulate hemodynamic [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) activity using the Balloon-Windkessel model, which can be compared to empirical fMRI data. The simulated BOLD activity is used to compute correlations of activity between all brain areas, the so called [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional), which can then be fitted to empirical fMRI resting-state data.
+The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The neural activity can also be used to simulate hemodynamic [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) activity using the Balloon-Windkessel model, which can be compared to empirical fMRI data. Often, BOLD activity is used to compute correlations of activity between brain areas, the so called [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional), resulting in a matrix with correlations between each brain area. This matrix can then be fitted to empirical fMRI recordings of the resting-state activity of the brain.
 
 
 Below is an animation of the neuronal activity of a whole-brain model plotted on a brain.
@@ -238,7 +239,7 @@ evolution.loadResults()
 evolution.info(plot=True)
 ```
 
-This will gives us a summary of the last generation and plots a distribution of the individuals (and their parameters). Below is an animation of 10 generations of the evolutionary process. As you can see, after a couple of generations, all remaining individuals lie very close to the unit circle.
+This will gives us a summary of the last generation and plots a distribution of the individuals (and their parameters). Below is an animation of 10 generations of the evolutionary process. Ass you can see, after a couple of generations, all remaining individuals lie very close to the unit circle.
 
 <p align="center">
   <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolution_animated.gif">
