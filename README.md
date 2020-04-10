@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
-  	<img alt="Build" src="https://github.com/neurolib-dev/neurolib/raw/master/resources/readme_header.png" ></a>
+  	<img alt="Header image of neurolib - A Python simulation framework foreasy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neurolib/raw/master/resources/readme_header.png" ></a>
 </p> 
 <p align="center">
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
