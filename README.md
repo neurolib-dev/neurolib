@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
-  	<img alt="Build" src="resources/element_logo.png" width="300"></a>
+  	<img alt="Build" src="resources/readme_header.png" ></a>
 </p> 
 <p align="center">
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
@@ -15,8 +15,6 @@
   
   <a href="https://pypi.org/project/neurolib/">
   	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib"></a>
-	<br>
-
   
   <a href="https://codecov.io/gh/neurolib-dev/neurolib">
   	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg"></a>
@@ -26,8 +24,9 @@
   
   <a href="https://github.com/psf/black">
   	<img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
-  
+ 
 </p>
+
 
 # What is neurolib?
 
