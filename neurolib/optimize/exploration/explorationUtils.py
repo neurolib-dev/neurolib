@@ -124,6 +124,13 @@ def plotExplorationResults(
         plt.show()
 
 
+def contourPlotDf(dataframe, color="white"):
+    Xi, Yi = np.meshgrid(range(len(dataframe.columns)), range(len(dataframe.index)))
+    cset2 = plt.contour(
+        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=[0, 1.0001], linewidths=(4,), zorder=1
+    )
+
+
 def processExplorationResults(results, dfResults, **kwargs):
     """Process results from the exploration. 
     """
