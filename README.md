@@ -1,8 +1,7 @@
 <p align="center">
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
-  	<img alt="Build" src="resources/icon_block.png"></a>
+  	<img alt="Build" src="resources/element_logo.png" width="300"></a>
 </p> 
-
 <p align="center">
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
   	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master"></a>
@@ -16,7 +15,7 @@
   
   <a href="https://pypi.org/project/neurolib/">
   	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib"></a>
-	
+	<br>
 
   
   <a href="https://codecov.io/gh/neurolib-dev/neurolib">
@@ -29,6 +28,8 @@
   	<img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
   
 </p>
+
+# What is neurolib?
 
 `neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `aln` model can be found in our [paper](https://arxiv.org/abs/1906.00676) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
