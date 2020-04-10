@@ -51,7 +51,9 @@ class TestAutochunk(unittest.TestCase):
                             m2.params = pars_bak.copy()
                             m2.run(chunkwise=True, chunksize=chunksize, append=True)
 
-                            assert m1.output.shape == m2.output.shape, "Shapes do not match!"
+                            assert (
+                                m1.output.shape == m2.output.shape
+                            ), "Shape of chunkwise output does not match normal output!"
                             difference = np.sum(abs(m1.output - m2.output))
                             assert (
                                 difference == 0
@@ -80,4 +82,3 @@ class TestAutochunk(unittest.TestCase):
         for i in range(duration_dt):
             inputs = [inp_x[:, i], inp_y[:, i]]
             model.autochunk(inputs=inputs, append_outputs=True)
-
