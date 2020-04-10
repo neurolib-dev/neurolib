@@ -53,6 +53,8 @@ def plotExplorationResults(
 
     if one_figure == True:
         fig, axs = plt.subplots(nrows=1, ncols=n_plots, figsize=(n_plots * 4, 3.5), dpi=150)
+        if plot_key_label:
+            fig.suptitle(plot_key_label)
 
     # if by is not None:
     #     _dfResults = dfResults.groupby(by=by)
@@ -68,7 +70,7 @@ def plotExplorationResults(
             else:
                 ax = axs
 
-        df_pivot = df.pivot_table(values=plot_key, index=par2, columns=par1)
+        df_pivot = df.pivot_table(values=plot_key, index=par2, columns=par1, dropna=False)
 
         plot_clim = None
         if symmetric_colorbar:
@@ -76,6 +78,8 @@ def plotExplorationResults(
 
         if one_figure == False:
             fig = plt.figure(figsize=(5, 4), dpi=150)
+            if plot_key_label:
+                plt.title(plot_key_label)
             ax = plt.gca()
 
         im = ax.imshow(
@@ -108,7 +112,8 @@ def plotExplorationResults(
         if not isinstance(i, tuple):
             i = (i,)
 
-        ax.set_title(" ".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)]))
+        if by != ["_by"]:
+            ax.set_title(" ".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)]))
         if one_figure == False:
             plt.show()
         else:
