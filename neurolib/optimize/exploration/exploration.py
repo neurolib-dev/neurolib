@@ -5,9 +5,10 @@ import logging
 import pathlib
 import copy
 
+import numpy as np
+import pandas as pd
 import h5py
 import pypet
-import pandas as pd
 import tqdm
 
 from ...utils import paths
@@ -287,10 +288,22 @@ class BoxSearch:
                     new_dict[new_key] = r[key]
                 self.results[i] = copy.deepcopy(new_dict)
 
+        self.aggregateResultsToDfResults()
+
         logging.info("All results loaded.")
 
+    def aggregateResultsToDfResults(self):
+        # copy float results to dfResults
+        nan_value = np.nan
+        for i, result in tqdm.tqdm(enumerate(self.results), total=len(self.results)):
+            for key, value in result.items():
+                if isinstance(value, float):
+                    self.dfResults.loc[i, key] = value
+                else:
+                    self.dfResults.loc[i, key] = nan_value
+
     def loadDfResults(self, filename=None, trajectoryName=None):
-        """Load results from a hdf file of a previous simulation.
+        """Load results from a previous simulation.
         
         :param filename: hdf file name in which results are stored, defaults to None
         :type filename: str, optional
