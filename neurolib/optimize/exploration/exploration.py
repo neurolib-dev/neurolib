@@ -269,19 +269,19 @@ class BoxSearch:
 
         # make a list of dictionaries with results
         logging.info("Creating results dictionary ...")
-        self.results = []
+        self.results = dotdict({})
         for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
             self.pypetTrajectory.results[rInd].f_load()
             result = self.pypetTrajectory.results[rInd].f_to_dict(fast_access=True, short_names=pypetShortNames)
             result = dotdict(result)
             self.pypetTrajectory.results[rInd].f_remove()
-            self.results.append(result)
+            self.results[rInd] = copy.deepcopy(result)
 
         # Postprocess result keys if pypet short names aren't used
         # Before: results.run_00000001.outputs.rates_inh
         # After: outputs.rates_inh
         if pypetShortNames == False:
-            for i, r in enumerate(self.results):
+            for i, r in self.results.items():
                 new_dict = dotdict({})
                 for key, value in r.items():
                     new_key = "".join(key.split(".", 2)[2:])
@@ -295,7 +295,8 @@ class BoxSearch:
     def aggregateResultsToDfResults(self):
         # copy float results to dfResults
         nan_value = np.nan
-        for i, result in tqdm.tqdm(enumerate(self.results), total=len(self.results)):
+        logging.info("Aggregating results ...")
+        for i, result in tqdm.tqdm(self.results.items()):
             for key, value in result.items():
                 if isinstance(value, float):
                     self.dfResults.loc[i, key] = value
