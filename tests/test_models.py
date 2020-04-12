@@ -179,7 +179,7 @@ class TestSubDivWC(unittest.TestCase):
     def test_single_node(self):
         logging.info("\t > SubDivWC: Testing single node ...")
         start = time.time()
-        subdivwc = SubDIvWCModel()
+        subdivwc = SubDivWCModel()
         subdivwc.params["duration"] = 2.0 * 1000
         subdivwc.params["sigma_ou"] = 0.03
 
