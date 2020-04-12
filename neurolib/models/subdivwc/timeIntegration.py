@@ -111,7 +111,7 @@ def timeIntegration(params):
     # xsd = np.zeros((N,N))  # delayed activity
     exc_input_d = np.zeros(N)  # delayed input to exc
     inh_s_input_d = np.zeros(N)  # delayed input to inh_s
-    inh_s_input_d = np.zeros(N)  # delayed input to inh_d
+    inh_d_input_d = np.zeros(N)  # delayed input to inh_d
 
     if RNGseed:
         np.random.seed(RNGseed)

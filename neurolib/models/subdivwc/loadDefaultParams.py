@@ -61,7 +61,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # neural mass model parameters (following the notation in the paper)
     params.tau_exc = 2.5  # excitatory time constant
     params.tau_inh_s = 3.75  # inhibitory time constant (somatic inhibition)
-    params.tau_inh_s = 3.75  # inhibitory time constant (dendritic inhibition)
+    params.tau_inh_d = 3.75  # inhibitory time constant (dendritic inhibition)
     params.w1 = 24.368  # local E-E coupling
     params.w3 = 9.677  # local E-I_s coupling
     params.w2 = 0.54*params.w3  # local I_d-E coupling
