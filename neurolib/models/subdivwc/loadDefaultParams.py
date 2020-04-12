@@ -59,26 +59,22 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.inh_d_ou_mean = 0.0  # mV/ms (OU process) [0-5]
 
     # neural mass model parameters (following the notation in the paper)
-    # ToDo: adjust parameters
     params.tau_exc = 2.5  # excitatory time constant
     params.tau_inh_s = 3.75  # inhibitory time constant (somatic inhibition)
     params.tau_inh_s = 3.75  # inhibitory time constant (dendritic inhibition)
-    params.w1 = 16  # local E-E coupling
-    params.w2 = 15  # local E-I coupling
-    params.w3 = 15  # local E-I coupling
-    params.w4 = 15  # local E-I coupling
-    params.w5 = 15  # local E-I coupling
-    params.w6 = 15  # local E-I coupling
-    params.w7 = params.w3  #
-    params.alpha_exc = 1.  #
-    params.alpha_inh_s = 1.  #
-    params.alpha_inh_d = 1.  #
-    params.k_exc = 1.  #
-    params.k_inh_s = 1.  #
-    params.k_inh_d = 1.  #
-    params.theta_exc = 1.  #
-    params.theta_inh_s = 1.  #
-    params.theta_inh_d = 1.  #
+    params.w1 = 24.368  # local E-E coupling
+    params.w3 = 9.677  # local E-I_s coupling
+    params.w2 = 0.54*params.w3  # local I_d-E coupling
+    params.w4 = 27.249  # local E-I_d coupling
+    params.w5 = 30.913  # local E-I_s coupling
+    params.w6 = 0.33*params.w3  # local I_s-I_d coupling
+    params.w7 = params.w3  # local I_s-I_s coupling
+    params.alpha_exc = 1.3  #
+    params.alpha_inh_s = 2.  #
+    params.alpha_inh_d = 2.  #
+    params.theta_exc = 4.  #
+    params.theta_inh_s = 3.7  #
+    params.theta_inh_d = 3.7  #
     params.q = 0.  # subtractive/divisive parameter (q=0 purely subtractive; q=1 purely divisive)
 
     # ------------------------------------------------------------------------
@@ -93,7 +89,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.inh_d_ou = np.zeros((params.N,))
 
     # values of the external inputs
-    params.exc_ext = 1.0 * np.ones((params.N,))
+    params.exc_ext = 1.428 * np.ones((params.N,))
     params.inh_s_ext = np.zeros((params.N,))
     params.inh_d_ext = np.zeros((params.N,))
 
