@@ -36,6 +36,11 @@ class TestExampleNotebooks(unittest.TestCase):
         successful, output = _run(fname)
         assert successful, print(output)
 
+    def test_example_0_5(self):
+        fname = "../examples/example-0.5-subdivwc-minimal.ipynb"
+        successful, output = _run(fname)
+        assert successful, print(output)
+
     def test_example_1(self):
         fname = "../examples/example-1-aln-parameter-exploration.ipynb"
         successful, output = _run(fname)
