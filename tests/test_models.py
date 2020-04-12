@@ -7,6 +7,7 @@ from neurolib.models.fhn import FHNModel
 from neurolib.models.hopf import HopfModel
 from neurolib.models.thalamus import ThalamicMassModel
 from neurolib.models.wc import WCModel
+from neurolib.models.subdivwc import SubDivWCModel
 from neurolib.utils.loadData import Dataset
 
 
@@ -168,6 +169,40 @@ class TestThalamus(unittest.TestCase):
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+class TestSubDivWC(unittest.TestCase):
+    """
+    Basic test for subtractive/divisive WC model.
+    """
+
+    def test_single_node(self):
+        logging.info("\t > SubDivWC: Testing single node ...")
+        start = time.time()
+        subdivwc = SubDIvWCModel()
+        subdivwc.params["duration"] = 2.0 * 1000
+        subdivwc.params["sigma_ou"] = 0.03
+
+        subdivwc.run()
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+    def test_network(self):
+        logging.info("\t > SubDivWC: Testing brain network (chunkwise integration and BOLD simulation) ...")
+        start = time.time()
+        ds = Dataset("gw")
+        subdivwc = SubDIvWCModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
+        subdivwc.params["signalV"] = 4.0
+        subdivwc.params["duration"] = 10 * 1000
+        subdivwc.params["sigma_ou"] = 0.1
+        subdivwc.params["K_gl"] = 0.6
+        subdivwc.params["exc_ext_mean"] = 0.72
+
+        subdivwc.run(chunkwise=True, bold=True, append_outputs=True)
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
 
 
 if __name__ == "__main__":

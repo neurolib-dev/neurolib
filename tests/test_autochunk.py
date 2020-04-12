@@ -9,6 +9,7 @@ from neurolib.models.aln import ALNModel
 from neurolib.models.hopf import HopfModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.wc import WCModel
+from neurolib.models.subdivwc import SubDivWCModel
 
 from neurolib.utils.loadData import Dataset
 
@@ -22,7 +23,7 @@ class TestAutochunk(unittest.TestCase):
         """Full test of chunkwise integration over all models
         """
         ds = Dataset("hcp")
-        Models = [ALNModel, FHNModel, HopfModel, WCModel]
+        Models = [ALNModel, FHNModel, HopfModel, WCModel, SubDivWCModel]
         durations = [0.1, 0.5, 10.5, 22.3]
         chunksizes = [1, 5, 7, 33, 55, 123]
         modes = ["single", "network"]
