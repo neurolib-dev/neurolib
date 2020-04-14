@@ -203,7 +203,7 @@ def timeIntegration_njit_elementwise(
 
             # delayed input to each node
             exc_input_d[no] = 0
-            inh_input_d[no] = 0
+
 
             for l in range(N):
                 exc_input_d[no] += K_gl * Cmat[no, l] * (excs[l, i - Dmat_ndt[no, l] - 1])
@@ -233,7 +233,6 @@ def timeIntegration_njit_elementwise(
                     * S_I(
                         c_excinh * excs[no, i - 1]  # input from the excitatory population
                         - c_inhinh * inhs[no, i - 1]  # input from within the inhibitory population
-                        + exc_input_d[no]  # input from other nodes
                         + inh_ext[no]
                     )  # external input
                     + inh_ou[no]  # ou noise
