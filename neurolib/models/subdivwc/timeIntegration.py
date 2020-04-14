@@ -257,8 +257,6 @@ def timeIntegration_njit_elementwise(
 
             # delayed input to each node
             exc_input_d[no] = 0
-            inh_s_input_d[no] = 0
-            inh_d_input_d[no] = 0
 
             for l in range(N):
                 exc_input_d[no] += K_gl * Cmat[no, l] * (excs[l, i - Dmat_ndt[no, l] - 1])
@@ -269,7 +267,7 @@ def timeIntegration_njit_elementwise(
             exc_rhs = (
                 1/tau_exc*(-excs[no, i - 1]+(k_exc-excs[no, i - 1])*F_exc(w1*excs[no, i - 1]+exc_ext[no],
                            w2*inh_ds[no,i-1],w3*inh_ss[no,i-1]))
-                    + exc_ou[no])
+                    + exc_ou[no] + exc_input_d[no])
             inh_s_rhs = (
                 1/tau_inh_s*(-inh_ss[no, i - 1]+(k_inh_s-inh_ss[no, i - 1])*F_inh_s(w5*excs[no, i - 1]+inh_s_ext[no],
                              w6*inh_ds[no,i-1]+w7*inh_ss[no,i-1],0))

@@ -5,9 +5,19 @@ from ..model import Model
 
 class SubDivWCModel(Model):
     """
-    A three-population Wilson-Cowan model with subtractive and divisive inhibition
-    see Papasavvas et al., Divisive gain modulation enables flexible and rapid entrainment in a
-    neocortical microcircuit model, J. Neurophysiol., 2020"""
+    A three-population Wilson-Cowan model with subtractive and divisive inhibition.
+
+    This model is usually used for cortical nodes within a whole-brain network. Each node is modelled as three
+    populations of WC neural masses, one excitatory representing cortical pyramidal cells and two inhibitory,
+    representing dendrite-targeting, somatostatin-positive (SST+) interneurons and soma-targeting,
+    parvalbumin-positive (PV+) interneurons, respectively. While the SST+ interneuron population simply provides
+    subtractive inhibition, the PV+ population can provide both subtractive and divisive inhibition.
+    The brain network is realised by coupling excitatory to excitatory masses within the network using the structural
+    connectivity matrix and supports network delays.
+
+    References:
+        *Papasavvas et al., Divisive gain modulation enables flexible and rapid entrainment in a
+         neocortical microcircuit model, J. Neurophysiol., 2020"""
 
     name = "sdwc"
     description = "Three-population Wilson-Cowan model with both subtractive and divisive inhibition"
