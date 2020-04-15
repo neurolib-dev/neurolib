@@ -134,8 +134,8 @@ def contourPlotDf(dataframe, color="white", ax=None):
         Xi, Yi, dataframe, colors=color, linestyles="solid", levels=[0, 1.0001], linewidths=(4,), zorder=1
     )
 
-def plotResult(search, runId, **kwargs):
-    fig, axs = plt.subplots(1, 3, figsize=(10, 2), dpi=150, gridspec_kw={'width_ratios': [1, 2, 2]})
+def plotResult(search, runId, z_bold = False, **kwargs):
+    fig, axs = plt.subplots(1, 3, figsize=(8, 2), dpi=300, gridspec_kw={'width_ratios': [1, 1.2, 2]})
 
     if "bold_transient" in kwargs:
         bold_transient = int(kwargs["bold_transient"] / 2)
@@ -156,9 +156,15 @@ def plotResult(search, runId, **kwargs):
     axs[0].set_xlabel("Node")
     
     #axs[1].set_title("BOLD")
-    axs[1].plot(t_bold, bold_z.T, lw=1.5, alpha=0.8);
+    if z_bold:
+        axs[1].plot(t_bold, bold_z.T, lw=1.5, alpha=0.8);
+    else:
+        axs[1].plot(t_bold, bold.T, lw=1.5, alpha=0.8);
     axs[1].set_xlabel("Time [s]")
-    axs[1].set_ylabel("Normalized BOLD")
+    if z_bold:
+        axs[1].set_ylabel("Normalized BOLD")
+    else:
+        axs[1].set_ylabel("BOLD")
 
     axs[2].set_ylabel("Activity")
     axs[2].plot(t_output, output.T, lw=1.5, alpha=0.6);
@@ -186,6 +192,7 @@ def processExplorationResults(results, dfResults, **kwargs):
         #if "t" in results[i].keys() or "outputs.t" in results[i].keys():
         if "BOLD" in results[i].keys():
             # if a dataset was passed as an argument
+            bold = results[i]["BOLD"][:, int(bold_transient/1000/2):]
             if "ds" in kwargs:
                 ds = kwargs["ds"]
 
@@ -194,15 +201,16 @@ def processExplorationResults(results, dfResults, **kwargs):
                 dfResults.loc[i, "fc"] = np.mean(
                     [
                         func.matrix_correlation(
-                            func.fc(results[i]["BOLD"][:, int(bold_transient/1000/2):]), fc,
+                            func.fc(bold), fc,
                         )
                         for fc in ds.FCs
                     ]
                 )         
-
+                # if BOLD simulation is longer than 5 minutes, calculate kolmogorov of FCD
+                if len(bold.T) > 5 * 30
                 dfResults.loc[i, "fcd"] = np.mean(
                     [
-                        func.ts_kolmogorov(results[i]["BOLD"][:, int(bold_transient/1000/2):], bold)
+                        func.ts_kolmogorov(bold, bold)
                         for bold in ds.BOLDs
                     ]
                 )
