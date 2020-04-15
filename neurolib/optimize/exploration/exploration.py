@@ -351,3 +351,12 @@ class BoxSearch:
             pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
 
         return pu.getRun(runId, pypetTrajectory, pypetShortNames=pypetShortNames)
+
+    def info(self):
+        """Print info about the current search.
+        """
+        print("Exploration info ({})".format(datetime.datetime.now().strftime("%Y-%m-%d-%HH-%MM-%SS")))
+        print(f"HDF name: {self.HDF_FILE}")
+        print(f"Trajectory name: {self.trajectoryName}")
+        print(f"Model: {self.model.name}")
+        print(f"Explored parameters: {self.exploreParameters.keys()}")
