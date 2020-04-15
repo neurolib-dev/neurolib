@@ -11,12 +11,12 @@ class WCModel(Model):
     name = "wc"
     description = "Wilson-Cowan model"
 
-    init_vars = ["xs_init", "ys_init", "x_ou", "y_ou"]
-    state_vars = ["x", "y", "x_ou", "y_ou"]
-    output_vars = ["x", "y"]
-    default_output = "x"
-    input_vars = ["x_ext", "y_ext"]
-    default_input = "x_ext"
+    init_vars = ["exc_init", "inh_init", "exc_ou", "inh_ou"]
+    state_vars = ["exc", "inh", "exc_ou", "inh_ou"]
+    output_vars = ["exc", "inh"]
+    default_output = "exc"
+    input_vars = ["exc_ext", "inh_ext"]
+    default_input = "exc_ext"
 
     # because this is not a rate model, the input
     # to the bold model must be transformed

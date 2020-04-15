@@ -54,33 +54,33 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # external input parameters:
     params.tau_ou = 5.0  # ms Timescale of the Ornstein-Uhlenbeck noise process
     params.sigma_ou = 0.0  # mV/ms/sqrt(ms) noise intensity
-    params.x_ou_mean = 0.0  # mV/ms (OU process) [0-5]
-    params.y_ou_mean = 0.0  # mV/ms (OU process) [0-5]
+    params.exc_ou_mean = 0.0  # mV/ms (OU process) [0-5]
+    params.inh_ou_mean = 0.0  # mV/ms (OU process) [0-5]
 
     # neural mass model parameters
-    params.tau_e = 2.5  # excitatory time constant
-    params.tau_i = 3.75  # inhibitory time constant
-    params.c_ee = 16  # local E-E coupling
-    params.c_ei = 15  # local E-I coupling
-    params.c_ie = 12  # local I-E coupling
-    params.c_ii = 3  # local I-I coupling
-    params.a_e = 1.5  # excitatory gain
-    params.a_i = 1.5  # inhibitory gain
-    params.mu_e = 3.0  # excitatory firing threshold
-    params.mu_i = 3.0  # inhibitory firing threshold
+    params.tau_exc = 2.5  # excitatory time constant
+    params.tau_inh = 3.75  # inhibitory time constant
+    params.c_excexc = 16  # local E-E coupling
+    params.c_excinh = 15  # local E-I coupling
+    params.c_inhexc = 12  # local I-E coupling
+    params.c_inhinh = 3  # local I-I coupling
+    params.a_exc = 1.5  # excitatory gain
+    params.a_inh = 1.5  # inhibitory gain
+    params.mu_exc = 3.0  # excitatory firing threshold
+    params.mu_inh = 3.0  # inhibitory firing threshold
 
     # ------------------------------------------------------------------------
 
-    params.xs_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
-    params.ys_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
+    params.exc_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
+    params.inh_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
 
     # Ornstein-Uhlenbeck noise state variables
-    params.x_ou = np.zeros((params.N,))
-    params.y_ou = np.zeros((params.N,))
+    params.exc_ou = np.zeros((params.N,))
+    params.inh_ou = np.zeros((params.N,))
 
     # values of the external inputs
-    params.x_ext = 1.0 * np.ones((params.N,))
-    params.y_ext = np.zeros((params.N,))
+    params.exc_ext = 1.0 * np.ones((params.N,))
+    params.inh_ext = np.zeros((params.N,))
 
     return params
 
