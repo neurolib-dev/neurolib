@@ -207,13 +207,13 @@ def processExplorationResults(results, dfResults, **kwargs):
                     ]
                 )         
                 # if BOLD simulation is longer than 5 minutes, calculate kolmogorov of FCD
-                if len(bold.T) > 5 * 30
-                dfResults.loc[i, "fcd"] = np.mean(
-                    [
-                        func.ts_kolmogorov(bold, bold)
-                        for bold in ds.BOLDs
-                    ]
-                )
+                if len(bold.T) > 5 * 30:
+                    dfResults.loc[i, "fcd"] = np.mean(
+                        [
+                            func.ts_kolmogorov(bold, bold)
+                            for bold in ds.BOLDs
+                        ]
+                    )
                             
 
             # if the model is passed as an argument
