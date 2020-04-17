@@ -52,6 +52,8 @@ class Dataset:
         :type datasetName: str
         :param normalizeCmats: Normalization method for the structural connectivity matrix. normalizationMethods = ["max", "waytotal", "nvoxel"]
         :type normalizeCmats: str
+        :param fcd: Compute FCD matrices of BOLD data, defaults to False
+        :type fcd: bool
 
         """
         self.has_subjects = None
