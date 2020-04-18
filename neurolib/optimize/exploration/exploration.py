@@ -23,7 +23,12 @@ class BoxSearch:
     """
 
     def __init__(
-        self, model=None, parameterSpace=None, evalFunction=None, filename=None, saveAllModelOutputs=False,
+        self,
+        model=None,
+        parameterSpace=None,
+        evalFunction=None,
+        filename=None,
+        saveAllModelOutputs=False,
     ):
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the 
@@ -41,7 +46,7 @@ class BoxSearch:
         :type evalFunction: function, optional
         :param filename: HDF5 storage file name, if left empty, defaults to ``exploration.hdf``
         :type filename: str
-        :param saveAllModelOutputs: If True, save all outputs of model, else only default output of the model will be saved. Note: if saveAllModelOutputs==False and the model's parameter model.params['bold']==rue, then BOLD output will be saved as well, defaults to False
+        :param saveAllModelOutputs: If True, save all outputs of model, else only default output of the model will be saved. Note: if saveAllModelOutputs==False and the model's parameter model.params['bold']==True, then BOLD output will be saved as well, defaults to False
         :type saveAllModelOutputs: bool
         """
         self.model = model
@@ -84,7 +89,9 @@ class BoxSearch:
         self.HDF_FILE = os.path.join(paths.HDF_DIR, filename)
 
         # initialize pypet environment
-        trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
+        trajectoryName = "results" + datetime.datetime.now().strftime(
+            "-%Y-%m-%d-%HH-%MM-%SS"
+        )
         trajectoryfilename = self.HDF_FILE
 
         nprocesses = multiprocessing.cpu_count()
@@ -114,13 +121,17 @@ class BoxSearch:
             self.addParametersToPypet(self.traj, self.model.params)
         else:
             # else, use a random parameter of the parameter space
-            self.addParametersToPypet(self.traj, self.parameterSpace.getRandom(safe=True))
+            self.addParametersToPypet(
+                self.traj, self.parameterSpace.getRandom(safe=True)
+            )
 
         # Tell pypet which parameters to explore
         self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
         logging.info(
             "Number of parameter configurations: {}".format(
-                len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
+                len(
+                    self.pypetParametrization[list(self.pypetParametrization.keys())[0]]
+                )
             )
         )
 
@@ -216,7 +227,13 @@ class BoxSearch:
             self.saveToPypet(self.model.outputs, traj)
         else:
             # save only the default output
-            self.saveToPypet({self.model.default_output: self.model.output, "t": self.model.outputs["t"]}, traj)
+            self.saveToPypet(
+                {
+                    self.model.default_output: self.model.output,
+                    "t": self.model.outputs["t"],
+                },
+                traj,
+            )
             # save BOLD output
             # if "bold" in self.model.params:
             #     if self.model.params["bold"] and "BOLD" in self.model.outputs:
@@ -254,7 +271,9 @@ class BoxSearch:
         assert self.initialized, "Pypet environment not initialized yet."
         self.env.run(self.evalFunction)
 
-    def loadResults(self, filename=None, trajectoryName=None, pypetShortNames=True):
+    def loadResults(
+        self, filename=None, trajectoryName=None, pypetShortNames=True, drop=None
+    ):
         """Load results from a hdf file of a previous simulation.
         
         :param filename: hdf file name in which results are stored, defaults to None
@@ -263,6 +282,8 @@ class BoxSearch:
         :type trajectoryName: str, optional
         :param pypetShortNames: Use pypet short names as keys for the results dictionary. Use if you are experiencing errors due to natural naming collisions.
         :type pypetShortNames: boolean
+        :param drop: Drop these results, don't load them into RAM.
+        :type drop: str, list[str]
         """
 
         self.loadDfResults(filename, trajectoryName)
@@ -271,10 +292,28 @@ class BoxSearch:
         logging.info("Creating results dictionary ...")
         self.results = dotdict({})
         for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
+            # load pypet result to memory
             self.pypetTrajectory.results[rInd].f_load()
-            result = self.pypetTrajectory.results[rInd].f_to_dict(fast_access=True, short_names=pypetShortNames)
+            # convert to dictionary
+            result = self.pypetTrajectory.results[rInd].f_to_dict(
+                fast_access=True, short_names=pypetShortNames
+            )
+            # convert to dotdict
             result = dotdict(result)
+            # unload pypet result
             self.pypetTrajectory.results[rInd].f_remove()
+
+            # filter results
+            # drop results by key if they were specified
+            if drop:
+                # if it's a list, we itereate through it
+                if isinstance(drop, list):
+                    for d in drop:
+                        result = result.pop[d] or result
+                elif isinstance(drop, str):
+                    result = result.pop[drop] or result
+
+            # save results in memory
             self.results[rInd] = copy.deepcopy(result)
 
         # Postprocess result keys if pypet short names aren't used
@@ -355,7 +394,11 @@ class BoxSearch:
     def info(self):
         """Print info about the current search.
         """
-        print("Exploration info ({})".format(datetime.datetime.now().strftime("%Y-%m-%d-%HH-%MM-%SS")))
+        print(
+            "Exploration info ({})".format(
+                datetime.datetime.now().strftime("%Y-%m-%d-%HH-%MM-%SS")
+            )
+        )
         print(f"HDF name: {self.HDF_FILE}")
         print(f"Trajectory name: {self.trajectoryName}")
         print(f"Model: {self.model.name}")
