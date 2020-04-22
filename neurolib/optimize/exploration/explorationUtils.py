@@ -20,6 +20,7 @@ def plotExplorationResults(
     plot_key_label=None,
     symmetric_colorbar=False,
     one_figure=False,
+    contour=None,
     **kwargs
 ):
     """
@@ -87,14 +88,17 @@ def plotExplorationResults(
             aspect="auto",
             clim=plot_clim,
         )
-
         # plot contours
-        if "contour" in kwargs:
+        if contour is not None:
+            contour_color = kwargs["contour_color"] if "contour_color" in kwargs else "white"
+            contour_levels = kwargs["contour_levels"] if "contour_levels" in kwargs else None
             # check if this is a dataframe
-            if isinstance(kwargs["contour"], pd.DataFrame):
-                contour_color = kwargs["contour_color"] if "contour_color" in kwargs else "white"
-                contourPlotDf(kwargs["contour"], color=contour_color, ax=ax)
-
+            if isinstance(contour, pd.DataFrame):
+                contourPlotDf(contour, color=contour_color, ax=ax, levels=contour_levels)
+            # if it's a string, take that value as the contour plot value
+            elif isinstance(contour, str):
+                df_contour = df.pivot_table(values=contour, index=par2, columns=par1, dropna=False)
+                contourPlotDf(df_contour, color=contour_color, ax=ax, levels=contour_levels)
 
         # colorbar
         if one_figure == False:
@@ -126,12 +130,12 @@ def plotExplorationResults(
         plt.show()
 
 
-def contourPlotDf(dataframe, color="white", ax=None):
-    #Xi, Yi = np.meshgrid(range(len(dataframe.columns)), range(len(dataframe.index)))
+def contourPlotDf(dataframe, color="white", levels=None, ax=None):
+    levels = levels or [0, 1.0001]
     Xi, Yi = np.meshgrid(dataframe.columns, dataframe.index)
     ax = ax or plt
     cset2 = ax.contour(
-        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=[0, 1.0001], linewidths=(4,), zorder=1
+        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, linewidths=(4,), zorder=1
     )
 
 def plotResult(search, runId, z_bold = False, **kwargs):
