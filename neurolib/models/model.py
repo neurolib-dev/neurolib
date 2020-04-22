@@ -92,7 +92,7 @@ class Model:
                         self.setOutput("BOLD.BOLD", BOLD)
                     else:
                         logging.warn(
-                            f"Will not simulate BOLD if output {bold_input.shape[1]} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
+                            f"Will not simulate BOLD if output {bold_input.shape[1]*self.params['dt']} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
                         )
         else:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")

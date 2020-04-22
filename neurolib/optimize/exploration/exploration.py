@@ -4,6 +4,7 @@ import os
 import logging
 import pathlib
 import copy
+import psutil
 
 import numpy as np
 import pandas as pd
@@ -271,61 +272,54 @@ class BoxSearch:
         assert self.initialized, "Pypet environment not initialized yet."
         self.env.run(self.evalFunction)
 
-    def loadResults(
-        self, filename=None, trajectoryName=None, pypetShortNames=True, drop=None
-    ):
+    def loadResults(self, all=True, filename=None, trajectoryName=None, pypetShortNames=True, memory_cap=95.0):
         """Load results from a hdf file of a previous simulation.
         
+        :param all: Load all simulated results into memory, which will be available as the `.results` attribute. Can use a lot of RAM if your simulation is large, please use this with caution. , defaults to True
+        :type all: bool, optional
         :param filename: hdf file name in which results are stored, defaults to None
         :type filename: str, optional
         :param trajectoryName: Name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
         :type trajectoryName: str, optional
         :param pypetShortNames: Use pypet short names as keys for the results dictionary. Use if you are experiencing errors due to natural naming collisions.
-        :type pypetShortNames: boolean
-        :param drop: Drop these results, don't load them into RAM.
-        :type drop: str, list[str]
+        :type pypetShortNames: bool
+        :param memory_cap: Percentage memory cap between 0 and 100. If `all=True` is used, a memory cap can be set to avoid filling up the available RAM. Example: use `memory_cap = 95` to avoid loading more data if memory is at 95% use, defaults to 95
+        :type memory_cap: float, int, optional
         """
 
         self.loadDfResults(filename, trajectoryName)
 
         # make a list of dictionaries with results
-        logging.info("Creating results dictionary ...")
         self.results = dotdict({})
-        for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
-            # load pypet result to memory
-            self.pypetTrajectory.results[rInd].f_load()
-            # convert to dictionary
-            result = self.pypetTrajectory.results[rInd].f_to_dict(
-                fast_access=True, short_names=pypetShortNames
-            )
-            # convert to dotdict
-            result = dotdict(result)
-            # unload pypet result
-            self.pypetTrajectory.results[rInd].f_remove()
+        if all:
+            logging.info("Loading all results to `results` dictionary ...")
+            for rInd in tqdm.tqdm(range(self.nResults), total=self.nResults):
 
-            # filter results
-            # drop results by key if they were specified
-            if drop:
-                # if it's a list, we itereate through it
-                if isinstance(drop, list):
-                    for d in drop:
-                        result = result.pop[d] or result
-                elif isinstance(drop, str):
-                    result = result.pop[drop] or result
+                # check if enough memory is available
+                if memory_cap:
+                    assert isinstance(memory_cap, (int, float)), "`memory_cap` must be float."
+                    assert (memory_cap > 0) and (memory_cap < 100), "`memory_cap` must be between 0 and 100"
+                    # check ram usage with psutil
+                    used_memory_percent = psutil.virtual_memory()[2]
+                    if used_memory_percent > memory_cap:
+                        raise MemoryError(f"Memory use is at {used_memory_percent}% and capped at {memory_cap}. Aborting.")
+                        
+                self.pypetTrajectory.results[rInd].f_load()
+                result = self.pypetTrajectory.results[rInd].f_to_dict(fast_access=True, short_names=pypetShortNames)
+                result = dotdict(result)
+                self.pypetTrajectory.results[rInd].f_remove()
+                self.results[rInd] = copy.deepcopy(result)
 
-            # save results in memory
-            self.results[rInd] = copy.deepcopy(result)
-
-        # Postprocess result keys if pypet short names aren't used
-        # Before: results.run_00000001.outputs.rates_inh
-        # After: outputs.rates_inh
-        if pypetShortNames == False:
-            for i, r in self.results.items():
-                new_dict = dotdict({})
-                for key, value in r.items():
-                    new_key = "".join(key.split(".", 2)[2:])
-                    new_dict[new_key] = r[key]
-                self.results[i] = copy.deepcopy(new_dict)
+            # Postprocess result keys if pypet short names aren't used
+            # Before: results.run_00000001.outputs.rates_inh
+            # After: outputs.rates_inh
+            if not pypetShortNames:
+                for i, r in self.results.items():
+                    new_dict = dotdict({})
+                    for key, value in r.items():
+                        new_key = "".join(key.split(".", 2)[2:])
+                        new_dict[new_key] = r[key]
+                    self.results[i] = copy.deepcopy(new_dict)
 
         self.aggregateResultsToDfResults()
 
@@ -334,13 +328,24 @@ class BoxSearch:
     def aggregateResultsToDfResults(self):
         # copy float results to dfResults
         nan_value = np.nan
-        logging.info("Aggregating results ...")
-        for i, result in tqdm.tqdm(self.results.items()):
+        logging.info("Aggregating results to `dfResults` ...")
+        #for i, result in tqdm.tqdm(self.results.items()):
+
+
+        for runId, parameters in tqdm.tqdm(self.dfResults.iterrows(), total=len(self.dfResults)):
+            # if the results were previously loaded into memory, use them
+            if len(self.results) == len(self.dfResults):
+                result = self.results[runId]
+            # else, load results individually from hdf file
+            else:
+                result = self.getRun(runId)
             for key, value in result.items():
                 if isinstance(value, float):
-                    self.dfResults.loc[i, key] = value
+                    self.dfResults.loc[runId, key] = value
                 else:
-                    self.dfResults.loc[i, key] = nan_value
+                    self.dfResults.loc[runId, key] = nan_value
+        # drop nan columns
+        self.dfResults = self.dfResults.dropna(axis='columns', how='all')
 
     def loadDfResults(self, filename=None, trajectoryName=None):
         """Load results from a previous simulation.
@@ -359,7 +364,7 @@ class BoxSearch:
         exploredParameters = self.pypetTrajectory.f_get_explored_parameters()
 
         # create pandas dataframe of all runs with parameters as keys
-        logging.info("Creating pandas dataframe ...")
+        logging.info("Creating `dfResults` dataframe ...")
         niceParKeys = [p.split(".")[-1] for p in exploredParameters.keys()]
         self.dfResults = pd.DataFrame(columns=niceParKeys, dtype=object)
         for nicep, p in zip(niceParKeys, exploredParameters.keys()):
