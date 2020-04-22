@@ -61,7 +61,7 @@ def plot_outputs(
         axs[0, 2].plot(frs, pwrs, lw=3, c="springgreen")
 
         ## frequency spectrum annotations
-        peaks = scipy.signal.find_peaks_cwt(pwrs, np.arange(2.5, 3.0))
+        peaks = scipy.signal.find_peaks_cwt(pwrs, np.arange(2, 3))
         for p in peaks:
             axs[0, 2].scatter(frs[p], pwrs[p], c="springgreen", zorder=20)
             # p = np.argmax(Pxxs)
@@ -112,7 +112,8 @@ def plot_outputs(
             axs[2, 0].imshow(func.fcd(bold), origin="upper")
 
             # plot distribution in fcd
-            axs[2, 1].set_title("FCD distribution", fontsize=12)
+            fcd_fit = model_fit(model, ds, bold_transient, fcd=True)["mean_fcd"]
+            axs[2, 1].set_title(f"FCD distance {fcd_fit:0.2f}", fontsize=12)
             axs[2, 1].set_ylabel("P")
             axs[2, 1].set_xlabel("triu(FCD)")
             m1 = func.fcd(bold)
