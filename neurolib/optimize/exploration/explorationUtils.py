@@ -1,7 +1,10 @@
 import numpy as np
 import pandas as pd
+
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.colors import Normalize
+
 import logging
 import tqdm
 
@@ -21,10 +24,13 @@ def plotExplorationResults(
     symmetric_colorbar=False,
     one_figure=False,
     contour=None,
+    alpha_mask=None,
     **kwargs
 ):
     """
     """
+    # PREPARE DATA
+    # ------------------    
     # copy here, because we add another column that we do not want to keep later
     dfResults = dfResults.copy()
 
@@ -51,6 +57,8 @@ def plotExplorationResults(
 
     n_plots = len(dfResults.groupby(by=by))
 
+    # PLOT
+    # ------------------    
 
     # create subfigures
     if one_figure == True:
@@ -67,27 +75,56 @@ def plotExplorationResults(
                 ax = axs[axi]
             else:
                 ax = axs
-        # pivot data
-        df_pivot = df.pivot_table(values=plot_key, index=par2, columns=par1, dropna=False)
-
-        plot_clim = None
-        if symmetric_colorbar:
-            plot_clim = (-np.max(df_pivot.values), np.max(df_pivot.values))
-
-        if one_figure == False:
+        else:
             fig = plt.figure(figsize=(5, 4), dpi=150)
             if plot_key_label:
                 plt.title(plot_key_label)
-            ax = plt.gca()
+            ax = plt.gca()       
 
+
+        # -----
+        # pivot data and plot
+        df_pivot = df.pivot_table(values=plot_key, index=par2, columns=par1, dropna=False)
+
+        plot_clim = (np.nanmin(df_pivot.values), np.nanmax(df_pivot.values))
+
+        if symmetric_colorbar:
+            plot_clim = (-np.nanmax(df_pivot.values), np.nanmax(df_pivot.values))
         image_extent = [min(df[par1]), max(df[par1]), min(df[par2]), max(df[par2])]
+        image = np.array(df_pivot)
+        
+        # -----
+        # alpha mask
+        if alpha_mask is not None:
+            mask_threshold = kwargs["mask_threshold"] if "mask_threshold" in kwargs else 1
+            mask_alpha = kwargs["mask_alpha"] if "mask_alpha" in kwargs else 0.5
+            mask_style = kwargs["mask_style"] if "mask_style" in kwargs else None
+
+            # alpha_mask can either be a pd.DataFrame or an np.ndarray that is 
+            # layed over the image, a string that is a key in the results df
+            # or simply True, which means that the image itself will be used as a 
+            # threshold for the alpha map (default in alphaMask()). 
+
+            if isinstance(alpha_mask, (pd.DataFrame, np.ndarray)):
+                mask = np.array(alpha_mask)
+            elif isinstance(alpha_mask, str):
+                mask = df.pivot_table(values=alpha_mask, index=par2, columns=par1, dropna=False)
+                mask = np.array(mask)
+            else:
+                mask = None
+            
+            image = alphaMask(image, mask_threshold, mask_alpha, mask=mask, style=mask_style)
+
         im = ax.imshow(
-            df_pivot,
+            image,
             extent=image_extent,
             origin="lower",
             aspect="auto",
             clim=plot_clim,
         )
+
+        # ANNOTATIONs
+        # ------------------
         # plot contours
         if contour is not None:
             contour_color = kwargs["contour_color"] if "contour_color" in kwargs else "white"
@@ -98,7 +135,7 @@ def plotExplorationResults(
             # if it's a string, take that value as the contour plot value
             elif isinstance(contour, str):
                 df_contour = df.pivot_table(values=contour, index=par2, columns=par1, dropna=False)
-                contourPlotDf(df_contour, color=contour_color, ax=ax, levels=contour_levels)
+                contourPlotDf(df_contour, color=contour_color, ax=ax, levels=contour_levels)            
 
         # colorbar
         if one_figure == False:
@@ -117,7 +154,6 @@ def plotExplorationResults(
         # single by-values need to become tuple
         if not isinstance(i, tuple):
             i = (i,)
-
         if by != ["_by"]:
             ax.set_title(" ".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)]))
         if one_figure == False:
@@ -137,6 +173,26 @@ def contourPlotDf(dataframe, color="white", levels=None, ax=None):
     cset2 = ax.contour(
         Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, linewidths=(4,), zorder=1
     )
+
+def alphaMask(image, threshold, alpha, mask=None, style=None):
+    if mask is None:
+        mask = image    
+    alphas = Normalize(0, threshold, clip=True)(np.abs(mask))
+    alphas = mask>threshold
+    alphas = np.clip(alphas, alpha, 1)
+
+    if style == "stripes":
+        f = mask.shape[0]/5
+        style_mask = np.sin(np.linspace(0, 2*np.pi*f, mask.shape[0]))
+        style_mask=style_mask>0
+        alphas = alphas + style_mask[:, None]
+        alphas = np.clip(alphas, 0, 1)
+
+    cmap = plt.cm.plasma
+    colors = Normalize(np.nanmin(image), np.nanmax(image), clip=True)(image)
+    colors = cmap(colors)
+    colors[..., -1] = alphas
+    return colors
 
 def plotResult(search, runId, z_bold = False, **kwargs):
     fig, axs = plt.subplots(1, 3, figsize=(8, 2), dpi=300, gridspec_kw={'width_ratios': [1, 1.2, 2]})
@@ -238,14 +294,14 @@ def processExplorationResults(results, dfResults, **kwargs):
                     last_ms = 1000
 
                 # calculate the maximum of the output
-                dfResults.loc[i, "max_" + output_name] = np.max(
+                dfResults.loc[i, "max_" + output_name] = np.nanmax(
                     results[i][output_name][:, -int(last_ms / model.params["dt"]) :]
                 )
 
                 # calculate the amplitude of the output
-                dfResults.loc[i, "amp_" + output_name] = np.max(
-                    np.max(results[i][output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
-                    - np.min(results[i][output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
+                dfResults.loc[i, "amp_" + output_name] = np.nanmax(
+                    np.nanmax(results[i][output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
+                    - np.nanmin(results[i][output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
                 )
     return dfResults
 
