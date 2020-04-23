@@ -99,6 +99,7 @@ def plotExplorationResults(
             mask_threshold = kwargs["mask_threshold"] if "mask_threshold" in kwargs else 1
             mask_alpha = kwargs["mask_alpha"] if "mask_alpha" in kwargs else 0.5
             mask_style = kwargs["mask_style"] if "mask_style" in kwargs else None
+            mask_invert = kwargs["mask_invert"] if "mask_invert" in kwargs else False
 
             # alpha_mask can either be a pd.DataFrame or an np.ndarray that is 
             # layed over the image, a string that is a key in the results df
@@ -107,13 +108,15 @@ def plotExplorationResults(
 
             if isinstance(alpha_mask, (pd.DataFrame, np.ndarray)):
                 mask = np.array(alpha_mask)
+            elif alpha_mask == "custom":
+                mask = df.pivot_table(values=alpha_mask, index=par2, columns=par1, dropna=False)
             elif isinstance(alpha_mask, str):
                 mask = df.pivot_table(values=alpha_mask, index=par2, columns=par1, dropna=False)
                 mask = np.array(mask)
             else:
                 mask = None
             
-            image = alphaMask(image, mask_threshold, mask_alpha, mask=mask, style=mask_style)
+            image = alphaMask(image, mask_threshold, mask_alpha, mask=mask, invert=mask_invert, style=mask_style)
 
         im = ax.imshow(
             image,
@@ -174,11 +177,11 @@ def contourPlotDf(dataframe, color="white", levels=None, ax=None):
         Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, linewidths=(4,), zorder=1
     )
 
-def alphaMask(image, threshold, alpha, mask=None, style=None):
+def alphaMask(image, threshold, alpha, mask=None, invert=False, style=None):
     if mask is None:
         mask = image    
-    alphas = Normalize(0, threshold, clip=True)(np.abs(mask))
-    alphas = mask>threshold
+    #alphas = Normalize(0, threshold, clip=True)(np.abs(mask))
+    alphas = mask>threshold if not invert else mask<threshold
     alphas = np.clip(alphas, alpha, 1)
 
     if style == "stripes":
@@ -233,26 +236,43 @@ def plotResult(search, runId, z_bold = False, **kwargs):
         axs[2].set_xlim(kwargs["xlim"])
     plt.tight_layout()
 
-def processExplorationResults(results, dfResults, **kwargs):
+def processExplorationResults(search, **kwargs):
     """Process results from the exploration. 
     """
 
-    #
-    # if bold_transient is given as an argument
-    if "bold_transient" in kwargs:
-        bold_transient = kwargs["bold_transient"]
-        logging.info(f"Bold transient: {bold_transient} ms")
-    else:
-        # else, set it to 10 seconds
-        bold_transient = 10000
+    dfResults = search.dfResults
+    
+    # set bold transient 
+    bold_transient = kwargs["bold_transient"] if "bold_transient" in kwargs else 10000
+    logging.info(f"Bold transient: {bold_transient} ms")
 
-    # cycle through all results
+    # cycle through each result's runID
     for i in tqdm.tqdm(dfResults.index):
-        # if the result has an output
-        #if "t" in results[i].keys() or "outputs.t" in results[i].keys():
-        if "BOLD" in results[i].keys():
+        
+        if hasattr(search, "results"):
+            # load result from either the preloaded .result attribute (from .loadResults)
+            result = search.results[i]        
+        else:
+            # or from disk if results haven't been loaded yet
+            result = search.getRun(i)
+        # if the result contains BOLD output
+        if "BOLD" in result.keys():
+            # load BOLD data
+            if "BOLD" in result["BOLD"]:
+                # if the output is a nested dictionary (default output of a model)\
+                bold = result["BOLD"]["BOLD"]
+                t_bold = result["BOLD"]["t_BOLD"]
+            elif isinstance(result["BOLD"], np.ndarray):
+                # if not, then we hope the first BOLD key contains an array
+                # and infer the time axis by assuming fs=0.5 Hz BOLD sampling rate
+                bold = result["BOLD"]
+                t_bold = np.linspace(0, bold.shape[1]*2*1000, bold.shape[1])
+            else:
+                raise ValueError("Could not load BOLD data. Wrong format?")
+            
+            bold = result["BOLD"][:, t_bold>bold_transient]
+
             # if a dataset was passed as an argument
-            bold = results[i]["BOLD"][:, int(bold_transient/1000/2):]
             if "ds" in kwargs:
                 ds = kwargs["ds"]
 
@@ -267,13 +287,18 @@ def processExplorationResults(results, dfResults, **kwargs):
                     ]
                 )         
                 # if BOLD simulation is longer than 5 minutes, calculate kolmogorov of FCD
-                if len(bold.T) > 5 * 30:
+                if t_bold[-1] > 5 * 1000 * 60:
+                    sim_fcd = func.fcd(bold)
+                    if hasattr(ds, "FCDs"):
+                        emp_fcds = ds.FCDs
+                    else:
+                        emp_fcds = [func.fcd(emp_bold) for emp_bold in ds.BOLDs]
                     dfResults.loc[i, "fcd"] = np.mean(
                         [
-                            func.ts_kolmogorov(bold, bold)
-                            for bold in ds.BOLDs
+                            func.matrix_kolmogorov(sim_fcd, emp_fcd)
+                            for emp_fcd in emp_fcds
                         ]
-                    )
+                    )    
                             
 
             # if the model is passed as an argument
@@ -289,19 +314,18 @@ def processExplorationResults(results, dfResults, **kwargs):
                 # use the last x ms for analysis
                 if "output_last_ms" in kwargs:
                     last_ms = kwargs["output_last_ms"]
-                    logging.info(f"Analyzing last {bold_transient} ms of the output {output_name}.")
                 else:
                     last_ms = 1000
 
                 # calculate the maximum of the output
                 dfResults.loc[i, "max_" + output_name] = np.nanmax(
-                    results[i][output_name][:, -int(last_ms / model.params["dt"]) :]
+                    result[output_name][:, -int(last_ms / model.params["dt"]) :]
                 )
 
                 # calculate the amplitude of the output
                 dfResults.loc[i, "amp_" + output_name] = np.nanmax(
-                    np.nanmax(results[i][output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
-                    - np.nanmin(results[i][output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
+                    np.nanmax(result[output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
+                    - np.nanmin(result[output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
                 )
     return dfResults
 

@@ -56,7 +56,7 @@ class TestExplorationUtils(unittest.TestCase):
 
     def test_processExplorationResults(self):
         self.search.dfResults = eu.processExplorationResults(
-            self.search.results, self.search.dfResults, model=self.model, ds=self.ds, bold_transient=0
+            self.search, model=self.model, ds=self.ds, bold_transient=0
         )
 
     def test_findCloseResults(self):
