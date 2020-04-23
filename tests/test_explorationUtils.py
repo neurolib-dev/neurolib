@@ -65,7 +65,7 @@ class TestExplorationUtils(unittest.TestCase):
     @pytest.mark.skipif(sys.platform == "darwin", reason="plotting does not work on macOS")
     def test_plotExplorationResults(self):
         self.search.dfResults = eu.processExplorationResults(
-            self.search.results, self.search.dfResults, model=self.model, ds=self.ds, bold_transient=0
+            self.search, model=self.model, ds=self.ds, bold_transient=0
         )
 
         eu.plotExplorationResults(
