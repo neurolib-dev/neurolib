@@ -46,7 +46,7 @@ def saveToPypet(traj, pop, gIdx):
 
 
 def printParamDist(pop=None, paramInterval=None, gIdx=None):
-    print("Parameter dictribution (Generation {}):".format(gIdx))
+    print("Parameter distribution (Generation {}):".format(gIdx))
     for idx, k in enumerate(paramInterval._fields):
         print(
             "{}: \t mean: {:.4},\t std: {:.4}".format(
@@ -57,29 +57,17 @@ def printParamDist(pop=None, paramInterval=None, gIdx=None):
 
 def printIndividuals(pop, paramInterval, stats=True):
     print("Printing {} individuals".format(len(pop)))
-    pars = []
     for i, ind in enumerate(pop):
-        thesepars = {}
-        for ki, k in enumerate(paramInterval._fields):
-            thesepars[k] = ind[ki]
-        thesepars["fit"] = np.mean(ind.fitness.values)
-        pars.append(thesepars)
-        print(
-            "Individual",
-            i,
-            "pars",
-            ", ".join([" ".join([k, "{0:.4}".format(ind[ki])]) for ki, k in enumerate(paramInterval._fields)]),
-        )
-        print("\tFitness values: ", *np.round(ind.fitness.values, 4))
+        print(f"Individual {i}")
+        
+        print("\tFitness values: ", *np.round(ind.fitness.values, 2))
         if stats:
-            print(
-                "\t > mean {0:.4}, std {0:.4}, min {0:.4} max {0:.4}".format(
-                    np.mean(ind.fitness.values),
-                    np.std(ind.fitness.values),
-                    np.min(ind.fitness.values),
-                    np.max(ind.fitness.values),
-                )
-            )
+            print("\tScore: ", np.round(ind.fitness.score, 2))
+            print("\tWeighted fitness: ", *np.round(ind.fitness.wvalues, 2))
+            print(f"\tStats mean {np.mean(ind.fitness.values):.2f} std {np.std(ind.fitness.values):.2f} min {np.min(ind.fitness.values):.2f} max {np.max(ind.fitness.values):.2f}")
+        for ki, k in enumerate(paramInterval._fields):
+            print(f"\tmodel.params[\"{k}\"] = {ind[ki]:.2f}")
+        
 
 
 def plotScoresDistribution(scores, gIdx, save_plots=None):
