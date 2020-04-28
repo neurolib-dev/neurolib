@@ -396,6 +396,22 @@ class BoxSearch:
 
         return pu.getRun(runId, pypetTrajectory, pypetShortNames=pypetShortNames)
 
+    def getResult(self, runId):
+        """Returns either a loaded result or reads from disk.
+
+        :param runId: runId of result
+        :type runId: int
+        :return: result
+        :rtype: dict
+        """
+        if hasattr(self, "results"):
+            # load result from either the preloaded .result attribute (from .loadResults)
+            result = self.results[runId]        
+        else:
+            # or from disk if results haven't been loaded yet
+            result = self.getRun(runId)
+        return result
+
     def info(self):
         """Print info about the current search.
         """
