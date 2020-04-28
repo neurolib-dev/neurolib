@@ -92,9 +92,8 @@ class Evolution:
             use_pool=False,
             multiproc=True,
             ncores=ncores,
-            log_stdout=False,
-            log_multiproc=False,
             complevel=9,
+            log_config=paths.PYPET_LOGGING_CONFIG,            
         )
 
         # Get the trajectory from the environment
