@@ -484,19 +484,25 @@ class Evolution:
             self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
 
             # text log
-            logging.info("----------- Generation %i -----------" % self.gIdx)
-            logging.info("Best individual is {}".format(self.best_ind))
-            logging.info("Score: {}".format(self.best_ind.fitness.score))
-            logging.info("Fitness: {}".format(self.best_ind.fitness.values))
-            logging.info("--- Population statistics ---")
+            next_print = print if self.verbose else logging.info
+            next_print("----------- Generation %i -----------" % self.gIdx)
+            next_print("Best individual is {}".format(self.best_ind))
+            next_print("Score: {}".format(self.best_ind.fitness.score))
+            next_print("Fitness: {}".format(self.best_ind.fitness.values))
+            next_print("--- Population statistics ---")
 
-            # plotting
+            # verbose output
             if self.verbose:
-                eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-                # plotting
-                eu.plotPopulation(
-                    self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName
-                )
+                self.info(plot=True, info=False)
+                # # population summary
+                # eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
+                # bestN = 5
+                # print(f"Best {bestN} individuals:")
+                # eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)                
+                # # plotting
+                # eu.plotPopulation(
+                #     self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName
+                # )
 
         logging.info("--- End of evolution ---")
         logging.info("Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values))
@@ -512,20 +518,25 @@ class Evolution:
         :param verbose: Print and plot state of evolution during run, defaults to False
         :type verbose: bool, optional
         """
+        
         self.verbose = verbose
         if not self._initialPopulationSimulated:
             self.runInitial()
+
         self.runEvolution()
 
-    def info(self, plot=True, bestN=5):
+    def info(self, plot=True, bestN=5, info=True):
         """Print and plot information about the evolution and the current population
         
         :param plot: plot a plot using `matplotlib`, defaults to True
         :type plot: bool, optional
         :param bestN: Print summary of `bestN` best individuals, defaults to 5
         :type bestN: int, optional
+        :param info: Print information about the evolution environment
+        :type info: bool, optional
         """
-        eu.printEvolutionInfo(self)
+        if info:
+            eu.printEvolutionInfo(self)
         validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
         scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
@@ -540,7 +551,7 @@ class Evolution:
         print("--------------------")
         # Plotting
         if plot:
-            eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True)
+            eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName)
 
     def plotProgress(self):
         """Plots progress of fitnesses of current evolution run
