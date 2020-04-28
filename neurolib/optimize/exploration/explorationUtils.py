@@ -200,16 +200,16 @@ def alphaMask(image, threshold, alpha, mask=None, invert=False, style=None):
 def plotResult(search, runId, z_bold = False, **kwargs):
     fig, axs = plt.subplots(1, 3, figsize=(8, 2), dpi=300, gridspec_kw={'width_ratios': [1, 1.2, 2]})
 
-    if "bold_transient" in kwargs:
-        bold_transient = int(kwargs["bold_transient"] / 2)
-    else:
-        bold_transient = int(30 / 2)
+    bold_transient = int(kwargs["bold_transient"] / 2) if "bold_transient" in kwargs else int(30 / 2)
 
-    bold = search.results[runId].BOLD[:, bold_transient:]
+    # get result from search
+    result = search.getResult(runId)
+
+    bold = result.BOLD[:, bold_transient:]
     bold_z = stats.zscore(bold, axis=1)
     t_bold = np.linspace(2, len(bold.T)*2, len(bold.T), )
 
-    output = search.results[runId].output[:, :]
+    output = result.output[:, :]
     output_dt = search.model.params.dt
     t_output = np.linspace(output_dt, len(output.T)*output_dt, len(output.T), )
 
@@ -241,22 +241,42 @@ def processExplorationResults(search, **kwargs):
     """
 
     dfResults = search.dfResults
-    
-    # set bold transient 
-    bold_transient = kwargs["bold_transient"] if "bold_transient" in kwargs else 10000
-    logging.info(f"Bold transient: {bold_transient} ms")
+
 
     # cycle through each result's runID
     for i in tqdm.tqdm(dfResults.index):
-        
-        if hasattr(search, "results"):
-            # load result from either the preloaded .result attribute (from .loadResults)
-            result = search.results[i]        
-        else:
-            # or from disk if results haven't been loaded yet
-            result = search.getRun(i)
-        # if the result contains BOLD output
+        # get result
+        result = search.getResult(i)
+        # ------------------------
+        # analyse model outputs
+        # to know the name of the output, either a model has to be passed to this function
+        # alternatively an output name can be directly specified using the output="output_name" argument
+        if "model" in kwargs or "output" in kwargs:
+            dt = None
+            if "model" in kwargs:
+                model = kwargs["model"]
+                output_name = model.default_output
+                dt = model.params["dt"]
+            if "output" in kwargs:
+                output_name = kwargs["output"]
+                if "dt" in kwargs:
+                    dt = kwargs["dt"] 
+
+            assert output_name in result, f"Results do not contain output `{output_name}`."
+            assert dt > 0, f"dt could not be determined from model, use dt=0.1 for example."
+
+            # use the last x ms for analysis
+            last_ms = kwargs["output_last_ms"] if "output_last_ms" in kwargs else 1000
+            output = result[output_name][:, -int(last_ms / dt) :]
+            
+            dfResults = computeMinMax(dfResults, i, output, output_name)
+
+        # ------------------------
+        # analyse BOLD output
         if "BOLD" in result.keys():
+            # set bold transient 
+            bold_transient = kwargs["bold_transient"] if "bold_transient" in kwargs else 10000
+            
             # load BOLD data
             if "BOLD" in result["BOLD"]:
                 # if the output is a nested dictionary (default output of a model)\
@@ -271,7 +291,23 @@ def processExplorationResults(search, **kwargs):
                 raise ValueError("Could not load BOLD data. Wrong format?")
             
             bold = result["BOLD"][:, t_bold>bold_transient]
+            t_bold = t_bold[t_bold>bold_transient]
 
+            # cut the bold signal until a time but only as the input
+            # for computeMinMax(), that's why we create a copy here 
+            # and use the original bold signal later for fc and fcd
+            if "bold_until" in kwargs:
+                bold_minmax = bold[:, t_bold<kwargs["bold_until"]]
+                t_bold_minmax = t_bold[t_bold<kwargs["bold_until"]]
+            else:
+                bold_minmax = bold
+                t_bold_minmax = t_bold
+
+            output_name = "BOLD"
+            dfResults = computeMinMax(dfResults, i, bold_minmax, output_name)     
+            
+            # -----
+            # compare to BOLD dataset
             # if a dataset was passed as an argument
             if "ds" in kwargs:
                 ds = kwargs["ds"]
@@ -287,7 +323,8 @@ def processExplorationResults(search, **kwargs):
                     ]
                 )         
                 # if BOLD simulation is longer than 5 minutes, calculate kolmogorov of FCD
-                if t_bold[-1] > 5 * 1000 * 60:
+                skip_fcd = kwargs['skip_fcd'] if 'skip_fcd' in kwargs else False
+                if t_bold[-1] > 5 * 1000 * 60 and not skip_fcd:
                     sim_fcd = func.fcd(bold)
                     if hasattr(ds, "FCDs"):
                         emp_fcds = ds.FCDs
@@ -299,36 +336,33 @@ def processExplorationResults(search, **kwargs):
                             for emp_fcd in emp_fcds
                         ]
                     )    
-                            
 
-            # if the model is passed as an argument
-            if "model" in kwargs:
-                model = kwargs["model"]
 
-                # get the output of the model
-                if "output" in kwargs:
-                    output_name = kwargs["output"]
-                else:
-                    output_name = model.default_output
+def computeMinMax(dfResults, i, output, output_name):
+        # calculate the maximum of the output
+        dfResults.loc[i, "max_" + output_name] = np.nanmax(
+            output
+        )
+        # calculate the minimum of the output
+        dfResults.loc[i, "min_" + output_name] = np.nanmin(
+            output
+        )            
 
-                # use the last x ms for analysis
-                if "output_last_ms" in kwargs:
-                    last_ms = kwargs["output_last_ms"]
-                else:
-                    last_ms = 1000
+        # calculate the maximum amplitude of the output
+        dfResults.loc[i, "max_amp_" + output_name] = np.nanmax(
+            np.nanmax(output, axis=1)
+            - np.nanmin(output, axis=1)
+        )
 
-                # calculate the maximum of the output
-                dfResults.loc[i, "max_" + output_name] = np.nanmax(
-                    result[output_name][:, -int(last_ms / model.params["dt"]) :]
-                )
+        # calculate the minimum amplitude of the output
+        dfResults.loc[i, "min_amp_" + output_name] = np.nanmin(
+            np.nanmax(output, axis=1)
+            - np.nanmin(output, axis=1)
+        )
 
-                # calculate the amplitude of the output
-                dfResults.loc[i, "amp_" + output_name] = np.nanmax(
-                    np.nanmax(result[output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
-                    - np.nanmin(result[output_name][:, -int(last_ms / model.params["dt"]) :], axis=1)
-                )
-    return dfResults
-
+        # compute relative amplitude
+        dfResults['relative_amplitude_' + output_name] = dfResults['max_amp_' + output_name] / (dfResults['max_' + output_name] - dfResults['min_' + output_name])
+        return dfResults
 
 def findCloseResults(dfResults, dist=0.01, relative = False, **kwargs):
     """Usage: findCloseResults(search.dfResults, mue_ext_mean=2.0, mui_ext_mean=2.5)
