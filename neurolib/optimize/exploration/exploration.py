@@ -105,10 +105,7 @@ class BoxSearch:
             multiproc=True,
             ncores=nprocesses,
             complevel=9,
-            # log_stdout=False,
-            # log_config=None,
-            # report_progress=True,
-            # log_multiproc=False,
+            log_config=paths.PYPET_LOGGING_CONFIG,
         )
         self.env = env
         # Get the trajectory from the environment
