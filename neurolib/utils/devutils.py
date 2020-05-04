@@ -6,13 +6,13 @@ import neurolib.utils.functions as func
 
 
 def plot_outputs(
-    model, ds=None, activity_xlim=None, bold_transient=10000, spectrum_windowsize=1
+    model, ds=None, activity_xlim=None, bold_transient=10000, spectrum_windowsize=1, plot_fcd = None
 ):
 
     # check if BOLD signal is long enough for FCD
     FCD_THRESHOLD = 60  # seconds
-    plot_fcd = False
-    if "BOLD" in model.outputs:
+    #plot_fcd = False
+    if "BOLD" in model.outputs and plot_fcd is None:
         if (
             len(model.BOLD.BOLD.T) > FCD_THRESHOLD / 2
         ):  # div by 2 because of bold sampling rate
@@ -25,7 +25,7 @@ def plot_outputs(
 
     if "t" in model.outputs:
         axs[0, 0].set_ylabel("Activity")
-        axs[0, 0].set_xlabel("Time [ms]")
+        axs[0, 0].set_xlabel("Time [s]")
         axs[0, 0].plot(model.outputs.t / 1000, model.output.T, alpha=0.8, lw=0.5)
         axs[0, 0].plot(
             model.outputs.t / 1000,
@@ -34,11 +34,31 @@ def plot_outputs(
             alpha=0.8,
             lw=1.5,
             label="average",
+            zorder=3
         )
+
+        axs[0, 0].plot(
+            model.outputs.t / 1000,
+            np.mean(model.output[1::2, :], axis=0),
+            c="k",
+            alpha=0.8,
+            lw=1,
+            label="L average",
+        )
+
+        axs[0, 0].plot(
+            model.outputs.t / 1000,
+            np.mean(model.output[::2, :], axis=0),
+            c="k",
+            alpha=0.8,
+            lw=1,
+            label="R average",
+        )        
+
         axs[0, 0].set_xlim(activity_xlim)
 
         axs[0, 1].set_ylabel("Node")
-        axs[0, 1].set_xlabel("Time [ms]")
+        axs[0, 1].set_xlabel("Time [s]")
         # plt.imshow(rates_exc*1000, aspect='auto', extent=[0, params['duration'], N, 0], clim=(0, 10))
         axs[0, 1].imshow(
             model.output,
@@ -89,12 +109,12 @@ def plot_outputs(
 
         axs[1, 2].set_title("FC corr over time", fontsize=12)
         axs[1, 2].plot(
-            np.arange(bold.shape[1] * 2, step=2),
+            np.arange(4, bold.shape[1] * 2, step=2),
             np.array(
                 [
                     [
                         func.matrix_correlation(func.fc(bold[:, :t]), fc)
-                        for t in range(bold.shape[1])
+                        for t in range(2, bold.shape[1])
                     ]
                     for fc in ds.FCs
                 ]
