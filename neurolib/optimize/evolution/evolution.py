@@ -37,9 +37,9 @@ class Evolution:
         POP_SIZE=20,
         NGEN=10,
         matingFunction=None,
-        CXP=0.5,
+        MATE_P=0.5,
         selectionFunction=None,
-        RANKP=1.5,
+        SELECT_P=1.5,
     ):
         """Initialize evolutionary optimization.
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
@@ -62,12 +62,12 @@ class Evolution:
         :type NGEN: int, optional
         :param matingFunction: Custom mating function, defaults to blend crossover if not set., defaults to None
         :type matingFunction: function, optional
-        :param CXP: Parameter handed to the mating function (for blend crossover, this is `alpha`), defaults to 0.5
-        :type CXP: float, optional
+        :param MATE_P: Parameter handed to the mating function (for blend crossover, this is `alpha`), defaults to 0.5
+        :type MATE_P: float, optional
         :param selectionFunction: Custom parent selection function, defaults to rank selection if not set., defaults to None
         :type selectionFunction: function, optional
-        :param RANKP: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
-        :type RANKP: float, optional
+        :param SELECT_P: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
+        :type SELECT_P: float, optional
         """
 
         if weightList is None:
@@ -108,8 +108,8 @@ class Evolution:
         self.evalFunction = evalFunction
         self.weightList = weightList
 
-        self.CXP = CXP
-        self.RANKP = RANKP
+        self.MATE_P = MATE_P
+        self.SELECT_P = SELECT_P
         self.NGEN = NGEN
         assert POP_SIZE % 2 == 0, "Please chose an even number for POP_SIZE!"
         self.POP_SIZE = POP_SIZE
@@ -137,15 +137,10 @@ class Evolution:
 
         self.toolbox = deap.base.Toolbox()
 
-        if matingFunction is None:
-            # this is our custom uniform mating function
-            # matingFunction = du.cxUniform_adapt
-            # this is blend crossover (with alpha)
-            matingFunction = tools.cxBlend
+        matingFunction = matingFunction or tools.cxBlend
         self.matingFunction = matingFunction
 
-        if selectionFunction is None:
-            selectionFunction = du.selRank
+        selectionFunction = selectionFunction or du.selBest_multiObj
         self.selectionFunction = selectionFunction
 
         self.initDEAP(
@@ -160,7 +155,7 @@ class Evolution:
 
         # set up pypet trajectory
         self.initPypetTrajectory(
-            self.traj, self.paramInterval, self.POP_SIZE, self.CXP, self.NGEN, self.model,
+            self.traj, self.paramInterval, self.POP_SIZE, self.MATE_P, self.NGEN, self.model,
         )
 
         # population history: dict of all valid individuals per generation
@@ -214,7 +209,7 @@ class Evolution:
         """
         return self.ParametersInterval(*(individual[: len(self.paramInterval)]))._asdict().copy()
 
-    def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, CXP, NGEN, model):
+    def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, MATE_P, NGEN, model):
         """Initializes pypet trajectory and store all simulation parameters for later analysis.
         
         :param traj: Pypet trajectory (must be already initialized!)
@@ -223,8 +218,8 @@ class Evolution:
         :type paramInterval: parameterSpace.named_tuple
         :param POP_SIZE: Population size
         :type POP_SIZE: int
-        :param CXP: Crossover parameter
-        :type CXP: float
+        :param MATE_P: Crossover parameter
+        :type MATE_P: float
         :param NGEN: Number of generations
         :type NGEN: int
         :param model: Model to store the default parameters of
@@ -232,7 +227,7 @@ class Evolution:
         """
         # Initialize pypet trajectory and add all simulation parameters
         traj.f_add_parameter("popsize", POP_SIZE, comment="Population size")  #
-        traj.f_add_parameter("CXP", CXP, comment="Crossover parameter")
+        traj.f_add_parameter("MATE_P", MATE_P, comment="Crossover parameter")
         traj.f_add_parameter("NGEN", NGEN, comment="Number of generations")
 
         # Placeholders for individuals and results that are about to be explored
@@ -414,7 +409,7 @@ class Evolution:
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
         # Only the best indviduals are selected for the population the others do not survive
-        self.pop[:] = self.toolbox.selBest(self.pop, k=self.traj.popsize)
+        self.pop[:] = self.toolbox.select(self.pop, k=self.traj.popsize)
         self._initialPopulationSimulated = True
 
         # populate history for tracking
@@ -439,7 +434,7 @@ class Evolution:
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
-            offspring = list(map(self.toolbox.clone, self.toolbox.selRank(self.pop, self.POP_SIZE, self.RANKP)))
+            offspring = list(map(self.toolbox.clone, self.toolbox.selRank(self.pop, self.POP_SIZE, self.SELECT_P)))
             # n_offspring = min(len(validpop), self.POP_SIZE)
             # if n_offspring % 2 != 0:
             #     n_offspring -= 1
@@ -447,7 +442,7 @@ class Evolution:
 
             ##### cross-over ####
             for i in range(1, len(offspring), 2):
-                offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], self.CXP)
+                offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], self.MATE_P)
                 # del offspring[i - 1].fitness, offspring[i].fitness
                 del offspring[i - 1].fitness.values, offspring[i].fitness.values
                 del offspring[i - 1].fitness.wvalues, offspring[i].fitness.wvalues
@@ -468,8 +463,8 @@ class Evolution:
             self.evalPopulationUsingPypet(self.traj, self.toolbox, offspring + newpop, self.gIdx)
             # ------- Select surviving population -------- #
 
-            # select next population
-            self.pop = self.toolbox.selBest(validpop + offspring + newpop, k=self.traj.popsize)
+            # select next generation
+            self.pop = self.toolbox.select(validpop + offspring + newpop, k=self.traj.popsize)
 
             # ------- END OF ROUND -------
 
@@ -480,7 +475,7 @@ class Evolution:
             self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
             # select best individual for logging
-            self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
+            self.best_ind = self.toolbox.select(self.pop, 1)[0]
 
             # text log
             next_print = print if self.verbose else logging.info
