@@ -408,8 +408,13 @@ class Evolution:
         # save all simulation data to pypet
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
+        # For NSGA-2 selection:
+        # This is just to assign the crowding distance to the individuals
+        # no actual selection is done
+        self.pop = self.toolbox.select(self.pop, len(self.pop))
+
         # Only the best indviduals are selected for the population the others do not survive
-        self.pop[:] = self.toolbox.select(self.pop, k=self.traj.popsize)
+        self.pop = self.toolbox.select(self.pop, k=self.traj.popsize)
         self._initialPopulationSimulated = True
 
         # populate history for tracking
