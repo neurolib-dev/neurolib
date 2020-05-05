@@ -40,6 +40,7 @@ class Evolution:
         MATE_P=0.5,
         selectionFunction=None,
         SELECT_P=1.5,
+        parentSelectionFunction=None
     ):
         """Initialize evolutionary optimization.
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
@@ -64,8 +65,9 @@ class Evolution:
         :type matingFunction: function, optional
         :param MATE_P: Parameter handed to the mating function (for blend crossover, this is `alpha`), defaults to 0.5
         :type MATE_P: float, optional
-        :param selectionFunction: Custom parent selection function, defaults to rank selection if not set., defaults to None
+        :param selectionFunction: Custom parent selection function, defaults to NSGA-2 selection if not set., defaults to None
         :type selectionFunction: function, optional
+        :param parentSelectionFunction: Operator for parent selection, defaults to rank selection
         :param SELECT_P: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
         :type SELECT_P: float, optional
         """
@@ -137,11 +139,14 @@ class Evolution:
 
         self.toolbox = deap.base.Toolbox()
 
+        # register evolution operators 
         matingFunction = matingFunction or tools.cxBlend
         self.matingFunction = matingFunction
 
-        selectionFunction = selectionFunction or du.selBest_multiObj
+        selectionFunction = selectionFunction or tools.selNSGA2
         self.selectionFunction = selectionFunction
+
+        self.parentSelectionFunction = parentSelectionFunction or du.selRank
 
         self.initDEAP(
             self.toolbox,
@@ -151,6 +156,7 @@ class Evolution:
             weights_list=self.weightList,
             matingFunction=self.matingFunction,
             selectionFunction=self.selectionFunction,
+            parentSelectionFunction=self.parentSelectionFunction
         )
 
         # set up pypet trajectory
@@ -250,7 +256,7 @@ class Evolution:
         )
 
     def initDEAP(
-        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingFunction, selectionFunction
+        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingFunction, selectionFunction, parentSelectionFunction
     ):
         """Initializes DEAP and registers all methods to the deap.toolbox
         
@@ -286,13 +292,14 @@ class Evolution:
 
         # Operator registering
         toolbox.register("selBest", du.selBest_multiObj)
-        toolbox.register("selRank", du.selRank)
+        toolbox.register("selectParents", parentSelectionFunction)
+        logging.info(f"Evolution: Parent selection: {parentSelectionFunction}")
         # "select" is not used, instead selRank is used but this is more general and should be changed
         toolbox.register("select", selectionFunction)
-        logging.info(f"Evolution: Registered {selectionFunction} as selection function.")
+        logging.info(f"Evolution: Selection operator: {selectionFunction}")
         toolbox.register("evaluate", evalFunction)
         toolbox.register("mate", matingFunction)
-        logging.info(f"Evolution: Registered {matingFunction} as mating function.")
+        logging.info(f"Evolution: Mating operator: {matingFunction}")
         toolbox.register("mutate", du.gaussianAdaptiveMutation_nStepSizes)
         toolbox.register("map", pypetEnvironment.run)
         toolbox.register("run_map", pypetEnvironment.run_map)
@@ -439,7 +446,7 @@ class Evolution:
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
-            offspring = list(map(self.toolbox.clone, self.toolbox.selRank(self.pop, self.POP_SIZE, self.SELECT_P)))
+            offspring = list(map(self.toolbox.clone, self.toolbox.selectParents(self.pop, self.POP_SIZE, self.SELECT_P)))
             # n_offspring = min(len(validpop), self.POP_SIZE)
             # if n_offspring % 2 != 0:
             #     n_offspring -= 1
@@ -550,6 +557,7 @@ class Evolution:
         print("--------------------")
         # Plotting
         if plot:
+            self.plotProgress()
             eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName)
 
     def plotProgress(self):

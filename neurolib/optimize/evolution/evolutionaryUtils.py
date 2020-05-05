@@ -143,16 +143,22 @@ def plotPopulation(
         plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots)
 
 
-# def plotProgress(evolution, drop_first=True):
-#     gens, all_scores = evolution.getScoresDuringEvolution(reverse=False, drop_first=drop_first)
-#     import matplotlib.pyplot as plt
+def plotProgress(evolution):
+    import matplotlib.pyplot as plt
 
-#     plt.figure(figsize=(8, 4), dpi=200)
-#     plt.plot(gens, np.nanmean(all_scores, axis=1))
-#     plt.fill_between(gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3)
-#     plt.xlabel("Generation #")
-#     plt.ylabel("Score")
-#     plt.show()
+    gens, all_scores = evolution.getScoresDuringEvolution(reverse=True)
+
+    fig, axs = plt.subplots(2, 1, figsize=(3.5, 3), dpi=150, sharex=True, gridspec_kw={"height_ratios" : [2, 1]})   
+    im = axs[0].imshow(all_scores.T, aspect='auto', origin='lower')
+    axs[0].set_ylabel("Individuals")
+    cbar_ax = fig.add_axes([0.93, 0.42, 0.02, 0.3])
+    fig.colorbar(im, cax=cbar_ax, label='Score')
+
+    axs[1].plot(gens, np.nanmean(all_scores, axis=1), label='Average')
+    axs[1].fill_between(gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3, label='Bound')
+    axs[1].set_xlabel("Generation")
+    axs[1].set_ylabel("Score")
+    plt.show()
 
 
 def printEvolutionInfo(evolution):
@@ -180,8 +186,12 @@ def printEvolutionInfo(evolution):
     print(f"Number of generations: {evolution.NGEN}")
     print(f"Initial population size: {evolution.POP_INIT_SIZE}")
     print(f"Population size: {evolution.POP_SIZE}")
+    print("> Evolutionary operators")
+    print(f"Mating operator: {evolution.matingFunction}")
     print(f"Mating paramter: {evolution.MATE_P}")
+    print(f"Selection operator: {evolution.selectionFunction}")
     print(f"Selection paramter: {evolution.SELECT_P}")
+    print(f"Parent selection operator: {evolution.parentSelectionFunction}")
     if len(evolution.comments) > 0:
         if isinstance(evolution.comments, str):
             print(f"Comments: {evolution.comments}")
