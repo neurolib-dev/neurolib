@@ -37,10 +37,13 @@ class Evolution:
         POP_SIZE=20,
         NGEN=10,
         matingOperator=None,
-        MATE_P=0.5,
+        MATE_P={"alpha" : 0.5},
+        mutationOperator=None,
+        MUTATE_P={},
         selectionOperator=None,
-        SELECT_P=1.5,
-        parentSelectionOperator=None
+        SELECT_P={},
+        parentSelectionOperator=None,
+        PARENT_SELECT_P={"s" : 1.5},
     ):
         """Initialize evolutionary optimization.
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
@@ -51,25 +54,37 @@ class Evolution:
         :type weightList: list[float], optional
         :param model: Model to simulate, defaults to None
         :type model: `neurolib.models.model.Model`, optional
+
         :param filename: HDF file to store all results in, defaults to "evolution.hdf"
         :type filename: str, optional
         :param ncores: Number of cores to simulate on (max cores default), defaults to None
         :type ncores: int, optional
+
         :param POP_INIT_SIZE: Size of first population to initialize evolution with (random, uniformly distributed), defaults to 100
         :type POP_INIT_SIZE: int, optional
         :param POP_SIZE: Size of the population during evolution, defaults to 20
         :type POP_SIZE: int, optional
         :param NGEN: Numbers of generations to evaluate, defaults to 10
         :type NGEN: int, optional
-        :param matingOperator: Custom mating function, defaults to blend crossover if not set., defaults to None
-        :type matingOperator: function, optional
-        :param MATE_P: Parameter handed to the mating function (for blend crossover, this is `alpha`), defaults to 0.5
-        :type MATE_P: float, optional
-        :param selectionOperator: Custom parent selection function, defaults to NSGA-2 selection if not set., defaults to None
-        :type selectionOperator: function, optional
-        :param parentSelectionOperator: Operator for parent selection, defaults to rank selection
-        :param SELECT_P: UNUSED! Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
+
+        :param matingOperator: Custom mating operator, defaults to deap.tools.cxBlend
+        :type matingOperator: deap operator, optional
+        :param MATE_P: Parameter handed to the mating operator (for blend crossover cxBlend, this is `alpha`), defaults to 0.5
+        :type MATE_P: dict, optional
+
+        :param mutationOperator: Custom mutation operator, defaults to du.gaussianAdaptiveMutation_nStepSizes
+        :type mutationOperator: deap operator, optional
+        :param MUTATE_P: Parameter handed to the mutation operator
+        :type MUTATE_P: dict, optional
+
+        :param selectionOperator: Custom selection operator, defaults to du.selBest_multiObj
+        :type selectionOperator: deap operator, optional
+        :param SELECT_P: Selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
         :type SELECT_P: float, optional
+
+        :param parentSelectionOperator: Operator for parent selection, defaults to du.selRank
+        :param PARENT_SELECT_P: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
+        :type PARENT_SELECT_P: float, optional
         """
 
         if weightList is None:
@@ -110,8 +125,10 @@ class Evolution:
         self.evalFunction = evalFunction
         self.weightList = weightList
 
+        self.MUTATE_P = MUTATE_P
         self.MATE_P = MATE_P
         self.SELECT_P = SELECT_P
+        self.PARENT_SELECT_P = PARENT_SELECT_P
         self.NGEN = NGEN
         assert POP_SIZE % 2 == 0, "Please chose an even number for POP_SIZE!"
         self.POP_SIZE = POP_SIZE
@@ -143,6 +160,9 @@ class Evolution:
         matingOperator = matingOperator or tools.cxBlend
         self.matingOperator = matingOperator
 
+        mutationOperator = mutationOperator or du.gaussianAdaptiveMutation_nStepSizes
+        self.mutationOperator = mutationOperator
+
         selectionOperator = selectionOperator or du.selBest_multiObj
         self.selectionOperator = selectionOperator
 
@@ -153,8 +173,9 @@ class Evolution:
             self.env,
             self.paramInterval,
             self.evalFunction,
-            weights_list=self.weightList,
+            weightList=self.weightList,
             matingOperator=self.matingOperator,
+            mutationOperator=self.mutationOperator,
             selectionOperator=self.selectionOperator,
             parentSelectionOperator=self.parentSelectionOperator
         )
@@ -247,7 +268,7 @@ class Evolution:
         """
         # Initialize pypet trajectory and add all simulation parameters
         traj.f_add_parameter("popsize", POP_SIZE, comment="Population size")  #
-        traj.f_add_parameter("MATE_P", MATE_P, comment="Crossover parameter")
+        #traj.f_add_parameter("MATE_P", MATE_P, comment="Crossover parameter")
         traj.f_add_parameter("NGEN", NGEN, comment="Number of generations")
 
         # Placeholders for individuals and results that are about to be explored
@@ -270,7 +291,7 @@ class Evolution:
         )
 
     def initDEAP(
-        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingOperator, selectionOperator, parentSelectionOperator
+        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weightList, matingOperator, mutationOperator, selectionOperator, parentSelectionOperator
     ):
         """Initializes DEAP and registers all methods to the deap.toolbox
         
@@ -282,15 +303,15 @@ class Evolution:
         :type paramInterval: parameterSpace.named_tuple
         :param evalFunction: Evaluation function
         :type evalFunction: function
-        :param weights_list: List of weiths for multiobjective optimization
-        :type weights_list: list[float]
+        :param weightList: List of weiths for multiobjective optimization
+        :type weightList: list[float]
         :param matingOperator: Mating function (crossover)
         :type matingOperator: function
         :param selectionOperator: Parent selection function
         :type selectionOperator: function
         """
         # ------------- register everything in deap
-        deap.creator.create("FitnessMulti", deap.base.Fitness, weights=tuple(weights_list))
+        deap.creator.create("FitnessMulti", deap.base.Fitness, weights=tuple(weightList))
         deap.creator.create("Individual", list, fitness=deap.creator.FitnessMulti)
 
         # initially, each individual has randomized genes
@@ -303,25 +324,24 @@ class Evolution:
             lambda: du.randomParametersAdaptive(paramInterval),
         )
         toolbox.register("population", deap.tools.initRepeat, list, toolbox.individual)
+        toolbox.register("map", pypetEnvironment.run)
+        toolbox.register("evaluate", evalFunction)
+        toolbox.register("run_map", pypetEnvironment.run_map)        
 
         # Operator registering
+        
+        toolbox.register("mate", matingOperator)
+        logging.info(f"Evolution: Mating operator: {matingOperator}")
+
+        toolbox.register("mutate", mutationOperator)
+        logging.info(f"Evolution: Mutation operator: {mutationOperator}")
+
         toolbox.register("selBest", du.selBest_multiObj)
         toolbox.register("selectParents", parentSelectionOperator)
         logging.info(f"Evolution: Parent selection: {parentSelectionOperator}")
-        # "select" is not used, instead selRank is used but this is more general and should be changed
         toolbox.register("select", selectionOperator)
         logging.info(f"Evolution: Selection operator: {selectionOperator}")
-        toolbox.register("evaluate", evalFunction)
-        toolbox.register("mate", matingOperator)
-        logging.info(f"Evolution: Mating operator: {matingOperator}")
-        toolbox.register("mutate", du.gaussianAdaptiveMutation_nStepSizes)
-        toolbox.register("map", pypetEnvironment.run)
-        toolbox.register("run_map", pypetEnvironment.run_map)
 
-        # recording the history
-        # self.history = tools.History()
-        # toolbox.decorate("mate", self.history.decorator)
-        # toolbox.decorate("mutate", self.history.decorator)
 
     def evalPopulationUsingPypet(self, traj, toolbox, pop, gIdx):
         """Evaluate the fitness of the popoulation of the current generation using pypet
@@ -432,7 +452,7 @@ class Evolution:
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
         # reduce initial population to popsize
-        self.pop = self.toolbox.select(self.pop, k=self.traj.popsize)
+        self.pop = self.toolbox.select(self.pop, k=self.traj.popsize, **self.SELECT_P)
 
         self._initialPopulationSimulated = True
 
@@ -459,15 +479,12 @@ class Evolution:
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
-            offspring = list(map(self.toolbox.clone, self.toolbox.selectParents(self.pop, self.POP_SIZE)))
-            # n_offspring = min(len(validpop), self.POP_SIZE)
-            # if n_offspring % 2 != 0:
-            #     n_offspring -= 1
-            # offspring = list(map(self.toolbox.clone, self.toolbox.selRank(validpop, n_offspring)))
+            offspring = list(map(self.toolbox.clone, self.toolbox.selectParents(self.pop, self.POP_SIZE, **self.PARENT_SELECT_P)))
+
 
             ##### cross-over ####
             for i in range(1, len(offspring), 2):
-                offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], self.MATE_P)
+                offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], **self.MATE_P)
                 # del offspring[i - 1].fitness, offspring[i].fitness
                 del offspring[i - 1].fitness.values, offspring[i].fitness.values
                 del offspring[i - 1].fitness.wvalues, offspring[i].fitness.wvalues
@@ -489,7 +506,7 @@ class Evolution:
             # ------- Select surviving population -------- #
 
             # select next generation
-            self.pop = self.toolbox.select(validpop + offspring + newpop, k=self.traj.popsize)
+            self.pop = self.toolbox.select(validpop + offspring + newpop, k=self.traj.popsize, **self.SELECT_P)
 
             # ------- END OF ROUND -------
 
@@ -556,12 +573,12 @@ class Evolution:
         print("--------------------")
         # Plotting
         if plot:
-            # hack: during the evolution we need to use reverse=False
-            # after the evolution (with evolution.info()), we need True
+            # hack: during the evolution we need to use reverse=True
+            # after the evolution (with evolution.info()), we need False
             self.plotProgress(reverse=info)
             eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName)
 
-    def plotProgress(self, reverse=False):
+    def plotProgress(self, reverse=True):
         """Plots progress of fitnesses of current evolution run
         """
         eu.plotProgress(self, reverse=reverse)
