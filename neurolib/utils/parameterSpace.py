@@ -99,13 +99,13 @@ class ParameterSpace:
     def lowerBound(self):
         """Returns lower bound of all parameters as a list
         """
-        return [p[0] for p in pars.parameterValues]
+        return [p[0] for p in self.parameterValues]
     
     @property
     def upperBound(self):
         """Returns lower bound of all parameters as a list
         """
-        return [p[0] for p in pars.parameterValues]    
+        return [p[0] for p in self.parameterValues]     
 
     @property
     def ndims(self):
