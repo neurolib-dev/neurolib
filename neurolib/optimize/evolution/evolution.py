@@ -36,11 +36,11 @@ class Evolution:
         POP_INIT_SIZE=100,
         POP_SIZE=20,
         NGEN=10,
-        matingFunction=None,
+        matingOperator=None,
         MATE_P=0.5,
-        selectionFunction=None,
+        selectionOperator=None,
         SELECT_P=1.5,
-        parentSelectionFunction=None
+        parentSelectionOperator=None
     ):
         """Initialize evolutionary optimization.
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
@@ -61,14 +61,14 @@ class Evolution:
         :type POP_SIZE: int, optional
         :param NGEN: Numbers of generations to evaluate, defaults to 10
         :type NGEN: int, optional
-        :param matingFunction: Custom mating function, defaults to blend crossover if not set., defaults to None
-        :type matingFunction: function, optional
+        :param matingOperator: Custom mating function, defaults to blend crossover if not set., defaults to None
+        :type matingOperator: function, optional
         :param MATE_P: Parameter handed to the mating function (for blend crossover, this is `alpha`), defaults to 0.5
         :type MATE_P: float, optional
-        :param selectionFunction: Custom parent selection function, defaults to NSGA-2 selection if not set., defaults to None
-        :type selectionFunction: function, optional
-        :param parentSelectionFunction: Operator for parent selection, defaults to rank selection
-        :param SELECT_P: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
+        :param selectionOperator: Custom parent selection function, defaults to NSGA-2 selection if not set., defaults to None
+        :type selectionOperator: function, optional
+        :param parentSelectionOperator: Operator for parent selection, defaults to rank selection
+        :param SELECT_P: UNUSED! Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
         :type SELECT_P: float, optional
         """
 
@@ -140,13 +140,13 @@ class Evolution:
         self.toolbox = deap.base.Toolbox()
 
         # register evolution operators 
-        matingFunction = matingFunction or tools.cxBlend
-        self.matingFunction = matingFunction
+        matingOperator = matingOperator or tools.cxBlend
+        self.matingOperator = matingOperator
 
-        selectionFunction = selectionFunction or tools.selNSGA2
-        self.selectionFunction = selectionFunction
+        selectionOperator = selectionOperator or du.selBest_multiObj
+        self.selectionOperator = selectionOperator
 
-        self.parentSelectionFunction = parentSelectionFunction or du.selRank
+        self.parentSelectionOperator = parentSelectionOperator or du.selRank
 
         self.initDEAP(
             self.toolbox,
@@ -154,9 +154,9 @@ class Evolution:
             self.paramInterval,
             self.evalFunction,
             weights_list=self.weightList,
-            matingFunction=self.matingFunction,
-            selectionFunction=self.selectionFunction,
-            parentSelectionFunction=self.parentSelectionFunction
+            matingOperator=self.matingOperator,
+            selectionOperator=self.selectionOperator,
+            parentSelectionOperator=self.parentSelectionOperator
         )
 
         # set up pypet trajectory
@@ -170,6 +170,20 @@ class Evolution:
         # initialize population
         self.evaluationCounter = 0
         self.last_id = 0
+
+    def run(self, verbose=False):
+        """Run the evolution or continue previous evolution. If evolution was not initialized first
+        using `runInitial()`, this will be done.
+        
+        :param verbose: Print and plot state of evolution during run, defaults to False
+        :type verbose: bool, optional
+        """
+        
+        self.verbose = verbose
+        if not self._initialPopulationSimulated:
+            self.runInitial()
+
+        self.runEvolution()
 
     def getIndividualFromTraj(self, traj):
         """Get individual from pypet trajectory
@@ -256,7 +270,7 @@ class Evolution:
         )
 
     def initDEAP(
-        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingFunction, selectionFunction, parentSelectionFunction
+        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weights_list, matingOperator, selectionOperator, parentSelectionOperator
     ):
         """Initializes DEAP and registers all methods to the deap.toolbox
         
@@ -270,10 +284,10 @@ class Evolution:
         :type evalFunction: function
         :param weights_list: List of weiths for multiobjective optimization
         :type weights_list: list[float]
-        :param matingFunction: Mating function (crossover)
-        :type matingFunction: function
-        :param selectionFunction: Parent selection function
-        :type selectionFunction: function
+        :param matingOperator: Mating function (crossover)
+        :type matingOperator: function
+        :param selectionOperator: Parent selection function
+        :type selectionOperator: function
         """
         # ------------- register everything in deap
         deap.creator.create("FitnessMulti", deap.base.Fitness, weights=tuple(weights_list))
@@ -292,14 +306,14 @@ class Evolution:
 
         # Operator registering
         toolbox.register("selBest", du.selBest_multiObj)
-        toolbox.register("selectParents", parentSelectionFunction)
-        logging.info(f"Evolution: Parent selection: {parentSelectionFunction}")
+        toolbox.register("selectParents", parentSelectionOperator)
+        logging.info(f"Evolution: Parent selection: {parentSelectionOperator}")
         # "select" is not used, instead selRank is used but this is more general and should be changed
-        toolbox.register("select", selectionFunction)
-        logging.info(f"Evolution: Selection operator: {selectionFunction}")
+        toolbox.register("select", selectionOperator)
+        logging.info(f"Evolution: Selection operator: {selectionOperator}")
         toolbox.register("evaluate", evalFunction)
-        toolbox.register("mate", matingFunction)
-        logging.info(f"Evolution: Mating operator: {matingFunction}")
+        toolbox.register("mate", matingOperator)
+        logging.info(f"Evolution: Mating operator: {matingOperator}")
         toolbox.register("mutate", du.gaussianAdaptiveMutation_nStepSizes)
         toolbox.register("map", pypetEnvironment.run)
         toolbox.register("run_map", pypetEnvironment.run_map)
@@ -361,14 +375,16 @@ class Evolution:
             # store outputs of simulations in population
             pop[idx].fitness.values = fitnessesResult
             # mean fitness value
-            pop[idx].fitness.score = np.nansum(pop[idx].fitness.wvalues) / (len(pop[idx].fitness.wvalues))
+            #pop[idx].fitness.score = np.nansum(pop[idx].fitness.wvalues) / (len(pop[idx].fitness.wvalues))
+            # works with nans and infs:
+            pop[idx].fitness.score = np.ma.masked_invalid(pop[idx].fitness.wvalues).sum() / (len(pop[idx].fitness.wvalues))
         return pop
 
     def getValidPopulation(self, pop):
-        return [p for p in pop if not np.any(np.isnan(p.fitness.values))]
+        return [p for p in pop if not (np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()) ]
 
     def getInvalidPopulation(self, pop):
-        return [p for p in pop if np.any(np.isnan(p.fitness.values))]
+        return [p for p in pop if np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()]
 
     def tagPopulation(self, pop):
         """Take a fresh population and add id's and attributes such as parameters that we can use later
@@ -415,13 +431,9 @@ class Evolution:
         # save all simulation data to pypet
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
-        # For NSGA-2 selection:
-        # This is just to assign the crowding distance to the individuals
-        # no actual selection is done
-        self.pop = self.toolbox.select(self.pop, len(self.pop))
-
-        # Only the best indviduals are selected for the population the others do not survive
+        # reduce initial population to popsize
         self.pop = self.toolbox.select(self.pop, k=self.traj.popsize)
+
         self._initialPopulationSimulated = True
 
         # populate history for tracking
@@ -440,13 +452,14 @@ class Evolution:
             validpop = self.getValidPopulation(self.pop)
             # replace invalid individuals
             invalidpop = self.getInvalidPopulation(self.pop)
+            
             logging.info("Replacing {} invalid individuals.".format(len(invalidpop)))
             newpop = self.toolbox.population(n=len(invalidpop))
             newpop = self.tagPopulation(newpop)
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
-            offspring = list(map(self.toolbox.clone, self.toolbox.selectParents(self.pop, self.POP_SIZE, self.SELECT_P)))
+            offspring = list(map(self.toolbox.clone, self.toolbox.selectParents(self.pop, self.POP_SIZE)))
             # n_offspring = min(len(validpop), self.POP_SIZE)
             # if n_offspring % 2 != 0:
             #     n_offspring -= 1
@@ -487,7 +500,7 @@ class Evolution:
             self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
             # select best individual for logging
-            self.best_ind = self.toolbox.select(self.pop, 1)[0]
+            self.best_ind = self.toolbox.selBest(self.pop, 1)[0]
 
             # text log
             next_print = print if self.verbose else logging.info
@@ -517,20 +530,6 @@ class Evolution:
         self.traj.f_store()  # We switched off automatic storing, so we need to store manually
         self._t_end_evolution = datetime.datetime.now()
 
-    def run(self, verbose=False):
-        """Run the evolution or continue previous evolution. If evolution was not initialized first
-        using `runInitial()`, this will be done.
-        
-        :param verbose: Print and plot state of evolution during run, defaults to False
-        :type verbose: bool, optional
-        """
-        
-        self.verbose = verbose
-        if not self._initialPopulationSimulated:
-            self.runInitial()
-
-        self.runEvolution()
-
     def info(self, plot=True, bestN=5, info=True):
         """Print and plot information about the evolution and the current population
         
@@ -557,13 +556,15 @@ class Evolution:
         print("--------------------")
         # Plotting
         if plot:
-            self.plotProgress()
+            # hack: during the evolution we need to use reverse=False
+            # after the evolution (with evolution.info()), we need True
+            self.plotProgress(reverse=info)
             eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName)
 
-    def plotProgress(self):
+    def plotProgress(self, reverse=False):
         """Plots progress of fitnesses of current evolution run
         """
-        eu.plotProgress(self)
+        eu.plotProgress(self, reverse=reverse)
 
     @property
     def dfPop(self):

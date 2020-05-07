@@ -17,7 +17,7 @@ def saveToPypet(traj, pop, gIdx):
         traj.f_add_result("{}.gen_{:06d}.ind_ids".format("evolution", gIdx), np.array([p.id for p in pop]))
         # recursively store all simulated outputs into hdf
         for i, p in enumerate(pop):
-            if not np.any(np.isnan(p.fitness.values)) and not p.simulation_stored:
+            if not np.isnan(p.fitness.values).any() and not p.simulation_stored:
                 pop[i].simulation_stored = True
 
                 traj.f_add_result_group("{}.ind_{:06d}".format("outputs", p.id))
@@ -123,7 +123,8 @@ def plotPopulation(
 
     # Gather all the fitnesses in one list and print the stats
     # validPop = [p for p in pop if not np.isnan(p.fitness.score)]
-    validPop = [p for p in pop if not np.any(np.isnan(p.fitness.values))]
+    # validPop = [p for p in pop if not np.any(np.isnan(p.fitness.values))]
+    validPop = [p for p in pop if not (np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()) ]
     popArray = np.array([p[0 : len(paramInterval._fields)] for p in validPop]).T
     scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
     print("There are {} valid individuals".format(len(validPop)))
@@ -143,10 +144,10 @@ def plotPopulation(
         plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots)
 
 
-def plotProgress(evolution):
+def plotProgress(evolution, reverse=True):
     import matplotlib.pyplot as plt
 
-    gens, all_scores = evolution.getScoresDuringEvolution(reverse=True)
+    gens, all_scores = evolution.getScoresDuringEvolution(reverse=reverse)
 
     fig, axs = plt.subplots(2, 1, figsize=(3.5, 3), dpi=150, sharex=True, gridspec_kw={"height_ratios" : [2, 1]})   
     im = axs[0].imshow(all_scores.T, aspect='auto', origin='lower')
@@ -187,11 +188,11 @@ def printEvolutionInfo(evolution):
     print(f"Initial population size: {evolution.POP_INIT_SIZE}")
     print(f"Population size: {evolution.POP_SIZE}")
     print("> Evolutionary operators")
-    print(f"Mating operator: {evolution.matingFunction}")
+    print(f"Mating operator: {evolution.matingOperator}")
     print(f"Mating paramter: {evolution.MATE_P}")
-    print(f"Selection operator: {evolution.selectionFunction}")
+    print(f"Selection operator: {evolution.selectionOperator}")
     print(f"Selection paramter: {evolution.SELECT_P}")
-    print(f"Parent selection operator: {evolution.parentSelectionFunction}")
+    print(f"Parent selection operator: {evolution.parentSelectionOperator}")
     if len(evolution.comments) > 0:
         if isinstance(evolution.comments, str):
             print(f"Comments: {evolution.comments}")
