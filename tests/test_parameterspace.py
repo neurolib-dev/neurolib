@@ -33,6 +33,8 @@ class TestParameterSpace(unittest.TestCase):
         par["a"]
         par.b
         par["c"] = [1, 2, 3]
+        par.lowerBound
+        par.upperBound
 
     def test_conversions(self):
         par = ParameterSpace({"a": [1, 2], "b": [1, 2]})

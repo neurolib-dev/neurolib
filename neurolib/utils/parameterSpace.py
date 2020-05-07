@@ -96,6 +96,18 @@ class ParameterSpace:
         return randomPar
 
     @property
+    def lowerBound(self):
+        """Returns lower bound of all parameters as a list
+        """
+        return [p[0] for p in pars.parameterValues]
+    
+    @property
+    def upperBound(self):
+        """Returns lower bound of all parameters as a list
+        """
+        return [p[0] for p in pars.parameterValues]    
+
+    @property
     def ndims(self):
         """Number of dimensions (parameters)
         """
