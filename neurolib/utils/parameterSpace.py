@@ -103,9 +103,9 @@ class ParameterSpace:
     
     @property
     def upperBound(self):
-        """Returns lower bound of all parameters as a list
+        """Returns upper bound of all parameters as a list
         """
-        return [p[0] for p in self.parameterValues]     
+        return [p[1] for p in self.parameterValues]     
 
     @property
     def ndims(self):
