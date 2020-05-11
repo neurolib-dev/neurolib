@@ -158,20 +158,19 @@ class Evolution:
         # default parameters for tools.cxBlend:
         if self.matingOperator == tools.cxBlend and MATE_P is None:
             MATE_P = {"alpha" : 0.5}
-        self.MATE_P = MATE_P
+        self.MATE_P = MATE_P or {}
 
         self.mutationOperator = mutationOperator or du.gaussianAdaptiveMutation_nStepSizes
-        self.MUTATE_P = MUTATE_P
+        self.MUTATE_P = MUTATE_P or {}
 
         self.selectionOperator = selectionOperator or du.selBest_multiObj
-        self.SELECT_P = SELECT_P
+        self.SELECT_P = SELECT_P or {}
 
         self.parentSelectionOperator = parentSelectionOperator or du.selRank
         # default parameters for du.selRank:
         if self.parentSelectionOperator == du.selRank and PARENT_SELECT_P is None:
             PARENT_SELECT_P = {"s" : 1.5}
-        self.PARENT_SELECT_P = PARENT_SELECT_P
-
+        self.PARENT_SELECT_P = PARENT_SELECT_P or {}
 
         self.initDEAP(
             self.toolbox,
@@ -457,7 +456,7 @@ class Evolution:
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
         # reduce initial population to popsize
-        self.pop = self.toolbox.select(self.pop, k=self.traj.popsize, **self.SELECT_P)
+        #self.pop = self.toolbox.select(self.pop, k=self.traj.popsize, **self.SELECT_P)
 
         self._initialPopulationSimulated = True
 
