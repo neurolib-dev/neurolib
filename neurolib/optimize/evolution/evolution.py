@@ -43,7 +43,7 @@ class Evolution:
         selectionOperator=None,
         SELECT_P=None,
         parentSelectionOperator=None,
-        PARENT_SELECT_P={},
+        PARENT_SELECT_P=None,
     ):
         """Initialize evolutionary optimization.
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
@@ -186,7 +186,7 @@ class Evolution:
 
         # set up pypet trajectory
         self.initPypetTrajectory(
-            self.traj, self.paramInterval, self.POP_SIZE, self.MATE_P, self.NGEN, self.model,
+            self.traj, self.paramInterval, self.POP_SIZE, self.NGEN, self.model,
         )
 
         # population history: dict of all valid individuals per generation
@@ -254,7 +254,7 @@ class Evolution:
         """
         return self.ParametersInterval(*(individual[: len(self.paramInterval)]))._asdict().copy()
 
-    def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, MATE_P, NGEN, model):
+    def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, NGEN, model):
         """Initializes pypet trajectory and store all simulation parameters for later analysis.
         
         :param traj: Pypet trajectory (must be already initialized!)
@@ -272,7 +272,6 @@ class Evolution:
         """
         # Initialize pypet trajectory and add all simulation parameters
         traj.f_add_parameter("popsize", POP_SIZE, comment="Population size")  #
-        #traj.f_add_parameter("MATE_P", MATE_P, comment="Crossover parameter")
         traj.f_add_parameter("NGEN", NGEN, comment="Number of generations")
 
         # Placeholders for individuals and results that are about to be explored
@@ -281,6 +280,8 @@ class Evolution:
         traj.f_add_result("scores", [], comment="Score of all individuals for each generation")
         traj.f_add_result_group("evolution", comment="Contains results for each generation")
         traj.f_add_result_group("outputs", comment="Contains simulation results")
+
+        #TODO: save evolution parameters and operators as well, MATE_P, MUTATE_P, etc..
 
         # if a model was given, save its parameters
         # NOTE: Convert model.params to dict() since it is a dotdict() and pypet doesn't like that
