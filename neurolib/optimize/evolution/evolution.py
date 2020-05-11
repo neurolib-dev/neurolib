@@ -37,13 +37,13 @@ class Evolution:
         POP_SIZE=20,
         NGEN=10,
         matingOperator=None,
-        MATE_P={"alpha" : 0.5},
+        MATE_P=None,
         mutationOperator=None,
-        MUTATE_P={},
+        MUTATE_P=None,
         selectionOperator=None,
-        SELECT_P={},
+        SELECT_P=None,
         parentSelectionOperator=None,
-        PARENT_SELECT_P={"s" : 1.5},
+        PARENT_SELECT_P={},
     ):
         """Initialize evolutionary optimization.
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
@@ -69,22 +69,22 @@ class Evolution:
 
         :param matingOperator: Custom mating operator, defaults to deap.tools.cxBlend
         :type matingOperator: deap operator, optional
-        :param MATE_P: Parameter handed to the mating operator (for blend crossover cxBlend, this is `alpha`), defaults to 0.5
+        :param MATE_P: Mating operator keyword arguments (for the default crossover operator cxBlend, this defaults `alpha` = 0.5)
         :type MATE_P: dict, optional
 
         :param mutationOperator: Custom mutation operator, defaults to du.gaussianAdaptiveMutation_nStepSizes
         :type mutationOperator: deap operator, optional
-        :param MUTATE_P: Parameter handed to the mutation operator
+        :param MUTATE_P: Mutation operator keyword arguments
         :type MUTATE_P: dict, optional
 
         :param selectionOperator: Custom selection operator, defaults to du.selBest_multiObj
         :type selectionOperator: deap operator, optional
-        :param SELECT_P: Selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
-        :type SELECT_P: float, optional
+        :param SELECT_P: Selection operator keyword arguments
+        :type SELECT_P: dict, optional
 
         :param parentSelectionOperator: Operator for parent selection, defaults to du.selRank
-        :param PARENT_SELECT_P: Parent selection parameter (for rank selection, this is `s` in Eiben&Smith p.81), defaults to 1.5
-        :type PARENT_SELECT_P: float, optional
+        :param PARENT_SELECT_P: Parent selection operator keyword arguments (for the default operator selRank, this defaults to `s` = 1.5 in Eiben&Smith p.81)
+        :type PARENT_SELECT_P: dict, optional
         """
 
         if weightList is None:
@@ -125,10 +125,7 @@ class Evolution:
         self.evalFunction = evalFunction
         self.weightList = weightList
 
-        self.MUTATE_P = MUTATE_P
-        self.MATE_P = MATE_P
-        self.SELECT_P = SELECT_P
-        self.PARENT_SELECT_P = PARENT_SELECT_P
+
         self.NGEN = NGEN
         assert POP_SIZE % 2 == 0, "Please chose an even number for POP_SIZE!"
         self.POP_SIZE = POP_SIZE
@@ -157,16 +154,24 @@ class Evolution:
         self.toolbox = deap.base.Toolbox()
 
         # register evolution operators 
-        matingOperator = matingOperator or tools.cxBlend
-        self.matingOperator = matingOperator
+        self.matingOperator = matingOperator or tools.cxBlend
+        # default parameters for tools.cxBlend:
+        if self.matingOperator == tools.cxBlend and MATE_P is None:
+            MATE_P = {"alpha" : 0.5}
+        self.MATE_P = MATE_P
 
-        mutationOperator = mutationOperator or du.gaussianAdaptiveMutation_nStepSizes
-        self.mutationOperator = mutationOperator
+        self.mutationOperator = mutationOperator or du.gaussianAdaptiveMutation_nStepSizes
+        self.MUTATE_P = MUTATE_P
 
-        selectionOperator = selectionOperator or du.selBest_multiObj
-        self.selectionOperator = selectionOperator
+        self.selectionOperator = selectionOperator or du.selBest_multiObj
+        self.SELECT_P = SELECT_P
 
         self.parentSelectionOperator = parentSelectionOperator or du.selRank
+        # default parameters for du.selRank:
+        if self.parentSelectionOperator == du.selRank and PARENT_SELECT_P is None:
+            PARENT_SELECT_P = {"s" : 1.5}
+        self.PARENT_SELECT_P = PARENT_SELECT_P
+
 
         self.initDEAP(
             self.toolbox,
