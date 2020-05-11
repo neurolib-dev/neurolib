@@ -218,7 +218,7 @@ class Dataset:
                     continue
                 for f in fnames:
                     # dirty
-                    subject = f.split("/")[-3]
+                    subject = f.split(os.path.sep)[-3]
                     # create subject in dict if not present yet
                     if not subject in self.data["subjects"]:
                         self.data["subjects"][subject] = {}
