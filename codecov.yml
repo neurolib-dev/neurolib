@@ -12,5 +12,3 @@ coverage:
 	- "neurolib/models/thalamus/timeIntegration.py" 
 	- "neurolib/models/bold/timeIntegration.py" 
 	- "neurolib/utils/devUtils.py"
-  status:
-    patch: off
