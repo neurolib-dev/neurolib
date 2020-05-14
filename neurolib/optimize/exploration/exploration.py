@@ -331,8 +331,9 @@ class BoxSearch:
 
         for runId, parameters in tqdm.tqdm(self.dfResults.iterrows(), total=len(self.dfResults)):
             # if the results were previously loaded into memory, use them
-            if len(self.results) == len(self.dfResults):
-                result = self.results[runId]
+            if hasattr(self, "results"):
+                if len(self.results) == len(self.dfResults):
+                    result = self.results[runId]
             # else, load results individually from hdf file
             else:
                 result = self.getRun(runId)
