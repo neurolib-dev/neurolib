@@ -564,9 +564,8 @@ class Evolution:
         """
         if info:
             eu.printEvolutionInfo(self)
-        validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
-        popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
-        scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
+        validPop = self.getValidPopulation(self.pop)
+        scores = self.getScoresDuringEvolution()[1][-1]
         # Text output
         print("--- Info summary ---")
         print("Valid: {}".format(len(validPop)))
@@ -595,14 +594,22 @@ class Evolution:
         :return: Pandas dataframe with all individuals and their parameters
         :rtype: `pandas.core.frame.DataFrame`
         """
-        validPop = [p for p in self.pop if not np.any(np.isnan(p.fitness.values))]
+        validPop = self.getValidPopulation(self.pop)
         indIds = [p.id for p in validPop]
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
-        scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
-        # gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
+        scores = self.getScoresDuringEvolution()[1][-1]
+        
         dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameterNames).T
         dfPop["score"] = scores
         dfPop["id"] = indIds
+
+        # add fitness columns
+        n_fitnesses = len(self.pop[0].fitness.values)
+        for i in range(n_fitnesses):
+            for ip, p in enumerate(self.pop):
+                column_name = "f" + str(i)
+                dfPop.loc[ip, column_name] = p.fitness.values[i]
+    
         return dfPop
 
     def loadResults(self, filename=None, trajectoryName=None):
