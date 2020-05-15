@@ -92,7 +92,6 @@ def plotSeabornScatter1(dfPop, pop, paramInterval, gIdx, save_plots):
     sm = sns.pairplot(dfPop, diag_kind="kde", kind="reg")
     if save_plots is not None:
         plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.png".format(save_plots, gIdx)), bbox_inches='tight')
-
     plt.show()
 
 
@@ -130,12 +129,10 @@ def plotPopulation(
     print("There are {} valid individuals".format(len(validPop)))
     print("Mean score across population: {:.2}".format(np.mean(scores)))
 
-    # plots can only be drawn if there are enough individuals
+    # plots can only be drawn if there are enough individuals, to avoid errors
     MIN_POP_SIZE_PLOTTING = 4
     if len(validPop) > MIN_POP_SIZE_PLOTTING and plotDistribution:
         plotScoresDistribution(scores, gIdx, save_plots)
-
-    if len(validPop) > MIN_POP_SIZE_PLOTTING and plotScattermatrix:
         # make a pandas dataframe for the seaborn pairplot
         gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
         dfPop = pd.DataFrame(popArray, index=gridParameters).T
