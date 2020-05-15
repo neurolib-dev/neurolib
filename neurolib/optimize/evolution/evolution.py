@@ -565,7 +565,7 @@ class Evolution:
         if info:
             eu.printEvolutionInfo(self)
         validPop = self.getValidPopulation(self.pop)
-        scores = self.getScoresDuringEvolution()[1][-1]
+        scores = self.getScores()
         # Text output
         print("--- Info summary ---")
         print("Valid: {}".format(len(validPop)))
@@ -587,6 +587,12 @@ class Evolution:
         """
         eu.plotProgress(self, reverse=reverse)
 
+    def loadEvolution(self, fname):
+        import dill
+        evolution = dill.load(open(fname, "rb"))
+        evolution.__init__(lambda x: x, self.parameterSpace)
+        return evolution
+
     @property
     def dfPop(self):
         """Returns a `pandas` dataframe of the current generation's population parameters 
@@ -597,7 +603,7 @@ class Evolution:
         validPop = self.getValidPopulation(self.pop)
         indIds = [p.id for p in validPop]
         popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
-        scores = self.getScoresDuringEvolution()[1][-1]
+        scores = self.getScores()
         
         dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameterNames).T
         dfPop["score"] = scores
@@ -609,7 +615,6 @@ class Evolution:
             for ip, p in enumerate(self.pop):
                 column_name = "f" + str(i)
                 dfPop.loc[ip, column_name] = p.fitness.values[i]
-    
         return dfPop
 
     def loadResults(self, filename=None, trajectoryName=None):
@@ -624,6 +629,12 @@ class Evolution:
         if filename == None:
             filename = self.HDF_FILE
         self.traj = pu.loadPypetTrajectory(filename, trajectoryName)
+
+    def getScores(self):
+        """Returns the scores of the current valid population
+        """
+        validPop = self.getValidPopulation(self.pop)
+        return np.array([validPop[i].fitness.score for i in range(len(validPop))])
 
     def getScoresDuringEvolution(self, traj=None, drop_first=True, reverse=False):
         """Get the scores of each generation's population.
