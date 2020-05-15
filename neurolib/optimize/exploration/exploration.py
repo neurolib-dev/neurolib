@@ -322,7 +322,7 @@ class BoxSearch:
 
         logging.info("All results loaded.")
 
-    def aggregateResultsToDfResults(self):
+    def aggregateResultsToDfResults(self, arrays=True):
         # copy float results to dfResults
         nan_value = np.nan
         logging.info("Aggregating results to `dfResults` ...")
@@ -338,8 +338,17 @@ class BoxSearch:
             else:
                 result = self.getRun(runId)
             for key, value in result.items():
-                if isinstance(value, float):
-                    self.dfResults.loc[runId, key] = value
+                if (isinstance(value, (float, int)))  or (np.array(value).ndim == 1):
+                    # save 1-dim arrays
+                    if isinstance(value, np.ndarray) and arrays == True: 
+                        # to save a numpy array, convert column to object type
+                        if key not in self.dfResults:
+                            self.dfResults[key] = None
+                        self.dfResults[key] = self.dfResults[key].astype(object)
+                        self.dfResults.at[runId, key] = value
+                    else:
+                        # save numbers
+                        self.dfResults.loc[runId, key] = value
                 else:
                     self.dfResults.loc[runId, key] = nan_value
         # drop nan columns
