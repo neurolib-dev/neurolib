@@ -457,7 +457,7 @@ class Evolution:
         self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
         # reduce initial population to popsize
-        #self.pop = self.toolbox.select(self.pop, k=self.traj.popsize, **self.SELECT_P)
+        self.pop = self.toolbox.select(self.pop, k=self.traj.popsize, **self.SELECT_P)
 
         self._initialPopulationSimulated = True
 
