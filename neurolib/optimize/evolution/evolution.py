@@ -44,6 +44,8 @@ class Evolution:
         SELECT_P=None,
         parentSelectionOperator=None,
         PARENT_SELECT_P=None,
+        individualGenerator=None,
+        IND_GENERATOR_P=None
     ):
         """Initialize evolutionary optimization.
         :param evalFunction: Evaluation function of a run that provides a fitness vector and simulation outputs
@@ -85,6 +87,8 @@ class Evolution:
         :param parentSelectionOperator: Operator for parent selection, defaults to du.selRank
         :param PARENT_SELECT_P: Parent selection operator keyword arguments (for the default operator selRank, this defaults to `s` = 1.5 in Eiben&Smith p.81)
         :type PARENT_SELECT_P: dict, optional
+
+        :param individualGenerator: Function to generate initial individuals, defaults to du.randomParametersAdaptive     
         """
 
         if weightList is None:
@@ -172,6 +176,8 @@ class Evolution:
             PARENT_SELECT_P = {"s" : 1.5}
         self.PARENT_SELECT_P = PARENT_SELECT_P or {}
 
+        self.individualGenerator = individualGenerator or du.randomParametersAdaptive        
+
         self.initDEAP(
             self.toolbox,
             self.env,
@@ -181,7 +187,8 @@ class Evolution:
             matingOperator=self.matingOperator,
             mutationOperator=self.mutationOperator,
             selectionOperator=self.selectionOperator,
-            parentSelectionOperator=self.parentSelectionOperator
+            parentSelectionOperator=self.parentSelectionOperator,
+            individualGenerator=self.individualGenerator
         )
 
         # set up pypet trajectory
@@ -296,7 +303,7 @@ class Evolution:
         )
 
     def initDEAP(
-        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weightList, matingOperator, mutationOperator, selectionOperator, parentSelectionOperator
+        self, toolbox, pypetEnvironment, paramInterval, evalFunction, weightList, matingOperator, mutationOperator, selectionOperator, parentSelectionOperator, individualGenerator
     ):
         """Initializes DEAP and registers all methods to the deap.toolbox
         
@@ -314,6 +321,7 @@ class Evolution:
         :type matingOperator: function
         :param selectionOperator: Parent selection function
         :type selectionOperator: function
+        :param individualGenerator: Function that generates individuals
         """
         # ------------- register everything in deap
         deap.creator.create("FitnessMulti", deap.base.Fitness, weights=tuple(weightList))
@@ -326,8 +334,10 @@ class Evolution:
             "individual",
             deap.tools.initIterate,
             deap.creator.Individual,
-            lambda: du.randomParametersAdaptive(paramInterval),
+            lambda: individualGenerator(paramInterval),
         )
+        logging.info(f"Evolution: Individual generation: {individualGenerator}")
+
         toolbox.register("population", deap.tools.initRepeat, list, toolbox.individual)
         toolbox.register("map", pypetEnvironment.run)
         toolbox.register("evaluate", evalFunction)
@@ -507,7 +517,7 @@ class Evolution:
 
             ##### Mutation ####
             # Apply mutation
-            du.mutateUntilValid(offspring, self.paramInterval, self.toolbox)
+            du.mutateUntilValid(offspring, self.paramInterval, self.toolbox, MUTATE_P=self.MUTATE_P)
 
             offspring = self.tagPopulation(offspring)
 
