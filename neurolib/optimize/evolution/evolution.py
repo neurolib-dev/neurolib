@@ -396,12 +396,14 @@ class Evolution:
             ), "Evaluation function must return tuple with shape (fitness, output_data)"
 
             fitnessesResult, returnedOutputs = packedReturnFromEvalFunction
+
+            # store simulation outputs
             pop[idx].outputs = returnedOutputs
-            # store outputs of simulations in population
+
+            # store fitness values
             pop[idx].fitness.values = fitnessesResult
-            # mean fitness value
-            #pop[idx].fitness.score = np.nansum(pop[idx].fitness.wvalues) / (len(pop[idx].fitness.wvalues))
-            # works with nans and infs:
+
+            # compute score
             pop[idx].fitness.score = np.ma.masked_invalid(pop[idx].fitness.wvalues).sum() / (len(pop[idx].fitness.wvalues))
         return pop
 
@@ -491,19 +493,23 @@ class Evolution:
             ##### cross-over ####
             for i in range(1, len(offspring), 2):
                 offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], **self.MATE_P)
-                # del offspring[i - 1].fitness, offspring[i].fitness
+                # delete fitness inherited from parents
                 del offspring[i - 1].fitness.values, offspring[i].fitness.values
                 del offspring[i - 1].fitness.wvalues, offspring[i].fitness.wvalues
-                #
+
+                # assign parent IDs to new offspring
                 offspring[i - 1].parentIds = offspring[i - 1].id, offspring[i].id
                 offspring[i].parentIds = offspring[i - 1].id, offspring[i].id
+
+                # delete id originally set from parents, needs to be deleted here!
+                # will be set later in tagPopulation()
                 del offspring[i - 1].id, offspring[i].id
 
             ##### Mutation ####
-            # Apply adaptive mutation
+            # Apply mutation
             du.mutateUntilValid(offspring, self.paramInterval, self.toolbox)
 
-            offspring = self.tagPopulation(offspring, offspring=True)
+            offspring = self.tagPopulation(offspring)
 
             # ------- Evaluate next generation -------- #
 
