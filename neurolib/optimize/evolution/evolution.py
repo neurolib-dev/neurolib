@@ -190,7 +190,7 @@ class Evolution:
         )
 
         # population history: dict of all valid individuals per generation
-        self.popHist = {}
+        self.history = {}
 
         # initialize population
         self.evaluationCounter = 0
@@ -462,7 +462,7 @@ class Evolution:
         self._initialPopulationSimulated = True
 
         # populate history for tracking
-        self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
+        self.history[self.gIdx] = self.pop #self.getValidPopulation(self.pop)
 
         self._t_end_initial_population = datetime.datetime.now()
 
@@ -485,6 +485,7 @@ class Evolution:
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
             offspring = list(map(self.toolbox.clone, self.toolbox.selectParents(self.pop, self.POP_SIZE, **self.PARENT_SELECT_P)))
+            
 
 
             ##### cross-over ####
@@ -502,12 +503,16 @@ class Evolution:
             # Apply adaptive mutation
             du.mutateUntilValid(offspring, self.paramInterval, self.toolbox)
 
-            offspring = self.tagPopulation(offspring)
+            offspring = self.tagPopulation(offspring, offspring=True)
 
             # ------- Evaluate next generation -------- #
 
             self.pop = offspring + newpop
             self.evalPopulationUsingPypet(self.traj, self.toolbox, offspring + newpop, self.gIdx)
+
+            # log individuals
+            self.history[self.gIdx] = validpop + offspring + newpop  # self.getValidPopulation(self.pop)            
+
             # ------- Select surviving population -------- #
 
             # select next generation
@@ -515,9 +520,8 @@ class Evolution:
 
             # ------- END OF ROUND -------
 
-            # add all valid individuals to the population history
-            self.popHist[self.gIdx] = self.getValidPopulation(self.pop)
-            # self.history.update(self.getValidPopulation(self.pop))
+
+
             # save all simulation data to pypet
             self.pop = eu.saveToPypet(self.traj, self.pop, self.gIdx)
 
@@ -551,6 +555,35 @@ class Evolution:
 
         self.traj.f_store()  # We switched off automatic storing, so we need to store manually
         self._t_end_evolution = datetime.datetime.now()
+
+        self.buildEvolutionTree()
+
+    def buildEvolutionTree(self):
+        """Builds a genealogy tree that is networkx compatible.
+
+        Plot the tree using:
+
+            import matplotlib.pyplot as plt
+            import networkx as nx
+            from networkx.drawing.nx_pydot import graphviz_layout
+
+            G = nx.DiGraph(evolution.tree)
+            G = G.reverse()     # Make the graph top-down
+            pos = graphviz_layout(G, prog='dot')
+            plt.figure(figsize=(8, 8))
+            nx.draw(G, pos, node_size=50, alpha=0.5, node_color=list(evolution.genx.values()), with_labels=False)
+            plt.show()
+        """
+        self.tree = dict()
+        self.id_genx = dict()
+        self.id_score = dict()
+
+        for gen, pop in self.history.items():
+            for p in pop:
+                self.tree[p.id] = p.parentIds if hasattr(p, "parentIds") else ()
+                self.id_genx[p.id] = p.gIdx
+                self.id_score[p.id] = p.fitness.score
+
 
     def info(self, plot=True, bestN=5, info=True):
         """Print and plot information about the evolution and the current population
