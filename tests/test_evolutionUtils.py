@@ -63,7 +63,7 @@ class TestEvolutinUtils(unittest.TestCase):
     @pytest.mark.skipif(sys.platform == "darwin", reason="plotting does not work on macOS")
     def test_plots(self):
         matplotlib = pytest.importorskip("matplotlib")
-        eu.plotPopulation(self.pop, self.evolution.paramInterval, plotScattermatrix=True)
+        eu.plotPopulation(self, plotScattermatrix=True)
 
 
 class TestEvolutionCrossover(unittest.TestCase):
