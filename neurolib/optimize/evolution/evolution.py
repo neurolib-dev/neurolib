@@ -745,7 +745,7 @@ class Evolution:
         """Returns the scores of the current valid population
         """
         validPop = self.getValidPopulation(self.pop)
-        return np.array([validPop[i].fitness.score for i in range(len(validPop))])
+        return np.array([pop.fitness.score for pop in validPop])
 
     def getScoresDuringEvolution(self, traj=None, drop_first=True, reverse=False):
         """Get the scores of each generation's population.
