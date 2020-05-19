@@ -29,8 +29,8 @@ class TestExplorationUtils(unittest.TestCase):
     def setUpClass(cls):
         ds = Dataset("hcp")
         model = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
-        model.params.duration = 2 * 1000  # ms
-        model.params.dt = 0.05
+        model.params.duration = 10 * 1000  # ms
+        model.params.dt = 0.1
         model.params.bold = True
         parameters = ParameterSpace(
             {
