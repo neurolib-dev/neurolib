@@ -34,7 +34,7 @@ class TestExplorationUtils(unittest.TestCase):
         parameters = ParameterSpace(
             {
                 "mue_ext_mean": np.linspace(0, 3, 2), 
-                "mui_ext_mean": np.linspace(0, 3, 2)
+                "mui_ext_mean": np.linspace(0, 3, 2),
                 "b": [0.0, 10.0],
             },
             kind="grid",
@@ -46,8 +46,6 @@ class TestExplorationUtils(unittest.TestCase):
         search.run(chunkwise=True, bold=True)
 
         search.loadResults()
-        # flatten x_ext parameter
-        search.dfResults.x_ext = [a[0] for a in list(search.dfResults.x_ext)]
 
         cls.model = model
         cls.search = search
@@ -59,7 +57,7 @@ class TestExplorationUtils(unittest.TestCase):
         )
 
     def test_findCloseResults(self):
-        eu.findCloseResults(self.search.dfResults, dist=1, x_ext=0, K_gl=0.0)
+        eu.findCloseResults(self.search.dfResults, dist=1, mue_ext_mean=0, mui_ext_mean=0.0)
 
     @pytest.mark.skipif(sys.platform in ["darwin", "win32"], reason="Testing plots does not work on macOS or Windows")
     def test_plotExplorationResults(self):
