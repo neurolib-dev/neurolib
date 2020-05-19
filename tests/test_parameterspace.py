@@ -28,11 +28,13 @@ class TestParameterSpace(unittest.TestCase):
         self.assertEqual(par.kind, "grid")
 
     def test_parameterspace_attributes(self):
-        par = ParameterSpace(["a", "b"], [[10], [3.0]])
+        par = ParameterSpace(["a", "b"], [[10, 8], [3.0]])
         par.a
         par["a"]
         par.b
         par["c"] = [1, 2, 3]
+        par.lowerBound
+        par.upperBound
 
     def test_conversions(self):
         par = ParameterSpace({"a": [1, 2], "b": [1, 2]})

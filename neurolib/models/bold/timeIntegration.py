@@ -31,7 +31,7 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
     if "voxelCounts" not in globals():
         voxelCounts = np.ones((N,))
 
-    # Balloon-Windkessel model parameters (Deco 2013, Friston 2003):
+    # Balloon-Windkessel model parameters (Deco 2013, Friston 2000):
     # Note: the distribution of each Balloon-Windkessel models parameters are given per voxel
     # Since we usually average the empirical fMRI of each voxel for a given area, the standard
     # deviation of the gaussian distribution should be divided by the number of voxels in each area

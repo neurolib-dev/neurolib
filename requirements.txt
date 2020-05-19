@@ -1,3 +1,4 @@
+psutil
 h5py
 numba
 numpy

@@ -49,7 +49,7 @@ class TestALNEvolution(unittest.TestCase):
     """Evolution with ALN model
     """
 
-    def test_single_node(self):
+    def test_adaptive(self):
         logging.info("\t > Evolution: Testing ALN single node ...")
         start = time.time()
 
@@ -59,7 +59,7 @@ class TestALNEvolution(unittest.TestCase):
 
             model = evolution.getModelFromTraj(traj)
 
-            model.params["dt"] = 0.1
+            model.params["dt"] = 0.2
             model.params["duration"] = 2 * 1000.0
 
             model.run()
@@ -85,12 +85,69 @@ class TestALNEvolution(unittest.TestCase):
         evolution = Evolution(
             evaluateSimulation,
             pars,
+            algorithm = 'adaptive',
             model=alnModel,
             weightList=[-1.0],
-            POP_INIT_SIZE=6,
+            POP_INIT_SIZE=4,
             POP_SIZE=4,
-            NGEN=3,
-            filename="test_single_node.hdf",
+            NGEN=2,
+            filename="test_adaptive.hdf",
+        )
+        evolution.run(verbose=False)
+        evolution.info(plot=False)
+        traj = evolution.loadResults()
+        gens, all_scores = evolution.getScoresDuringEvolution()
+
+        evolution.dfPop
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+    def test_nsga2(self):
+        logging.info("\t > Evolution: Testing ALN single node ...")
+        start = time.time()
+
+        def evaluateSimulation(traj):
+            rid = traj.id
+            logging.info("Running run id {}".format(rid))
+
+            model = evolution.getModelFromTraj(traj)
+
+            model.params["dt"] = 0.2
+            model.params["duration"] = 2 * 1000.0
+
+            model.run()
+
+            # -------- fitness evaluation here --------
+
+            # example: get dominant frequency of activity
+            frs, powers = func.getPowerSpectrum(
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
+            )
+            domfr = frs[np.argmax(powers)]
+
+            fitness = abs(domfr - 25)  # let's try to find a 25 Hz oscillation
+
+            fitness_tuple = ()
+            fitness_tuple += (fitness,)
+            # multi objective
+            fitness_tuple += (fitness,)
+            return fitness_tuple, model.outputs
+
+        alnModel = ALNModel()
+        alnModel.run(bold=True)
+
+        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
+        evolution = Evolution(
+            evaluateSimulation,
+            pars,
+            algorithm = 'nsga2',
+            model=alnModel,
+            weightList=[-1.0, 1.0],
+            POP_INIT_SIZE=4,
+            POP_SIZE=4,
+            NGEN=2,
+            filename="test_nsga2.hdf",
         )
         evolution.run(verbose=False)
         evolution.info(plot=False)
