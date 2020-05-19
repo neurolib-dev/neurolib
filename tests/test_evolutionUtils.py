@@ -43,9 +43,12 @@ class TestEvolutinUtils(unittest.TestCase):
                 fitnessesResult = [np.nan] * fitness_length
             else:
                 fitnessesResult = np.random.random(fitness_length)
+            p.id = i
             p.fitness.values = fitnessesResult
             p.fitness.score = np.nansum(p.fitness.wvalues) / (len(p.fitness.wvalues))
         cls.pop = pop
+        cls.evolution.pop = pop
+        cls.evolution.gIdx = 1
 
     def test_getValidPopulation(self):
         self.evolution.getValidPopulation(self.pop)
@@ -63,7 +66,7 @@ class TestEvolutinUtils(unittest.TestCase):
     @pytest.mark.skipif(sys.platform == "darwin", reason="plotting does not work on macOS")
     def test_plots(self):
         matplotlib = pytest.importorskip("matplotlib")
-        eu.plotPopulation(self, plotScattermatrix=True)
+        eu.plotPopulation(self.evolution, plotScattermatrix=True)
 
 
 class TestEvolutionCrossover(unittest.TestCase):
