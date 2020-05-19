@@ -30,13 +30,15 @@
 
 # What is neurolib?
 
-`neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `aln` model can be found in our [paper](https://arxiv.org/abs/1906.00676) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and some background information on the science behind whole-brain simulations.
+
+`neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `aln` model can be found in our [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
 `neurolib` provides a simulation and optimization framework which allows you to easily implement your own neural mass model, simulate fMRI BOLD activity, analyse the results and fit your model to empirical data.
 
 Please reference the following paper if you use `neurolib` for your own research:
 
-**Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation. PLOS Computational Biology ([ArXiv](https://arxiv.org/abs/1906.00676)).
+**Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation. PLOS Computational Biology ([Link](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822)).
 
 The figure below shows a schematic of how a brain network can be constructed:
 
@@ -145,7 +147,7 @@ aln.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
 
 aln.run(bold=True)
 ```
-This can take several minutes to compute, since we are simulating 82 nodes for 5 minutes realtime. Note that we specified `bold=True` which simulates the BOLD model in parallel to the neuronal model. The resulting firing rates and BOLD functional connectivity looks like this:
+This can take several minutes to compute, since we are simulating 80 brain regions for 5 minutes realtime. Note that we specified `bold=True` which simulates the BOLD model in parallel to the neuronal model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
   <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/gw_simulated.png">
 </p>
@@ -200,13 +202,21 @@ We can plot the results to get something close to a bifurcation diagram!
 
 A detailed example is available as a [IPython Notebook](examples/example-2-evolutionary-optimization-minimal.ipynb). 
 
-`neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual and the parameters of the simulation, for example coupling strengths or noise level values, are represented as the genes of each individual. An individual is a part of a population. In each generation, individuals are evaluated and ranked according to a fitness criterion. For whole-brain network simulations, this could be the fit of the simulated activity to empirical data. Then, individuals with a high fitness value are `selected` as parents and `mate` to create offspring. These offspring undergo random `mutations` of their genes. After all offspring are evaluated, the best individuals of the population are selected to transition into the next generation. This process goes on for a given amount generations until a stopping criterion is reached. This could be a predefined maximum number of generations or when a large enough population with high fitness values is found.
+`neurolib` also implements evolutionary parameter optimization, which works particularly well with brain networks. In an evolutionary algorithm, each simulation is represented as an individual and the parameters of the simulation, for example coupling strengths or noise level values, are represented as the genes of each individual. An individual is a part of a population. In each generation, individuals are evaluated and ranked according to a fitness criterion. For whole-brain network simulations, this could be the fit of the simulated activity to empirical data. Then, individuals with a high fitness value are `selected` as parents and `mate` to create offspring. These offspring undergo random `mutations` of their genes. After all offspring are evaluated, the best individuals of the population are selected to transition into the next generation. This process goes on for a given amount generations until a stopping criterion is reached. This could be a predefined maximum number of generations or when a large enough population with high fitness values is found. 
+
+An example genealogy tree is shown below. You can see the evolution starting at the top and individuals reproducing generation by generation. The color indicates the fitness.
+
+<p align="center">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolution_tree.png", width="600">
+</p>
+
+`neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. You can chose between two implemented evolutionary algorithms: `adaptive` is a gaussian mutation and rank selection algorithm with adaptive step size that ensures convergence (a schematic is shown in the image below). `nsga2` is an implementation of the popular multi-objective optimization algorithm by Deb et al. 2002. 
 
 <p align="center">
   <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolutionary-algorithm.png", width="600">
 </p>
 
-`neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. Of course, if you like, you can dig deeper, define your own selection, mutation and mating operators. In the following demonstration, we will simply evaluate the fitness of each individual as the distance to the unit circle. After a couple of generations of mating, mutating and selecting, only individuals who are close to the circle should survive:
+Of course, if you like, you can dig deeper, define your own selection, mutation and mating operators. In the following demonstration, we will simply evaluate the fitness of each individual as the distance to the unit circle. After a couple of generations of mating, mutating and selecting, only individuals who are close to the circle should survive:
 
 ```python
 from neurolib.utils.parameterSpace import ParameterSpace
