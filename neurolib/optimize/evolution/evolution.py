@@ -96,6 +96,7 @@ class Evolution:
             weightList = [1.0]
 
         trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
+        logging.info(f"Trajectory Name: {trajectoryName}")
         self.HDF_FILE = os.path.join(paths.HDF_DIR, filename)
         trajectoryFileName = self.HDF_FILE
 
