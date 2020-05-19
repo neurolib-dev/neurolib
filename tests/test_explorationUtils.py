@@ -29,7 +29,7 @@ class TestExplorationUtils(unittest.TestCase):
     def setUpClass(cls):
         ds = Dataset("hcp")
         model = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
-        model.params.duration = 10 * 1000  # ms
+        model.params.duration = 2 * 1000  # ms
         model.params.dt = 0.05
         model.params.bold = True
         parameters = ParameterSpace(
@@ -62,7 +62,7 @@ class TestExplorationUtils(unittest.TestCase):
     def test_findCloseResults(self):
         eu.findCloseResults(self.search.dfResults, dist=1, x_ext=0, K_gl=0.0)
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="plotting does not work on macOS")
+    @pytest.mark.skipif(sys.platform in ["darwin", "win32"], reason="Testing plots does not work on macOS or Windows")
     def test_plotExplorationResults(self):
         eu.processExplorationResults(
             self.search, model=self.model, ds=self.ds, bold_transient=0
@@ -73,6 +73,8 @@ class TestExplorationUtils(unittest.TestCase):
             par1=["x_ext", "$x_{ext}$"],
             par2=["K_gl", "$K$"],
             plot_key="max_" + self.model.default_output,
+            contour="max_" + self.model.default_output,
+            alpha="max_" + self.model.default_output,
             by=["coupling"],
             by_label=["coupling"],
             plot_key_label="testlabel",
