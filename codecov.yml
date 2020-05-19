@@ -1,7 +1,7 @@
 coverage:
   precision: 2
   round: nearest
-  range: "80...100"
+  range: "50...90"
   ignore:
     - "neurolib/models/**/timeIntegration.py" 
     - "neurolib/utils/devutils.py"
