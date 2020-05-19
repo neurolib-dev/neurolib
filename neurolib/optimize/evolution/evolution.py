@@ -419,7 +419,8 @@ class Evolution:
             pop[idx].fitness.score = np.ma.masked_invalid(pop[idx].fitness.wvalues).sum() / (len(pop[idx].fitness.wvalues))
         return pop
 
-    def getValidPopulation(self, pop):
+    def getValidPopulation(self, pop=None):
+        pop = pop or self.pop
         return [p for p in pop if not (np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()) ]
 
     def getInvalidPopulation(self, pop):
