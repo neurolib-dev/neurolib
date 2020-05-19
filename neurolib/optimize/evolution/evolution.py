@@ -420,10 +420,25 @@ class Evolution:
         return pop
 
     def getValidPopulation(self, pop=None):
+        """Returns a list of the valid population.
+
+        :params pop: Population to check, defaults to self.pop
+        :type pop: deap population
+        :return: List of valid population
+        :rtype: list
+        """
         pop = pop or self.pop
         return [p for p in pop if not (np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()) ]
 
-    def getInvalidPopulation(self, pop):
+    def getInvalidPopulation(self, pop=None):
+        """Returns a list of the invalid population.
+
+        :params pop: Population to check, defaults to self.pop
+        :type pop: deap population
+        :return: List of invalid population
+        :rtype: list
+        """        
+        pop = pop or self.pop
         return [p for p in pop if np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()]
 
     def tagPopulation(self, pop):
@@ -630,7 +645,34 @@ class Evolution:
         """
         eu.plotProgress(self, reverse=reverse)
 
+    def saveEvolution(self, fname=None):
+        """Save evolution to file using dill.
+
+        :param fname: Filename, defaults to a path in ./data/
+        :type fname: str, optional
+        """
+        import dill
+        fname = fname or os.path.join("data/", "evolution-" + self.trajectoryName + ".dill")
+        dill.dump(self, open(fname, "wb"))        
+        logging.info(f"Saving evolution to {fname}")
+
     def loadEvolution(self, fname):
+        """Load evolution from previously saved simulatoins. 
+        
+        Example usage: 
+        ```
+        evaluateSimulation = lambda x: x # the funciton can be ommited, that's why we define a lambda here
+        pars = ParameterSpace(['a', 'b'], # should be same as previously saved evolution
+                      [[0.0, 4.0], [0.0, 5.0]])
+        evolution = Evolution(evaluateSimulation, pars, weightList = [1.0])
+        evolution = evolution.loadEvolution("data/evolution-results-2020-05-15-00H-24M-48S.dill")
+        ```
+
+        :param fname: Filename, defaults to a path in ./data/
+        :type fname: str
+        :return: Evolution
+        :rtype: self
+        """
         import dill
         evolution = dill.load(open(fname, "rb"))
         evolution.__init__(lambda x: x, self.parameterSpace)
