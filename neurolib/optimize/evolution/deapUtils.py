@@ -13,6 +13,14 @@ import numpy as np
 #     return ParametersInterval(*(individual[: len(paramInterval)]))._asdict().copy()
 
 
+def randomParameters(paramInterval):
+    """
+    Generate a sequence of random parameters from a ParamsInterval using a uniform distribution.
+    Format: [mean_par1, mean_par2, ...]
+    """
+    params = [np.random.uniform(*pI) for pI in paramInterval]
+    return params
+
 def randomParametersAdaptive(paramInterval):
     """
     Generate a sequence of random parameters from a ParamsInterval using a uniform distribution.
@@ -28,7 +36,7 @@ def randomParametersAdaptive(paramInterval):
     return params
 
 
-def mutateUntilValid(pop, paramInterval, toolbox, maxTries=0):
+def mutateUntilValid(pop, paramInterval, toolbox, MUTATE_P={}, maxTries=100):
     """Checks the validity of new individuals' parameter. If they are invalid 
     (for example if they are out of the predefined paramter space bounds), 
     mutate the individual, until valid.
@@ -42,7 +50,7 @@ def mutateUntilValid(pop, paramInterval, toolbox, maxTries=0):
     for i, ind in enumerate(pop):
 
         ind_bak = copy.copy(ind)
-        toolbox.mutate(pop[i])
+        toolbox.mutate(pop[i], **MUTATE_P)
 
         nMutations = 0
         while not checkParamValidity(pop[i], paramInterval) and nMutations < maxTries:
@@ -329,4 +337,3 @@ def gaussianAdaptiveMutation_nStepSizes(individual, gamma_gl=None, gamma=None):
     individual[:] = newParams + newSigmas
 
     return (individual,)
-

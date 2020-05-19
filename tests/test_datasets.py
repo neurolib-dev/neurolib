@@ -10,7 +10,7 @@ import neurolib.utils.functions as func
 
 class TestDatasets(unittest.TestCase):
     def test_dataset_gw(self):
-        ds = Dataset("gw")
+        ds = Dataset("gw", fcd=True)
         self.assertTupleEqual(ds.Cmat.shape, (80, 80))
         self.assertTupleEqual(ds.Dmat.shape, (80, 80))
         self.assertTupleEqual(ds.FCs[0].shape, (80, 80))
