@@ -59,7 +59,7 @@ class TestExplorationBrainNetwork(unittest.TestCase):
         ds = Dataset("hcp")
         model = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
         model.params.duration = 10 * 1000  # ms
-        model.params.dt = 0.05
+        model.params.dt = 0.2
         model.params.bold = True
         parameters = ParameterSpace(
             {
