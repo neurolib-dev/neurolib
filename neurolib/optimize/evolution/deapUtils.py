@@ -36,7 +36,7 @@ def randomParametersAdaptive(paramInterval):
     return params
 
 
-def mutateUntilValid(pop, paramInterval, toolbox, MUTATE_P={}, maxTries=0):
+def mutateUntilValid(pop, paramInterval, toolbox, MUTATE_P={}, maxTries=100):
     """Checks the validity of new individuals' parameter. If they are invalid 
     (for example if they are out of the predefined paramter space bounds), 
     mutate the individual, until valid.
