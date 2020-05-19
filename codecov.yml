@@ -4,7 +4,7 @@ coverage:
   range: "80...100"
   ignore:
     - "neurolib/models/**/timeIntegration.py" 
-    - "neurolib/utils/devUtils.py"
+    - "neurolib/utils/devutils.py"
     - "neurolib/utils/atlases.py"
   status:
     patch: off
