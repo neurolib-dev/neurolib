@@ -89,7 +89,7 @@ def plotExplorationResults(
         plot_clim = (np.nanmin(df_pivot.values), np.nanmax(df_pivot.values))
 
         if symmetric_colorbar:
-            plot_clim = (-np.nanmax(df_pivot.values), np.nanmax(df_pivot.values))
+            plot_clim = (-np.max(np.abs(plot_clim)), np.max(np.abs(plot_clim)))
         image_extent = [min(df[par1]), max(df[par1]), min(df[par2]), max(df[par2])]
         image = np.array(df_pivot)
         
