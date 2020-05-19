@@ -90,6 +90,13 @@ def plotSeabornScatter1(dfPop, pop, paramInterval, gIdx, save_plots):
 
     fig = plt.figure()
     sm = sns.pairplot(dfPop, diag_kind="kde", kind="reg")
+
+    # adjust axis to parameter boundaries
+    for axi, ax in enumerate(sm.axes):
+        for ayi, ay in enumerate(ax):
+            ay.set_ylim(paramInterval[axi])
+            ay.set_xlim(paramInterval[ayi])
+
     if save_plots is not None:
         plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.png".format(save_plots, gIdx)), bbox_inches='tight')
     plt.show()
@@ -104,6 +111,13 @@ def plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots):
     grid = grid.map_upper(plt.scatter, color="darkred", alpha=0.5)
     grid = grid.map_diag(plt.hist, bins=10, color="darkred", edgecolor="k")
     grid = grid.map_lower(sns.kdeplot, cmap="Reds")
+
+    # adjust axis to parameter boundaries
+    for axi, ax in enumerate(grid.axes):
+        for ayi, ay in enumerate(ax):
+            ay.set_ylim(paramInterval[axi])
+            ay.set_xlim(paramInterval[ayi])
+
     if save_plots is not None:
         plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.png".format(save_plots, gIdx)), bbox_inches='tight')
     plt.show()
