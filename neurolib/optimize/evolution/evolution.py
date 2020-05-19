@@ -150,6 +150,7 @@ class Evolution:
 
         # -------- settings
         self.verbose = False
+        self.plotColor = "C0"
 
         # -------- simulation
         self.parameterSpace = parameterSpace
@@ -555,7 +556,7 @@ class Evolution:
 
             # verbose output
             if self.verbose:
-                self.info(plot=True, info=False)
+                self.info(plot=True, info=True)
                 # # population summary
                 # eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
                 # bestN = 5
@@ -630,7 +631,7 @@ class Evolution:
             # hack: during the evolution we need to use reverse=True
             # after the evolution (with evolution.info()), we need False
             self.plotProgress(reverse=info)
-            eu.plotPopulation(self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName)
+            eu.plotPopulation(self, plotScattermatrix=True, save_plots=self.trajectoryName, color=self.plotColor)
 
     def plotProgress(self, reverse=True):
         """Plots progress of fitnesses of current evolution run
