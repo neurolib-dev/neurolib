@@ -557,15 +557,6 @@ class Evolution:
             # verbose output
             if self.verbose:
                 self.info(plot=True, info=True)
-                # # population summary
-                # eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
-                # bestN = 5
-                # print(f"Best {bestN} individuals:")
-                # eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)                
-                # # plotting
-                # eu.plotPopulation(
-                #     self.pop, self.paramInterval, self.gIdx, plotScattermatrix=True, save_plots=self.trajectoryName
-                # )
 
         logging.info("--- End of evolution ---")
         logging.info("Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values))

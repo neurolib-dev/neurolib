@@ -132,7 +132,7 @@ def plotSeabornScatter2(evolution, vars, save_plots, color='C0'):
 
 
 def plotPopulation(
-    evolution, gIdx=0, plotDistribution=True, plotScattermatrix=False, save_plots=None, color='C0'
+    evolution, plotDistribution=True, plotScattermatrix=False, save_plots=None, color='C0'
 ):
 
     """
@@ -142,12 +142,7 @@ def plotPopulation(
         if not os.path.exists(paths.FIGURES_DIR):
             os.makedirs(paths.FIGURES_DIR)
 
-    pop = evolution.pop
-    paramInterval = evolution.paramInterval
-
-    validPop = [p for p in pop if not (np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()) ]
-    popArray = np.array([p[0 : len(paramInterval._fields)] for p in validPop]).T
-    scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
+    validPop = evolution.getValidPopulation()
     scores = evolution.getScores()
     print("There are {} valid individuals".format(len(validPop)))
     print("Mean score across population: {:.2}".format(np.mean(scores)))
