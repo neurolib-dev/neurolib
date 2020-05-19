@@ -70,11 +70,11 @@ def printIndividuals(pop, paramInterval, stats=True):
         
 
 
-def plotScoresDistribution(scores, gIdx, save_plots=None):
+def plotScoresDistribution(scores, gIdx, save_plots=None, color='C0'):
     import matplotlib.pyplot as plt
 
     plt.figure(figsize=(4, 2))
-    plt.hist(scores, color="grey", edgecolor="black", linewidth=1.2)
+    plt.hist(scores, color=color, edgecolor="black", linewidth=1.2)
     plt.title("Generation: %i, Individuals: %i" % (gIdx, len(scores)))
     plt.xlabel("Score")
     plt.ylabel("Count")
@@ -84,47 +84,55 @@ def plotScoresDistribution(scores, gIdx, save_plots=None):
     plt.show()
 
 
-def plotSeabornScatter1(dfPop, pop, paramInterval, gIdx, save_plots):
+def plotSeabornScatter1(evolution, vars, save_plots, color='C0'):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
     fig = plt.figure()
-    sm = sns.pairplot(dfPop, diag_kind="kde", kind="reg")
+    sm = sns.pairplot(evolution.dfPop, vars=vars, 
+                    diag_kind="kde", kind="reg", 
+                    plot_kws={'line_kws':{'color': color}, 
+                    'scatter_kws': {'alpha': 0.5, 'color' : color}},
+                    diag_kws={'color' :  color})
 
     # adjust axis to parameter boundaries
     for axi, ax in enumerate(sm.axes):
         for ayi, ay in enumerate(ax):
-            ay.set_ylim(paramInterval[axi])
-            ay.set_xlim(paramInterval[ayi])
+            ay.set_ylim(evolution.paramInterval[axi])
+            ay.set_xlim(evolution.paramInterval[ayi])
 
     if save_plots is not None:
-        plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.png".format(save_plots, gIdx)), bbox_inches='tight')
+        plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.png".format(save_plots, evolution.gIdx)), bbox_inches='tight')
     plt.show()
 
 
-def plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots):
+def plotSeabornScatter2(evolution, vars, save_plots, color='C0'):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
     # https://towardsdatascience.com/visualizing-data-with-pair-plots-in-python-f228cf529166
-    grid = sns.PairGrid(data=dfPop)
-    grid = grid.map_upper(plt.scatter, color="darkred", alpha=0.5)
-    grid = grid.map_diag(plt.hist, bins=10, color="darkred", edgecolor="k")
+    grid = sns.PairGrid(data=evolution.dfPop, vars=vars)
+    grid = grid.map_upper(plt.scatter, color=color, alpha=0.5)
+    grid = grid.map_diag(plt.hist, bins=10, color=color, edgecolor="k")
     grid = grid.map_lower(sns.kdeplot, cmap="Reds")
 
     # adjust axis to parameter boundaries
     for axi, ax in enumerate(grid.axes):
         for ayi, ay in enumerate(ax):
-            ay.set_ylim(paramInterval[axi])
-            ay.set_xlim(paramInterval[ayi])
-
+            # this block will only work if only parameters (and not other measures like score)
+            # are plotted (since they don't have a range, and thus no xlim/ylim)
+            try:
+                ay.set_ylim(evolution.paramInterval[axi])
+                ay.set_xlim(evolution.paramInterval[ayi])
+            except:
+                pass 
     if save_plots is not None:
-        plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.png".format(save_plots, gIdx)), bbox_inches='tight')
+        plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.png".format(save_plots, evolution.gIdx)), bbox_inches='tight')
     plt.show()
 
 
 def plotPopulation(
-    pop, paramInterval, gIdx=0, plotDistribution=True, plotScattermatrix=False, save_plots=None,
+    evolution, gIdx=0, plotDistribution=True, plotScattermatrix=False, save_plots=None, color='C0'
 ):
 
     """
@@ -134,25 +142,24 @@ def plotPopulation(
         if not os.path.exists(paths.FIGURES_DIR):
             os.makedirs(paths.FIGURES_DIR)
 
-    # Gather all the fitnesses in one list and print the stats
-    # validPop = [p for p in pop if not np.isnan(p.fitness.score)]
-    # validPop = [p for p in pop if not np.any(np.isnan(p.fitness.values))]
+    pop = evolution.pop
+    paramInterval = evolution.paramInterval
+
     validPop = [p for p in pop if not (np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()) ]
     popArray = np.array([p[0 : len(paramInterval._fields)] for p in validPop]).T
     scores = np.array([validPop[i].fitness.score for i in range(len(validPop))])
+    scores = evolution.getScores()
     print("There are {} valid individuals".format(len(validPop)))
     print("Mean score across population: {:.2}".format(np.mean(scores)))
 
     # plots can only be drawn if there are enough individuals, to avoid errors
     MIN_POP_SIZE_PLOTTING = 4
+    vars_to_plot = list(evolution.parameterSpace.dict().keys())
+
     if len(validPop) > MIN_POP_SIZE_PLOTTING and plotDistribution:
-        plotScoresDistribution(scores, gIdx, save_plots)
-        # make a pandas dataframe for the seaborn pairplot
-        gridParameters = [k for idx, k in enumerate(paramInterval._fields)]
-        dfPop = pd.DataFrame(popArray, index=gridParameters).T
-        dfPop = dfPop.loc[:, :]
-        plotSeabornScatter1(dfPop, pop, paramInterval, gIdx, save_plots)
-        plotSeabornScatter2(dfPop, pop, paramInterval, gIdx, save_plots)
+        plotScoresDistribution(scores, evolution.gIdx, save_plots=save_plots, color=color)
+        plotSeabornScatter1(evolution, vars=vars_to_plot, save_plots=save_plots, color=color)
+        plotSeabornScatter2(evolution, vars=vars_to_plot, save_plots=save_plots, color=color)
 
 
 def plotProgress(evolution, reverse=True):
