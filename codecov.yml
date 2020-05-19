@@ -1,17 +1,10 @@
 coverage:
   precision: 2
   round: nearest
-  range: "90...100"
-  threshold: 3%
+  range: "80...100"
   ignore:
     - "neurolib/models/**/timeIntegration.py" 
-	- "neurolib/models/aln/timeIntegration.py" 
-	- "neurolib/models/fhn/timeIntegration.py" 
-	- "neurolib/models/hopf/timeIntegration.py" 
-	- "neurolib/models/wc/timeIntegration.py" 
-	- "neurolib/models/thalamus/timeIntegration.py" 
-	- "neurolib/models/bold/timeIntegration.py" 
-	- "neurolib/utils/devUtils.py"
-	- "neurolib/utils/atlases.py"
-  status:	
+    - "neurolib/utils/devUtils.py"
+    - "neurolib/utils/atlases.py"
+  status:
     patch: off

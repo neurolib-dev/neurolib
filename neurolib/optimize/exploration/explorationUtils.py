@@ -209,7 +209,7 @@ def plotResult(search, runId, z_bold = False, **kwargs):
     bold_z = stats.zscore(bold, axis=1)
     t_bold = np.linspace(2, len(bold.T)*2, len(bold.T), )
 
-    output = result.output[:, :]
+    output = result[search.model.default_output]
     output_dt = search.model.params.dt
     t_output = np.linspace(output_dt, len(output.T)*output_dt, len(output.T), )
 
