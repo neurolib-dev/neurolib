@@ -636,7 +636,7 @@ class Evolution:
                 self.id_score[p.id] = p.fitness.score
 
 
-    def info(self, plot=True, bestN=5, info=True):
+    def info(self, plot=True, bestN=5, info=True, reverse=False):
         """Print and plot information about the evolution and the current population
         
         :param plot: plot a plot using `matplotlib`, defaults to True
@@ -663,7 +663,7 @@ class Evolution:
         if plot:
             # hack: during the evolution we need to use reverse=True
             # after the evolution (with evolution.info()), we need False
-            self.plotProgress(reverse=info)
+            self.plotProgress(reverse=reverse)
             eu.plotPopulation(self, plotScattermatrix=True, save_plots=self.trajectoryName, color=self.plotColor)
 
     def plotProgress(self, reverse=True):
