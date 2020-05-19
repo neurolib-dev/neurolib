@@ -59,7 +59,7 @@ class TestALNEvolution(unittest.TestCase):
 
             model = evolution.getModelFromTraj(traj)
 
-            model.params["dt"] = 0.1
+            model.params["dt"] = 0.2
             model.params["duration"] = 2 * 1000.0
 
             model.run()
@@ -113,7 +113,7 @@ class TestALNEvolution(unittest.TestCase):
 
             model = evolution.getModelFromTraj(traj)
 
-            model.params["dt"] = 0.1
+            model.params["dt"] = 0.2
             model.params["duration"] = 2 * 1000.0
 
             model.run()
