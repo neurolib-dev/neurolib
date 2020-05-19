@@ -36,6 +36,7 @@ class Evolution:
         POP_INIT_SIZE=100,
         POP_SIZE=20,
         NGEN=10,
+        algorithm='adaptive',
         matingOperator=None,
         MATE_P=None,
         mutationOperator=None,
@@ -159,26 +160,43 @@ class Evolution:
 
         self.toolbox = deap.base.Toolbox()
 
-        # register evolution operators 
-        self.matingOperator = matingOperator or tools.cxBlend
-        # default parameters for tools.cxBlend:
-        if self.matingOperator == tools.cxBlend and MATE_P is None:
-            MATE_P = {"alpha" : 0.5}
-        self.MATE_P = MATE_P or {}
+        # -------- algorithms
+        if algorithm == 'adaptive':
+            logging.info(f"Evolution: Using algorithm: {algorithm}")
+            self.matingOperator = tools.cxBlend
+            self.MATE_P = {"alpha" : 0.5} or MATE_P
+            self.mutationOperator = du.gaussianAdaptiveMutation_nStepSizes
+            self.selectionOperator = du.selBest_multiObj
+            self.parentSelectionOperator = du.selRank
+            self.PARENT_SELECT_P = {"s" : 1.5} or PARENT_SELECT_P
+            self.individualGenerator = du.randomParametersAdaptive
 
-        self.mutationOperator = mutationOperator or du.gaussianAdaptiveMutation_nStepSizes
-        self.MUTATE_P = MUTATE_P or {}
+        elif algorithm == 'nsga2':
+            logging.info(f"Evolution: Using algorithm: {algorithm}")
+            self.matingOperator=tools.cxSimulatedBinaryBounded
+            self.MATE_P = {"low":self.parameterSpace.lowerBound, "up":self.parameterSpace.upperBound, "eta":20.0} or MATE_P
+            self.mutationOperator=tools.mutPolynomialBounded
+            self.MUTATE_P = {"low":self.parameterSpace.lowerBound, "up":self.parameterSpace.upperBound, "eta":20.0, "indpb":1.0/len(self.weightList)} or MUTATE_P
+            self.selectionOperator=tools.selNSGA2
+            self.parentSelectionOperator=tools.selTournamentDCD
+            self.individualGenerator = du.randomParameters
+        
+        else:
+            raise ValueError("Evolution: algorithm must be one of the following: ['adaptive', 'nsga2']")
 
-        self.selectionOperator = selectionOperator or du.selBest_multiObj
-        self.SELECT_P = SELECT_P or {}
+        # if the operators are set manually, then overwrite them
+        self.matingOperator = self.matingOperator if hasattr(self, "matingOperator") else matingOperator
+        self.mutationOperator = self.mutationOperator if hasattr(self, "mutationOperator") else mutationOperator
+        self.selectionOperator = self.selectionOperator if hasattr(self, "selectionOperator") else selectionOperator
+        self.parentSelectionOperator = self.parentSelectionOperator if hasattr(self, "parentSelectionOperator") else parentSelectionOperator
+        self.individualGenerator = self.individualGenerator if hasattr(self, "individualGenerator") else individualGenerator
 
-        self.parentSelectionOperator = parentSelectionOperator or du.selRank
-        # default parameters for du.selRank:
-        if self.parentSelectionOperator == du.selRank and PARENT_SELECT_P is None:
-            PARENT_SELECT_P = {"s" : 1.5}
-        self.PARENT_SELECT_P = PARENT_SELECT_P or {}
+        # let's also make sure that the parameters are set correctly
+        self.MATE_P = self.MATE_P if hasattr(self, "MATE_P") else {}
+        self.PARENT_SELECT_P = self.PARENT_SELECT_P if hasattr(self, "PARENT_SELECT_P") else {}
+        self.MUTATE_P = self.MUTATE_P if hasattr(self, "MUTATE_P") else {}
+        self.SELECT_P = self.SELECT_P if hasattr(self, "SELECT_P") else {}
 
-        self.individualGenerator = individualGenerator or du.randomParametersAdaptive        
 
         self.initDEAP(
             self.toolbox,
@@ -380,9 +398,17 @@ class Evolution:
         # This is for only having the cartesian product
         # between ``generation x (ind_idx AND individual)``, so that every individual has just one
         # unique index within a generation.
+
+        # this function is necessary for the NSGA-2 algorithms because
+        # some operators return np.float64 instead of float and pypet
+        # does not like individuals with mixed types... sigh.
+        def _cleanIndividual(ind):
+            return [float(i) for i in ind]
+
         traj.f_expand(
             pp.cartesian_product(
-                {"generation": [gIdx], "id": [x.id for x in pop], "individual": [list(x) for x in pop],},
+                {"generation": [gIdx], "id": [x.id for x in pop], 
+                "individual": [list(_cleanIndividual(x)) for x in pop],},
                 [("id", "individual"), "generation"],
             )
         )  # the current generation  # unique id of each individual
