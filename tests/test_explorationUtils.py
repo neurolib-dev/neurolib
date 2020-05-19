@@ -74,7 +74,7 @@ class TestExplorationUtils(unittest.TestCase):
             par2=["K_gl", "$K$"],
             plot_key="max_" + self.model.default_output,
             contour="max_" + self.model.default_output,
-            alpha="max_" + self.model.default_output,
+            alpha_mask="max_" + self.model.default_output,
             by=["coupling"],
             by_label=["coupling"],
             plot_key_label="testlabel",
@@ -90,3 +90,7 @@ class TestExplorationUtils(unittest.TestCase):
             plot_key_label="testlabel",
             one_figure=False,
         )
+
+    @pytest.mark.skipif(sys.platform in ["darwin", "win32"], reason="Testing plots does not work on macOS or Windows")
+    def test_plotRun(self):
+        eu.plotResult(self.search, 0)
