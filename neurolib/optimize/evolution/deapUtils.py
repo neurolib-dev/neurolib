@@ -18,7 +18,7 @@ def randomParameters(paramInterval):
     Generate a sequence of random parameters from a ParamsInterval using a uniform distribution.
     Format: [mean_par1, mean_par2, ...]
     """
-    params = list(map(lambda pI: np.random.uniform(pI[0], pI[1]), paramInterval))
+    params = [np.random.uniform(*pI) for pI in paramInterval]
     return params
 
 def randomParametersAdaptive(paramInterval):
@@ -337,4 +337,3 @@ def gaussianAdaptiveMutation_nStepSizes(individual, gamma_gl=None, gamma=None):
     individual[:] = newParams + newSigmas
 
     return (individual,)
-
