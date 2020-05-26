@@ -65,12 +65,13 @@ class TestSignal(unittest.TestCase):
         for name, it in self.signal.iterate(return_as="signal"):
             self.assertTrue(isinstance(it, RatesSignal))
             # test it is one-dim with only time axis
-            self.assertTupleEqual(it.shape, (self.signal.shape[-1],))
+            print(name, it.shape)
+            self.assertTupleEqual(it.shape, (self.signal.shape[-1], 1))
 
         for name, it in self.signal.iterate(return_as="xr"):
             self.assertTrue(isinstance(it, xr.DataArray))
             # test it is one-dim with only time axis
-            self.assertTupleEqual(it.shape, (self.signal.shape[-1],))
+            self.assertTupleEqual(it.shape, (self.signal.shape[-1], 1))
 
         with pytest.raises(ValueError):
             for name, it in self.signal.iterate(return_as="abcde"):
