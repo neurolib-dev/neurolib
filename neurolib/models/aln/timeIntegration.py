@@ -173,12 +173,13 @@ def timeIntegration(params):
     # they store initial conditions AND simulated data
     rates_exc = np.zeros((N, startind + len(t)))
     rates_inh = np.zeros((N, startind + len(t)))
+    IA = np.zeros((N, startind + len(t)))
 
     # ------------------------------------------------------------------------
     # Set initial values
     mufe = params["mufe_init"].copy()  # Filtered mean input (mu) for exc. population
     mufi = params["mufi_init"].copy()  # Filtered mean input (mu) for inh. population
-    IA = params["IA_init"].copy()  # Adaptation current (pA)
+    IA_init = params["IA_init"].copy()  # Adaptation current (pA)
     seem = params["seem_init"].copy()  # Mean exc synaptic input
     seim = params["seim_init"].copy()
     seev = params["seev_init"].copy()  # Exc synaptic input variance
@@ -197,10 +198,13 @@ def timeIntegration(params):
         # repeat the 1-dim value stardind times
         rates_exc_init = np.dot(params["rates_exc_init"], np.ones((1, startind)))  # kHz
         rates_inh_init = np.dot(params["rates_inh_init"], np.ones((1, startind)))  # kHz
+        # set initial adaptation current
+        IA_init = np.dot(params["IA_init"], np.ones((1, startind)))
     # if initial values are a Nxt array
     else:
         rates_exc_init = params["rates_exc_init"][:, -startind:]
         rates_inh_init = params["rates_inh_init"][:, -startind:]
+        IA_init = params["IA_init"][:, -startind:]
 
     if RNGseed:
         np.random.seed(RNGseed)
@@ -209,8 +213,10 @@ def timeIntegration(params):
     rates_exc[:, startind:] = np.random.standard_normal((N, len(t)))
     rates_inh[:, startind:] = np.random.standard_normal((N, len(t)))
 
+    # Set the initial conditions
     rates_exc[:, :startind] = rates_exc_init
     rates_inh[:, :startind] = rates_inh_init
+    IA[:, :startind] = IA_init
 
     noise_exc = np.zeros((N,))
     noise_inh = np.zeros((N,))
@@ -480,7 +486,7 @@ def timeIntegration_njit_elementwise(
 
             # ------- excitatory population
             # mufe[no] - IA[no] / C is the total current of the excitatory population
-            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no] / C)
+            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no, i-1] / C)
             xid1, yid1 = int(xid1), int(yid1)
 
             rates_exc[no, i] = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3  # convert kHz to Hz
@@ -508,7 +514,7 @@ def timeIntegration_njit_elementwise(
             mufi_rhs = (mui - mufi[no]) / tau_inh
 
             # rate has to be kHz
-            IA_rhs = (a * (Vmean_exc - EA) - IA[no] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
+            IA_rhs = (a * (Vmean_exc - EA) - IA[no, i-1] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
 
             # EQ. 4.43
             if distr_delay:
@@ -533,6 +539,7 @@ def timeIntegration_njit_elementwise(
 
             mufe[no] = mufe[no] + dt * mufe_rhs
             mufi[no] = mufi[no] + dt * mufi_rhs
+            IA[no, i] = IA[no, i-1] + dt * IA_rhs
 
             if distr_delay:
                 rd_exc[no, no] = rd_exc[no, no] + dt * rd_exc_rhs
@@ -542,7 +549,6 @@ def timeIntegration_njit_elementwise(
                 sigmae_f = sigmae_f + dt * sigmae_f_rhs
                 sigmai_f = sigmai_f + dt * sigmai_f_rhs
 
-            IA[no] = IA[no] + dt * IA_rhs
             seem[no] = seem[no] + dt * seem_rhs
             seim[no] = seim[no] + dt * seim_rhs
             siem[no] = siem[no] + dt * siem_rhs
