@@ -486,7 +486,7 @@ def timeIntegration_njit_elementwise(
 
             # ------- excitatory population
             # mufe[no] - IA[no] / C is the total current of the excitatory population
-            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no, i] / C)
+            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no, i-1] / C)
             xid1, yid1 = int(xid1), int(yid1)
 
             rates_exc[no, i] = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3  # convert kHz to Hz
@@ -514,7 +514,7 @@ def timeIntegration_njit_elementwise(
             mufi_rhs = (mui - mufi[no]) / tau_inh
 
             # rate has to be kHz
-            IA_rhs = (a * (Vmean_exc - EA) - IA[no, i] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
+            IA_rhs = (a * (Vmean_exc - EA) - IA[no, i-1] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
 
             # EQ. 4.43
             if distr_delay:
@@ -539,7 +539,7 @@ def timeIntegration_njit_elementwise(
 
             mufe[no] = mufe[no] + dt * mufe_rhs
             mufi[no] = mufi[no] + dt * mufi_rhs
-            IA[no, i+1] = IA[no, i] + dt * IA_rhs
+            IA[no, i] = IA[no, i-1] + dt * IA_rhs
 
             if distr_delay:
                 rd_exc[no, no] = rd_exc[no, no] + dt * rd_exc_rhs

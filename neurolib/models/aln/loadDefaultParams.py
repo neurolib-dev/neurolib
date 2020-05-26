@@ -224,7 +224,6 @@ def generateRandomICs(N, seed=None):
 
     mufe_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms
     mufi_init = 3 * np.random.uniform(0, 1, (N,))  # mV/ms
-    IA_init = 200.0 * np.random.uniform(0, 1, (N,))  # pA
     seem_init = 0.5 * np.random.uniform(0, 1, (N,))
     seim_init = 0.5 * np.random.uniform(0, 1, (N,))
     seev_init = 0.001 * np.random.uniform(0, 1, (N,))
@@ -235,6 +234,7 @@ def generateRandomICs(N, seed=None):
     siev_init = 0.01 * np.random.uniform(0, 1, (N,))
     rates_exc_init = 0.01 * np.random.uniform(0, 1, (N, 1))
     rates_inh_init = 0.01 * np.random.uniform(0, 1, (N, 1))
+    IA_init = 200.0 * np.random.uniform(0, 1, (N, 1))  # pA
 
     return (
         mufe_init,
