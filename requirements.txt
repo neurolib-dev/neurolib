@@ -3,7 +3,6 @@ h5py
 numba
 numpy
 scipy
-glob3
 xarray
 pandas
 tqdm
