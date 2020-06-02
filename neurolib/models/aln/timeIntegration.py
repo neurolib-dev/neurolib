@@ -652,6 +652,7 @@ def adjust_shape(original, target):
     # repeat original in y until larger (or same size) as target
 
     # ------- y
+
     # either (x,) shape or (y,x) shape
     if len(original.shape) == 1:
         # if original.shape[0] > 1:
@@ -671,8 +672,8 @@ def adjust_shape(original, target):
         rep_x = 1
     original = np.tile(original, (1, rep_x))
 
-    # cut
-    original = original[: target.shape[0], : target.shape[1]]
+    # cut from end because the beginning can be initial condition
+    original = original[: target.shape[0], - target.shape[1] : ]
 
     return original
 
