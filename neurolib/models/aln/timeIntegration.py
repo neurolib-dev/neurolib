@@ -651,7 +651,7 @@ def adjust_shape(original, target):
 
     # repeat original in y until larger (or same size) as target
 
-    # ------- y
+    # tile until N 
 
     # either (x,) shape or (y,x) shape
     if len(original.shape) == 1:
@@ -662,9 +662,10 @@ def adjust_shape(original, target):
     else:
         rep_y = 1
 
+    # tile once so the array has shape (N,1)
     original = np.tile(original, (rep_y, 1))
 
-    # ------- x
+    # tile until t
 
     if target.shape[1] > original.shape[1]:
         rep_x = int(target.shape[1] / original.shape[1]) + 1
