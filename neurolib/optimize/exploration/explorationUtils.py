@@ -173,7 +173,6 @@ def plotExplorationResults(
         plt.show()
 
 
-def contourPlotDf(dataframe, color="white", levels=None, ax=None, alpha=1.0, countour = True, contourf = False, clabel = False, **contour_kwargs):
     levels = levels or [0, 1.0001]
     Xi, Yi = np.meshgrid(dataframe.columns, dataframe.index)
     ax = ax or plt
@@ -184,14 +183,6 @@ def contourPlotDf(dataframe, color="white", levels=None, ax=None, alpha=1.0, cou
     contours = ax.contour(
         Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, zorder=1, alpha=alpha, **contour_kwargs
     )
-
-    clabel = contour_kwargs["clabel"] if "clabel" in contour_kwargs else False
-    if clabel:
-        print("labels")
-        ax.clabel(contours, inline=True, fontsize=8)
-
-def alphaMask(image, threshold, alpha, mask=None, invert=False, style=None):
-    if mask is None:
         mask = image
     # alphas = Normalize(0, threshold, clip=True)(np.abs(mask))
     alphas = mask > threshold if not invert else mask < threshold
