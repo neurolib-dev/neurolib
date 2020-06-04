@@ -11,10 +11,22 @@ from . import deapUtils as du
 def saveToPypet(traj, pop, gIdx):
     try:
         traj.f_add_result_group("{}.gen_{:06d}".format("evolution", gIdx))
-        traj.f_add_result("{}.gen_{:06d}.fitness".format("evolution", gIdx), np.array([p.fitness.values for p in pop]))
-        traj.f_add_result("{}.gen_{:06d}.scores".format("evolution", gIdx), np.array([p.fitness.score for p in pop]))
-        traj.f_add_result("{}.gen_{:06d}.population".format("evolution", gIdx), np.array([list(p) for p in pop]))
-        traj.f_add_result("{}.gen_{:06d}.ind_ids".format("evolution", gIdx), np.array([p.id for p in pop]))
+        traj.f_add_result(
+            "{}.gen_{:06d}.fitness".format("evolution", gIdx),
+            np.array([p.fitness.values for p in pop]),
+        )
+        traj.f_add_result(
+            "{}.gen_{:06d}.scores".format("evolution", gIdx),
+            np.array([p.fitness.score for p in pop]),
+        )
+        traj.f_add_result(
+            "{}.gen_{:06d}.population".format("evolution", gIdx),
+            np.array([list(p) for p in pop]),
+        )
+        traj.f_add_result(
+            "{}.gen_{:06d}.ind_ids".format("evolution", gIdx),
+            np.array([p.id for p in pop]),
+        )
         # recursively store all simulated outputs into hdf
         for i, p in enumerate(pop):
             if not np.isnan(p.fitness.values).any() and not p.simulation_stored:
@@ -22,7 +34,9 @@ def saveToPypet(traj, pop, gIdx):
 
                 traj.f_add_result_group("{}.ind_{:06d}".format("outputs", p.id))
 
-                assert isinstance(p.outputs, dict), "outputs are not a dict, can't unpack!"
+                assert isinstance(
+                    p.outputs, dict
+                ), "outputs are not a dict, can't unpack!"
 
                 def unpackOutputsAndStore(outputs, save_string):
                     new_save_string = save_string
@@ -32,9 +46,13 @@ def saveToPypet(traj, pop, gIdx):
                             traj.f_add_result_group(new_save_string)
                             unpackOutputsAndStore(value, new_save_string)
                         else:
-                            traj.f_add_result("{}.{}".format(new_save_string, key), value)
+                            traj.f_add_result(
+                                "{}.{}".format(new_save_string, key), value
+                            )
 
-                unpackOutputsAndStore(p.outputs, save_string="{}.ind_{:06d}".format("outputs", p.id))
+                unpackOutputsAndStore(
+                    p.outputs, save_string="{}.ind_{:06d}".format("outputs", p.id)
+                )
 
         traj.f_store()
     except:
@@ -50,7 +68,9 @@ def printParamDist(pop=None, paramInterval=None, gIdx=None):
     for idx, k in enumerate(paramInterval._fields):
         print(
             "{}: \t mean: {:.4},\t std: {:.4}".format(
-                k, np.mean([indiv[idx] for indiv in pop]), np.std([indiv[idx] for indiv in pop]),
+                k,
+                np.mean([indiv[idx] for indiv in pop]),
+                np.std([indiv[idx] for indiv in pop]),
             )
         )
 
@@ -59,18 +79,19 @@ def printIndividuals(pop, paramInterval, stats=True):
     print("Printing {} individuals".format(len(pop)))
     for i, ind in enumerate(pop):
         print(f"Individual {i}")
-        
+
         print("\tFitness values: ", *np.round(ind.fitness.values, 2))
         if stats:
             print("\tScore: ", np.round(ind.fitness.score, 2))
             print("\tWeighted fitness: ", *np.round(ind.fitness.wvalues, 2))
-            print(f"\tStats mean {np.mean(ind.fitness.values):.2f} std {np.std(ind.fitness.values):.2f} min {np.min(ind.fitness.values):.2f} max {np.max(ind.fitness.values):.2f}")
+            print(
+                f"\tStats mean {np.mean(ind.fitness.values):.2f} std {np.std(ind.fitness.values):.2f} min {np.min(ind.fitness.values):.2f} max {np.max(ind.fitness.values):.2f}"
+            )
         for ki, k in enumerate(paramInterval._fields):
-            print(f"\tmodel.params[\"{k}\"] = {ind[ki]:.2f}")
-        
+            print(f'\tmodel.params["{k}"] = {ind[ki]:.2f}')
 
 
-def plotScoresDistribution(scores, gIdx, save_plots=None, color='C0'):
+def plotScoresDistribution(scores, gIdx, save_plots=None, color="C0"):
     import matplotlib.pyplot as plt
 
     plt.figure(figsize=(4, 2))
@@ -79,21 +100,41 @@ def plotScoresDistribution(scores, gIdx, save_plots=None, color='C0'):
     plt.xlabel("Score")
     plt.ylabel("Count")
     if save_plots is not None:
-        logging.info("Saving plot to {}".format(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx))))
-        plt.savefig(os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx)))
+        logging.info(
+            "Saving plot to {}".format(
+                os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx))
+            )
+        )
+        plt.savefig(
+            os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx))
+        )
     plt.show()
 
 
-def plotSeabornScatter1(evolution, vars, save_plots, color='C0'):
+def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0"):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
+    vars = list(evolution.parameterSpace.dict().keys())
+
+    # dfPop = dfPop or evolution.dfPop does not work!
+    if dfPop is not None:
+        dfPop = dfPop
+    else:
+        dfPop = evolution.dfPop
+
     fig = plt.figure()
-    sm = sns.pairplot(evolution.dfPop, vars=vars, 
-                    diag_kind="kde", kind="reg", 
-                    plot_kws={'line_kws':{'color': color}, 
-                    'scatter_kws': {'alpha': 0.5, 'color' : color}},
-                    diag_kws={'color' :  color})
+    sm = sns.pairplot(
+        dfPop,
+        vars=vars,
+        diag_kind="kde",
+        kind="reg",
+        plot_kws={
+            "line_kws": {"color": color},
+            "scatter_kws": {"alpha": 0.5, "color": color},
+        },
+        diag_kws={"color": color},
+    )
 
     # adjust axis to parameter boundaries
     for axi, ax in enumerate(sm.axes):
@@ -102,14 +143,26 @@ def plotSeabornScatter1(evolution, vars, save_plots, color='C0'):
             ay.set_xlim(evolution.paramInterval[ayi])
 
     if save_plots is not None:
-        plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_{}.png".format(save_plots, evolution.gIdx)), bbox_inches='tight')
+        plt.savefig(
+            os.path.join(
+                paths.FIGURES_DIR,
+                "{}_sns_params_{}.png".format(save_plots, evolution.gIdx),
+            ),
+            bbox_inches="tight",
+        )
     plt.show()
 
 
-def plotSeabornScatter2(evolution, vars, save_plots, color='C0'):
+def plotSeabornScatter2(evolution, dfPop=None, save_plots=None, color="C0"):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
+    vars = list(evolution.parameterSpace.dict().keys())
+    # dfPop = dfPop or evolution.dfPop does not work!
+    if dfPop is not None:
+        dfPop = dfPop
+    else:
+        dfPop = evolution.dfPop
     # https://towardsdatascience.com/visualizing-data-with-pair-plots-in-python-f228cf529166
     grid = sns.PairGrid(data=evolution.dfPop, vars=vars)
     grid = grid.map_upper(plt.scatter, color=color, alpha=0.5)
@@ -125,14 +178,25 @@ def plotSeabornScatter2(evolution, vars, save_plots, color='C0'):
                 ay.set_ylim(evolution.paramInterval[axi])
                 ay.set_xlim(evolution.paramInterval[ayi])
             except:
-                pass 
+                pass
     if save_plots is not None:
-        plt.savefig(os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.png".format(save_plots, evolution.gIdx)), bbox_inches='tight')
+        plt.savefig(
+            os.path.join(
+                paths.FIGURES_DIR,
+                "{}_sns_params_red_{}.png".format(save_plots, evolution.gIdx),
+            ),
+            bbox_inches="tight",
+        )
     plt.show()
 
 
 def plotPopulation(
-    evolution, plotDistribution=True, plotScattermatrix=False, save_plots=None, color='C0'
+    evolution,
+    history=False,
+    plotDistribution=True,
+    plotScattermatrix=False,
+    save_plots=None,
+    color="C0",
 ):
 
     """
@@ -149,12 +213,13 @@ def plotPopulation(
 
     # plots can only be drawn if there are enough individuals, to avoid errors
     MIN_POP_SIZE_PLOTTING = 4
-    vars_to_plot = list(evolution.parameterSpace.dict().keys())
 
     if len(validPop) > MIN_POP_SIZE_PLOTTING and plotDistribution:
-        plotScoresDistribution(scores, evolution.gIdx, save_plots=save_plots, color=color)
-        plotSeabornScatter1(evolution, vars=vars_to_plot, save_plots=save_plots, color=color)
-        plotSeabornScatter2(evolution, vars=vars_to_plot, save_plots=save_plots, color=color)
+        plotScoresDistribution(
+            scores, evolution.gIdx, save_plots=save_plots, color=color
+        )
+        plotSeabornScatter1(evolution, save_plots=save_plots, color=color)
+        plotSeabornScatter2(evolution, save_plots=save_plots, color=color)
 
 
 def plotProgress(evolution, reverse=True):
@@ -162,14 +227,27 @@ def plotProgress(evolution, reverse=True):
 
     gens, all_scores = evolution.getScoresDuringEvolution(reverse=reverse)
 
-    fig, axs = plt.subplots(2, 1, figsize=(3.5, 3), dpi=150, sharex=True, gridspec_kw={"height_ratios" : [2, 1]})   
-    im = axs[0].imshow(all_scores.T, aspect='auto', origin='lower')
+    fig, axs = plt.subplots(
+        2,
+        1,
+        figsize=(3.5, 3),
+        dpi=150,
+        sharex=True,
+        gridspec_kw={"height_ratios": [2, 1]},
+    )
+    im = axs[0].imshow(all_scores.T, aspect="auto", origin="lower")
     axs[0].set_ylabel("Individuals")
     cbar_ax = fig.add_axes([0.93, 0.42, 0.02, 0.3])
-    fig.colorbar(im, cax=cbar_ax, label='Score')
+    fig.colorbar(im, cax=cbar_ax, label="Score")
 
-    axs[1].plot(gens, np.nanmean(all_scores, axis=1), label='Average')
-    axs[1].fill_between(gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3, label='Bound')
+    axs[1].plot(gens, np.nanmean(all_scores, axis=1), label="Average")
+    axs[1].fill_between(
+        gens,
+        np.nanmin(all_scores, axis=1),
+        np.nanmax(all_scores, axis=1),
+        alpha=0.3,
+        label="Bound",
+    )
     axs[1].set_xlabel("Generation")
     axs[1].set_ylabel("Score")
     plt.show()
@@ -187,14 +265,16 @@ def printEvolutionInfo(evolution):
             f"Duration of evaluating initial population {evolution._t_end_initial_population-evolution._t_start_initial_population}"
         )
     if hasattr(evolution, "_t_end_evolution"):
-        print(f"Duration of evolution {evolution._t_end_evolution-evolution._t_start_evolution}")
+        print(
+            f"Duration of evolution {evolution._t_end_evolution-evolution._t_start_evolution}"
+        )
     if evolution.model is not None:
         print(f"Model: {type(evolution.model)}")
         if hasattr(evolution.model, "name"):
             if isinstance(evolution.model.name, str):
                 print(f"Model name: {evolution.model.name}")
     print(f"Eval function: {evolution.evalFunction}")
-    print(f"Parameter space: {evolution.paramInterval}")
+    print(f"Parameter space: {evolution.parameterSpace}")
     # print(f"Weights: {evolution.weightList}")
     print("> Evolution parameters")
     print(f"Number of generations: {evolution.NGEN}")
