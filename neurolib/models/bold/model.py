@@ -59,7 +59,7 @@ class BOLDModel:
 
         # downsample BOLD
         BOLD_resampled = BOLD_chunk[
-            :, self.samplingRate_NDt - np.mod(self.idxLastT - 1, self.samplingRate_NDt) :: self.samplingRate_NDt
+            :, self.samplingRate_NDt - np.mod(self.idxLastT - 1, self.samplingRate_NDt) :: self.samplingRate_NDt,
         ]
         t_new_idx = self.idxLastT + np.arange(activity.shape[1])
         t_BOLD_resampled = (

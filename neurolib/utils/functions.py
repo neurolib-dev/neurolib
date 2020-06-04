@@ -307,7 +307,18 @@ def getMeanPowerSpectrum(activities, dt, maxfr=70, spectrum_windowsize=1.0, norm
         powers /= np.max(powers)
     return f, powers
 
-def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq=1, stim_bias=0, n_periods=None, nostim_before=0, nostim_after=0):
+
+def construct_stimulus(
+    stim="dc",
+    duration=6000,
+    dt=0.1,
+    stim_amp=0.2,
+    stim_freq=1,
+    stim_bias=0,
+    n_periods=None,
+    nostim_before=0,
+    nostim_after=0,
+):
     """Constructs a stimulus that can be applied to a model
 
     :param stim: Stimulation type: 'ac':oscillatory stimulus, 'dc': stimple step current, 
@@ -334,7 +345,7 @@ def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq
     :return: Stimulus timeseries
     :rtype: numpy.ndarray
     """
-    '''Constructs a sitmulus that can be applied as input to a model
+    """Constructs a sitmulus that can be applied as input to a model
 
     TODO: rewrite
 
@@ -342,29 +353,30 @@ def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq
                 'rect': step current in negative then positive direction with slowly
                 decaying amplitude, used for bistability detection
     stim_amp:   Amplitude of stimulus (for AdEx: in mV/ms, multiply by conductance C to get current in pA)
-    '''
+    """
+
     def sinus_stim(f=1, amplitude=0.2, positive=0, phase=0, cycles=1, t_pause=0):
         x = np.linspace(np.pi, -np.pi, int(1000 / dt / f))
         sinus_function = np.hstack(((np.sin(x + phase) + positive), np.tile(0, t_pause)))
         sinus_function *= amplitude
         return np.tile(sinus_function, cycles)
 
-    if stim == 'ac':
+    if stim == "ac":
         """Oscillatory stimulus
         """
         n_periods = n_periods or int(stim_freq)
 
-        stimulus = np.hstack(([stim_bias] * int(nostim_before / dt),
-                              np.tile(sinus_stim(stim_freq, stim_amp) + stim_bias, n_periods)))
+        stimulus = np.hstack(
+            ([stim_bias] * int(nostim_before / dt), np.tile(sinus_stim(stim_freq, stim_amp) + stim_bias, n_periods),)
+        )
         stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
-    elif stim == 'dc':
+    elif stim == "dc":
         """Simple DC input and return to baseline
         """
-        stimulus = np.hstack(
-            ([stim_bias] * int(nostim_before / dt), [stim_bias + stim_amp] * int(1000 / dt)))
+        stimulus = np.hstack(([stim_bias] * int(nostim_before / dt), [stim_bias + stim_amp] * int(1000 / dt),))
         stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
         stimulus[stimulus < 0] = 0
-    elif stim == 'rect':
+    elif stim == "rect":
         """Rectified step current with slow decay
         """
         # construct input
@@ -388,7 +400,7 @@ def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq
                 stimulus[i] = np.exp(-stim_decrease_counter) * stim_amp
                 stim_decrease_counter += stim_step_increase
     else:
-        raise ValueError(f"Stimulus {stim} not found. Use \"ac\", \"dc\" or \"rect\".")
+        raise ValueError(f'Stimulus {stim} not found. Use "ac", "dc" or "rect".')
 
     # repeat stimulus until full length
     steps = int(duration / dt)
@@ -396,4 +408,4 @@ def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq
     stimulus = np.tile(stimulus, int(steps / stimlength + 2))
     stimulus = stimulus[:steps]
 
-    return stimulus    
+    return stimulus

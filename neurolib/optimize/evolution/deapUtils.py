@@ -21,6 +21,7 @@ def randomParameters(paramInterval):
     params = [np.random.uniform(*pI) for pI in paramInterval]
     return params
 
+
 def randomParametersAdaptive(paramInterval):
     """
     Generate a sequence of random parameters from a ParamsInterval using a uniform distribution.

@@ -74,7 +74,7 @@ class ALNModel(Model):
         # load default parameters if none were given
         if params is None:
             params = dp.loadDefaultParams(
-                Cmat=self.Cmat, Dmat=self.Dmat, lookupTableFileName=self.lookupTableFileName, seed=self.seed
+                Cmat=self.Cmat, Dmat=self.Dmat, lookupTableFileName=self.lookupTableFileName, seed=self.seed,
             )
 
         # Initialize base class Model

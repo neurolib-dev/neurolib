@@ -410,7 +410,7 @@ class Signal:
         pad_width = [(0, 0)] * len(self.dims_not_time) + [pad_width]
         padded = np.pad(self.data.values, pad_width, mode=padding_type, **kwargs)
         # to dataframe
-        padded = xr.DataArray(padded, dims=self.data.dims, coords={**self.coords_not_time, "time": new_times})
+        padded = xr.DataArray(padded, dims=self.data.dims, coords={**self.coords_not_time, "time": new_times},)
         add_steps = [f"{how_much * self.dt}s {padding_type} {side} padding"]
         if inplace:
             self.data = padded
@@ -457,7 +457,7 @@ class Signal:
             from mne.filter import resample
 
             resample_func = partial(
-                resample, up=to_frequency, down=self.sampling_frequency, npad="auto", axis=-1, pad="edge"
+                resample, up=to_frequency, down=self.sampling_frequency, npad="auto", axis=-1, pad="edge",
             )
         except ImportError:
             logging.warning("`mne` module not found, falling back to basic scipy's function")
@@ -474,7 +474,7 @@ class Signal:
         # construct new times
         new_times = (np.arange(resampled.shape[-1], dtype=np.float) / to_frequency) + self.data.time.values[0]
         # to dataframe
-        resampled = xr.DataArray(resampled, dims=self.data.dims, coords={**self.coords_not_time, "time": new_times})
+        resampled = xr.DataArray(resampled, dims=self.data.dims, coords={**self.coords_not_time, "time": new_times},)
         add_steps = [f"resample to {to_frequency}Hz"]
         if inplace:
             self.data = resampled
@@ -616,7 +616,7 @@ class Signal:
             return xr.DataArray(
                 np.array(fcs),
                 dims=["output", "space", "space"],
-                coords={"output": self.data.coords["output"], "space": self.data.coords["space"]},
+                coords={"output": self.data.coords["output"], "space": self.data.coords["space"],},
             )
         if self.data.ndim == 2:
             return xr.DataArray(
