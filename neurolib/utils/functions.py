@@ -307,18 +307,44 @@ def getMeanPowerSpectrum(activities, dt, maxfr=70, spectrum_windowsize=1.0, norm
         powers /= np.max(powers)
     return f, powers
 
-def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq=1, stim_bias=0, n_periods=0, nostim_before=0, nostim_after=0):
+def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq=1, stim_bias=0, n_periods=None, nostim_before=0, nostim_after=0):
+    """Constructs a stimulus that can be applied to a model
+
+    :param stim: Stimulation type: 'ac':oscillatory stimulus, 'dc': stimple step current, 
+                'rect': step current in negative then positive direction with slowly
+                decaying amplitude, used for bistability detection, defaults to 'dc'
+    :type stim: str, optional
+    :param duration: Duration of stimulus in ms, defaults to 6000
+    :type duration: int, optional
+    :param dt: Integration time step in ms, defaults to 0.1
+    :type dt: float, optional
+    :param stim_amp: Amplitude of stimulus (for AdEx: in mV/ms, multiply by conductance C to get current in pA), defaults to 0.2
+    :type stim_amp: float, optional
+    :param stim_freq: Stimulation frequency, defaults to 1
+    :type stim_freq: int, optional
+    :param stim_bias: Stimulation offset (bias), defaults to 0
+    :type stim_bias: int, optional
+    :param n_periods: Numer of periods of stimulus, defaults to None
+    :type n_periods: [type], optional
+    :param nostim_before: Time before stimulation, defaults to 0
+    :type nostim_before: int, optional
+    :param nostim_after: Time after stimulation, defaults to 0
+    :type nostim_after: int, optional
+    :raises ValueError: Raises error if unsupported stimulus type is chosen.
+    :return: Stimulus timeseries
+    :rtype: numpy.ndarray
+    """
     '''Constructs a sitmulus that can be applied as input to a model
 
     TODO: rewrite
 
-    stim:       stimulation stype ['ac':oscillatory stimulus, 'dc': stimple step current, 
+    stim:       Stimulus type: 'ac':oscillatory stimulus, 'dc': stimple step current, 
                 'rect': step current in negative then positive direction with slowly
-                decaying amplitude, used for bistability detection]
-    stim_amp:   amplitude of stimulus in mV/ms (multiply by C to get pA value)
+                decaying amplitude, used for bistability detection
+    stim_amp:   Amplitude of stimulus (for AdEx: in mV/ms, multiply by conductance C to get current in pA)
     '''
     def sinus_stim(f=1, amplitude=0.2, positive=0, phase=0, cycles=1, t_pause=0):
-        x = np.linspace(np.pi, -np.pi, 1000 / dt / f)
+        x = np.linspace(np.pi, -np.pi, int(1000 / dt / f))
         sinus_function = np.hstack(((np.sin(x + phase) + positive), np.tile(0, t_pause)))
         sinus_function *= amplitude
         return np.tile(sinus_function, cycles)
@@ -326,8 +352,8 @@ def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq
     if stim == 'ac':
         """Oscillatory stimulus
         """
-        if n_periods == 0:
-            n_periods = int(stim_freq) * 1
+        n_periods = n_periods or int(stim_freq)
+
         stimulus = np.hstack(([stim_bias] * int(nostim_before / dt),
                               np.tile(sinus_stim(stim_freq, stim_amp) + stim_bias, n_periods)))
         stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
