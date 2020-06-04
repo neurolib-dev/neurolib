@@ -362,7 +362,7 @@ def construct_stimulus(stim='dc', duration=6000, dt=0.1, stim_amp=0.2, stim_freq
                 stimulus[i] = np.exp(-stim_decrease_counter) * stim_amp
                 stim_decrease_counter += stim_step_increase
     else:
-        print("ERROR, stim protocol {} not found")
+        raise ValueError(f"Stimulus {stim} not found. Use \"ac\", \"dc\" or \"rect\".")
 
     # repeat stimulus until full length
     steps = int(duration / dt)
