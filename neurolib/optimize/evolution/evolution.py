@@ -902,10 +902,7 @@ class Evolution:
         n_fitnesses = len(self.pop[0].fitness.wvalues)
         for i in range(n_fitnesses):
             for ip, p in enumerate(allIndividuals):
-                column_name = "f" + str(i)
-                dfEvolution.loc[ip, column_name] = (
-                    p.fitness.wvalues[i] / self.weightList[i]
-                )
+                dfEvolution.loc[ip, f"f{i}"] = p.fitness.wvalues[i] / self.weightList[i]
 
         return dfEvolution
 
