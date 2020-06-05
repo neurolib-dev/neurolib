@@ -68,7 +68,8 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
+                model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -81,11 +82,13 @@ class TestALNEvolution(unittest.TestCase):
         alnModel = ALNModel()
         alnModel.run(bold=True)
 
-        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
+        pars = ParameterSpace(
+            ["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]]
+        )
         evolution = Evolution(
             evaluateSimulation,
             pars,
-            algorithm = 'adaptive',
+            algorithm="adaptive",
             model=alnModel,
             weightList=[-1.0],
             POP_INIT_SIZE=4,
@@ -97,6 +100,11 @@ class TestALNEvolution(unittest.TestCase):
         evolution.info(plot=False)
         traj = evolution.loadResults()
         gens, all_scores = evolution.getScoresDuringEvolution()
+
+        # save the evolution and reload it from disk
+        fname = "data/test_saved-evolution.dill"
+        evolution.saveEvolution(fname=fname)
+        evolution = evolution.loadEvolution(fname)
 
         evolution.dfPop
 
@@ -122,7 +130,8 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
+                model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -137,11 +146,13 @@ class TestALNEvolution(unittest.TestCase):
         alnModel = ALNModel()
         alnModel.run(bold=True)
 
-        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
+        pars = ParameterSpace(
+            ["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]]
+        )
         evolution = Evolution(
             evaluateSimulation,
             pars,
-            algorithm = 'nsga2',
+            algorithm="nsga2",
             model=alnModel,
             weightList=[-1.0, 1.0],
             POP_INIT_SIZE=4,
