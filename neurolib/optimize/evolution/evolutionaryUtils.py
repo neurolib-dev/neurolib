@@ -30,7 +30,7 @@ def saveToPypet(traj, pop, gIdx):
             if not np.isnan(p.fitness.values).any() and not p.simulation_stored:
                 pop[i].simulation_stored = True
 
-                traj.f_add_result_group(f"outputs.ind_{p.id:06d}"
+                traj.f_add_result_group(f"outputs.ind_{p.id:06d}")
 
                 assert isinstance(
                     p.outputs, dict
@@ -44,13 +44,9 @@ def saveToPypet(traj, pop, gIdx):
                             traj.f_add_result_group(new_save_string)
                             unpackOutputsAndStore(value, new_save_string)
                         else:
-                            traj.f_add_result(
-                                f"{new_save_string}.{key}", value
-                            )
+                            traj.f_add_result(f"{new_save_string}.{key}", value)
 
-                unpackOutputsAndStore(
-                    p.outputs, save_string=f"outputs.ind_{p.id:06d}"
-                )
+                unpackOutputsAndStore(p.outputs, save_string=f"outputs.ind_{p.id:06d}")
 
         traj.f_store()
     except:
@@ -66,9 +62,7 @@ def printParamDist(pop=None, paramInterval=None, gIdx=None):
     for idx, k in enumerate(paramInterval._fields):
         mean_params = np.mean([indiv[idx] for indiv in pop])
         sdt_params = np.std([indiv[idx] for indiv in pop])
-        print(
-            f"{k}: \t mean: {mean_params:.4f},\t std: {sdt_params:.4f}"
-        )
+        print(f"{k}: \t mean: {mean_params:.4f},\t std: {sdt_params:.4f}")
 
 
 def printIndividuals(pop, paramInterval, stats=True):
@@ -96,13 +90,9 @@ def plotScoresDistribution(scores, gIdx, save_plots=None, color="C0"):
     plt.xlabel("Score")
     plt.ylabel("Count")
     if save_plots is not None:
-        save_fname = os.path.join(paths.FIGURES_DIR, f"{save_plots}_hist_{gIdx}.png"
-        logging.info(
-            f"Saving plot to {save_fname}"
-            )
-        )
-        plt.savefig(save_fname 
-        )
+        save_fname = os.path.join(paths.FIGURES_DIR, f"{save_plots}_hist_{gIdx}.png")
+        logging.info(f"Saving plot to {save_fname}")
+        plt.savefig(save_fname)
     plt.show()
 
 
@@ -140,8 +130,7 @@ def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0"):
     if save_plots is not None:
         plt.savefig(
             os.path.join(
-                paths.FIGURES_DIR,
-                f"{save_plots}_sns_params_{evolution}.png",
+                paths.FIGURES_DIR, f"{save_plots}_sns_params_{evolution}.png",
             ),
             bbox_inches="tight",
         )
