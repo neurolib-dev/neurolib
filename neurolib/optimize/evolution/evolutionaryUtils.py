@@ -10,7 +10,7 @@ from . import deapUtils as du
 
 def saveToPypet(traj, pop, gIdx):
     try:
-        traj.f_add_result_group("evolution.gen_{:06d}")
+        traj.f_add_result_group(f"evolution.gen_{gIdx:06d}")
         traj.f_add_result(
             f"evolution.gen_{gIdx:06d}.fitness",
             np.array([p.fitness.values for p in pop]),
@@ -58,7 +58,7 @@ def saveToPypet(traj, pop, gIdx):
 
 
 def printParamDist(pop=None, paramInterval=None, gIdx=None):
-    print("Parameter distribution (Generation {}):")
+    print(f"Parameter distribution (Generation {gIdx}):")
     for idx, k in enumerate(paramInterval._fields):
         mean_params = np.mean([indiv[idx] for indiv in pop])
         sdt_params = np.std([indiv[idx] for indiv in pop])
