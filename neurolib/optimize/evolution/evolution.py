@@ -944,7 +944,7 @@ class Evolution:
 
         if reverse:
             generation_names = generation_names[::-1]
-        if drop_first:
+        if drop_first and "gen_000000" in generation_names:
             generation_names.remove("gen_000000")
 
         npop = len(traj.results.evolution[generation_names[0]].scores)
