@@ -106,7 +106,10 @@ class TestALNEvolution(unittest.TestCase):
         evolution.saveEvolution(fname=fname)
         evolution = evolution.loadEvolution(fname)
 
+        # overview of current population
         evolution.dfPop
+        # overview of all past individuals
+        evolution.dfEvolution
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
@@ -165,7 +168,10 @@ class TestALNEvolution(unittest.TestCase):
         traj = evolution.loadResults()
         gens, all_scores = evolution.getScoresDuringEvolution()
 
+        # overview of current population
         evolution.dfPop
+        # overview of all past individuals
+        evolution.dfEvolution
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
