@@ -21,7 +21,10 @@ class TestEvolutinUtils(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean", "b"], [[0.0, 3.0], [0.0, 3.0], [0.0, 100.0]])
+        pars = ParameterSpace(
+            ["mue_ext_mean", "mui_ext_mean", "b"],
+            [[0.0, 3.0], [0.0, 3.0], [0.0, 100.0]],
+        )
         evolution = Evolution(
             lambda v: v,
             pars,
@@ -46,6 +49,8 @@ class TestEvolutinUtils(unittest.TestCase):
             p.id = i
             p.fitness.values = fitnessesResult
             p.fitness.score = np.nansum(p.fitness.wvalues) / (len(p.fitness.wvalues))
+            p.gIdx = 0
+
         cls.pop = pop
         cls.evolution.pop = pop
         cls.evolution.gIdx = 1
@@ -61,9 +66,13 @@ class TestEvolutinUtils(unittest.TestCase):
         du.randomParametersAdaptive(self.evolution.paramInterval)
 
     def test_mutateUntilValid(self):
-        du.mutateUntilValid(self.pop, self.evolution.paramInterval, self.evolution.toolbox, maxTries=10)
+        du.mutateUntilValid(
+            self.pop, self.evolution.paramInterval, self.evolution.toolbox, maxTries=10
+        )
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="plotting does not work on macOS")
+    @pytest.mark.skipif(
+        sys.platform == "darwin", reason="plotting does not work on macOS"
+    )
     def test_plots(self):
         matplotlib = pytest.importorskip("matplotlib")
         eu.plotPopulation(self.evolution, plotScattermatrix=True)
@@ -75,7 +84,9 @@ class TestEvolutionCrossover(unittest.TestCase):
             return (1,), {}
 
         pars = ParameterSpace(["x"], [[0.0, 4.0]])
-        evolution = Evolution(evalFunction=evo, parameterSpace=pars, filename="TestEvolutionCrossover.hdf")
+        evolution = Evolution(
+            evalFunction=evo, parameterSpace=pars, filename="TestEvolutionCrossover.hdf"
+        )
         evolution.runInitial()
         init_pop = evolution.pop.copy()
 

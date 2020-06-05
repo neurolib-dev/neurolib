@@ -68,7 +68,8 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
+                model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -81,11 +82,13 @@ class TestALNEvolution(unittest.TestCase):
         alnModel = ALNModel()
         alnModel.run(bold=True)
 
-        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
+        pars = ParameterSpace(
+            ["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]]
+        )
         evolution = Evolution(
             evaluateSimulation,
             pars,
-            algorithm = 'adaptive',
+            algorithm="adaptive",
             model=alnModel,
             weightList=[-1.0],
             POP_INIT_SIZE=4,
@@ -98,7 +101,15 @@ class TestALNEvolution(unittest.TestCase):
         traj = evolution.loadResults()
         gens, all_scores = evolution.getScoresDuringEvolution()
 
+        # save the evolution and reload it from disk
+        fname = "data/test_saved-evolution.dill"
+        evolution.saveEvolution(fname=fname)
+        evolution = evolution.loadEvolution(fname)
+
+        # overview of current population
         evolution.dfPop
+        # overview of all past individuals
+        evolution.dfEvolution
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
@@ -122,7 +133,8 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
+                model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -137,11 +149,13 @@ class TestALNEvolution(unittest.TestCase):
         alnModel = ALNModel()
         alnModel.run(bold=True)
 
-        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
+        pars = ParameterSpace(
+            ["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]]
+        )
         evolution = Evolution(
             evaluateSimulation,
             pars,
-            algorithm = 'nsga2',
+            algorithm="nsga2",
             model=alnModel,
             weightList=[-1.0, 1.0],
             POP_INIT_SIZE=4,
@@ -154,7 +168,10 @@ class TestALNEvolution(unittest.TestCase):
         traj = evolution.loadResults()
         gens, all_scores = evolution.getScoresDuringEvolution()
 
+        # overview of current population
         evolution.dfPop
+        # overview of all past individuals
+        evolution.dfEvolution
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
