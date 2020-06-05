@@ -10,29 +10,27 @@ from . import deapUtils as du
 
 def saveToPypet(traj, pop, gIdx):
     try:
-        traj.f_add_result_group("{}.gen_{:06d}".format("evolution", gIdx))
+        traj.f_add_result_group("evolution.gen_{:06d}")
         traj.f_add_result(
-            "{}.gen_{:06d}.fitness".format("evolution", gIdx),
+            f"evolution.gen_{gIdx:06d}.fitness",
             np.array([p.fitness.values for p in pop]),
         )
         traj.f_add_result(
-            "{}.gen_{:06d}.scores".format("evolution", gIdx),
+            f"evolution.gen_{gIdx:06d}.scores",
             np.array([p.fitness.score for p in pop]),
         )
         traj.f_add_result(
-            "{}.gen_{:06d}.population".format("evolution", gIdx),
-            np.array([list(p) for p in pop]),
+            f"evolution.gen_{gIdx:06d}.population", np.array([list(p) for p in pop]),
         )
         traj.f_add_result(
-            "{}.gen_{:06d}.ind_ids".format("evolution", gIdx),
-            np.array([p.id for p in pop]),
+            f"evolution.gen_{gIdx:06d}.ind_ids", np.array([p.id for p in pop]),
         )
         # recursively store all simulated outputs into hdf
         for i, p in enumerate(pop):
             if not np.isnan(p.fitness.values).any() and not p.simulation_stored:
                 pop[i].simulation_stored = True
 
-                traj.f_add_result_group("{}.ind_{:06d}".format("outputs", p.id))
+                traj.f_add_result_group(f"outputs.ind_{p.id:06d}"
 
                 assert isinstance(
                     p.outputs, dict
@@ -47,11 +45,11 @@ def saveToPypet(traj, pop, gIdx):
                             unpackOutputsAndStore(value, new_save_string)
                         else:
                             traj.f_add_result(
-                                "{}.{}".format(new_save_string, key), value
+                                f"{new_save_string}.{key}", value
                             )
 
                 unpackOutputsAndStore(
-                    p.outputs, save_string="{}.ind_{:06d}".format("outputs", p.id)
+                    p.outputs, save_string=f"outputs.ind_{p.id:06d}"
                 )
 
         traj.f_store()
@@ -64,19 +62,17 @@ def saveToPypet(traj, pop, gIdx):
 
 
 def printParamDist(pop=None, paramInterval=None, gIdx=None):
-    print("Parameter distribution (Generation {}):".format(gIdx))
+    print("Parameter distribution (Generation {}):")
     for idx, k in enumerate(paramInterval._fields):
+        mean_params = np.mean([indiv[idx] for indiv in pop])
+        sdt_params = np.std([indiv[idx] for indiv in pop])
         print(
-            "{}: \t mean: {:.4},\t std: {:.4}".format(
-                k,
-                np.mean([indiv[idx] for indiv in pop]),
-                np.std([indiv[idx] for indiv in pop]),
-            )
+            f"{k}: \t mean: {mean_params:.4f},\t std: {sdt_params:.4f}"
         )
 
 
 def printIndividuals(pop, paramInterval, stats=True):
-    print("Printing {} individuals".format(len(pop)))
+    print(f"Printing {len(pop)} individuals")
     for i, ind in enumerate(pop):
         print(f"Individual {i}")
 
@@ -100,13 +96,12 @@ def plotScoresDistribution(scores, gIdx, save_plots=None, color="C0"):
     plt.xlabel("Score")
     plt.ylabel("Count")
     if save_plots is not None:
+        save_fname = os.path.join(paths.FIGURES_DIR, f"{save_plots}_hist_{gIdx}.png"
         logging.info(
-            "Saving plot to {}".format(
-                os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx))
+            f"Saving plot to {save_fname}"
             )
         )
-        plt.savefig(
-            os.path.join(paths.FIGURES_DIR, "%s_hist_%i.png" % (save_plots, gIdx))
+        plt.savefig(save_fname 
         )
     plt.show()
 
@@ -146,7 +141,7 @@ def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0"):
         plt.savefig(
             os.path.join(
                 paths.FIGURES_DIR,
-                "{}_sns_params_{}.png".format(save_plots, evolution.gIdx),
+                f"{save_plots}_sns_params_{evolution}.png",
             ),
             bbox_inches="tight",
         )
