@@ -24,12 +24,7 @@ class BoxSearch:
     """
 
     def __init__(
-        self,
-        model=None,
-        parameterSpace=None,
-        evalFunction=None,
-        filename=None,
-        saveAllModelOutputs=False,
+        self, model=None, parameterSpace=None, evalFunction=None, filename=None, saveAllModelOutputs=False,
     ):
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the 
@@ -90,9 +85,7 @@ class BoxSearch:
         self.HDF_FILE = os.path.join(paths.HDF_DIR, filename)
 
         # initialize pypet environment
-        trajectoryName = "results" + datetime.datetime.now().strftime(
-            "-%Y-%m-%d-%HH-%MM-%SS"
-        )
+        trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
         trajectoryfilename = self.HDF_FILE
 
         nprocesses = multiprocessing.cpu_count()
@@ -119,17 +112,13 @@ class BoxSearch:
             self.addParametersToPypet(self.traj, self.model.params)
         else:
             # else, use a random parameter of the parameter space
-            self.addParametersToPypet(
-                self.traj, self.parameterSpace.getRandom(safe=True)
-            )
+            self.addParametersToPypet(self.traj, self.parameterSpace.getRandom(safe=True))
 
         # Tell pypet which parameters to explore
         self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
         logging.info(
             "Number of parameter configurations: {}".format(
-                len(
-                    self.pypetParametrization[list(self.pypetParametrization.keys())[0]]
-                )
+                len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
             )
         )
 
@@ -226,11 +215,7 @@ class BoxSearch:
         else:
             # save only the default output
             self.saveToPypet(
-                {
-                    self.model.default_output: self.model.output,
-                    "t": self.model.outputs["t"],
-                },
-                traj,
+                {self.model.default_output: self.model.output, "t": self.model.outputs["t"],}, traj,
             )
             # save BOLD output
             # if "bold" in self.model.params:
@@ -299,8 +284,10 @@ class BoxSearch:
                     # check ram usage with psutil
                     used_memory_percent = psutil.virtual_memory()[2]
                     if used_memory_percent > memory_cap:
-                        raise MemoryError(f"Memory use is at {used_memory_percent}% and capped at {memory_cap}. Aborting.")
-                        
+                        raise MemoryError(
+                            f"Memory use is at {used_memory_percent}% and capped at {memory_cap}. Aborting."
+                        )
+
                 self.pypetTrajectory.results[rInd].f_load()
                 result = self.pypetTrajectory.results[rInd].f_to_dict(fast_access=True, short_names=pypetShortNames)
                 result = dotdict(result)
@@ -326,8 +313,7 @@ class BoxSearch:
         # copy float results to dfResults
         nan_value = np.nan
         logging.info("Aggregating results to `dfResults` ...")
-        #for i, result in tqdm.tqdm(self.results.items()):
-
+        # for i, result in tqdm.tqdm(self.results.items()):
 
         for runId, parameters in tqdm.tqdm(self.dfResults.iterrows(), total=len(self.dfResults)):
             # if the results were previously loaded into memory, use them
@@ -338,9 +324,9 @@ class BoxSearch:
             else:
                 result = self.getRun(runId)
             for key, value in result.items():
-                if (isinstance(value, (float, int)))  or (np.array(value).ndim == 1):
+                if (isinstance(value, (float, int))) or (np.array(value).ndim == 1):
                     # save 1-dim arrays
-                    if isinstance(value, np.ndarray) and arrays == True: 
+                    if isinstance(value, np.ndarray) and arrays == True:
                         # to save a numpy array, convert column to object type
                         if key not in self.dfResults:
                             self.dfResults[key] = None
@@ -352,7 +338,7 @@ class BoxSearch:
                 else:
                     self.dfResults.loc[runId, key] = nan_value
         # drop nan columns
-        self.dfResults = self.dfResults.dropna(axis='columns', how='all')
+        self.dfResults = self.dfResults.dropna(axis="columns", how="all")
 
     def loadDfResults(self, filename=None, trajectoryName=None):
         """Load results from a previous simulation.
@@ -413,7 +399,7 @@ class BoxSearch:
         """
         if hasattr(self, "results"):
             # load result from either the preloaded .result attribute (from .loadResults)
-            result = self.results[runId]        
+            result = self.results[runId]
         else:
             # or from disk if results haven't been loaded yet
             result = self.getRun(runId)
@@ -422,11 +408,7 @@ class BoxSearch:
     def info(self):
         """Print info about the current search.
         """
-        print(
-            "Exploration info ({})".format(
-                datetime.datetime.now().strftime("%Y-%m-%d-%HH-%MM-%SS")
-            )
-        )
+        print("Exploration info ({})".format(datetime.datetime.now().strftime("%Y-%m-%d-%HH-%MM-%SS")))
         print(f"HDF name: {self.HDF_FILE}")
         print(f"Trajectory name: {self.trajectoryName}")
         print(f"Model: {self.model.name}")

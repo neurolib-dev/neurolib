@@ -100,7 +100,7 @@ class ParameterSpace:
         """Returns lower bound of all parameters as a list
         """
         return [np.min(p) for p in self.parameterValues]
-    
+
     @property
     def upperBound(self):
         """Returns upper bound of all parameters as a list
