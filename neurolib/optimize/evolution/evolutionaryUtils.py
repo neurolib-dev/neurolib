@@ -12,12 +12,10 @@ def saveToPypet(traj, pop, gIdx):
     try:
         traj.f_add_result_group(f"evolution.gen_{gIdx:06d}")
         traj.f_add_result(
-            f"evolution.gen_{gIdx:06d}.fitness",
-            np.array([p.fitness.values for p in pop]),
+            f"evolution.gen_{gIdx:06d}.fitness", np.array([p.fitness.values for p in pop]),
         )
         traj.f_add_result(
-            f"evolution.gen_{gIdx:06d}.scores",
-            np.array([p.fitness.score for p in pop]),
+            f"evolution.gen_{gIdx:06d}.scores", np.array([p.fitness.score for p in pop]),
         )
         traj.f_add_result(
             f"evolution.gen_{gIdx:06d}.population", np.array([list(p) for p in pop]),
@@ -32,9 +30,7 @@ def saveToPypet(traj, pop, gIdx):
 
                 traj.f_add_result_group(f"outputs.ind_{p.id:06d}")
 
-                assert isinstance(
-                    p.outputs, dict
-                ), "outputs are not a dict, can't unpack!"
+                assert isinstance(p.outputs, dict), "outputs are not a dict, can't unpack!"
 
                 def unpackOutputsAndStore(outputs, save_string):
                     new_save_string = save_string
@@ -114,10 +110,7 @@ def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0"):
         vars=vars,
         diag_kind="kde",
         kind="reg",
-        plot_kws={
-            "line_kws": {"color": color},
-            "scatter_kws": {"alpha": 0.5, "color": color},
-        },
+        plot_kws={"line_kws": {"color": color}, "scatter_kws": {"alpha": 0.5, "color": color},},
         diag_kws={"color": color},
     )
 
@@ -129,10 +122,7 @@ def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0"):
 
     if save_plots is not None:
         plt.savefig(
-            os.path.join(
-                paths.FIGURES_DIR, f"{save_plots}_sns_params_{evolution}.png",
-            ),
-            bbox_inches="tight",
+            os.path.join(paths.FIGURES_DIR, f"{save_plots}_sns_params_{evolution}.png",), bbox_inches="tight",
         )
     plt.show()
 
@@ -165,22 +155,14 @@ def plotSeabornScatter2(evolution, dfPop=None, save_plots=None, color="C0"):
                 pass
     if save_plots is not None:
         plt.savefig(
-            os.path.join(
-                paths.FIGURES_DIR,
-                "{}_sns_params_red_{}.png".format(save_plots, evolution.gIdx),
-            ),
+            os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.png".format(save_plots, evolution.gIdx),),
             bbox_inches="tight",
         )
     plt.show()
 
 
 def plotPopulation(
-    evolution,
-    history=False,
-    plotDistribution=True,
-    plotScattermatrix=False,
-    save_plots=None,
-    color="C0",
+    evolution, history=False, plotDistribution=True, plotScattermatrix=False, save_plots=None, color="C0",
 ):
 
     """
@@ -199,9 +181,7 @@ def plotPopulation(
     MIN_POP_SIZE_PLOTTING = 4
 
     if len(validPop) > MIN_POP_SIZE_PLOTTING and plotDistribution:
-        plotScoresDistribution(
-            scores, evolution.gIdx, save_plots=save_plots, color=color
-        )
+        plotScoresDistribution(scores, evolution.gIdx, save_plots=save_plots, color=color)
         plotSeabornScatter1(evolution, save_plots=save_plots, color=color)
         plotSeabornScatter2(evolution, save_plots=save_plots, color=color)
 
@@ -211,14 +191,7 @@ def plotProgress(evolution, reverse=True):
 
     gens, all_scores = evolution.getScoresDuringEvolution(reverse=reverse)
 
-    fig, axs = plt.subplots(
-        2,
-        1,
-        figsize=(3.5, 3),
-        dpi=150,
-        sharex=True,
-        gridspec_kw={"height_ratios": [2, 1]},
-    )
+    fig, axs = plt.subplots(2, 1, figsize=(3.5, 3), dpi=150, sharex=True, gridspec_kw={"height_ratios": [2, 1]},)
     im = axs[0].imshow(all_scores.T, aspect="auto", origin="lower")
     axs[0].set_ylabel("Individuals")
     cbar_ax = fig.add_axes([0.93, 0.42, 0.02, 0.3])
@@ -226,11 +199,7 @@ def plotProgress(evolution, reverse=True):
 
     axs[1].plot(gens, np.nanmean(all_scores, axis=1), label="Average")
     axs[1].fill_between(
-        gens,
-        np.nanmin(all_scores, axis=1),
-        np.nanmax(all_scores, axis=1),
-        alpha=0.3,
-        label="Bound",
+        gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3, label="Bound",
     )
     axs[1].set_xlabel("Generation")
     axs[1].set_ylabel("Score")
@@ -249,9 +218,7 @@ def printEvolutionInfo(evolution):
             f"Duration of evaluating initial population {evolution._t_end_initial_population-evolution._t_start_initial_population}"
         )
     if hasattr(evolution, "_t_end_evolution"):
-        print(
-            f"Duration of evolution {evolution._t_end_evolution-evolution._t_start_evolution}"
-        )
+        print(f"Duration of evolution {evolution._t_end_evolution-evolution._t_start_evolution}")
     if evolution.model is not None:
         print(f"Model: {type(evolution.model)}")
         if hasattr(evolution.model, "name"):

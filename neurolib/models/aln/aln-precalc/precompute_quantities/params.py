@@ -21,19 +21,13 @@ def get_params():
     params[
         "net_record_example_v_traces"
     ] = 0.0  # 100 #number of v_traces that are recorded, if no trace should be computed: 0
-    params[
-        "net_record_all_neurons"
-    ] = False  # keep this high; otherwise great deal of memory, zero if not
-    params[
-        "net_record_all_neurons_dt"
-    ] = 10.0  # keep this high; otherwise great deal of memory, zero if not
+    params["net_record_all_neurons"] = False  # keep this high; otherwise great deal of memory, zero if not
+    params["net_record_all_neurons_dt"] = 10.0  # keep this high; otherwise great deal of memory, zero if not
     params["net_record_v_stats"] = True  # mean and std
     params["net_record_w_stats"] = True  # mean and std
     params["net_record_w"] = 10  # 0000 # record 100 w traces
     params["net_record_dt"] = 1.0  # [ms]
-    params[
-        "net_w_refr"
-    ] = True  # clamp (True) or don't clamp (False) w during the refractory period
+    params["net_w_refr"] = True  # clamp (True) or don't clamp (False) w during the refractory period
     params["net_w_init"] = 0.0  # 20. # [pA]
     params[
         "net_v_lower_bound"
@@ -108,21 +102,15 @@ def get_params():
     # rename dmu_couplingterms as well...
 
     # => mu/sigma step limit from below to prevent hopping to another eigenvalue curve
-    params[
-        "diff_mu_sigma_min"
-    ] = 5e-3  # minimal mu grid distance that is enforced (even if the
+    params["diff_mu_sigma_min"] = 5e-3  # minimal mu grid distance that is enforced (even if the
     # actually provided grid is coarser) during numerical
     # computation of the spectrum
     # note: if two eigenvalues lie close together or
     # lambda(mu_sigma_curve) is very steep then this param
     # must be small otherwise it possibly convergence to wrong eigval!
-    params[
-        "lambda_real_abs_thresh"
-    ] = 3.0  # ignore all eigenvalue abs realparts below this value
+    params["lambda_real_abs_thresh"] = 3.0  # ignore all eigenvalue abs realparts below this value
     # => ODE solver
-    params[
-        "grid_V_points"
-    ] = 20000  # discretization for exponential backwards integration
+    params["grid_V_points"] = 20000  # discretization for exponential backwards integration
     # => algebraic solver
     params["solver_abstol"] = 1e-4  # absolute tolerance (scipy solver wrapper)
     params[
@@ -145,9 +133,7 @@ def get_params():
     # => quantities
     #    params['quantities_grid_V_addpoints'] = 5000 # not required for the new threshold flux method
     #    params['threshold_interp_order'] = 3 # not required anymore for the new threshold flux method
-    params[
-        "dmu_couplingterms"
-    ] = 1e-3  # 1e-2 or 1e-4 produce identical results up to very small numerical differences
+    params["dmu_couplingterms"] = 1e-3  # 1e-2 or 1e-4 produce identical results up to very small numerical differences
     params[
         "dsigma_couplingterms"
     ] = 1e-3  # 1e-2 or 1e-4 produce identical results up to very small numerical differences
@@ -156,9 +142,7 @@ def get_params():
         "tolerance_conjugation"
     ] = 1e-4  # COMMENT THIS -- NOT INCLUDED IN PAPER  also: imag parts significance (to be different from zero)
     # => misc
-    params[
-        "verboselevel"
-    ] = 0  # 1: some debug text, 2: +intermediateplots, 3: verbose text
+    params["verboselevel"] = 0  # 1: some debug text, 2: +intermediateplots, 3: verbose text
 
     # record variables for reduced models
     # lnexp model
