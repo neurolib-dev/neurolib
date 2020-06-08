@@ -70,12 +70,8 @@ class Dataset:
         :raises NotImplementedError: If unknown normalization method is used
         """
         # the base directory of the dataset
-        dsBaseDirectory = os.path.join(
-            os.path.dirname(__file__), "..", "data", "datasets", datasetName
-        )
-        assert os.path.exists(
-            dsBaseDirectory
-        ), f"Dataset {datasetName} not found in {dsBaseDirectory}."
+        dsBaseDirectory = os.path.join(os.path.dirname(__file__), "..", "data", "datasets", datasetName)
+        assert os.path.exists(dsBaseDirectory), f"Dataset {datasetName} not found in {dsBaseDirectory}."
         self.dsBaseDirectory = dsBaseDirectory
         self.data = dotdict({})
 
@@ -85,18 +81,13 @@ class Dataset:
         assert len(self.data) > 0, "No data loaded."
         assert self.has_subjects
 
-        self.Cmats = self._normalizeCmats(
-            self.getDataPerSubject("cm"), method=normalizeCmats
-        )
+        self.Cmats = self._normalizeCmats(self.getDataPerSubject("cm"), method=normalizeCmats)
 
         # take the average of all
         self.Cmat = np.mean(self.Cmats, axis=0)
 
         self.Dmat = self.getDataPerSubject(
-            "len",
-            apply="all",
-            apply_function=np.mean,
-            apply_function_kwargs={"axis": 0},
+            "len", apply="all", apply_function=np.mean, apply_function_kwargs={"axis": 0},
         )
         self.BOLDs = self.getDataPerSubject("bold")
         self.FCs = self.getDataPerSubject("bold", apply_function=func.fc)
@@ -108,17 +99,10 @@ class Dataset:
 
     def computeFCD(self):
         logging.info("Computing FCD matrices ...")
-        self.FCDs = self.getDataPerSubject(
-            "bold", apply_function=func.fcd, apply_function_kwargs={"stepsize": 10}
-        )
+        self.FCDs = self.getDataPerSubject("bold", apply_function=func.fcd, apply_function_kwargs={"stepsize": 10})
 
     def getDataPerSubject(
-        self,
-        name,
-        apply="single",
-        apply_function=None,
-        apply_function_kwargs={},
-        normalizeCmats="max",
+        self, name, apply="single", apply_function=None, apply_function_kwargs={}, normalizeCmats="max",
     ):
         """Load data of a certain kind for all users of the current dataset
         
@@ -135,9 +119,7 @@ class Dataset:
         """
         values = []
         for subject, value in self.data["subjects"].items():
-            assert (
-                name in value
-            ), f"Data type {name} not found in dataset of subject {subject}."
+            assert name in value, f"Data type {name} not found in dataset of subject {subject}."
             val = value[name]
             if apply_function and apply == "single":
                 val = apply_function(val, **apply_function_kwargs)
@@ -161,10 +143,7 @@ class Dataset:
             Cmats = [cm / wt for cm, wt in zip(Cmats, self.waytotal)]
         elif method == "nvoxel":
             self.nvoxel = self.getDataPerSubject("nvoxel")
-            Cmats = [
-                cm / (nv[:, 0] * FSL_SAMPLES_PER_VOXEL)
-                for cm, nv in zip(Cmats, self.nvoxel)
-            ]
+            Cmats = [cm / (nv[:, 0] * FSL_SAMPLES_PER_VOXEL) for cm, nv in zip(Cmats, self.nvoxel)]
         return Cmats
 
     def _loadSubjectFiles(self, dsBaseDirectory, filterSubcorticalAAL2=False):
@@ -187,21 +166,11 @@ class Dataset:
             self.data["subjects"] = {}
 
             # data type paths, glob strings, dirty
-            BOLD_paths_glob = os.path.join(
-                dsBaseDirectory, "subjects", "*", "functional", "*rsfMRI*.mat"
-            )
-            CM_paths_glob = os.path.join(
-                dsBaseDirectory, "subjects", "*", "structural", "DTI_CM*.mat"
-            )
-            LEN_paths_glob = os.path.join(
-                dsBaseDirectory, "subjects", "*", "structural", "DTI_LEN*.mat"
-            )
-            WAY_paths_glob = os.path.join(
-                dsBaseDirectory, "subjects", "*", "structural", "waytotal*.txt"
-            )
-            NVOXEL_paths_glob = os.path.join(
-                dsBaseDirectory, "subjects", "*", "structural", "nvoxel*.txt"
-            )
+            BOLD_paths_glob = os.path.join(dsBaseDirectory, "subjects", "*", "functional", "*rsfMRI*.mat")
+            CM_paths_glob = os.path.join(dsBaseDirectory, "subjects", "*", "structural", "DTI_CM*.mat")
+            LEN_paths_glob = os.path.join(dsBaseDirectory, "subjects", "*", "structural", "DTI_LEN*.mat")
+            WAY_paths_glob = os.path.join(dsBaseDirectory, "subjects", "*", "structural", "waytotal*.txt")
+            NVOXEL_paths_glob = os.path.join(dsBaseDirectory, "subjects", "*", "structural", "nvoxel*.txt")
 
             _ftypes = {
                 "bold": BOLD_paths_glob,
@@ -238,9 +207,7 @@ class Dataset:
                             # load the data
                             data = self.loadMatrix(f, key=key)
                             if filterSubcorticalAAL2:
-                                data = filterSubcortical(
-                                    data, axis=filter_subcotrical_axis
-                                )
+                                data = filterSubcortical(data, axis=filter_subcotrical_axis)
                             self.data["subjects"][subject][_name] = data
                         # waytotal and nvoxel files are .txt files
                         elif _name in ["waytotal", "nvoxel"]:
@@ -272,9 +239,7 @@ class Dataset:
             if verbose:
                 print(f'\tLoaded key "{key}"')
         elif type(matrix) is dict:
-            raise ValueError(
-                f"Object is still a dict. Here are the keys: {matrix.keys()}"
-            )
+            raise ValueError(f"Object is still a dict. Here are the keys: {matrix.keys()}")
         return matrix
         return 0
 
