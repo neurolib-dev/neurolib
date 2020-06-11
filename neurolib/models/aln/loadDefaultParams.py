@@ -26,18 +26,15 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     # recently added for easier simulation of aln and brian in pypet
     params.model = "aln"
     params.name = "aln"
-    params.description = "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
+    params.description = (
+        "Adaptive linear-nonlinear model of exponential integrate-and-fire neurons"
+    )
 
     # runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
     params.duration = 2000  # Simulation duration (ms)
     np.random.seed(seed)  # seed for RNG of noise and ICs
-    # set seed to 0 if None, pypet will complain otherwise
-    params.seed = seed or 0
-
-    # make sure that seed=0 remains None
-    if seed == 0:
-        seed = None
+    params.seed = seed
 
     # options
     params.warn = 0  # warn if limits of lookup tables are exceeded
@@ -90,7 +87,9 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     params.ext_inh_rate = 0.0  # kHz external inhibiroty rate drive
 
     # externaln input currents, same as mue_ext_mean but can be time-dependent!
-    params.ext_exc_current = 0.0  # external excitatory input current [mV/ms], C*[]V/s=[]nA
+    params.ext_exc_current = (
+        0.0  # external excitatory input current [mV/ms], C*[]V/s=[]nA
+    )
     params.ext_inh_current = 0.0  # external inhibiroty input current [mV/ms]
 
     # Fokker Planck noise (for N->inf)
@@ -176,7 +175,9 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
 
     # load precomputed aLN transfer functions from hdfs
     if lookupTableFileName is None:
-        lookupTableFileName = os.path.join(os.path.dirname(__file__), "aln-precalc", "quantities_cascade.h5")
+        lookupTableFileName = os.path.join(
+            os.path.dirname(__file__), "aln-precalc", "quantities_cascade.h5"
+        )
 
     hf = h5py.File(lookupTableFileName, "r")
     params.Irange = hf.get("mu_vals")[()]
