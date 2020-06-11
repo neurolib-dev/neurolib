@@ -358,7 +358,7 @@ class Evolution:
             # replace all None with zeros, pypet doesn't like None
             for key, value in params_dict.items():
                 if value is None:
-                    params_dict[key] = 0
+                    params_dict[key] = "None"
             traj.f_add_result("params", params_dict, comment="Default parameters")
 
         # todo: initialize this after individuals have been defined!
