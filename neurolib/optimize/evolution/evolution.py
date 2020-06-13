@@ -897,6 +897,11 @@ class Evolution:
         dfEvolution["id"] = indIds
         dfEvolution["gen"] = [p.gIdx for p in allIndividuals]
 
+        # the history keeps all individuals of all generations
+        # there can be duplicates (in elitism for example), which we filter
+        # out for the dataframe
+        dfEvolution = dfEvolution.drop_duplicates()
+
         # add fitness columns
         # NOTE: have to do this with wvalues and divide by weights later, why?
         # Because after loading the evolution with dill, somehow multiple fitnesses
