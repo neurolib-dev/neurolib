@@ -18,12 +18,7 @@ def loadDefaultParams(seed=None):
     params.dt = 0.01  # ms
     params.duration = 60000  # Simulation duration (ms)
     np.random.seed(seed)  # seed for RNG of noise and ICs
-    # set seed to 0 if None, pypet will complain otherwise
-    params.seed = seed or 0
-
-    # make sure that seed=0 remains None
-    if seed == 0:
-        seed = None
+    params.seed = seed
 
     # local parameters for both populations
     params.tau = 20.0
