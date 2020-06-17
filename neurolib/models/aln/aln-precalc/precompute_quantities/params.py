@@ -2,9 +2,10 @@
 are used for brian2 simulations."""
 
 
-def get_params():
+def get_params(cell_type="ex"):
     params = dict()
-
+    #Leonardo
+    params["cell_type"] = cell_type
     # runtime options #
     # reduced models
     params["rectify_spec_models"] = True
@@ -47,20 +48,37 @@ def get_params():
     params["net_integration_method"] = "heun"  #'heun'
 
     # neuron model parameters (AdEX)
-    params["C"] = 200.0  # [pF]
-    params["gL"] = 10.0  # [nS]
-    params["taum"] = params["C"] / params["gL"]  # [ms]
-    params["EL"] = -65.0  # [mV] # reversal potential for membrane potential v
+    
+    #Leonardo
+    # inhibitory (need to be changed)
+    if cell_type == "in" :
+        params["C"] = 200.0  # [pF]
+        params["gL"] = 10.0  # [nS]
+        params["taum"] = params["C"] / params["gL"]  # [ms]
+        params["EL"] = -65.0  # [mV] # reversal potential for membrane potential v
+        params["VT"] = -50.0  # [mV]
+        params["deltaT"] = 1.5  # [mV]
+        params["Vcut"] = -40.0  # [mV]
+        params["Vr"] = -70.0  # [mV]
+        params["t_ref"] = 1.5  # [ms]
+    #excitatory
+    else:
+        params["C"] = 200.0  # [pF]
+        params["gL"] = 10.0  # [nS]
+        params["taum"] = params["C"] / params["gL"]  # [ms]
+        params["EL"] = -65.0  # [mV] # reversal potential for membrane potential v
+        params["VT"] = -50.0  # [mV]
+        params["deltaT"] = 1.5  # [mV]
+        params["Vcut"] = -40.0  # [mV]
+        params["Vr"] = -70.0  # [mV]
+        params["t_ref"] = 1.5  # [ms]
+     
+
     params["Ew"] = -80.0  # [mV] # reversal potential for adaptation param w
-    params["VT"] = -50.0  # [mV]
-    params["deltaT"] = 1.5  # [mV]
-    params["Vcut"] = -40.0  # [mV]
     params["tauw"] = 200.0  # [ms]
     params["a"] = 4.0  # 4.  #[nS]              subhreshold adaptation param
     params["b"] = 40.0  # 40 #[pA]              spike-frequency adaptation param
-    params["Vr"] = -70.0  # [mV]
-    params["t_ref"] = 1.5  # [ms]
-    # for all derived models and the scharfetter gummel method
+   # for all derived models and the scharfetter gummel method
     params["Vlb"] = -200.0  # [mV]
 
     # for recurrency

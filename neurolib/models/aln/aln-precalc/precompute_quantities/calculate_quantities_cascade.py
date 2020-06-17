@@ -30,12 +30,18 @@ plot_quantities = False
 # location for saving/loading
 folder = os.path.dirname(os.path.realpath(__file__))  # directory for the files
 # currently the same directory as for the script itself
-output_filename = "EIF_output_for_cascade.h5"
-quantities_filename = "quantities_cascade.h5"
+output_filename_Ex = "excitatory_EIF_output_for_cascade.h5"
+quantities_filename_Ex = "excitatory_quantities_cascade.h5"
+
+output_filename_In = "inhibitory_EIF_output_for_cascade.h5"
+quantities_filename_In = "inhibitory_quantities_cascade.h5"
+
 
 
 # PREPARE ---------------------------------------------------------------------
-params = get_params()  # loads default parameter dictionary
+paramsEx = get_params('ex')  # loads default parameter dictionary
+#Leonardo
+paramsIn = get_params('in')
 
 # params['t_ref'] = 0.0  # refractory period can be >0 (but not all reduced models
 #                              in the paper support this)
@@ -70,16 +76,27 @@ sigmas_quant_plot = np.arange(0.5, 4.501, 0.2)
 # sigmas_quant_plot = sigma_vals  # all sigma values used
 
 # some more pre-calculation parameters
-params["N_procs"] = int(multiprocessing.cpu_count())  # nb. of parallel procs.
+paramsEx["N_procs"] = int(multiprocessing.cpu_count())  # nb. of parallel procs.
+paramsIn["N_procs"] = int(multiprocessing.cpu_count())  # nb. of parallel procs.
 # note that multiprocessing is only used for >1 sigma value (in sigma_vals)
 
-params["V_vals"] = np.arange(params["Vlb"], params["Vcut"] + d_V / 2, d_V)
-params["freq_vals"] = np.arange(d_freq, f_max + d_freq / 2, d_freq) / 1000  # kHz
-params["d_mu"] = 1e-5  # mV/ms
-params["d_sigma"] = 1e-5  # mV/sqrt(ms)
+paramsEx["V_vals"] = np.arange(paramsEx["Vlb"], paramsEx["Vcut"] + d_V / 2, d_V)
+paramsEx["freq_vals"] = np.arange(d_freq, f_max + d_freq / 2, d_freq) / 1000  # kHz
+paramsEx["d_mu"] = 1e-5  # mV/ms
+paramsEx["d_sigma"] = 1e-5  # mV/sqrt(ms)
 
-EIF_output_dict = OrderedDict()
-LN_quantities_dict = OrderedDict()
+paramsIn["V_vals"] = np.arange(paramsIn["Vlb"], paramsIn["Vcut"] + d_V / 2, d_V)
+paramsIn["freq_vals"] = np.arange(d_freq, f_max + d_freq / 2, d_freq) / 1000  # kHz
+paramsIn["d_mu"] = 1e-5  # mV/ms
+paramsIn["d_sigma"] = 1e-5  # mV/sqrt(ms)
+
+
+EIF_output_dict_Ex = OrderedDict()
+LN_quantities_dict_Ex = OrderedDict()
+
+EIF_output_dict_In = OrderedDict()
+LN_quantities_dict_In = OrderedDict()
+
 
 EIF_output_names = [
     "r_ss",
@@ -117,52 +134,105 @@ if __name__ == "__main__":
     print("Main")
     # LOAD --------------------------------------------------------------------
     if load_EIF_output:
-        print("Loading EIF output...")
+        print("Loading excitatory EIF output...")
         mc.load(
-            folder + "/" + output_filename,
-            EIF_output_dict,
+            folder + "/" + output_filename_Ex,
+            EIF_output_dict_Ex,
+            # Leonardo: need to change them?
             EIF_output_names + ["mu_vals", "sigma_vals", "freq_vals"],
-            params,
+            paramsEx,
         )
         # optional shortcuts:
         mu_vals = EIF_output_dict["mu_vals"]
         sigma_vals = EIF_output_dict["sigma_vals"]
         freq_vals = EIF_output_dict["freq_vals"]
 
-    if load_quantities:
-        print("Loading quantities...")
+        print("Loading inhibitory EIF output...")
         mc.load(
-            folder + "/" + quantities_filename,
-            LN_quantities_dict,
+            folder + "/" + output_filename_In,
+            EIF_output_dict_In,
+            # Leonardo: same
+            EIF_output_names + ["mu_vals", "sigma_vals", "freq_vals"],
+            paramsIn,
+        )
+        # optional shortcuts:
+        mu_vals = EIF_output_dict["mu_vals"]
+        sigma_vals = EIF_output_dict["sigma_vals"]
+        freq_vals = EIF_output_dict["freq_vals"]
+
+
+    if load_quantities:
+        print("Loading excitatory quantities...")
+        mc.load(
+            folder + "/" + quantities_filename_Ex,
+            LN_quantities_dict_Ex,
+            # Leonardo: need to change those?
             LN_quantity_names + ["mu_vals", "sigma_vals", "freq_vals"],
-            params,
+            paramsEx,
         )
         # optional shortcuts:
         mu_vals = LN_quantities_dict["mu_vals"]
         sigma_vals = LN_quantities_dict["sigma_vals"]
         freq_vals = LN_quantities_dict["freq_vals"]
 
+        print("Loading inhibitory quantities...")
+        mc.load(
+            folder + "/" + quantities_filename_In,
+            LN_quantities_dict_In,
+            # Leonardo: same
+            LN_quantity_names + ["mu_vals", "sigma_vals", "freq_vals"],
+            paramsIn,
+        )
+        # optional shortcuts:
+        mu_vals = LN_quantities_dict["mu_vals"]
+        sigma_vals = LN_quantities_dict["sigma_vals"]
+        freq_vals = LN_quantities_dict["freq_vals"]
+
+
+
     # COMPUTE -----------------------------------------------------------------
     if compute_EIF_output and compute_quantities:
         print("")
-        print("Computing {}".format(EIF_output_names))
+        print("Computing for excitatory {}".format(EIF_output_names))
         print("This may take a while for large numbers of mu & sigma values...")
-        EIF_output_dict, LN_quantities_dict = mc.calc_EIF_output_and_cascade_quants(
+        EIF_output_dict_Ex, LN_quantities_dict_Ex = mc.calc_EIF_output_and_cascade_quants(
             mu_vals,
             sigma_vals,
-            params,
-            EIF_output_dict,
+            paramsEx,
+            EIF_output_dict_Ex,
             EIF_output_names,
             save_rate_mod,
-            LN_quantities_dict,
+            LN_quantities_dict_Ex,
             LN_quantity_names,
         )
 
+        print("")
+        print("Computing for inhibitory {}".format(EIF_output_names))
+        print("This may take a while for large numbers of mu & sigma values...")
+        EIF_output_dict_In, LN_quantities_dict_In = mc.calc_EIF_output_and_cascade_quants(
+            mu_vals,
+            sigma_vals,
+            paramsIn,
+            EIF_output_dict_In,
+            EIF_output_names,
+            save_rate_mod,
+            LN_quantities_dict_In,
+            LN_quantity_names,
+        )
+
+
     # SAVE --------------------------------------------------------------------
     if save_EIF_output:
-        mc.save(folder + "/" + output_filename, EIF_output_dict, params)
-        print("EIF/LIF output saved")
+        mc.save(folder + "/" + output_filename_Ex, EIF_output_dict_Ex, paramsEx)
+        print("EIF/LIF output for excitatory saved")
+
+        mc.save(folder + "/" + output_filename_In, EIF_output_dict_In, paramsIn)
+        print("EIF/LIF output for inhibitory saved")
+
 
     if save_quantities:
-        mc.save(folder + "/" + quantities_filename, LN_quantities_dict, params)
-        print("LN quantities saved")
+        mc.save(folder + "/" + quantities_filename_Ex, LN_quantities_dict_Ex, paramsEx)
+        print("LN quantities for excitatory saved")
+
+        mc.save(folder + "/" + quantities_filename_In, LN_quantities_dict_In, paramsIn)
+        print("LN quantities inhibitory saved")
