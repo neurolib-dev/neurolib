@@ -139,16 +139,17 @@ def plotExplorationResults(
             contour_color = kwargs["contour_color"] if "contour_color" in kwargs else "white"
             contour_levels = kwargs["contour_levels"] if "contour_levels" in kwargs else None
             contour_alpha = kwargs["contour_alpha"] if "contour_alpha" in kwargs else 1
+            contour_kwargs = kwargs["contour_kwargs"] if "contour_kwargs" in kwargs else dict()
 
             # check if this is a dataframe
             if isinstance(contour, pd.DataFrame):
-                contourPlotDf(contour, color=contour_color, ax=ax, levels=contour_levels, alpha=contour_alpha)
+                contourPlotDf(contour, color=contour_color, ax=ax, levels=contour_levels, alpha=contour_alpha, contour_kwargs=contour_kwargs)
             # if it's a string, take that value as the contour plot value
             elif isinstance(contour, str):
                 df_contour = df.pivot_table(values=contour, index=par2, columns=par1, dropna=False)
                 if nan_to_zero:
                     df_contour = df_contour.fillna(0)
-                contourPlotDf(df_contour, color=contour_color, ax=ax, levels=contour_levels, alpha=contour_alpha)            
+                contourPlotDf(df_contour, color=contour_color, ax=ax, levels=contour_levels, alpha=contour_alpha, contour_kwargs=contour_kwargs)            
 
         # colorbar
         if one_figure == False:
@@ -179,13 +180,22 @@ def plotExplorationResults(
         plt.show()
 
 
-def contourPlotDf(dataframe, color="white", levels=None, ax=None, alpha=1.0):
+def contourPlotDf(dataframe, color="white", levels=None, ax=None, alpha=1.0, countour = True, contourf = False, clabel = False, **contour_kwargs):
     levels = levels or [0, 1.0001]
     Xi, Yi = np.meshgrid(dataframe.columns, dataframe.index)
     ax = ax or plt
-    cset2 = ax.contour(
-        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, linewidths=(4,), zorder=1, alpha=alpha
+
+    if contourf:
+        contours = plt.contourf(Xi, Yi, dataframe, 10, levels=levels, alpha=alpha, cmap='plasma')
+
+    contours = ax.contour(
+        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, zorder=1, alpha=alpha, **contour_kwargs
     )
+
+    clabel = contour_kwargs["clabel"] if "clabel" in contour_kwargs else False
+    if clabel:
+        print("labels")
+        ax.clabel(contours, inline=True, fontsize=8)
 
 def alphaMask(image, threshold, alpha, mask=None, invert=False, style=None):
     if mask is None:
