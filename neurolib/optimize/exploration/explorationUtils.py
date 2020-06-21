@@ -361,16 +361,36 @@ def computeMinMax(dfResults, i, output, output_name):
     return dfResults
 
 
-def findCloseResults(dfResults, dist=0.01, relative=False, **kwargs):
-    """Usage: findCloseResults(search.dfResults, mue_ext_mean=2.0, mui_ext_mean=2.5)
+def findCloseResults(dfResults, dist=None, relative = False, **kwargs):
+    """Filter and get a list of results from a pandas dataframe that are close to the variables specified here.
+
+    Use the parameters to filter for as kwargs:
+    Usage: findCloseResults(search.dfResults, mue_ext_mean=2.0, mui_ext_mean=2.5)
+    
+    Alternatively, use ranges a la [min, max] for each parameter. 
+    Usage: findCloseResults(search.dfResults, mue_ext_mean=[2.0, 3.0], mui_ext_mean=2.5)
+    
+    :param dfResults: Pandas dataframe to filter
+    :type dfResults: pandas.DataFrame
+    :param dist: Distance to specified points in kwargs, defaults to None
+    :type dist: float, optional
+    :param relative: Relative distance (percentage) or absolute distance, defaults to False
+    :type relative: bool, optional
+    :return: Filtered Pandas dataframe
+    :rtype: pandas.DataFrame
     """
-    # dist = 0.01
+    dist = 0.01 or dist
     selectors = True
     for key, value in kwargs.items():
-        if relative:
-            new_selector = abs(dfResults[key] - value) <= dist * value
-        else:
-            new_selector = abs(dfResults[key] - value) <= dist
+        # if the value is given as a list with [min, max]
+        if isinstance(value, list):
+            val_min, val_max = value
+            new_selector = (dfResults[key] < val_max) & (dfResults[key] > val_min)
+        elif isinstance(value, (int, float)):
+            if relative:
+                new_selector = abs(dfResults[key] - value) <= dist * value
+            else:
+                new_selector = abs(dfResults[key] - value) <= dist
         selectors = selectors & new_selector
     filtered_df = dfResults[selectors]
     return filtered_df
