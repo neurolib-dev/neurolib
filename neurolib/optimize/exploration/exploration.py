@@ -125,13 +125,8 @@ class BoxSearch:
 
         # Tell pypet which parameters to explore
         self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
-        logging.info(
-            "Number of parameter configurations: {}".format(
-                len(
-                    self.pypetParametrization[list(self.pypetParametrization.keys())[0]]
-                )
-            )
-        )
+        self.nRuns = len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
+        logging.info(f"Number of parameter configurations: {self.nRuns}")
 
         self.traj.f_explore(self.pypetParametrization)
 
@@ -267,7 +262,9 @@ class BoxSearch:
         """
         self.runKwargs = kwargs
         assert self.initialized, "Pypet environment not initialized yet."
+        self._t_start_exploration = datetime.datetime.now()
         self.env.run(self.evalFunction)
+        self._t_end_exploration = datetime.datetime.now()
 
     def loadResults(self, all=True, filename=None, trajectoryName=None, pypetShortNames=True, memory_cap=95.0):
         """Load results from a hdf file of a previous simulation.
@@ -338,7 +335,8 @@ class BoxSearch:
             else:
                 result = self.getRun(runId)
             for key, value in result.items():
-                if (isinstance(value, (float, int)))  or (np.array(value).ndim == 1):
+                # only save floats, ints and arrays
+                if isinstance(value, (float, int, np.ndarray)):
                     # save 1-dim arrays
                     if isinstance(value, np.ndarray) and arrays == True: 
                         # to save a numpy array, convert column to object type
@@ -346,7 +344,7 @@ class BoxSearch:
                             self.dfResults[key] = None
                         self.dfResults[key] = self.dfResults[key].astype(object)
                         self.dfResults.at[runId, key] = value
-                    else:
+                    elif isinstance(value, (float, int)):
                         # save numbers
                         self.dfResults.loc[runId, key] = value
                 else:
@@ -422,12 +420,14 @@ class BoxSearch:
     def info(self):
         """Print info about the current search.
         """
-        print(
-            "Exploration info ({})".format(
-                datetime.datetime.now().strftime("%Y-%m-%d-%HH-%MM-%SS")
-            )
-        )
+        now = datetime.datetime.now().strftime("%Y-%m-%d-%HH-%MM-%SS")
+        print(f"Exploration info ({now})")
         print(f"HDF name: {self.HDF_FILE}")
         print(f"Trajectory name: {self.trajectoryName}")
-        print(f"Model: {self.model.name}")
+        if self.model is not None:
+            print(f"Model: {self.model.name}")
+        if hasattr(self, "nRuns"):
+            print(f"Number of runs {self.nRuns}")
         print(f"Explored parameters: {self.exploreParameters.keys()}")
+        if hasattr(self, "_t_end_exploration") and hasattr(self, "_t_start_exploration"):
+            print(f"Duration of exploration: {self._t_end_exploration-self._t_start_exploration}")
