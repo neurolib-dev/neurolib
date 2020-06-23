@@ -343,30 +343,23 @@ def processExplorationResults(search, **kwargs):
 
 
 def computeMinMax(dfResults, i, output, output_name):
-        # calculate the maximum of the output
-        dfResults.loc[i, "max_" + output_name] = np.nanmax(
-            output
-        )
-        # calculate the minimum of the output
-        dfResults.loc[i, "min_" + output_name] = np.nanmin(
-            output
-        )            
+    # calculate the maximum of the output
+    dfResults.loc[i, "max_" + output_name] = np.nanmax(output)
+    # calculate the minimum of the output
+    dfResults.loc[i, "min_" + output_name] = np.nanmin(output)
 
-        # calculate the maximum amplitude of the output
-        dfResults.loc[i, "max_amp_" + output_name] = np.nanmax(
-            np.nanmax(output, axis=1)
-            - np.nanmin(output, axis=1)
-        )
+    # calculate the maximum amplitude of the output
+    dfResults.loc[i, "max_amp_" + output_name] = np.nanmax(np.nanmax(output, axis=1) - np.nanmin(output, axis=1))
 
-        # calculate the minimum amplitude of the output
-        dfResults.loc[i, "min_amp_" + output_name] = np.nanmin(
-            np.nanmax(output, axis=1)
-            - np.nanmin(output, axis=1)
-        )
+    # calculate the minimum amplitude of the output
+    dfResults.loc[i, "min_amp_" + output_name] = np.nanmin(np.nanmax(output, axis=1) - np.nanmin(output, axis=1))
 
-        # compute relative amplitude
-        dfResults['relative_amplitude_' + output_name] = dfResults['max_amp_' + output_name] / (dfResults['max_' + output_name] - dfResults['min_' + output_name])
-        return dfResults
+    # compute relative amplitude
+    dfResults["relative_amplitude_" + output_name] = dfResults["max_amp_" + output_name] / (
+        dfResults["max_" + output_name] - dfResults["min_" + output_name]
+    )
+    return dfResults
+
 
 def findCloseResults(dfResults, dist=None, relative = False, **kwargs):
     """Filter and get a list of results from a pandas dataframe that are close to the variables specified here.
