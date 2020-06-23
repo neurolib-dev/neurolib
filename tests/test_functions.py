@@ -48,7 +48,7 @@ class TestFunctions(unittest.TestCase):
     def test_weighted_correlation(self):
         x = self.model.rates_exc[0, :]
         y = self.model.rates_exc[1, :]
-        w = np.ones(xshape)
+        w = np.ones(x.shape)
         cc = func.weighted_correlation(x, y, w)
 
     def test_ts_kolmogorov(self):
