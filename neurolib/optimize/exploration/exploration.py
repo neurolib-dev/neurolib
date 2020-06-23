@@ -317,11 +317,16 @@ class BoxSearch:
         for runId, parameters in tqdm.tqdm(self.dfResults.iterrows(), total=len(self.dfResults)):
             # if the results were previously loaded into memory, use them
             if hasattr(self, "results"):
+                # only if the length matches the number of results
                 if len(self.results) == len(self.dfResults):
                     result = self.results[runId]
+                # else, load results individually from hdf file
+                else:
+                    result = self.getRun(runId)
             # else, load results individually from hdf file
             else:
                 result = self.getRun(runId)
+                
             for key, value in result.items():
                 # only save floats, ints and arrays
                 if isinstance(value, (float, int, np.ndarray)):
