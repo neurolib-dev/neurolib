@@ -4,7 +4,7 @@ import numba
 
 def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
     """Simulate BOLD activity using the Balloon-Windkessel model.
-    See Friston 2003 and Deco 2013 for reference on how the BOLD signal is simulated.
+    See Friston2000 and Deco2013 for reference on how the BOLD signal is simulated.
     The returned BOLD signal should be downsampled to be comparable to a recorded fMRI signal.
 
     :param Z: Synaptic activity
@@ -54,7 +54,9 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
     k1 = 7 * rho  # (dimensionless)
     k2 = 2.0  # (dimensionless)
     k3 = 2 * rho - 0.2  # (dimensionless)
-    Gamma = 0.41 * np.ones((N,))  # Rate constant for autoregulatory feedback by blood flow (1/s)
+    Gamma = 0.41 * np.ones(
+        (N,)
+    )  # Rate constant for autoregulatory feedback by blood flow (1/s)
     K = 0.65 * np.ones((N,))  # Vasodilatory signal decay (1/s)
     Tau = 0.98 * np.ones((N,))  # Transit time  (s)
 
@@ -70,21 +72,30 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
 
     BOLD = np.zeros(np.shape(Z))
 
-    return integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau)
+    return integrateBOLD_numba(
+        BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau
+    )
 
 
 @numba.njit
-def integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau):
+def integrateBOLD_numba(
+    BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau
+):
     """Integrate the Balloon-Windkessel model
     """
     for i in range(len(Z[0, :])):  # loop over all timesteps
         # component-wise loop for compatibilty with numba
         for j in range(N):  # loop over all areas
             X[j] = X[j] + dt * (Z[j, i] - K[j] * X[j] - Gamma[j] * (F[j] - 1))
-            Q[j] = Q[j] + dt / Tau[j] * (F[j] / rho * (1 - (1 - rho) ** (1 / F[j])) - Q[j] * V[j] ** (1 / alpha - 1))
+            Q[j] = Q[j] + dt / Tau[j] * (
+                F[j] / rho * (1 - (1 - rho) ** (1 / F[j]))
+                - Q[j] * V[j] ** (1 / alpha - 1)
+            )
             V[j] = V[j] + dt / Tau[j] * (F[j] - V[j] ** (1 / alpha))
             F[j] = F[j] + dt * X[j]
 
-            BOLD[j, i] = V0 * (k1 * (1 - Q[j]) + k2 * (1 - Q[j] / V[j]) + k3 * (1 - V[j]))
+            BOLD[j, i] = V0 * (
+                k1 * (1 - Q[j]) + k2 * (1 - Q[j] / V[j]) + k3 * (1 - V[j])
+            )
 
     return BOLD, X, F, Q, V
