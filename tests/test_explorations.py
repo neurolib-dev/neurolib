@@ -127,12 +127,12 @@ class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
     def test_getRun(self):
         self.search.getRun(0)
 
-    def test_loadDfResults(self):
-        self.search.loadDfResults()
-
     def test_loadResults(self):
         self.search.loadResults()
 
+    def test_loadResults_all_False(self):
+        self.search.loadResults(all=False)
+        
 
 class TestCustomParameterExploration(unittest.TestCase):
     """Exploration with custom function
