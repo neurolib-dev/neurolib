@@ -132,7 +132,7 @@ class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
 
     def test_loadResults_all_False(self):
         self.search.loadResults(all=False)
-        
+
 
 class TestCustomParameterExploration(unittest.TestCase):
     """Exploration with custom function
