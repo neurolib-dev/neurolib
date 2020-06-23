@@ -89,7 +89,9 @@ def plotExplorationResults(
         if nan_to_zero:
             df_pivot = df_pivot.fillna(0)
 
-        plot_clim = kwargs["plot_clim"] if "plot_clim" in kwargs else (np.nanmin(df_pivot.values), np.nanmax(df_pivot.values))
+        plot_clim = (
+            kwargs["plot_clim"] if "plot_clim" in kwargs else (np.nanmin(df_pivot.values), np.nanmax(df_pivot.values))
+        )
 
         if symmetric_colorbar:
             plot_clim = (-np.max(np.abs(plot_clim)), np.max(np.abs(plot_clim)))
@@ -116,12 +118,12 @@ def plotExplorationResults(
             elif isinstance(alpha_mask, str):
                 mask = df.pivot_table(values=alpha_mask, index=par2, columns=par1, dropna=False)
                 if nan_to_zero:
-                    mask = mask.fillna(0)                
+                    mask = mask.fillna(0)
                 mask = np.array(mask)
             else:
                 mask = None
 
-            image = alphaMask(image, mask_threshold, mask_alpha, mask=mask, invert=mask_invert, style=mask_style)
+            image = alphaMask(image, mask_threshold, mask_alpha, mask=mask, invert=mask_invert, style=mask_style,)
 
         im = ax.imshow(image, extent=image_extent, origin="lower", aspect="auto", clim=plot_clim,)
 
@@ -136,13 +138,27 @@ def plotExplorationResults(
 
             # check if this is a dataframe
             if isinstance(contour, pd.DataFrame):
-                contourPlotDf(contour, color=contour_color, ax=ax, levels=contour_levels, alpha=contour_alpha, contour_kwargs=contour_kwargs)
+                contourPlotDf(
+                    contour,
+                    color=contour_color,
+                    ax=ax,
+                    levels=contour_levels,
+                    alpha=contour_alpha,
+                    contour_kwargs=contour_kwargs,
+                )
             # if it's a string, take that value as the contour plot value
             elif isinstance(contour, str):
                 df_contour = df.pivot_table(values=contour, index=par2, columns=par1, dropna=False)
                 if nan_to_zero:
                     df_contour = df_contour.fillna(0)
-                contourPlotDf(df_contour, color=contour_color, ax=ax, levels=contour_levels, alpha=contour_alpha, contour_kwargs=contour_kwargs)            
+                contourPlotDf(
+                    df_contour,
+                    color=contour_color,
+                    ax=ax,
+                    levels=contour_levels,
+                    alpha=contour_alpha,
+                    contour_kwargs=contour_kwargs,
+                )
 
         # colorbar
         if one_figure == False:
@@ -173,28 +189,55 @@ def plotExplorationResults(
         plt.show()
 
 
-def contourPlotDf(dataframe, color="white", levels=None, ax=None, alpha=1.0, countour = True, contourf = False, clabel = False, **contour_kwargs):
+def contourPlotDf(
+    dataframe,
+    color="white",
+    levels=None,
+    ax=None,
+    alpha=1.0,
+    countour=True,
+    contourf=False,
+    clabel=False,
+    **contour_kwargs,
+):
     levels = levels or [0, 1.0001]
     Xi, Yi = np.meshgrid(dataframe.columns, dataframe.index)
     ax = ax or plt
 
     if contourf:
-        contours = plt.contourf(Xi, Yi, dataframe, 10, levels=levels, alpha=alpha, cmap='plasma')
+        contours = plt.contourf(Xi, Yi, dataframe, 10, levels=levels, alpha=alpha, cmap="plasma")
 
     contours = ax.contour(
-        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, zorder=1, alpha=alpha, **contour_kwargs
+        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, zorder=1, alpha=alpha, **contour_kwargs,
     )
 
     clabel = contour_kwargs["clabel"] if "clabel" in contour_kwargs else False
     if clabel:
-        print("labels")
         ax.clabel(contours, inline=True, fontsize=8)
 
+
 def alphaMask(image, threshold, alpha, mask=None, invert=False, style=None):
+    """Create an alpha mask on an image using a threshold
+
+    :param image: RGB image to create a mask on.
+    :type image: np.array (NxNx3)
+    :param threshold: Threshold value
+    :type threshold: float
+    :param alpha: Alpha value of mask
+    :type alpha: float
+    :param mask: A predefined mask that can be used instead of the image itself, defaults to None
+    :type mask: np.array, optional
+    :param invert: Invert the mask, defaults to False
+    :type invert: bool, optional
+    :param style: Chose a style for the mask, currently only `stripes` supported, defaults to None
+    :type style: string, optional
+    :return: Masked image (RGBA), 4-dimensional (NxNx4)
+    :rtype: np.array
+    """
     if mask is None:
-        mask = image    
-    #alphas = Normalize(0, threshold, clip=True)(np.abs(mask))
-    alphas = mask>threshold if not invert else mask<threshold
+        mask = image
+
+    alphas = mask > threshold if not invert else mask < threshold
     alphas = np.clip(alphas, alpha, 1)
 
     if style == "stripes":
@@ -361,7 +404,7 @@ def computeMinMax(dfResults, i, output, output_name):
     return dfResults
 
 
-def findCloseResults(dfResults, dist=None, relative = False, **kwargs):
+def findCloseResults(dfResults, dist=None, relative=False, **kwargs):
     """Filter and get a list of results from a pandas dataframe that are close to the variables specified here.
 
     Use the parameters to filter for as kwargs:
