@@ -9,3 +9,8 @@ tqdm
 pypet
 deap
 dill
+symengine
+sympy
+git+https://github.com/neurophysik/jitcdde.git#egg=jitcdde
+chspy
+dpath
