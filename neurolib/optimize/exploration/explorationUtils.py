@@ -18,6 +18,7 @@ def plotExplorationResults(
     par1,
     par2,
     plot_key,
+    nan_to_zero=False,
     by=None,
     by_label=None,
     plot_key_label=None,
@@ -85,7 +86,12 @@ def plotExplorationResults(
         # pivot data and plot
         df_pivot = df.pivot_table(values=plot_key, index=par2, columns=par1, dropna=False)
 
-        plot_clim = (np.nanmin(df_pivot.values), np.nanmax(df_pivot.values))
+        if nan_to_zero:
+            df_pivot = df_pivot.fillna(0)
+
+        plot_clim = (
+            kwargs["plot_clim"] if "plot_clim" in kwargs else (np.nanmin(df_pivot.values), np.nanmax(df_pivot.values))
+        )
 
         if symmetric_colorbar:
             plot_clim = (-np.max(np.abs(plot_clim)), np.max(np.abs(plot_clim)))
@@ -111,11 +117,13 @@ def plotExplorationResults(
                 mask = df.pivot_table(values=alpha_mask, index=par2, columns=par1, dropna=False)
             elif isinstance(alpha_mask, str):
                 mask = df.pivot_table(values=alpha_mask, index=par2, columns=par1, dropna=False)
+                if nan_to_zero:
+                    mask = mask.fillna(0)
                 mask = np.array(mask)
             else:
                 mask = None
 
-            image = alphaMask(image, mask_threshold, mask_alpha, mask=mask, invert=mask_invert, style=mask_style)
+            image = alphaMask(image, mask_threshold, mask_alpha, mask=mask, invert=mask_invert, style=mask_style,)
 
         im = ax.imshow(image, extent=image_extent, origin="lower", aspect="auto", clim=plot_clim,)
 
@@ -125,13 +133,32 @@ def plotExplorationResults(
         if contour is not None:
             contour_color = kwargs["contour_color"] if "contour_color" in kwargs else "white"
             contour_levels = kwargs["contour_levels"] if "contour_levels" in kwargs else None
+            contour_alpha = kwargs["contour_alpha"] if "contour_alpha" in kwargs else 1
+            contour_kwargs = kwargs["contour_kwargs"] if "contour_kwargs" in kwargs else dict()
+
             # check if this is a dataframe
             if isinstance(contour, pd.DataFrame):
-                contourPlotDf(contour, color=contour_color, ax=ax, levels=contour_levels)
+                contourPlotDf(
+                    contour,
+                    color=contour_color,
+                    ax=ax,
+                    levels=contour_levels,
+                    alpha=contour_alpha,
+                    contour_kwargs=contour_kwargs,
+                )
             # if it's a string, take that value as the contour plot value
             elif isinstance(contour, str):
                 df_contour = df.pivot_table(values=contour, index=par2, columns=par1, dropna=False)
-                contourPlotDf(df_contour, color=contour_color, ax=ax, levels=contour_levels)
+                if nan_to_zero:
+                    df_contour = df_contour.fillna(0)
+                contourPlotDf(
+                    df_contour,
+                    color=contour_color,
+                    ax=ax,
+                    levels=contour_levels,
+                    alpha=contour_alpha,
+                    contour_kwargs=contour_kwargs,
+                )
 
         # colorbar
         if one_figure == False:
@@ -162,17 +189,54 @@ def plotExplorationResults(
         plt.show()
 
 
-def contourPlotDf(dataframe, color="white", levels=None, ax=None):
+def contourPlotDf(
+    dataframe,
+    color="white",
+    levels=None,
+    ax=None,
+    alpha=1.0,
+    countour=True,
+    contourf=False,
+    clabel=False,
+    **contour_kwargs,
+):
     levels = levels or [0, 1.0001]
     Xi, Yi = np.meshgrid(dataframe.columns, dataframe.index)
     ax = ax or plt
-    cset2 = ax.contour(Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, linewidths=(4,), zorder=1)
+
+    if contourf:
+        contours = plt.contourf(Xi, Yi, dataframe, 10, levels=levels, alpha=alpha, cmap="plasma")
+
+    contours = ax.contour(
+        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, zorder=1, alpha=alpha, **contour_kwargs,
+    )
+
+    clabel = contour_kwargs["clabel"] if "clabel" in contour_kwargs else False
+    if clabel:
+        ax.clabel(contours, inline=True, fontsize=8)
 
 
 def alphaMask(image, threshold, alpha, mask=None, invert=False, style=None):
+    """Create an alpha mask on an image using a threshold
+
+    :param image: RGB image to create a mask on.
+    :type image: np.array (NxNx3)
+    :param threshold: Threshold value
+    :type threshold: float
+    :param alpha: Alpha value of mask
+    :type alpha: float
+    :param mask: A predefined mask that can be used instead of the image itself, defaults to None
+    :type mask: np.array, optional
+    :param invert: Invert the mask, defaults to False
+    :type invert: bool, optional
+    :param style: Chose a style for the mask, currently only `stripes` supported, defaults to None
+    :type style: string, optional
+    :return: Masked image (RGBA), 4-dimensional (NxNx4)
+    :rtype: np.array
+    """
     if mask is None:
         mask = image
-    # alphas = Normalize(0, threshold, clip=True)(np.abs(mask))
+
     alphas = mask > threshold if not invert else mask < threshold
     alphas = np.clip(alphas, alpha, 1)
 
@@ -340,16 +404,36 @@ def computeMinMax(dfResults, i, output, output_name):
     return dfResults
 
 
-def findCloseResults(dfResults, dist=0.01, relative=False, **kwargs):
-    """Usage: findCloseResults(search.dfResults, mue_ext_mean=2.0, mui_ext_mean=2.5)
+def findCloseResults(dfResults, dist=None, relative=False, **kwargs):
+    """Filter and get a list of results from a pandas dataframe that are close to the variables specified here.
+
+    Use the parameters to filter for as kwargs:
+    Usage: findCloseResults(search.dfResults, mue_ext_mean=2.0, mui_ext_mean=2.5)
+    
+    Alternatively, use ranges a la [min, max] for each parameter. 
+    Usage: findCloseResults(search.dfResults, mue_ext_mean=[2.0, 3.0], mui_ext_mean=2.5)
+    
+    :param dfResults: Pandas dataframe to filter
+    :type dfResults: pandas.DataFrame
+    :param dist: Distance to specified points in kwargs, defaults to None
+    :type dist: float, optional
+    :param relative: Relative distance (percentage) or absolute distance, defaults to False
+    :type relative: bool, optional
+    :return: Filtered Pandas dataframe
+    :rtype: pandas.DataFrame
     """
-    # dist = 0.01
+    dist = 0.01 or dist
     selectors = True
     for key, value in kwargs.items():
-        if relative:
-            new_selector = abs(dfResults[key] - value) <= dist * value
-        else:
-            new_selector = abs(dfResults[key] - value) <= dist
+        # if the value is given as a list with [min, max]
+        if isinstance(value, list):
+            val_min, val_max = value
+            new_selector = (dfResults[key] < val_max) & (dfResults[key] > val_min)
+        elif isinstance(value, (int, float)):
+            if relative:
+                new_selector = abs(dfResults[key] - value) <= dist * value
+            else:
+                new_selector = abs(dfResults[key] - value) <= dist
         selectors = selectors & new_selector
     filtered_df = dfResults[selectors]
     return filtered_df
