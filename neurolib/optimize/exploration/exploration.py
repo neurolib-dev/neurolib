@@ -146,6 +146,7 @@ class BoxSearch:
                     addParametersRecursively(traj, value, current_level + [key])
                 else:
                     param_address = ".".join(current_level + [key])
+                    value = "None" if value is None else value
                     traj.f_add_parameter(param_address, value)
 
         addParametersRecursively(traj, params, [])
@@ -191,7 +192,8 @@ class BoxSearch:
         if self.useRandomICs:
             logging.warn("Random initial conditions not implemented yet")
         # get parameters of this run from pypet trajectory
-        runParams = traj.parameters.f_to_dict(short_names=True, fast_access=True)
+        runParams = self.getParametersFromTraj(traj)
+        
         # set the parameters for the model
         self.model.params.update(runParams)
 
@@ -221,6 +223,21 @@ class BoxSearch:
             if "BOLD" in self.model.outputs:
                 self.saveToPypet(self.model.outputs["BOLD"], traj)
 
+    def validatePypetParameters(self, runParams):
+        """Helper to handle None's in pypet parameters 
+        (used for random number generator seed)
+
+        :param runParams: parameters as returned by traj.parameters.f_to_dict()
+        :type runParams: dict of pypet.parameter.Parameter
+        """
+
+        # fix rng seed, which is saved as a string if None
+        if "seed" in runParams:
+            if runParams['seed'] == "None": 
+                runParams['seed'] = None 
+        return runParams
+
+
     def getParametersFromTraj(self, traj):
         """Returns the parameters of the current run as a (dot.able) dictionary
         
@@ -230,16 +247,18 @@ class BoxSearch:
         :rtype: dict
         """
         runParams = self.traj.parameters.f_to_dict(short_names=True, fast_access=True)
+        runParams = self.validatePypetParameters(runParams)
         return dotdict(runParams)
 
     def getModelFromTraj(self, traj):
-        """Return the appropriate model with parameters for this individual
+        """Return the appropriate model with parameters for this run
         :params traj: Pypet trajectory of current run
 
-        :returns model: Model with the parameters of this individual.
+        :returns model: Model with the parameters of this run.
         """
         model = self.model
-        runParams = self.traj.parameters.f_to_dict(short_names=True, fast_access=True)
+        runParams = self.getParametersFromTraj(traj)
+
         model.params.update(runParams)
         return model
 
@@ -308,8 +327,14 @@ class BoxSearch:
 
         logging.info("All results loaded.")
 
-    def aggregateResultsToDfResults(self, arrays=True):
-        # copy float results to dfResults
+    def aggregateResultsToDfResults(self, arrays=True, fillna=False):
+        """Aggregate all results in to dfResults dataframe.
+
+        :param arrays: Load array results (like timeseries) if True. If False, only load scalar results, defaults to True
+        :type arrays: bool, optional
+        :param fillna: Fill nan results (for example if they're not returned in a subset of runs) with zeros, default to False
+        :type fillna: bool, optional
+        """
         nan_value = np.nan
         logging.info("Aggregating results to `dfResults` ...")
         # for i, result in tqdm.tqdm(self.results.items()):
@@ -345,6 +370,9 @@ class BoxSearch:
         # drop nan columns
         self.dfResults = self.dfResults.dropna(axis="columns", how="all")
 
+        if fillna:
+            self.dfResults = self.dfResults.fillna(0)
+
     def loadDfResults(self, filename=None, trajectoryName=None):
         """Load results from a previous simulation.
         
@@ -354,8 +382,7 @@ class BoxSearch:
         :type trajectoryName: str, optional
         """
         # chose HDF file to load
-        if filename == None:
-            filename = self.HDF_FILE
+        filename = self.HDF_FILE or filename
         self.pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
         self.nResults = len(self.pypetTrajectory.f_get_run_names())
 
@@ -378,19 +405,16 @@ class BoxSearch:
         :type return: dict        
         """
         # chose HDF file to load
-        if filename == None:
-            filename = self.HDF_FILE
+        filename = self.HDF_FILE or filename
 
-        pypetTrajectory = None
-        if hasattr(self, "pypetTrajectory"):
-            pypetTrajectory = self.pypetTrajectory
+        # either use loaded pypetTrajectory or load from HDF file if it isn't available
+        pypetTrajectory = self.pypetTrajectory if hasattr(self, "pypetTrajectory") else pu.loadPypetTrajectory(filename, trajectoryName)
 
-        # if there was no pypetTrajectory loaded before
-        if pypetTrajectory is None:
-            # chose HDF file to load
-            if filename == None:
-                filename = self.HDF_FILE
-            pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
+        # # if there was no pypetTrajectory loaded before
+        # if pypetTrajectory is None:
+        #     # chose HDF file to load
+        #     filename = self.HDF_FILE or filename
+        #     pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
 
         return pu.getRun(runId, pypetTrajectory, pypetShortNames=pypetShortNames)
 
@@ -402,13 +426,17 @@ class BoxSearch:
         :return: result
         :rtype: dict
         """
-        if hasattr(self, "results"):
-            # load result from either the preloaded .result attribute (from .loadResults)
-            result = self.results[runId]
-        else:
-            # or from disk if results haven't been loaded yet
-            result = self.getRun(runId)
-        return result
+        # if hasattr(self, "results"):
+        #     # load result from either the preloaded .result attribute (from .loadResults)
+        #     result = self.results[runId]
+        # else:
+        #     # or from disk if results haven't been loaded yet
+        #     result = self.getRun(runId)
+
+        # load result from either the preloaded .result attribute (from .loadResults)
+        # or from disk if results haven't been loaded yet
+        #result = self.results[runId] if hasattr(self, "results") else self.getRun(runId)
+        return self.results[runId] if hasattr(self, "results") else self.getRun(runId)
 
     def info(self):
         """Print info about the current search.

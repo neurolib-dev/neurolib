@@ -32,7 +32,6 @@ def timeIntegration(params):
     dt = params["dt"]  # Time step for the Euler intergration (ms)
     duration = params["duration"]  # imulation duration (ms)
     RNGseed = params["seed"]  # seed for RNG
-
     # set to 0 for faster computation
 
     # ------------------------------------------------------------------------
@@ -206,8 +205,7 @@ def timeIntegration(params):
         rates_inh_init = params["rates_inh_init"][:, -startind:]
         IA_init = params["IA_init"][:, -startind:]
 
-    if RNGseed:
-        np.random.seed(RNGseed)
+    np.random.seed(RNGseed)
 
     # Save the noise in the rates array to save memory
     rates_exc[:, startind:] = np.random.standard_normal((N, len(t)))
