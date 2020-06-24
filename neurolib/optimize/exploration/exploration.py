@@ -326,7 +326,7 @@ class BoxSearch:
             # else, load results individually from hdf file
             else:
                 result = self.getRun(runId)
-                
+
             for key, value in result.items():
                 # only save floats, ints and arrays
                 if isinstance(value, (float, int, np.ndarray)):
