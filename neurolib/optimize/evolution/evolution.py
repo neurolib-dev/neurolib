@@ -93,14 +93,10 @@ class Evolution:
         """
 
         if weightList is None:
-            logging.info(
-                "weightList not set, assuming single fitness value to be maximized."
-            )
+            logging.info("weightList not set, assuming single fitness value to be maximized.")
             weightList = [1.0]
 
-        trajectoryName = "results" + datetime.datetime.now().strftime(
-            "-%Y-%m-%d-%HH-%MM-%SS"
-        )
+        trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
         logging.info(f"Trajectory Name: {trajectoryName}")
         self.HDF_FILE = os.path.join(paths.HDF_DIR, filename)
         trajectoryFileName = self.HDF_FILE
@@ -194,40 +190,22 @@ class Evolution:
             self.individualGenerator = du.randomParameters
 
         else:
-            raise ValueError(
-                "Evolution: algorithm must be one of the following: ['adaptive', 'nsga2']"
-            )
+            raise ValueError("Evolution: algorithm must be one of the following: ['adaptive', 'nsga2']")
 
         # if the operators are set manually, then overwrite them
-        self.matingOperator = (
-            self.matingOperator if hasattr(self, "matingOperator") else matingOperator
-        )
-        self.mutationOperator = (
-            self.mutationOperator
-            if hasattr(self, "mutationOperator")
-            else mutationOperator
-        )
-        self.selectionOperator = (
-            self.selectionOperator
-            if hasattr(self, "selectionOperator")
-            else selectionOperator
-        )
+        self.matingOperator = self.matingOperator if hasattr(self, "matingOperator") else matingOperator
+        self.mutationOperator = self.mutationOperator if hasattr(self, "mutationOperator") else mutationOperator
+        self.selectionOperator = self.selectionOperator if hasattr(self, "selectionOperator") else selectionOperator
         self.parentSelectionOperator = (
-            self.parentSelectionOperator
-            if hasattr(self, "parentSelectionOperator")
-            else parentSelectionOperator
+            self.parentSelectionOperator if hasattr(self, "parentSelectionOperator") else parentSelectionOperator
         )
         self.individualGenerator = (
-            self.individualGenerator
-            if hasattr(self, "individualGenerator")
-            else individualGenerator
+            self.individualGenerator if hasattr(self, "individualGenerator") else individualGenerator
         )
 
         # let's also make sure that the parameters are set correctly
         self.MATE_P = self.MATE_P if hasattr(self, "MATE_P") else {}
-        self.PARENT_SELECT_P = (
-            self.PARENT_SELECT_P if hasattr(self, "PARENT_SELECT_P") else {}
-        )
+        self.PARENT_SELECT_P = self.PARENT_SELECT_P if hasattr(self, "PARENT_SELECT_P") else {}
         self.MUTATE_P = self.MUTATE_P if hasattr(self, "MUTATE_P") else {}
         self.SELECT_P = self.SELECT_P if hasattr(self, "SELECT_P") else {}
 
@@ -312,11 +290,7 @@ class Evolution:
         :return: Parameter dictionary of this individual
         :rtype: dict
         """
-        return (
-            self.ParametersInterval(*(individual[: len(self.paramInterval)]))
-            ._asdict()
-            .copy()
-        )
+        return self.ParametersInterval(*(individual[: len(self.paramInterval)]))._asdict().copy()
 
     def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, NGEN, model):
         """Initializes pypet trajectory and store all simulation parameters for later analysis.
@@ -341,12 +315,8 @@ class Evolution:
         # Placeholders for individuals and results that are about to be explored
         traj.f_add_parameter("generation", 0, comment="Current generation")
 
-        traj.f_add_result(
-            "scores", [], comment="Score of all individuals for each generation"
-        )
-        traj.f_add_result_group(
-            "evolution", comment="Contains results for each generation"
-        )
+        traj.f_add_result("scores", [], comment="Score of all individuals for each generation")
+        traj.f_add_result_group("evolution", comment="Contains results for each generation")
         traj.f_add_result_group("outputs", comment="Contains simulation results")
 
         # TODO: save evolution parameters and operators as well, MATE_P, MUTATE_P, etc..
@@ -365,9 +335,7 @@ class Evolution:
         traj.f_add_parameter("id", 0, comment="Index of individual")
         traj.f_add_parameter("ind_len", 20, comment="Length of individual")
         traj.f_add_derived_parameter(
-            "individual",
-            [0 for x in range(traj.ind_len)],
-            "An indivudal of the population",
+            "individual", [0 for x in range(traj.ind_len)], "An indivudal of the population",
         )
 
     def initDEAP(
@@ -402,19 +370,14 @@ class Evolution:
         :param individualGenerator: Function that generates individuals
         """
         # ------------- register everything in deap
-        deap.creator.create(
-            "FitnessMulti", deap.base.Fitness, weights=tuple(weightList)
-        )
+        deap.creator.create("FitnessMulti", deap.base.Fitness, weights=tuple(weightList))
         deap.creator.create("Individual", list, fitness=deap.creator.FitnessMulti)
 
         # initially, each individual has randomized genes
         # need to create a lambda funciton because du.generateRandomParams wants an argument but
         # toolbox.register cannot pass an argument to it.
         toolbox.register(
-            "individual",
-            deap.tools.initIterate,
-            deap.creator.Individual,
-            lambda: individualGenerator(paramInterval),
+            "individual", deap.tools.initIterate, deap.creator.Individual, lambda: individualGenerator(paramInterval),
         )
         logging.info(f"Evolution: Individual generation: {individualGenerator}")
 
@@ -504,9 +467,9 @@ class Evolution:
             pop[idx].fitness.values = fitnessesResult
 
             # compute score
-            pop[idx].fitness.score = np.ma.masked_invalid(
-                pop[idx].fitness.wvalues
-            ).sum() / (len(pop[idx].fitness.wvalues))
+            pop[idx].fitness.score = np.ma.masked_invalid(pop[idx].fitness.wvalues).sum() / (
+                len(pop[idx].fitness.wvalues)
+            )
         return pop
 
     def getValidPopulation(self, pop=None):
@@ -518,13 +481,7 @@ class Evolution:
         :rtype: list
         """
         pop = pop or self.pop
-        return [
-            p
-            for p in pop
-            if not (
-                np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()
-            )
-        ]
+        return [p for p in pop if not (np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any())]
 
     def getInvalidPopulation(self, pop=None):
         """Returns a list of the invalid population.
@@ -535,11 +492,7 @@ class Evolution:
         :rtype: list
         """
         pop = pop or self.pop
-        return [
-            p
-            for p in pop
-            if np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()
-        ]
+        return [p for p in pop if np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()]
 
     def tagPopulation(self, pop):
         """Take a fresh population and add id's and attributes such as parameters that we can use later
@@ -550,9 +503,7 @@ class Evolution:
         :rtype: list
         """
         for i, ind in enumerate(pop):
-            assert not hasattr(
-                ind, "id"
-            ), "Individual has an id already, will not overwrite it!"
+            assert not hasattr(ind, "id"), "Individual has an id already, will not overwrite it!"
             ind.id = self.last_id
             ind.gIdx = self.gIdx
             ind.simulation_stored = False
@@ -580,9 +531,7 @@ class Evolution:
         self.pop = self.tagPopulation(self.pop)
 
         # evaluate
-        self.pop = self.evalPopulationUsingPypet(
-            self.traj, self.toolbox, self.pop, self.gIdx
-        )
+        self.pop = self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, self.gIdx)
 
         if self.verbose:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
@@ -619,19 +568,12 @@ class Evolution:
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
             offspring = list(
-                map(
-                    self.toolbox.clone,
-                    self.toolbox.selectParents(
-                        self.pop, self.POP_SIZE, **self.PARENT_SELECT_P
-                    ),
-                )
+                map(self.toolbox.clone, self.toolbox.selectParents(self.pop, self.POP_SIZE, **self.PARENT_SELECT_P),)
             )
 
             ##### cross-over ####
             for i in range(1, len(offspring), 2):
-                offspring[i - 1], offspring[i] = self.toolbox.mate(
-                    offspring[i - 1], offspring[i], **self.MATE_P
-                )
+                offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i], **self.MATE_P)
                 # delete fitness inherited from parents
                 del offspring[i - 1].fitness.values, offspring[i].fitness.values
                 del offspring[i - 1].fitness.wvalues, offspring[i].fitness.wvalues
@@ -646,30 +588,22 @@ class Evolution:
 
             ##### Mutation ####
             # Apply mutation
-            du.mutateUntilValid(
-                offspring, self.paramInterval, self.toolbox, MUTATE_P=self.MUTATE_P
-            )
+            du.mutateUntilValid(offspring, self.paramInterval, self.toolbox, MUTATE_P=self.MUTATE_P)
 
             offspring = self.tagPopulation(offspring)
 
             # ------- Evaluate next generation -------- #
 
             self.pop = offspring + newpop
-            self.evalPopulationUsingPypet(
-                self.traj, self.toolbox, offspring + newpop, self.gIdx
-            )
+            self.evalPopulationUsingPypet(self.traj, self.toolbox, offspring + newpop, self.gIdx)
 
             # log individuals
-            self.history[self.gIdx] = (
-                validpop + offspring + newpop
-            )  # self.getValidPopulation(self.pop)
+            self.history[self.gIdx] = validpop + offspring + newpop  # self.getValidPopulation(self.pop)
 
             # ------- Select surviving population -------- #
 
             # select next generation
-            self.pop = self.toolbox.select(
-                validpop + offspring + newpop, k=self.traj.popsize, **self.SELECT_P
-            )
+            self.pop = self.toolbox.select(validpop + offspring + newpop, k=self.traj.popsize, **self.SELECT_P)
 
             # ------- END OF ROUND -------
 
@@ -692,9 +626,7 @@ class Evolution:
                 self.info(plot=True, info=True)
 
         logging.info("--- End of evolution ---")
-        logging.info(
-            "Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values)
-        )
+        logging.info("Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values))
         logging.info("--- End of evolution ---")
 
         self.traj.f_store()  # We switched off automatic storing, so we need to store manually
@@ -758,14 +690,9 @@ class Evolution:
             try:
                 self.plotProgress(reverse=reverse)
             except:
-                logging.warn(
-                    "Could not plot progress, is this a previously saved simulation?"
-                )
+                logging.warn("Could not plot progress, is this a previously saved simulation?")
             eu.plotPopulation(
-                self,
-                plotScattermatrix=True,
-                save_plots=self.trajectoryName,
-                color=self.plotColor,
+                self, plotScattermatrix=True, save_plots=self.trajectoryName, color=self.plotColor,
             )
 
     def plotProgress(self, reverse=False):
@@ -781,9 +708,7 @@ class Evolution:
         """
         import dill
 
-        fname = fname or os.path.join(
-            "data/", "evolution-" + self.trajectoryName + ".dill"
-        )
+        fname = fname or os.path.join("data/", "evolution-" + self.trajectoryName + ".dill")
         dill.dump(self, open(fname, "wb"))
         logging.info(f"Saving evolution to {fname}")
 
@@ -813,10 +738,7 @@ class Evolution:
         # the parameter space in the dill
         from neurolib.utils.parameterSpace import ParameterSpace
 
-        pars = ParameterSpace(
-            evolution.parameterSpace.parameterNames,
-            evolution.parameterSpace.parameterValues,
-        )
+        pars = ParameterSpace(evolution.parameterSpace.parameterNames, evolution.parameterSpace.parameterValues,)
 
         evolution.parameterSpace = pars
         evolution.paramInterval = evolution.parameterSpace.named_tuple
@@ -853,9 +775,7 @@ class Evolution:
         # add the current population to the dataframe
         validPop = self.getValidPopulation(self.pop)
         indIds = [p.id for p in validPop]
-        popArray = np.array(
-            [p[0 : len(self.paramInterval._fields)] for p in validPop]
-        ).T
+        popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in validPop]).T
 
         dfPop = pd.DataFrame(popArray, index=self.parameterSpace.parameterNames).T
 
@@ -886,9 +806,7 @@ class Evolution:
         """
         parameters = self.parameterSpace.parameterNames
         allIndividuals = [p for gen, pop in self.history.items() for p in pop]
-        popArray = np.array(
-            [p[0 : len(self.paramInterval._fields)] for p in allIndividuals]
-        ).T
+        popArray = np.array([p[0 : len(self.paramInterval._fields)] for p in allIndividuals]).T
         dfEvolution = pd.DataFrame(popArray, index=parameters).T
         # add more information to the dataframe
         scores = [float(p.fitness.score) for p in allIndividuals]
