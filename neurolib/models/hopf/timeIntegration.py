@@ -99,8 +99,7 @@ def timeIntegration(params):
     xs_input_d = np.zeros(N)  # delayed input to x
     ys_input_d = np.zeros(N)  # delayed input to y
 
-    if RNGseed:
-        np.random.seed(RNGseed)
+    np.random.seed(RNGseed)
 
     # Save the noise in the activity array to save memory
     xs[:, startind:] = np.random.standard_normal((N, len(t)))
