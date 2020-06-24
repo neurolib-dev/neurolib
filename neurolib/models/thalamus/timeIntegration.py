@@ -80,8 +80,7 @@ def timeIntegration(params):
     ds_er = params["ds_er_init"]
     ds_gr = params["ds_gr_init"]
 
-    if RNGseed:
-        np.random.seed(RNGseed)
+    np.random.seed(RNGseed)
     noise = np.random.standard_normal((len(t)))
 
     return timeIntegration_njit_elementwise(
