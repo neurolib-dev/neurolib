@@ -1,17 +1,13 @@
-import logging
-import time
+import random
 import sys
 import unittest
-import pytest
 
-import random
-import numpy as np
-
-from neurolib.utils.parameterSpace import ParameterSpace
-from neurolib.optimize.evolution import Evolution
-
-import neurolib.optimize.evolution.evolutionaryUtils as eu
 import neurolib.optimize.evolution.deapUtils as du
+import neurolib.optimize.evolution.evolutionaryUtils as eu
+import numpy as np
+import pytest
+from neurolib.optimize.evolution import Evolution
+from neurolib.utils.parameterSpace import ParameterSpace
 
 
 class TestEvolutinUtils(unittest.TestCase):
@@ -21,18 +17,9 @@ class TestEvolutinUtils(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pars = ParameterSpace(
-            ["mue_ext_mean", "mui_ext_mean", "b"],
-            [[0.0, 3.0], [0.0, 3.0], [0.0, 100.0]],
-        )
+        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean", "b"], [[0.0, 3.0], [0.0, 3.0], [0.0, 100.0]],)
         evolution = Evolution(
-            lambda v: v,
-            pars,
-            weightList=[1.0],
-            POP_INIT_SIZE=4,
-            POP_SIZE=4,
-            NGEN=2,
-            filename="TestEvolutinUtils.hdf",
+            lambda v: v, pars, weightList=[1.0], POP_INIT_SIZE=4, POP_SIZE=4, NGEN=2, filename="TestEvolutinUtils.hdf",
         )
 
         cls.evolution = evolution
@@ -66,15 +53,11 @@ class TestEvolutinUtils(unittest.TestCase):
         du.randomParametersAdaptive(self.evolution.paramInterval)
 
     def test_mutateUntilValid(self):
-        du.mutateUntilValid(
-            self.pop, self.evolution.paramInterval, self.evolution.toolbox, maxTries=10
-        )
+        du.mutateUntilValid(self.pop, self.evolution.paramInterval, self.evolution.toolbox, maxTries=10)
 
-    @pytest.mark.skipif(
-        sys.platform == "darwin", reason="plotting does not work on macOS"
-    )
+    @pytest.mark.skipif(sys.platform == "darwin", reason="plotting does not work on macOS")
     def test_plots(self):
-        matplotlib = pytest.importorskip("matplotlib")
+        _ = pytest.importorskip("matplotlib")
         eu.plotPopulation(self.evolution, plotScattermatrix=True)
 
 
@@ -84,9 +67,7 @@ class TestEvolutionCrossover(unittest.TestCase):
             return (1,), {}
 
         pars = ParameterSpace(["x"], [[0.0, 4.0]])
-        evolution = Evolution(
-            evalFunction=evo, parameterSpace=pars, filename="TestEvolutionCrossover.hdf"
-        )
+        evolution = Evolution(evalFunction=evo, parameterSpace=pars, filename="TestEvolutionCrossover.hdf")
         evolution.runInitial()
         init_pop = evolution.pop.copy()
 
@@ -95,3 +76,7 @@ class TestEvolutionCrossover(unittest.TestCase):
         du.cxNormDraw_adapt(ind1, ind2, 0.4)
         du.cxUniform_adapt(ind1, ind2, 0.4)
         du.cxUniform_normDraw_adapt(ind1, ind2, 0.4)
+
+
+if __name__ == "__main__":
+    unittest.main()

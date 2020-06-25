@@ -1,24 +1,18 @@
 import logging
+import os
+import random
+import string
 import time
 import unittest
 
+import neurolib.utils.paths as paths
+import neurolib.utils.pypetUtils as pu
 import numpy as np
-import os
-
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
-
 from neurolib.optimize.exploration import BoxSearch
-from neurolib.utils.parameterSpace import ParameterSpace
-import neurolib.utils.functions as func
 from neurolib.utils.loadData import Dataset
-
-import neurolib.optimize.exploration.explorationUtils as eu
-import neurolib.utils.pypetUtils as pu
-import neurolib.utils.paths as paths
-
-import string
-import random
+from neurolib.utils.parameterSpace import ParameterSpace
 
 
 def randomString(stringLength=10):
@@ -132,7 +126,7 @@ class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
 
     def test_loadResults_all_False(self):
         self.search.loadResults(all=False)
-        
+
 
 class TestCustomParameterExploration(unittest.TestCase):
     """Exploration with custom function
