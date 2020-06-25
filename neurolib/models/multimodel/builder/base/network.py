@@ -274,11 +274,11 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         :param neural_masses: list of neural masses in this node
         :type neural_masses: list[NeuralMass]
         :param local_connectivity: connectivity matrix for within node
-            connections - same order as neural masses, matrix as [from, to]
+            connections - same order as neural masses, matrix as [to, from]
         :type local_connectivity: np.ndarray
         :param local_delays: delay matrix for within node connections - same
             order as neural masses, if None, delays are all zeros, in ms,
-            matrix as [from, to]
+            matrix as [to, from]
         :type local_delays: np.ndarray|None
         """
         super().__init__(neural_masses=neural_masses)
@@ -331,26 +331,27 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         return nested_params
 
     def init_node(self):
+        """
+        Init node and construct input matrix as [to, from] array of state
+        vectors with correct delays.
+        """
         super().init_node()
         assert self.idx_state_var is not None
         # gather inputs form this node - assumes constant delays
         var_idx = 0
-        self.inputs = []
-        for row, mass in enumerate(self.masses):
-            self.inputs.append(
-                [
-                    state_vector(
-                        self.idx_state_var  # starting index of this node
-                        + var_idx  # starting index of particular mass
-                        + next(iter(mass.coupling_variables)),  # index of coupling variable
-                        time=time_vector - self.delays[row, col],
-                    )
-                    for col in range(len(self.masses))
-                ]
-            )
+        self.inputs = np.zeros_like(self.connectivity, dtype=np.object)
+        # iterate over masses as `from`, hence columns
+        for from_mass, mass in enumerate(self.masses):
+            # iterate over indices as `to`, hence rows
+            for to_mass in range(len(self.masses)):
+                # input at `to` x `from`
+                self.inputs[to_mass, from_mass] = state_vector(
+                    self.idx_state_var  # starting index of this node
+                    + var_idx  # starting index of particular mass
+                    + next(iter(mass.coupling_variables)),  # index of coupling variable
+                    time=time_vector - self.delays[to_mass, from_mass],
+                )
             var_idx += mass.num_state_variables
-        # inputs as matrix [from, to]
-        self.inputs = np.array(self.inputs)
 
     def update_params(self, params_dict):
         """
@@ -368,21 +369,26 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         super().update_params(params_dict)
 
     def _sync(self):
+        # connectivity as [to, from]
         connectivity = self.connectivity * self.inputs
         return [
             (
+                # exc -> exc connectivity
                 self.sync_symbols[f"node_exc_exc_{self.index}"],
                 sum([connectivity[row, col] for row in self.excitatory_masses for col in self.excitatory_masses]),
             ),
             (
+                # exc -> inh connectivity
                 self.sync_symbols[f"node_inh_exc_{self.index}"],
                 sum([connectivity[row, col] for row in self.inhibitory_masses for col in self.excitatory_masses]),
             ),
             (
+                # inh -> exc connectivity
                 self.sync_symbols[f"node_exc_inh_{self.index}"],
                 sum([connectivity[row, col] for row in self.excitatory_masses for col in self.inhibitory_masses]),
             ),
             (
+                # inh -> inh connectivity
                 self.sync_symbols[f"node_inh_inh_{self.index}"],
                 sum([connectivity[row, col] for row in self.inhibitory_masses for col in self.inhibitory_masses]),
             ),
@@ -409,12 +415,12 @@ class Network(BackendIntegrator):
         :param nodes: list of nodes in this network
         :type nodes: list[Node]
         :param connectivity_matrix: connectivity matrix for between nodes
-            coupling, typically DTI structural connectivity, matrix as [from,
-            to]
+            coupling, typically DTI structural connectivity, matrix as [to,
+            from]
         :type connectivity_matrix: np.ndarray
         :param delay_matrix: delay matrix between nodes, typically derived from
             length matrix, if None, delays are all zeros, in ms, matrix as
-            [from, to]
+            [to, from]
         :type delay_matrix: np.ndarray|None
         """
         # assert all(isinstance(node, Node) for node in nodes)
@@ -604,13 +610,13 @@ class Network(BackendIntegrator):
 
     def _construct_input_matrix(self, within_node_idx):
         """
-        Construct input matrix as [from, to] with correct state variables and
+        Construct input matrix as [to, from] with correct state variables and
         delays.
 
         :param within_node_idx: index of coupling variable within node (! not
             mass), either single index or list of indices
         :type within_node_idx: list[int]|int
-        :return: matrix of delayed inputs as [from, to]
+        :return: matrix of delayed inputs as [to, from]
         :rtype: np.ndarray
         """
         var_idx = 0
@@ -618,17 +624,19 @@ class Network(BackendIntegrator):
         if isinstance(within_node_idx, int):
             within_node_idx = [within_node_idx] * self.num_nodes
         assert self.num_nodes == len(within_node_idx)
+        inputs = np.zeros_like(self.connectivity, dtype=np.object)
 
-        for row, (node, node_var_idx) in enumerate(zip(self.nodes, within_node_idx)):
-            inputs.append(
-                [
-                    state_vector(var_idx + node_var_idx, time=time_vector - self.delays[row, col],)
-                    for col in range(self.num_nodes)
-                ]
-            )
+        # iterate over nodes as `from`, hence columns
+        for from_node, (node, node_var_idx) in enumerate(zip(self.nodes, within_node_idx)):
+            # iterate over indices as `to`, hence rows
+            for to_node in range(self.num_nodes):
+                # input at `to` x `from`
+                inputs[to_node, from_node] = state_vector(
+                    var_idx + node_var_idx, time=time_vector - self.delays[to_node, from_node],
+                )
             var_idx += node.num_state_variables
-        # node inputs as matrix [from, to]
-        return np.array(inputs)
+
+        return inputs
 
     def _no_coupling(self, symbol):
         """
@@ -642,7 +650,7 @@ class Network(BackendIntegrator):
     def _diffusive_coupling(self, within_node_idx, symbol, connectivity_multiplier=1.0):
         """
         Perform diffusive coupling on the network with given symbol, i.e.
-            network_inp = SUM_idx(Cmat[idx, to] * (X[idx](t - Dmat) - X[to](t)))
+            network_inp = SUM_idx(Cmat[to, idx] * (X[idx](t - Dmat) - X[to](t)))
 
         :param within_node_idx: index of coupling variable within node (! not
             mass), either single index or list of indices
@@ -667,8 +675,8 @@ class Network(BackendIntegrator):
                     self.sync_symbols[f"{symbol}_{node_idx}"],
                     sum(
                         [
-                            connectivity[row, node_idx]
-                            * (inputs[row, node_idx] - state_vector(var_idx + node_var_idx, time=time_vector))
+                            connectivity[node_idx, row]
+                            * (inputs[node_idx, row] - state_vector(var_idx + node_var_idx, time=time_vector))
                             for row in range(self.num_nodes)
                         ]
                     ),
@@ -680,7 +688,7 @@ class Network(BackendIntegrator):
     def _additive_coupling(self, within_node_idx, symbol, connectivity_multiplier=1.0):
         """
         Perform additive coupling on the network within given symbol, i.e.
-            network_inp = SUM_idx(Cmat[idx, to] * X[idx](t - Dmat))
+            network_inp = SUM_idx(Cmat[to, idx] * X[idx](t - Dmat))
 
         :param within_node_idx: index of coupling variable within node (! not
             mass), either single index or list of indices
@@ -696,7 +704,7 @@ class Network(BackendIntegrator):
         return [
             (
                 self.sync_symbols[f"{symbol}_{node_idx}"],
-                sum([connectivity[row, node_idx] for row in range(self.num_nodes)]),
+                sum([connectivity[node_idx, row] for row in range(self.num_nodes)]),
             )
             for node_idx in range(self.num_nodes)
         ]
