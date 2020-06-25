@@ -14,7 +14,11 @@ class NeuralMass:
     name = ""
     label = ""
 
-    # type of the mass - for now excitatory or inhibitory
+    # type of the mass - usually excitatory or inhibitory,
+    # when constructing a node out of neural masses, all masses need to have
+    # unique `mass_type` assigned, so e.g. for layer-resolving nodes one can use
+    # something like "layer-1-EXC", "layer-1-INH" etc; for more types of e.g.
+    # inhibitory masses one can use "INH-type-1", "INH-type-2" etc
     mass_type = None
 
     # number of state variables that are wrapped in the `y` vector for

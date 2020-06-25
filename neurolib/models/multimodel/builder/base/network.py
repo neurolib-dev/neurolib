@@ -58,6 +58,9 @@ class Node(BackendIntegrator):
         self.idx_state_var = None
         self.initialised = False
         assert self.default_output in self.state_variable_names[0]
+        # mass types needs to be unique for all masses!
+        mass_types = [mass.mass_type for mass in self]
+        assert len(set(mass_types)) == len(mass_types), f"Mass types needs to be different: {mass_types}"
 
     def __str__(self):
         """
@@ -96,7 +99,7 @@ class Node(BackendIntegrator):
     @property
     def state_variable_names(self):
         state_var_names = sum([mass.state_variable_names for mass in self], [])
-        # if state variables are not unique per node, append mass label to them
+        # if state variables are not unique per node, append mass type to them
         if len(state_var_names) != len(set(state_var_names)):
             state_var_names = [
                 f"{state_var}_{mass.mass_type}" for mass in self for state_var in mass.state_variable_names
