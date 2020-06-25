@@ -32,6 +32,7 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
         voxelCounts = np.ones((N,))
 
     # Balloon-Windkessel model parameters (Deco 2013, Friston 2000):
+    # Friston paper: Nonlinear responses in fMRI: The balloon model, Volterra kernels, and other hemodynamics
     # Note: the distribution of each Balloon-Windkessel models parameters are given per voxel
     # Since we usually average the empirical fMRI of each voxel for a given area, the standard
     # deviation of the gaussian distribution should be divided by the number of voxels in each area
@@ -69,13 +70,20 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
         V = np.zeros((N,))  # Blood volume
 
     BOLD = np.zeros(np.shape(Z))
-
     return integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau)
 
 
 @numba.njit
 def integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau):
-    """Integrate the Balloon-Windkessel model
+    """Integrate the Balloon-Windkessel model.
+    Equations: Nonlinear responses in fMRI: The balloon model, Volterra kernels, and other hemodynamics, Friston et al. 2000: 
+    
+    Variable names in the paper:
+    X = x1, Q = x4, V = x3, F = x2
+
+    NOTE: A very small constant (1e-5) is added to F to avoid F become too small
+    and cause a floating point error in EQ. Q due to the division (1 / F[j]) 
+
     """
     for i in range(len(Z[0, :])):  # loop over all timesteps
         # component-wise loop for compatibilty with numba
@@ -83,7 +91,7 @@ def integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, 
             X[j] = X[j] + dt * (Z[j, i] - K[j] * X[j] - Gamma[j] * (F[j] - 1))
             Q[j] = Q[j] + dt / Tau[j] * (F[j] / rho * (1 - (1 - rho) ** (1 / F[j])) - Q[j] * V[j] ** (1 / alpha - 1))
             V[j] = V[j] + dt / Tau[j] * (F[j] - V[j] ** (1 / alpha))
-            F[j] = F[j] + dt * X[j]
+            F[j] = F[j] + dt * X[j] + 1e-5
 
             BOLD[j, i] = V0 * (k1 * (1 - Q[j]) + k2 * (1 - Q[j] / V[j]) + k3 * (1 - V[j]))
 
