@@ -38,11 +38,11 @@ class HopfMass(NeuralMass):
     num_noise_variables = 2
     coupling_variables = {0: "x", 1: "y"}
     state_variable_names = ["x", "y"]
-    required_parameters = ["a", "omega", "ext_input_x", "ext_input_y"]
+    required_params = ["a", "omega", "ext_input_x", "ext_input_y"]
     required_couplings = ["network_x", "network_y"]
 
-    def __init__(self, parameters=None):
-        super().__init__(parameters=parameters or DEFAULT_PARAMS)
+    def __init__(self, params=None):
+        super().__init__(params=params or DEFAULT_PARAMS)
 
     def _initialize_state_vector(self):
         """
@@ -54,19 +54,19 @@ class HopfMass(NeuralMass):
         [x, y] = self._unwrap_state_vector()
 
         d_x = (
-            (self.parameters["a"] - x ** 2 - y ** 2) * x
-            - self.parameters["omega"] * y
+            (self.params["a"] - x ** 2 - y ** 2) * x
+            - self.params["omega"] * y
             + coupling_variables["network_x"]
             + system_input(self.noise_input_idx[0])
-            + self.parameters["ext_input_x"]
+            + self.params["ext_input_x"]
         )
 
         d_y = (
-            (self.parameters["a"] - x ** 2 - y ** 2) * y
-            + self.parameters["omega"] * x
+            (self.params["a"] - x ** 2 - y ** 2) * y
+            + self.params["omega"] * x
             + coupling_variables["network_y"]
             + system_input(self.noise_input_idx[1])
-            + self.parameters["ext_input_y"]
+            + self.params["ext_input_y"]
         )
 
         return [d_x, d_y]
@@ -84,12 +84,12 @@ class HopfNetworkNode(Node):
     default_network_coupling = {"network_x": 0.0, "network_y": 0.0}
     default_output = "x"
 
-    def __init__(self, parameters=None):
+    def __init__(self, params=None):
         """
-        :param parameters: parameters of the Hopf mass
-        :type parameters: dict|None
+        :param params: parameters of the Hopf mass
+        :type params: dict|None
         """
-        hopf_mass = HopfMass(parameters)
+        hopf_mass = HopfMass(params)
         hopf_mass.index = 0
         super().__init__(neural_masses=[hopf_mass])
 
@@ -108,7 +108,7 @@ class HopfNetwork(Network):
     sync_variables = ["network_x", "network_y"]
 
     def __init__(
-        self, connectivity_matrix, delay_matrix, mass_parameters=None, x_coupling="diffusive", y_coupling="none",
+        self, connectivity_matrix, delay_matrix, mass_params=None, x_coupling="diffusive", y_coupling="none",
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -119,9 +119,9 @@ class HopfNetwork(Network):
             length matrix, if None, delays are all zeros, in ms, matrix as
             [from, to]
         :type delay_matrix: np.ndarray|None
-        :param mass_parameters: parameters for each Hopf normal form neural
+        :param mass_params: parameters for each Hopf normal form neural
             mass, if None, will use default
-        :type mass_parameters: list[dict]|dict|None
+        :type mass_params: list[dict]|dict|None
         :param x_coupling: how to couple `x` variables in the nodes,
             "diffusive", "additive", or "none"
         :type x_coupling: str
@@ -129,11 +129,11 @@ class HopfNetwork(Network):
             "diffusive", "additive", or "none"
         :type y_coupling: str
         """
-        mass_parameters = self._prepare_mass_parameters(mass_parameters, connectivity_matrix.shape[0])
+        mass_params = self._prepare_mass_params(mass_params, connectivity_matrix.shape[0])
 
         nodes = []
-        for i, node_params in enumerate(mass_parameters):
-            node = HopfNetworkNode(parameters=node_params)
+        for i, node_params in enumerate(mass_params):
+            node = HopfNetworkNode(params=node_params)
             node.index = i
             node.idx_state_var = i * node.num_state_variables
             nodes.append(node)

@@ -9,7 +9,7 @@ from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
 
 
 class MassTest(NeuralMass):
-    required_parameters = ["a", "b"]
+    required_params = ["a", "b"]
     num_state_variables = 1
     num_noise_variables = 2
     helper_variables = ["helper_test"]
@@ -30,7 +30,7 @@ class TestNeuralMass(unittest.TestCase):
         self.assertTrue(hasattr(mass, "DESCRIPTION_FIELD"))
         self.assertTrue(all(hasattr(mass, field) for field in mass.DESCRIPTION_FIELD))
         self.assertTrue(hasattr(mass, "_derivatives"))
-        self.assertTrue(hasattr(mass, "_validate_parameters"))
+        self.assertTrue(hasattr(mass, "_validate_params"))
         self.assertTrue(hasattr(mass, "_validate_callbacks"))
         self.assertTrue(hasattr(mass, "_initialize_state_vector"))
         self.assertTrue(all(isinstance(symb, se.Symbol) for symb in mass.helper_symbols.values()))
@@ -39,15 +39,15 @@ class TestNeuralMass(unittest.TestCase):
 
     def test_validate_params(self):
         mass = MassTest(self.PARAMS)
-        self.assertDictEqual(self.PARAMS, mass.parameters)
+        self.assertDictEqual(self.PARAMS, mass.params)
 
     def test_update_params(self):
         UPDATE_WITH = {"a": 2.4}
 
         mass = MassTest(self.PARAMS)
-        self.assertDictEqual(self.PARAMS, mass.parameters)
-        mass.update_parameters(UPDATE_WITH)
-        self.assertDictEqual({**self.PARAMS, **UPDATE_WITH}, mass.parameters)
+        self.assertDictEqual(self.PARAMS, mass.params)
+        mass.update_params(UPDATE_WITH)
+        self.assertDictEqual({**self.PARAMS, **UPDATE_WITH}, mass.params)
 
     def test_init_mass(self):
         mass = MassTest(self.PARAMS)

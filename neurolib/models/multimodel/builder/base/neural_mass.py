@@ -40,7 +40,7 @@ class NeuralMass:
     state_variable_names = []
 
     # list of required parameters for this mass
-    required_parameters = []
+    required_params = []
 
     # list of helper variables that are defined as symengine Symbols - these
     # are passed to the jitc*de integrators as helpers
@@ -65,16 +65,16 @@ class NeuralMass:
         "num_state_variables",
         "num_noise_variables",
         "state_variable_names",
-        "parameters",
+        "params",
     ]
 
-    def __init__(self, parameters):
+    def __init__(self, params):
         """
-        :param parameters: parameters of the neural mass
-        :type parameters: dict
+        :param params: parameters of the neural mass
+        :type params: dict
         """
-        assert isinstance(parameters, dict)
-        self.parameters = parameters
+        assert isinstance(params, dict)
+        self.params = params
         # used in determining portion of the full system's state vector
         self.idx_state_var = None
         self.initialised = False
@@ -85,7 +85,7 @@ class NeuralMass:
         # initialise possible callback functions
         self.callback_functions = {function: se.Function(function) for function in self.python_callbacks}
 
-        self._validate_parameters()
+        self._validate_params()
 
     def __str__(self):
         """
@@ -108,13 +108,13 @@ class NeuralMass:
         """
         self.initial_state = [0.0] * self.num_state_variables
 
-    def _validate_parameters(self):
+    def _validate_params(self):
         """
-        Validate parameters - check if self.parameters contains all required
+        Validate parameters - check if self.params contains all required
         parameters.
         """
-        assert all(key in self.parameters for key in self.required_parameters), set(self.required_parameters) - set(
-            self.parameters.keys()
+        assert all(key in self.params for key in self.required_params), set(self.required_params) - set(
+            self.params.keys()
         )
 
     def _validate_callbacks(self, callback_list):
@@ -144,17 +144,17 @@ class NeuralMass:
             self.noise_input_idx = [start_idx_for_noise + i for i in range(self.num_noise_variables)]
         self.initialised = True
 
-    def update_parameters(self, parameters_dict):
+    def update_params(self, params_dict):
         """
         Update parameters of the mass.
 
-        :param parameters_dict: new parameters for this mass
-        :type parameters_dict: dict
+        :param params_dict: new parameters for this mass
+        :type params_dict: dict
         """
-        assert isinstance(parameters_dict, dict)
-        self.parameters.update(parameters_dict)
+        assert isinstance(params_dict, dict)
+        self.params.update(params_dict)
         # validate again
-        self._validate_parameters()
+        self._validate_params()
 
     def _callbacks(self):
         """
