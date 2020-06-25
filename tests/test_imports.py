@@ -1,5 +1,3 @@
-import logging
-import time
 import unittest
 
 
@@ -45,3 +43,6 @@ class TestImports(unittest.TestCase):
 
         search = BoxSearch(evalFunction=(lambda f: f), parameterSpace=self.pars)
 
+
+if __name__ == "__main__":
+    unittest.main()
