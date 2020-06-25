@@ -16,7 +16,7 @@ PARAMS = {"a": 1.2, "b": 11.9}
 
 class ExcMassTest(NeuralMass):
     label = EXC
-    required_parameters = ["a", "b"]
+    required_params = ["a", "b"]
     coupling_variables = {0: "coupling_EXC"}
     state_variable_names = ["q"]
     num_state_variables = 1
@@ -26,7 +26,7 @@ class ExcMassTest(NeuralMass):
 
 class InhMassTest(NeuralMass):
     label = INH
-    required_parameters = ["a", "b"]
+    required_params = ["a", "b"]
     coupling_variables = {0: "coupling_INH"}
     state_variable_names = ["q"]
     num_state_variables = 1
@@ -68,13 +68,13 @@ class TestNode(unittest.TestCase):
         self.assertTrue(isinstance(node.default_network_coupling, dict))
         self.assertTrue(isinstance(node.sync_variables, list))
 
-    def test_update_parameters(self):
+    def test_update_params(self):
         UPDATE_WITH = {"a": 2.4}
 
         node = self._create_node()
-        node.update_parameters({"mass_0": UPDATE_WITH, "mass_1": UPDATE_WITH})
-        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[0].parameters)
-        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[1].parameters)
+        node.update_params({"mass_0": UPDATE_WITH, "mass_1": UPDATE_WITH})
+        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[0].params)
+        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[1].params)
 
     def test_strip_index(self):
         node = self._create_node()
@@ -92,7 +92,7 @@ class TestNode(unittest.TestCase):
         self.assertFalse(node.initialised)
         node.init_node(start_idx_for_noise=6)
         self.assertTrue(node.initialised)
-        self.assertTrue(isinstance(node.get_nested_parameters(), dict))
+        self.assertTrue(isinstance(node.get_nested_params(), dict))
         self.assertEqual(len(node.sync_symbols), 1)
         self.assertTrue(all(isinstance(symb, se.Symbol) for symb in node.sync_symbols.values()))
         np.testing.assert_equal(np.zeros((node.num_state_variables)), node.initial_state)
@@ -122,15 +122,13 @@ class TestSingleCouplingExcitatoryInhibitoryNode(unittest.TestCase):
         self.assertEqual(np.array([0]), node.excitatory_masses)
         self.assertEqual(np.array([1]), node.inhibitory_masses)
 
-    def test_update_parameters(self):
+    def test_update_params(self):
         UPDATE_WITH = {"a": 2.4}
         UPDATE_CONNECTIVITY = np.random.rand(2, 2)
         node = self._create_node()
-        node.update_parameters(
-            {"mass_0": UPDATE_WITH, "mass_1": UPDATE_WITH, "local_connectivity": UPDATE_CONNECTIVITY}
-        )
-        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[0].parameters)
-        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[1].parameters)
+        node.update_params({"mass_0": UPDATE_WITH, "mass_1": UPDATE_WITH, "local_connectivity": UPDATE_CONNECTIVITY})
+        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[0].params)
+        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[1].params)
         np.testing.assert_equal(UPDATE_CONNECTIVITY, node.connectivity)
 
     def test_init_node(self):
@@ -179,29 +177,29 @@ class TestNetwork(unittest.TestCase):
         self.assertEqual(len(net), net.num_nodes)
         self.assertTrue(isinstance(net.__str__(), str))
         self.assertTrue(isinstance(net.describe(), dict))
-        self.assertTrue(isinstance(net.get_nested_parameters(), dict))
+        self.assertTrue(isinstance(net.get_nested_params(), dict))
         self.assertTrue(hasattr(net, "_callbacks"))
         self.assertEqual(net.max_delay, 4.0)
         self.assertEqual(len(net.sync_symbols), len(net.sync_variables) * net.num_nodes)
         self.assertEqual(net.default_output, net[0].default_output)
         self.assertEqual(net.default_output, net[1].default_output)
 
-    def test_update_parameters(self):
+    def test_update_params(self):
         UPDATE_CONNECTIVITY = np.random.rand(2, 2)
         UPDATE_DELAYS = np.abs(np.random.rand(2, 2))
         net, _ = self._create_network()
-        net.update_parameters({"connectivity": UPDATE_CONNECTIVITY, "delays": UPDATE_DELAYS})
+        net.update_params({"connectivity": UPDATE_CONNECTIVITY, "delays": UPDATE_DELAYS})
         np.testing.assert_equal(net.connectivity, UPDATE_CONNECTIVITY)
         np.testing.assert_equal(net.delays, UPDATE_DELAYS)
 
-    def test_prepare_mass_parameters(self):
+    def test_prepare_mass_params(self):
         net, _ = self._create_network()
         # dict
-        dict_params = net._prepare_mass_parameters({"a": 3}, num_nodes=len(net), native_type=dict)
+        dict_params = net._prepare_mass_params({"a": 3}, num_nodes=len(net), native_type=dict)
         self.assertListEqual(dict_params, [{"a": 3}, {"a": 3}])
         # arrays
         array = np.random.rand(4, 4)
-        array_params = net._prepare_mass_parameters(array, num_nodes=len(net), native_type=np.ndarray)
+        array_params = net._prepare_mass_params(array, num_nodes=len(net), native_type=np.ndarray)
         self.assertListEqual(array_params, [array] * len(net))
 
     def test_strip_index(self):

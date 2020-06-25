@@ -107,7 +107,7 @@ class Node(BackendIntegrator):
     def max_delay(self):
         return 0.0
 
-    def get_nested_parameters(self):
+    def get_nested_params(self):
         """
         Return nested dictionary with parameters from all masses within this
         node.
@@ -120,7 +120,7 @@ class Node(BackendIntegrator):
         nested_dict = {node_key: {}}
         for mass in self:
             mass_key = f"{MASS_NAME_STR}_{mass.index}"
-            nested_dict[node_key][mass_key] = mass.parameters
+            nested_dict[node_key][mass_key] = mass.params
         return nested_dict
 
     def init_node(self, **kwargs):
@@ -140,19 +140,19 @@ class Node(BackendIntegrator):
         assert all(mass.initialised for mass in self)
         self.initialised = True
 
-    def update_parameters(self, parameters_dict):
+    def update_params(self, params_dict):
         """
         Update parameters of the node, i.e. recursively update all the masses.
 
-        :param parameters_dict: new parameters for this node, same format as
-            `get_nested_parameters`, i.e. nested dict
-        :type parameters_dict: dict
+        :param params_dict: new parameters for this node, same format as
+            `get_nested_params`, i.e. nested dict
+        :type params_dict: dict
         """
-        for mass_key, mass_params in parameters_dict.items():
+        for mass_key, mass_params in params_dict.items():
             if MASS_NAME_STR in mass_key:
                 mass_index = int(mass_key.split("_")[-1])
                 assert mass_index == self.masses[mass_index].index
-                self.masses[mass_index].update_parameters(mass_params)
+                self.masses[mass_index].update_params(mass_params)
             else:
                 logging.warning(f"Not sure what to do with {mass_key}...")
 
@@ -313,14 +313,14 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
     def max_delay(self):
         return np.max(self.delays)
 
-    def get_nested_parameters(self):
+    def get_nested_params(self):
         """
         Add local connectivity and local delays matrices to mass parameters.
 
         :return: nested parameters containing also connectivity
         :rtype: dict
         """
-        nested_params = super().get_nested_parameters()
+        nested_params = super().get_nested_params()
         node_key = f"{NODE_NAME_STR}_{self.index}"
         nested_params[node_key][NODAL_CONNECTIVITY] = self.connectivity
         nested_params[node_key][NODAL_DELAYS] = self.delays
@@ -349,20 +349,20 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         # inputs as matrix [from, to]
         self.inputs = np.array(self.inputs)
 
-    def update_parameters(self, parameters_dict):
+    def update_params(self, params_dict):
         """
-        Update parameters - also update local connectivity and local delays,
+        Update params - also update local connectivity and local delays,
         then pass to base class.
         """
-        local_connectivity = parameters_dict.pop(NODAL_CONNECTIVITY, None)
-        local_delays = parameters_dict.pop(NODAL_DELAYS, None)
+        local_connectivity = params_dict.pop(NODAL_CONNECTIVITY, None)
+        local_delays = params_dict.pop(NODAL_DELAYS, None)
         if local_connectivity is not None and isinstance(local_connectivity, np.ndarray):
             assert local_connectivity.shape == self.connectivity.shape
             self.connectivity = local_connectivity
         if local_delays is not None and isinstance(local_delays, np.ndarray):
             assert local_delays.shape == self.delays.shape
             self.delays = local_delays
-        super().update_parameters(parameters_dict)
+        super().update_params(params_dict)
 
     def _sync(self):
         connectivity = self.connectivity * self.inputs
@@ -503,7 +503,7 @@ class Network(BackendIntegrator):
         return int(symbol_name.split("_")[-1])
 
     @staticmethod
-    def _prepare_mass_parameters(param, num_nodes, native_type=dict):
+    def _prepare_mass_params(param, num_nodes, native_type=dict):
         """
         Prepare mass parameters for the network. I.e. extend to list of the
         same length as number of nodes.
@@ -522,7 +522,7 @@ class Network(BackendIntegrator):
         assert len(param) == num_nodes
         return param
 
-    def get_nested_parameters(self):
+    def get_nested_params(self):
         """
         Return nested dictionary with parameters from all nodes and all masses
         within this network.
@@ -533,7 +533,7 @@ class Network(BackendIntegrator):
         assert self.initialised
         nested_dict = {NETWORK_NAME_STR: {}}
         for node in self:
-            nested_dict[NETWORK_NAME_STR].update(node.get_nested_parameters())
+            nested_dict[NETWORK_NAME_STR].update(node.get_nested_params())
         nested_dict[NETWORK_CONNECTIVITY] = self.connectivity
         nested_dict[NETWORK_DELAYS] = self.delays
         return nested_dict
@@ -555,19 +555,19 @@ class Network(BackendIntegrator):
         assert all(node.initialised for node in self)
         self.initialised = True
 
-    def update_parameters(self, parameters_dict):
+    def update_params(self, params_dict):
         """
         Update parameters of this network, i.e. recursively for all nodes and
         all masses.
 
-        :param parameters_dict: new parameters for the network
-        :type parameters_dict: dict
+        :param params_dict: new parameters for the network
+        :type params_dict: dict
         """
-        for node_key, node_params in parameters_dict.items():
+        for node_key, node_params in params_dict.items():
             if NODE_NAME_STR in node_key:
                 node_index = int(node_key.split("_")[-1])
                 assert node_index == self.nodes[node_index].index
-                self.nodes[node_index].update_parameters(node_params)
+                self.nodes[node_index].update_params(node_params)
             elif NETWORK_CONNECTIVITY == node_key:
                 assert node_params.shape == self.connectivity.shape
                 self.connectivity = node_params

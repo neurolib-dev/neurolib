@@ -43,7 +43,7 @@ class TestHopfMass(MassTestCase):
     def test_init(self):
         hopf = self._create_mass()
         self.assertTrue(isinstance(hopf, HopfMass))
-        self.assertDictEqual(hopf.parameters, DEFAULT_PARAMS)
+        self.assertDictEqual(hopf.params, DEFAULT_PARAMS)
         coupling_variables = {k: 0.0 for k in hopf.required_couplings}
         self.assertEqual(len(hopf._derivatives(coupling_variables)), hopf.num_state_variables)
         self.assertEqual(len(hopf.initial_state), hopf.num_state_variables)
@@ -68,7 +68,7 @@ class TestHopfNetworkNode(unittest.TestCase):
         hopf = self._create_node()
         self.assertTrue(isinstance(hopf, HopfNetworkNode))
         self.assertEqual(len(hopf), 1)
-        self.assertDictEqual(hopf[0].parameters, DEFAULT_PARAMS)
+        self.assertDictEqual(hopf[0].params, DEFAULT_PARAMS)
         self.assertEqual(len(hopf.default_network_coupling), 2)
         np.testing.assert_equal(np.array(hopf[0].initial_state), hopf.initial_state)
 
