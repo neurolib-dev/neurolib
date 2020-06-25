@@ -15,8 +15,8 @@ from .constants import (
     NETWORK_CONNECTIVITY,
     NETWORK_DELAYS,
     NETWORK_NAME_STR,
-    NODAL_CONNECTIVITY,
-    NODAL_DELAYS,
+    NODE_CONNECTIVITY,
+    NODE_DELAYS,
     NODE_NAME_STR,
 )
 from .neural_mass import NeuralMass
@@ -24,7 +24,7 @@ from .neural_mass import NeuralMass
 
 class Node(BackendIntegrator):
     """
-    Base class for all nodes within the whole-brain network.
+    Base class for all nodes within the network.
     """
 
     name = ""
@@ -306,7 +306,7 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         """
         return {
             **super().describe(),
-            **{NODAL_CONNECTIVITY: self.connectivity, NODAL_DELAYS: self.delays},
+            **{NODE_CONNECTIVITY: self.connectivity, NODE_DELAYS: self.delays},
         }
 
     @property
@@ -322,8 +322,8 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         """
         nested_params = super().get_nested_params()
         node_key = f"{NODE_NAME_STR}_{self.index}"
-        nested_params[node_key][NODAL_CONNECTIVITY] = self.connectivity
-        nested_params[node_key][NODAL_DELAYS] = self.delays
+        nested_params[node_key][NODE_CONNECTIVITY] = self.connectivity
+        nested_params[node_key][NODE_DELAYS] = self.delays
 
         return nested_params
 
@@ -354,8 +354,8 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         Update params - also update local connectivity and local delays,
         then pass to base class.
         """
-        local_connectivity = params_dict.pop(NODAL_CONNECTIVITY, None)
-        local_delays = params_dict.pop(NODAL_DELAYS, None)
+        local_connectivity = params_dict.pop(NODE_CONNECTIVITY, None)
+        local_delays = params_dict.pop(NODE_DELAYS, None)
         if local_connectivity is not None and isinstance(local_connectivity, np.ndarray):
             assert local_connectivity.shape == self.connectivity.shape
             self.connectivity = local_connectivity
