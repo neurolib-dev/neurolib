@@ -1,11 +1,6 @@
-import logging
 import unittest
 
-import os
-import glob
-
 from neurolib.utils.loadData import Dataset
-import neurolib.utils.functions as func
 
 
 class TestDatasets(unittest.TestCase):
@@ -25,3 +20,7 @@ class TestDatasets(unittest.TestCase):
         self.assertTupleEqual(ds.Dmat.shape, (80, 80))
         self.assertTupleEqual(ds.FCs[0].shape, (80, 80))
         self.assertTrue(len(ds.FCs) == len(ds.BOLDs))
+
+
+if __name__ == "__main__":
+    unittest.main()

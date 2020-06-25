@@ -1,5 +1,3 @@
-import logging
-import time
 import unittest
 
 import neurolib.utils.functions as func
@@ -56,9 +54,19 @@ class TestFunctions(unittest.TestCase):
         fr, pw = func.getMeanPowerSpectrum(self.model.rates_exc, dt=self.model.params["dt"])
 
     def test_construct_stimulus(self):
-        self.single_node.params['duration'] = 2000
-        stimulus = func.construct_stimulus("ac", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1)
-        stimulus = func.construct_stimulus("dc", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1)
-        stimulus = func.construct_stimulus("rect", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1)
-        
+        self.single_node.params["duration"] = 2000
+        stimulus = func.construct_stimulus(
+            "ac", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
+        )
+        stimulus = func.construct_stimulus(
+            "dc", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
+        )
+        stimulus = func.construct_stimulus(
+            "rect", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
+        )
+
         self.single_node.run()
+
+
+if __name__ == "__main__":
+    unittest.main()
