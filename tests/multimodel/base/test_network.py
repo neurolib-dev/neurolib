@@ -245,7 +245,7 @@ class TestNetwork(unittest.TestCase):
             self.assertTrue(isinstance(coupling[0], se.Symbol))
             self.assertTrue(isinstance(coupling[1], se.Add))
             evaluated = se.sympify(coupling[1]).subs(subs)
-            np.testing.assert_allclose(float(evaluated), net.connectivity.sum(axis=0)[i])
+            np.testing.assert_allclose(float(evaluated), net.connectivity.sum(axis=1)[i])
 
     def test_additive_coupling_multiplier(self):
         MULTIPLIER = 2.4
@@ -260,7 +260,7 @@ class TestNetwork(unittest.TestCase):
             self.assertTrue(isinstance(coupling[1], se.Add))
             evaluated = se.sympify(coupling[1]).subs(subs)
             np.testing.assert_allclose(
-                float(evaluated), MULTIPLIER * net.connectivity.sum(axis=0)[i],
+                float(evaluated), MULTIPLIER * net.connectivity.sum(axis=1)[i],
             )
 
     def test_sync(self):
