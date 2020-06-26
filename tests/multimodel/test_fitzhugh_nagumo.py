@@ -1,7 +1,7 @@
 """
 Set of tests for FitzHugh-Nagumo model.
 """
-import numba
+
 import unittest
 
 import numpy as np
