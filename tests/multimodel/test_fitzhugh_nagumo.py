@@ -1,7 +1,7 @@
 """
 Set of tests for FitzHugh-Nagumo model.
 """
-
+import numba
 import unittest
 
 import numpy as np
@@ -48,7 +48,7 @@ class TestFitzHughNagumoMass(MassTestCase):
     def test_init(self):
         fhn = self._create_mass()
         self.assertTrue(isinstance(fhn, FitzHughNagumoMass))
-        self.assertDictEqual(fhn.parameters, DEFAULT_PARAMS)
+        self.assertDictEqual(fhn.params, DEFAULT_PARAMS)
         coupling_variables = {k: 0.0 for k in fhn.required_couplings}
         self.assertEqual(len(fhn._derivatives(coupling_variables)), fhn.num_state_variables)
         self.assertEqual(len(fhn.initial_state), fhn.num_state_variables)
@@ -73,7 +73,7 @@ class TestFitzHughNagumoNetworkNode(unittest.TestCase):
         fhn = self._create_node()
         self.assertTrue(isinstance(fhn, FitzHughNagumoNetworkNode))
         self.assertEqual(len(fhn), 1)
-        self.assertDictEqual(fhn[0].parameters, DEFAULT_PARAMS)
+        self.assertDictEqual(fhn[0].params, DEFAULT_PARAMS)
         self.assertEqual(len(fhn.default_network_coupling), 2)
         np.testing.assert_equal(np.array(fhn[0].initial_state), fhn.initial_state)
 
