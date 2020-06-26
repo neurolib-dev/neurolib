@@ -47,7 +47,7 @@ class FitzHughNagumoMass(NeuralMass):
     num_noise_variables = 2
     coupling_variables = {0: "x", 1: "y"}
     state_variable_names = ["x", "y"]
-    required_parameters = [
+    required_params = [
         "alpha",
         "beta",
         "gamma",
@@ -59,8 +59,8 @@ class FitzHughNagumoMass(NeuralMass):
     ]
     required_couplings = ["network_x", "network_y"]
 
-    def __init__(self, parameters=None):
-        super().__init__(parameters=parameters or DEFAULT_PARAMS)
+    def __init__(self, params=None):
+        super().__init__(params=params or DEFAULT_PARAMS)
 
     def _initialize_state_vector(self):
         """
@@ -72,20 +72,20 @@ class FitzHughNagumoMass(NeuralMass):
         [x, y] = self._unwrap_state_vector()
 
         d_x = (
-            -self.parameters["alpha"] * x ** 3
-            + self.parameters["beta"] * x ** 2
-            + self.parameters["gamma"] * x
+            -self.params["alpha"] * x ** 3
+            + self.params["beta"] * x ** 2
+            + self.params["gamma"] * x
             - y
             + coupling_variables["network_x"]
             + system_input(self.noise_input_idx[0])
-            + self.parameters["ext_input_x"]
+            + self.params["ext_input_x"]
         )
 
         d_y = (
-            (x - self.parameters["delta"] - self.parameters["epsilon"] * y) / self.parameters["tau"]
+            (x - self.params["delta"] - self.params["epsilon"] * y) / self.params["tau"]
             + coupling_variables["network_y"]
             + system_input(self.noise_input_idx[1])
-            + self.parameters["ext_input_y"]
+            + self.params["ext_input_y"]
         )
 
         return [d_x, d_y]
@@ -103,12 +103,12 @@ class FitzHughNagumoNetworkNode(Node):
     default_network_coupling = {"network_x": 0.0, "network_y": 0.0}
     default_output = "x"
 
-    def __init__(self, parameters=None):
+    def __init__(self, params=None):
         """
-        :param parameters: parameters of the FitzHugh-Nagumo mass
-        :type parameters: dict|None
+        :param params: parameters of the FitzHugh-Nagumo mass
+        :type params: dict|None
         """
-        fhn_mass = FitzHughNagumoMass(parameters)
+        fhn_mass = FitzHughNagumoMass(params)
         fhn_mass.index = 0
         super().__init__(neural_masses=[fhn_mass])
 
@@ -127,7 +127,7 @@ class FitzHughNagumoNetwork(Network):
     sync_variables = ["network_x", "network_y"]
 
     def __init__(
-        self, connectivity_matrix, delay_matrix, mass_parameters=None, x_coupling="diffusive", y_coupling="none",
+        self, connectivity_matrix, delay_matrix, mass_params=None, x_coupling="diffusive", y_coupling="none",
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -138,9 +138,9 @@ class FitzHughNagumoNetwork(Network):
             length matrix, if None, delays are all zeros, in ms, matrix as
             [to, from]
         :type delay_matrix: np.ndarray|None
-        :param mass_parameters: parameters for each Hopf normal form neural
+        :param mass_params: parameters for each Hopf normal form neural
             mass, if None, will use default
-        :type mass_parameters: list[dict]|dict|None
+        :type mass_params: list[dict]|dict|None
         :param x_coupling: how to couple `x` variables in the nodes,
             "diffusive", "additive", or "none"
         :type x_coupling: str
@@ -148,11 +148,11 @@ class FitzHughNagumoNetwork(Network):
             "diffusive", "additive", or "none"
         :type y_coupling: str
         """
-        mass_parameters = self._prepare_mass_parameters(mass_parameters, connectivity_matrix.shape[0])
+        mass_params = self._prepare_mass_params(mass_params, connectivity_matrix.shape[0])
 
         nodes = []
-        for i, node_params in enumerate(mass_parameters):
-            node = FitzHughNagumoNetworkNode(parameters=node_params)
+        for i, node_params in enumerate(mass_params):
+            node = FitzHughNagumoNetworkNode(params=node_params)
             node.index = i
             node.idx_state_var = i * node.num_state_variables
             nodes.append(node)
