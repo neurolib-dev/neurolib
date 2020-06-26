@@ -27,7 +27,7 @@ BACKENDS_TO_TEST = {
 
 
 class MassTestCase(unittest.TestCase):
-    def _run_node(self, node, duration, dt):
+    def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
         noise = ZeroInput(duration, dt, independent_realisations=node.num_noise_variables).as_cubic_splines()
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
@@ -56,7 +56,7 @@ class TestFitzHughNagumoMass(MassTestCase):
 
     def test_run(self):
         fhn = self._create_mass()
-        result = self._run_node(fhn, DURATION, DT)
+        result = self._run_mass(fhn, DURATION, DT)
         self.assertTrue(isinstance(result, np.ndarray))
         self.assertTupleEqual(result.shape, (int(DURATION / DT), fhn.num_state_variables))
 
