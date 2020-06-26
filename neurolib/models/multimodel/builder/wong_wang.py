@@ -268,6 +268,7 @@ class ReducedWongWangNetworkNode(Node):
     label = "ReducedWWnode"
 
     default_network_coupling = {"network_s": 0.0}
+    default_output = "S"
 
     def __init__(self, params=None):
         """
@@ -280,3 +281,6 @@ class ReducedWongWangNetworkNode(Node):
 
     def _sync(self):
         return []
+
+
+# TODO add network instances for both WW versions, after checking with TVB
