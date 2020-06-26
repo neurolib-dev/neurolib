@@ -102,80 +102,83 @@ class TestReducedWongWangMass(MassTestCase):
         self.assertTupleEqual(result.shape, (int(DURATION / DT), rww.num_state_variables))
 
 
-class TestWongWangNetworkNode(unittest.TestCase):
-    def _create_node(self):
-        node = WongWangNetworkNode()
-        node.index = 0
-        node.idx_state_var = 0
-        node.init_node()
-        return node
+# class TestWongWangNetworkNode(unittest.TestCase):
+#     def _create_node(self):
+#         node = WongWangNetworkNode()
+#         node.index = 0
+#         node.idx_state_var = 0
+#         node.init_node()
+#         return node
 
-    def test_init(self):
-        ww = self._create_node()
-        self.assertTrue(isinstance(ww, WongWangNetworkNode))
-        self.assertEqual(len(ww), 2)
-        self.assertDictEqual(ww[0].params, DEFAULT_PARAMS_EXC)
-        self.assertDictEqual(ww[1].params, DEFAULT_PARAMS_INH)
-        self.assertEqual(len(ww.default_network_coupling), 1)
-        np.testing.assert_equal(
-            np.array(sum([wwm.initial_state for wwm in ww], [])), ww.initial_state,
-        )
+#     def test_init(self):
+#         ww = self._create_node()
+#         self.assertTrue(isinstance(ww, WongWangNetworkNode))
+#         self.assertEqual(len(ww), 2)
+#         self.assertDictEqual(ww[0].params, DEFAULT_PARAMS_EXC)
+#         self.assertDictEqual(ww[1].params, DEFAULT_PARAMS_INH)
+#         self.assertEqual(len(ww.default_network_coupling), 1)
+#         np.testing.assert_equal(
+#             np.array(sum([wwm.initial_state for wwm in ww], [])), ww.initial_state,
+#         )
 
-    def test_run(self):
-        ww = self._create_node()
-        all_results = []
-        for backend, noise_func in BACKENDS_TO_TEST.items():
-            result = ww.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, ww.num_noise_variables)), backend=backend,)
-            self.assertTrue(isinstance(result, xr.Dataset))
-            self.assertEqual(len(result), ww.num_state_variables)
-            self.assertTrue(all(state_var in result for state_var in ww.state_variable_names[0]))
-            self.assertTrue(
-                all(result[state_var].shape == (int(DURATION / DT), 1) for state_var in ww.state_variable_names[0])
-            )
-            all_results.append(result)
-        # test results are the same from different backends
-        for state_var in all_results[0]:
-            corr_mat = np.corrcoef(
-                np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
-            )
-            print(corr_mat)
-            self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+#     def test_run(self):
+#         ww = self._create_node()
+#         all_results = []
+#         for backend, noise_func in BACKENDS_TO_TEST.items():
+#             result = ww.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, ww.num_noise_variables)), backend=backend,)
+#             self.assertTrue(isinstance(result, xr.Dataset))
+#             self.assertEqual(len(result), ww.num_state_variables)
+#             self.assertTrue(all(state_var in result for state_var in ww.state_variable_names[0]))
+#             self.assertTrue(
+#                 all(result[state_var].shape == (int(DURATION / DT), 1) for state_var in ww.state_variable_names[0])
+#             )
+#             all_results.append(result)
+#         # test results are the same from different backends
+#         for state_var in all_results[0]:
+#             corr_mat = np.corrcoef(
+#                 np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
+#             )
+#             print(corr_mat)
+#             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 
-class TestReducedWongWangNetworkNode(unittest.TestCase):
-    def _create_node(self):
-        node = ReducedWongWangNetworkNode()
-        node.index = 0
-        node.idx_state_var = 0
-        node.init_node()
-        return node
+# class TestReducedWongWangNetworkNode(unittest.TestCase):
+#     def _create_node(self):
+#         node = ReducedWongWangNetworkNode()
+#         node.index = 0
+#         node.idx_state_var = 0
+#         node.init_node()
+#         return node
 
-    def test_init(self):
-        rww = self._create_node()
-        self.assertTrue(isinstance(rww, ReducedWongWangNetworkNode))
-        self.assertEqual(len(rww), 1)
-        self.assertDictEqual(rww[0].params, DEFAULT_PARAMS_REDUCED)
-        self.assertEqual(len(rww.default_network_coupling), 1)
-        np.testing.assert_equal(np.array(rww[0].initial_state), rww.initial_state)
+#     def test_init(self):
+#         rww = self._create_node()
+#         self.assertTrue(isinstance(rww, ReducedWongWangNetworkNode))
+#         self.assertEqual(len(rww), 1)
+#         self.assertDictEqual(rww[0].params, DEFAULT_PARAMS_REDUCED)
+#         self.assertEqual(len(rww.default_network_coupling), 1)
+#         np.testing.assert_equal(np.array(rww[0].initial_state), rww.initial_state)
 
-    def test_run(self):
-        rww = self._create_node()
-        all_results = []
-        for backend, noise_func in BACKENDS_TO_TEST.items():
-            result = rww.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, rww.num_noise_variables)), backend=backend, dt=DT,
-            )
-            self.assertTrue(isinstance(result, xr.Dataset))
-            self.assertEqual(len(result), rww.num_state_variables)
-            self.assertTrue(all(state_var in result for state_var in rww.state_variable_names[0]))
-            self.assertTrue(
-                all(result[state_var].shape == (int(DURATION / DT), 1) for state_var in rww.state_variable_names[0])
-            )
-            all_results.append(result)
-        # test results are the same from different backends
-        for state_var in all_results[0]:
-            corr_mat = np.corrcoef(
-                np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
-            )
-            print(corr_mat)
-            self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+#     def test_run(self):
+#         rww = self._create_node()
+#         all_results = []
+#         for backend, noise_func in BACKENDS_TO_TEST.items():
+#             result = rww.run(
+#                 DURATION, DT, noise_func(ZeroInput(DURATION, DT, rww.num_noise_variables)), backend=backend, dt=DT,
+#             )
+#             self.assertTrue(isinstance(result, xr.Dataset))
+#             self.assertEqual(len(result), rww.num_state_variables)
+#             self.assertTrue(all(state_var in result for state_var in rww.state_variable_names[0]))
+#             self.assertTrue(
+#                 all(result[state_var].shape == (int(DURATION / DT), 1) for state_var in rww.state_variable_names[0])
+#             )
+#             all_results.append(result)
+#         # test results are the same from different backends
+#         for state_var in all_results[0]:
+#             corr_mat = np.corrcoef(
+#                 np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
+#             )
+#             print(corr_mat)
+#             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+
+if __name__ == "__main__":
+    unittest.main()
