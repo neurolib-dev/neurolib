@@ -171,7 +171,7 @@ class HopfNetwork(Network):
     def init_network(self):
         # create symbol for each node for input
         self.sync_symbols = {
-            f"{symbol}_{node_idx}": se.Symbol(symbol)
+            f"{symbol}_{node_idx}": se.Symbol(f"{symbol}_{node_idx}")
             for symbol in self.sync_variables
             for node_idx in range(self.num_nodes)
         }
