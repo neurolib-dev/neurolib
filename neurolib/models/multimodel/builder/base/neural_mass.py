@@ -1,6 +1,7 @@
 """
 Base for all mass models.
 """
+import numpy as np
 import symengine as se
 from jitcdde import y as state_vector
 
@@ -72,13 +73,16 @@ class NeuralMass:
         "params",
     ]
 
-    def __init__(self, params):
+    def __init__(self, params, seed=None):
         """
         :param params: parameters of the neural mass
         :type params: dict
+        :param seed: seed for random number generator
+        :type seed: int|None
         """
         assert isinstance(params, dict)
         self.params = params
+        self.seed = seed
         # used in determining portion of the full system's state vector
         self.idx_state_var = None
         self.initialised = False
@@ -110,6 +114,7 @@ class NeuralMass:
         """
         Initialize state vector. By default it is all zeroes.
         """
+        np.random.seed(self.seed)
         self.initial_state = [0.0] * self.num_state_variables
 
     def _validate_params(self):
