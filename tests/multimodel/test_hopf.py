@@ -1,18 +1,21 @@
 """
 Set of tests for Hopf normal form model.
 """
-
 import unittest
 
 import numpy as np
+import pytest
 import xarray as xr
 from jitcdde import jitcdde_input
+from neurolib.models.hopf import HopfModel
 from neurolib.models.multimodel.builder.hopf import DEFAULT_PARAMS, HopfMass, HopfNetwork, HopfNetworkNode
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
+SEED = 42
 DURATION = 100.0
 DT = 0.1
 CORR_THRESHOLD = 0.99
+NEUROLIB_VARIABLES_TO_TEST = ["x", "y"]
 
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
@@ -22,7 +25,7 @@ BACKENDS_TO_TEST = {
 
 
 class MassTestCase(unittest.TestCase):
-    def _run_node(self, node, duration, dt):
+    def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
         noise = ZeroInput(duration, dt, independent_realisations=node.num_noise_variables).as_cubic_splines()
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
@@ -51,14 +54,14 @@ class TestHopfMass(MassTestCase):
 
     def test_run(self):
         hopf = self._create_mass()
-        result = self._run_node(hopf, DURATION, DT)
+        result = self._run_mass(hopf, DURATION, DT)
         self.assertTrue(isinstance(result, np.ndarray))
         self.assertTupleEqual(result.shape, (int(DURATION / DT), hopf.num_state_variables))
 
 
 class TestHopfNetworkNode(unittest.TestCase):
     def _create_node(self):
-        node = HopfNetworkNode()
+        node = HopfNetworkNode(seed=SEED)
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -93,10 +96,26 @@ class TestHopfNetworkNode(unittest.TestCase):
             )
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
+    def test_compare_w_neurolib_native_model(self):
+        """
+        Compare with neurolib's native Hopf model.
+        """
+        # run this model
+        hopf_multi = self._create_node()
+        multi_result = hopf_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), dt=DT, backend="numba")
+        # run neurolib's model
+        hopf_neurolib = HopfModel(seed=SEED)
+        hopf_neurolib.params["duration"] = DURATION
+        hopf_neurolib.params["dt"] = DT
+        hopf_neurolib.run()
+        for var in NEUROLIB_VARIABLES_TO_TEST:
+            corr_mat = np.corrcoef(hopf_neurolib[var], multi_result[var].values.T)
+            self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+
 
 class TestHopfNetwork(unittest.TestCase):
     SC = np.random.rand(2, 2)
-    DELAYS = np.array([[1.0, 2.0], [2.0, 1.0]])
+    DELAYS = np.array([[0.0, 30.0], [30.0, 0.0]])
 
     def test_init(self):
         hopf = HopfNetwork(self.SC, self.DELAYS)
@@ -121,6 +140,28 @@ class TestHopfNetwork(unittest.TestCase):
             corr_mat = np.corrcoef(
                 np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
             )
+            self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+
+    @pytest.mark.skip("Bug in backend for network - will investigate")
+    def test_compare_w_neurolib_native_model(self):
+        """
+        Compare with neurolib's native Hopf model.
+        """
+        # run this model - default is diffusive coupling
+        fhn_multi = HopfNetwork(self.SC, self.DELAYS, x_coupling="diffusive", seed=SEED)
+        multi_result = fhn_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), dt=DT, backend="numba")
+        # run neurolib's model
+        fhn_neurolib = HopfModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
+        fhn_neurolib.params["duration"] = DURATION
+        fhn_neurolib.params["dt"] = DT
+        # there is no "global coupling" parameter in MultiModel
+        fhn_neurolib.params["K_gl"] = 1.0
+        # delays <-> length matrix
+        fhn_neurolib.params["signalV"] = 1.0
+        fhn_neurolib.run()
+        for var in NEUROLIB_VARIABLES_TO_TEST:
+            corr_mat = np.corrcoef(fhn_neurolib[var], multi_result[var].values.T)
+            print(corr_mat)
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 
