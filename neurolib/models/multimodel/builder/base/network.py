@@ -715,12 +715,12 @@ class Network(BackendIntegrator):
         """
         network_equations = []
         var_idx = 0
-        for node_idx, node in enumerate(self.nodes):
+        for node in self.nodes:
             node.idx_state_var = var_idx
             network_coupling = {
                 self._strip_index(key): value
                 for key, value in self.sync_symbols.items()
-                if self._strip_node_idx(key) == node_idx
+                if self._strip_node_idx(key) == node.index
             }
             network_equations += node._derivatives(network_coupling)
             var_idx += node.num_state_variables
