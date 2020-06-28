@@ -9,19 +9,6 @@ with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
-required = []
-dependency_links = []
-# do not add to required lines pointing to git repositories
-EGG_MARK = "#egg="
-for line in requirements:
-    if line.startswith("-e git:") or line.startswith("-e git+") or line.startswith("git:") or line.startswith("git+"):
-        assert EGG_MARK in line
-        package_name = line[line.find(EGG_MARK) + len(EGG_MARK) :]
-        required.append(package_name)
-        dependency_links.append(line)
-    else:
-        required.append(line)
-
 setuptools.setup(
     name="neurolib",
     version="0.5.6",
@@ -39,7 +26,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.6",
-    install_requires=required,
-    dependency_links=dependency_links,
+    install_requires=requirements,
     include_package_data=True,
 )
