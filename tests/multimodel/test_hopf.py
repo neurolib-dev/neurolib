@@ -2,7 +2,7 @@
 Set of tests for Hopf normal form model.
 """
 import unittest
-
+import numba
 import numpy as np
 import pytest
 import xarray as xr
@@ -114,8 +114,8 @@ class TestHopfNetworkNode(unittest.TestCase):
 
 
 class TestHopfNetwork(unittest.TestCase):
-    SC = np.random.rand(2, 2)
-    DELAYS = np.array([[0.0, 30.0], [30.0, 0.0]])
+    SC = np.array(([[0.0, 1.0], [0.0, 0.0]]))
+    DELAYS = np.array([[0.0, 0.0], [0.0, 0.0]])
 
     def test_init(self):
         hopf = HopfNetwork(self.SC, self.DELAYS)
@@ -142,7 +142,6 @@ class TestHopfNetwork(unittest.TestCase):
             )
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
-    @pytest.mark.skip("Bug in backend for network - will investigate")
     def test_compare_w_neurolib_native_model(self):
         """
         Compare with neurolib's native Hopf model.
@@ -158,6 +157,10 @@ class TestHopfNetwork(unittest.TestCase):
         fhn_neurolib.params["K_gl"] = 1.0
         # delays <-> length matrix
         fhn_neurolib.params["signalV"] = 1.0
+        fhn_neurolib.params["coupling"] = "diffusive"
+        fhn_neurolib.params["sigma_ou"] = 0.0
+        fhn_neurolib.params["xs_init"] = fhn_multi.initial_state[::2][:, np.newaxis]
+        fhn_neurolib.params["ys_init"] = fhn_multi.initial_state[1::2][:, np.newaxis]
         fhn_neurolib.run()
         for var in NEUROLIB_VARIABLES_TO_TEST:
             corr_mat = np.corrcoef(fhn_neurolib[var], multi_result[var].values.T)
