@@ -2,6 +2,13 @@
 Hopf normal form model.
 
 References:
+    Landau, L. D. (1944). On the problem of turbulence. In Dokl. Akad. Nauk USSR
+    (Vol. 44, p. 311).
+
+    Stuart, J. T. (1960). On the non-linear mechanics of wave disturbances in
+    stable and unstable parallel flows Part 1. The basic behaviour in plane
+    Poiseuille flow. Journal of Fluid Mechanics, 9(3), 353-370.
+
     Kuznetsov, Y. A. (2013). Elements of applied bifurcation theory (Vol. 112).
     Springer Science & Business Media.
 
