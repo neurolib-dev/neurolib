@@ -124,7 +124,7 @@ class ThalamocorticalPopulation(ThalamicMass):
     num_state_variables = 10
     num_noise_variables = 1
     coupling_variables = {9: f"q_mean_{EXC}"}
-    required_couplings = ["node_exc_exc", "node_inh_exc", "network_exc_exc"]
+    required_couplings = ["node_exc_exc", "node_exc_inh", "network_exc_exc"]
     state_variable_names = [
         "V",
         "Ca",
@@ -267,7 +267,7 @@ class ThalamocorticalPopulation(ThalamicMass):
             - 2 * self.params["gamma_e"] * dsyn_ext
         )
         d_dsyn_inh = (
-            self.params["gamma_r"] ** 2 * (coupling_variables["node_inh_exc"] - syn_inh)
+            self.params["gamma_r"] ** 2 * (coupling_variables["node_exc_inh"] - syn_inh)
             - 2 * self.params["gamma_r"] * dsyn_inh
         )
         # firing rate as dummy dynamical variable with infinitely fast
@@ -302,7 +302,7 @@ class ThalamicReticularPopulation(ThalamicMass):
     num_state_variables = 7
     num_noise_variables = 1
     coupling_variables = {6: f"q_mean_{INH}"}
-    required_couplings = ["node_exc_inh", "node_inh_inh", "network_exc_inh"]
+    required_couplings = ["node_inh_exc", "node_inh_inh", "network_inh_exc"]
     state_variable_names = [
         "V",
         "h_T",
@@ -380,8 +380,8 @@ class ThalamicReticularPopulation(ThalamicMass):
         d_dsyn_ext = (
             self.params["gamma_e"] ** 2
             * (
-                coupling_variables["node_exc_inh"]
-                + coupling_variables["network_exc_inh"]
+                coupling_variables["node_inh_exc"]
+                + coupling_variables["network_inh_exc"]
                 + system_input(self.noise_input_idx[0])
                 - syn_ext
             )
@@ -416,7 +416,7 @@ class ThalamicNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
     name = "Thalamic mass model node"
     label = "THLMnode"
 
-    default_network_coupling = {"network_exc_exc": 0.0, "network_exc_inh": 0.0}
+    default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"q_mean_{EXC}"
 
     def __init__(
