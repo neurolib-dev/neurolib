@@ -21,7 +21,7 @@ from ..builder.base.constants import EXC, INH
 from ..builder.base.network import Network, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
 
-DEFAULT_PARAMS_EXC = {"a": 1.5, "mu": 3.0, "tau": 2.5, "ext_input": 0.6}
+DEFAULT_PARAMS_EXC = {"a": 1.5, "mu": 3.0, "tau": 2.5, "ext_input": 1.0}
 DEFAULT_PARAMS_INH = {"a": 1.5, "mu": 3.0, "tau": 3.75, "ext_input": 0.0}
 # matrix as [to, from], masses as (EXC, INH)
 DEFAULT_WC_NODE_CONNECTIVITY = np.array([[16.0, 12.0], [15.0, 3.0]])
@@ -46,6 +46,7 @@ class WilsonCowanMass(NeuralMass):
         """
         Initialize state vector.
         """
+        np.random.seed(self.seed)
         self.initial_state = [0.05 * np.random.uniform(0, 1)]
 
     def _sigmoid(self, x):
@@ -62,10 +63,10 @@ class ExcitatoryWilsonCowanMass(WilsonCowanMass):
     coupling_variables = {0: f"q_mean_{EXC}"}
     state_variable_names = [f"q_mean_{EXC}"]
     mass_type = EXC
-    required_couplings = ["node_exc_exc", "node_inh_exc", "network_exc_exc"]
+    required_couplings = ["node_exc_exc", "node_exc_inh", "network_exc_exc"]
 
-    def __init__(self, params=None):
-        super().__init__(params=params or DEFAULT_PARAMS_EXC)
+    def __init__(self, params=None, seed=None):
+        super().__init__(params=params or DEFAULT_PARAMS_EXC, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [x] = self._unwrap_state_vector()
@@ -74,7 +75,7 @@ class ExcitatoryWilsonCowanMass(WilsonCowanMass):
             + (1.0 - x)
             * self._sigmoid(
                 coupling_variables["node_exc_exc"]
-                - coupling_variables["node_inh_exc"]
+                - coupling_variables["node_exc_inh"]
                 + coupling_variables["network_exc_exc"]
                 + self.params["ext_input"]
             )
@@ -91,10 +92,10 @@ class InhibitoryWilsonCowanMass(WilsonCowanMass):
     coupling_variables = {0: f"q_mean_{INH}"}
     state_variable_names = [f"q_mean_{INH}"]
     mass_type = INH
-    required_couplings = ["node_exc_inh", "node_inh_inh"]
+    required_couplings = ["node_inh_exc", "node_inh_inh"]
 
-    def __init__(self, params=None):
-        super().__init__(params=params or DEFAULT_PARAMS_INH)
+    def __init__(self, params=None, seed=None):
+        super().__init__(params=params or DEFAULT_PARAMS_INH, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [x] = self._unwrap_state_vector()
@@ -102,7 +103,7 @@ class InhibitoryWilsonCowanMass(WilsonCowanMass):
             -x
             + (1.0 - x)
             * self._sigmoid(
-                coupling_variables["node_exc_inh"] - coupling_variables["node_inh_inh"] + self.params["ext_input"]
+                coupling_variables["node_inh_exc"] - coupling_variables["node_inh_inh"] + self.params["ext_input"]
             )
             + system_input(self.noise_input_idx[0])
         ) / self.params["tau"]
@@ -122,7 +123,7 @@ class WilsonCowanNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
     default_output = f"q_mean_{EXC}"
 
     def __init__(
-        self, exc_params=None, inh_params=None, connectivity=DEFAULT_WC_NODE_CONNECTIVITY,
+        self, exc_params=None, inh_params=None, connectivity=DEFAULT_WC_NODE_CONNECTIVITY, exc_seed=None, inh_seed=None
     ):
         """
         :param exc_params: parameters for the excitatory mass
@@ -131,10 +132,16 @@ class WilsonCowanNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
         :type inh_params: dict|None
         :param connectivity: local connectivity matrix
         :type connectivity: np.ndarray
+        :param exc_seed: seed for random number generator for the excitatory
+            mass
+        :type exc_seed: int|None
+        :param inh_seed: seed for random number generator for the inhibitory
+            mass
+        :type inh_seed: int|None
         """
-        excitatory_mass = ExcitatoryWilsonCowanMass(exc_params)
+        excitatory_mass = ExcitatoryWilsonCowanMass(exc_params, seed=exc_seed)
         excitatory_mass.index = 0
-        inhibitory_mass = InhibitoryWilsonCowanMass(inh_params)
+        inhibitory_mass = InhibitoryWilsonCowanMass(inh_params, seed=inh_seed)
         inhibitory_mass.index = 1
         super().__init__(
             neural_masses=[excitatory_mass, inhibitory_mass],
@@ -161,6 +168,8 @@ class WilsonCowanNetwork(Network):
         exc_mass_params=None,
         inh_mass_params=None,
         local_connectivity=DEFAULT_WC_NODE_CONNECTIVITY,
+        exc_seed=None,
+        inh_seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -179,17 +188,31 @@ class WilsonCowanNetwork(Network):
         :type inh_mass_params: list[dict]|dict|None
         :param local_connectivity: local within-node connectivity matrix
         :type local_connectivity: list[np.ndarray]|np.ndarray
+        :param exc_seed: seed for random number generator for the excitatory
+            masses
+        :type exc_seed: int|None
+        :param inh_seed: seed for random number generator for the excitatory
+            masses
+        :type inh_seed: int|None
         """
         num_nodes = connectivity_matrix.shape[0]
         exc_mass_params = self._prepare_mass_params(exc_mass_params, num_nodes)
         inh_mass_params = self._prepare_mass_params(inh_mass_params, num_nodes)
+        exc_seeds = self._prepare_mass_params(exc_seed, num_nodes, native_type=int)
+        inh_seeds = self._prepare_mass_params(inh_seed, num_nodes, native_type=int)
         local_connectivity = self._prepare_mass_params(local_connectivity, num_nodes, native_type=np.ndarray)
 
         nodes = []
         for i, (exc_params, inh_params, local_conn) in enumerate(
             zip(exc_mass_params, inh_mass_params, local_connectivity)
         ):
-            node = WilsonCowanNetworkNode(exc_params=exc_params, inh_params=inh_params, connectivity=local_conn,)
+            node = WilsonCowanNetworkNode(
+                exc_params=exc_params,
+                inh_params=inh_params,
+                connectivity=local_conn,
+                exc_seed=exc_seeds[i],
+                inh_seed=inh_seeds[i],
+            )
             node.index = i
             node.idx_state_var = i * node.num_state_variables
             # set correct indices of noise input
