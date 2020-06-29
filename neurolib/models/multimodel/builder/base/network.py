@@ -33,7 +33,7 @@ class Node(BackendIntegrator):
     # index of this node with respect to the whole network
     index = None
 
-    # list of synchronisation variables that are used to compute input/output
+    # list of coupling variables that are used to compute input/output
     # from different masses in this node, implemented as `jitcdde` helpers
     sync_variables = []
 
@@ -41,7 +41,7 @@ class Node(BackendIntegrator):
     # usually used for isolated node
     default_network_coupling = {}
 
-    # default output of the model - all nodes need to have this variable defined
+    # default output of the node - all nodes need to have this variable defined
     default_output = None
 
     def __init__(self, neural_masses):
@@ -145,7 +145,7 @@ class Node(BackendIntegrator):
 
     def update_params(self, params_dict):
         """
-        Update parameters of the node, i.e. recursively update all the masses.
+        Update parameters of the node, i.e. recursively update all parameters of masses within this node.
 
         :param params_dict: new parameters for this node, same format as
             `get_nested_params`, i.e. nested dict
@@ -159,6 +159,13 @@ class Node(BackendIntegrator):
             else:
                 logging.warning(f"Not sure what to do with {mass_key}...")
 
+    @staticmethod
+    def _get_index(symbol_name):
+        """
+        Gets index value from the symbol name.
+        """
+        return int(symbol_name.split("_")[-1])
+        
     @staticmethod
     def _strip_index(symbol_name):
         """
@@ -191,17 +198,17 @@ class Node(BackendIntegrator):
     @property
     def initial_state(self):
         """
-        Return initial state of this node, i.e. sum of masses initial states.
+        Return initial state of this node, i.e. sum of initial states of all masses.
         """
         return np.array(sum([mass.initial_state for mass in self], [],))
 
     def all_couplings(self, mass_indices=None):
         """
-        Return all couplings from masses denoted by index.
+        Return coupling variable names of all masses within this node, denoted by each masses index.
 
-        :param mass_indices: indices as to which mass to probe
+        :param mass_indices: indices of masses
         :type mass_indices: list|None
-        :return: coupling from all masses indicated in the mass_indices
+        :return: coupling variables from all masses indexed by mass_indices
         :rtype: dict
         """
         mass_indices = mass_indices or np.arange(len(self.masses)).tolist()

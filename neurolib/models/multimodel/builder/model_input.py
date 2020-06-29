@@ -1,5 +1,5 @@
 """
-Handles input to neural models. Constructs both noisy and stimulation-like input
+Handles input to model. Constructs both noisy and stimulation-like input
 and supports both CubicHermiteSplines for jitcdde backend and np.array for numba
 backend.
 """
@@ -12,7 +12,7 @@ from scipy.signal import square
 
 class ModelInput:
     """
-    Generates input to neural model.
+    Generates input to model.
     """
 
     def __init__(self, duration, dt, independent_realisations=1, seed=None):

@@ -1,22 +1,21 @@
 """
 Backend integrator and backends definitions. Currently supported are following
 backends:
- - `jitcdde`: (just-in-time compilation into C) which exploits `jitcdde` library
-    and translates symbolic derivatives into C code and then calls C functions
-    from python interface:
+ - `jitcdde`: (just-in-time compilation into C) which uses `jitcdde`
+    which translates symbolic derivatives into C code and then calls C functions
+    from Python interface:
     - very reliable
     - uses adaptive `dt` hence very useful for stiff problems and when you are
         not sure how stiff your model is
     - reasonable speed
 
  - `numba`: compilation of python code through `numba.njit()` - symbolic
-    derivatives are handled to string and then rendered to prepared numba
-    function template and compiled to python;
-    - less reliable
-    - need to define integration step, `dt`
-    - uses basic Euler scheme
-    - very fast -> almost agnostic to duration of the simulation, i.e. good for
-        very long simulations
+    derivatives are converted to strings and prepared and compiled to 
+    numba-compatible python code; Equations are integrated using the Euler
+    integration scheme.
+    - Euler scheme could be less reliable
+    - fixed integration time step `dt`
+    - very fast
 """
 import json
 import logging
@@ -79,9 +78,8 @@ class BaseBackend:
 
 class NumbaBackend(BaseBackend):
     """
-    Backend using manual basic Euler scheme with delays. The symbolic code for
-    derivatives is rendered into prepared string template using numba's njit to
-    speed up the computation.
+    Numba integration backend using Euler scheme with delays. The symbolic code for
+    derivatives is rendered into a prepared string template using numba's njit.
     """
 
     DEFAULT_DT = 0.1  # in ms
@@ -97,7 +95,7 @@ class NumbaBackend(BaseBackend):
     )
     SYSTEM_INPUT_NUMBA = "input_y[i, {idx}]"
 
-    NUMBA_STRING_TEMPLATE = """
+    NUMBA_EULER_TEMPLATE = """
 def integrate(dt, n, max_delay, t_max, y0, input_y):
     y = np.empty((t_max + max_delay + 1, n))
     y[:] = np.nan
@@ -112,11 +110,11 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
     def _replace_current_ys(self, expression):
         """
         Replace `current_y` symbolic representation of current state of the
-        state vector with numpy array. Assume output in as `y[time, space]`.
+        state vector with numpy array. Assume output as `y[time, space]`.
 
-        :param expression: string expression to look in for symbolic symbols
+        :param expression: string to search for in symbolic expressions
         :type expression: str
-        :return: expression with replaced symblic values to numpy array
+        :return: expression with replaced symbolic values to numpy array
         :rtype: str
         """
         matches = re.findall(self.CURRENT_Y_REGEX, expression)
@@ -128,14 +126,14 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
 
     def _replace_past_ys(self, expression, dt):
         """
-        Replace `past_y` symbolic representation of past state of the state
-        vector with numpy array. Assume output in as `y[time, space]`.
+        Replace `past_y` symbolic representation of past state
+        vector with numpy array. Assume output as `y[time, space]`.
 
-        :param expression: string expression to look in for symbolic symbols
+        :param expression: string to search for in symbolic expressions
         :type expression: str
         :param dt: dt for the integration
         :type dt: float
-        :return: expression with replaced symblic values to numpy array
+        :return: expression with replaced symbolic values to numpy array
         :rtype: str
         """
         matches = re.findall(self.PAST_Y_REGEX, expression)
@@ -154,9 +152,9 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         representation with numpy array of inputs. Assume input as
         `input[time,index]`.
 
-        :param expression: string expression to look in for symbolic symbols
+        :param expression: string to search for in symbolic expressions
         :type expression: str
-        :return: expression with replaced symblic values to numpy array
+        :return: expression with replaced symbolic values to numpy array
         :rtype: str
         """
         matches = re.findall(self.SYSTEM_INPUT_REGEX, expression)
