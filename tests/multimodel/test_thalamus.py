@@ -15,11 +15,17 @@ from neurolib.models.multimodel.builder.thalamus import (
     ThalamicReticularPopulation,
     ThalamocorticalPopulation,
 )
+from neurolib.models.thalamus import ThalamicMassModel
 
 DURATION = 100.0
-SPIN_UP = 1.0
 DT = 0.01
-CORR_THRESHOLD = 0.99
+CORR_THRESHOLD = 0.95
+NEUROLIB_VARIABLES_TO_TEST = [
+    ("q_mean_EXC", "Q_t"),
+    ("q_mean_INH", "Q_r"),
+    ("V_EXC", "V_t"),
+    ("V_INH", "V_r"),
+]
 
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
@@ -102,12 +108,7 @@ class TestThalamicNetworkNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = thlm.run(
-                DURATION,
-                DT,
-                noise_func(ZeroInput(DURATION + SPIN_UP, DT, thlm.num_noise_variables)),
-                time_spin_up=SPIN_UP,
-                backend=backend,
-                dt=DT,
+                DURATION, DT, noise_func(ZeroInput(DURATION, DT, thlm.num_noise_variables)), backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), thlm.num_state_variables)
@@ -126,6 +127,22 @@ class TestThalamicNetworkNode(unittest.TestCase):
                 # activity to the TCR - it does not have any in isolated mode
                 # without noise)
                 self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+
+    def test_compare_w_neurolib_native_model(self):
+        """
+        Compare with neurolib's native thalamic model.
+        """
+        # run this model
+        thalamus_multi = self._create_node()
+        multi_result = thalamus_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        # run neurolib's model
+        thlm_neurolib = ThalamicMassModel()
+        thlm_neurolib.params["duration"] = DURATION
+        thlm_neurolib.params["dt"] = DT
+        thlm_neurolib.run()
+        for (var_multi, var_neurolib) in NEUROLIB_VARIABLES_TO_TEST:
+            corr_mat = np.corrcoef(thlm_neurolib[var_neurolib], multi_result[var_multi].values.T)
+            self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 
 if __name__ == "__main__":
