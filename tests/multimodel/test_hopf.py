@@ -3,7 +3,6 @@ Set of tests for Hopf normal form model.
 """
 import unittest
 
-import numba
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
@@ -102,7 +101,7 @@ class TestHopfNetworkNode(unittest.TestCase):
         """
         # run this model
         hopf_multi = self._create_node()
-        multi_result = hopf_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), dt=DT, backend="numba")
+        multi_result = hopf_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
         # run neurolib's model
         hopf_neurolib = HopfModel(seed=SEED)
         hopf_neurolib.params["duration"] = DURATION
@@ -148,7 +147,7 @@ class TestHopfNetwork(unittest.TestCase):
         """
         # run this model - default is diffusive coupling
         fhn_multi = HopfNetwork(self.SC, self.DELAYS, x_coupling="diffusive", seed=SEED)
-        multi_result = fhn_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), dt=DT, backend="numba")
+        multi_result = fhn_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
         # run neurolib's model
         fhn_neurolib = HopfModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         fhn_neurolib.params["duration"] = DURATION

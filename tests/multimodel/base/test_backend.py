@@ -7,7 +7,6 @@ import pickle
 import unittest
 from shutil import rmtree
 
-import numba
 import numpy as np
 import pytest
 import symengine as se
@@ -167,12 +166,9 @@ class TestBackendIntegrator(unittest.TestCase):
     def test_run_jitcdde(self):
         system = BackendTestingHelper()
         results = system.run(
-            self.DURATION,
-            self.DT,
-            ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
-            metadata=self.EXTRA_ATTRS,
-            backend="jitcdde",
+            self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), backend="jitcdde",
         )
+        results.attrs = self.EXTRA_ATTRS
         # assert type, length and shape of results
         self.assertTrue(isinstance(results, xr.Dataset))
         self.assertEqual(len(results), 1)
@@ -188,7 +184,6 @@ class TestBackendIntegrator(unittest.TestCase):
             self.DURATION,
             self.DT,
             ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
-            metadata=self.EXTRA_ATTRS,
             backend="jitcdde",
             return_xarray=True,
         )
@@ -197,7 +192,6 @@ class TestBackendIntegrator(unittest.TestCase):
             self.DURATION,
             self.DT,
             ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
-            metadata=self.EXTRA_ATTRS,
             backend="jitcdde",
             return_xarray=False,
         )
@@ -208,13 +202,8 @@ class TestBackendIntegrator(unittest.TestCase):
 
     def test_run_numba(self):
         system = BackendTestingHelper()
-        results = system.run(
-            self.DURATION,
-            self.DT,
-            ZeroInput(self.DURATION, self.DT).as_array(),
-            metadata=self.EXTRA_ATTRS,
-            backend="numba",
-        )
+        results = system.run(self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_array(), backend="numba",)
+        results.attrs = self.EXTRA_ATTRS
         # assert type, length and shape of results
         self.assertTrue(isinstance(results, xr.Dataset))
         self.assertEqual(len(results), 1)
@@ -230,7 +219,6 @@ class TestBackendIntegrator(unittest.TestCase):
             self.DURATION,
             self.DT,
             ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
-            metadata=self.EXTRA_ATTRS,
             save_compiled_to=self.TEST_DIR,
             backend="jitcdde",
         )
@@ -241,7 +229,6 @@ class TestBackendIntegrator(unittest.TestCase):
             self.DURATION,
             self.DT,
             ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
-            metadata=self.EXTRA_ATTRS,
             save_compiled_to=self.TEST_DIR,
             load_compiled=True,
         )
@@ -262,11 +249,11 @@ class TestBackendIntegrator(unittest.TestCase):
             self.DURATION,
             self.DT,
             ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
-            metadata=self.EXTRA_ATTRS,
             chunksize=5,
             use_open_mp=True,
             backend="jitcdde",
         )
+        results.attrs = self.EXTRA_ATTRS
         # assert type, length and shape of results
         self.assertTrue(isinstance(results, xr.Dataset))
         self.assertEqual(len(results), 1)
@@ -283,9 +270,8 @@ class TestBackendIntegrator(unittest.TestCase):
         """
         system = BackendTestingHelper()
         # add attributes to test saving them
-        results = system.run(
-            self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), metadata=self.EXTRA_ATTRS,
-        )
+        results = system.run(self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines())
+        results.attrs = self.EXTRA_ATTRS
         # save to pickle
         pickle_name = os.path.join(self.TEST_DIR, "pickle_test")
         save_to_pickle(results, pickle_name)
@@ -303,9 +289,8 @@ class TestBackendIntegrator(unittest.TestCase):
         easy.
         """
         system = BackendTestingHelper()
-        results = system.run(
-            self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), metadata=self.EXTRA_ATTRS,
-        )
+        results = system.run(self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines())
+        results.attrs = self.EXTRA_ATTRS
         # save to pickle
         nc_name = os.path.join(self.TEST_DIR, "netcdf_test")
         save_to_netcdf(results, nc_name)
