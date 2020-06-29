@@ -12,7 +12,6 @@ References:
 """
 
 import numpy as np
-import symengine as se
 from jitcdde import input as system_input
 
 from ..builder.base.network import Network, Node
@@ -156,29 +155,6 @@ class HopfNetwork(Network):
 
         self.x_coupling = x_coupling
         self.y_coupling = y_coupling
-
-    def _couple(self, coupling_type, coupling_variable):
-        assert coupling_variable in self.coupling_symbols
-        if coupling_type == "additive":
-            return self._additive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
-        elif coupling_type == "diffusive":
-            return self._diffusive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
-        elif coupling_type == "none":
-            return self._no_coupling(f"network_{coupling_variable}")
-        else:
-            raise ValueError(f"Unknown coupling type: {coupling_type}")
-
-    def init_network(self):
-        # create symbol for each node for input
-        self.sync_symbols = {
-            f"{symbol}_{node_idx}": se.Symbol(f"{symbol}_{node_idx}")
-            for symbol in self.sync_variables
-            for node_idx in range(self.num_nodes)
-        }
-        for node_idx, node in enumerate(self.nodes):
-            node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables)
-        assert all(node.initialised for node in self)
-        self.initialised = True
 
     def _sync(self):
         return self._couple(self.x_coupling, "x") + self._couple(self.y_coupling, "y") + super()._sync()

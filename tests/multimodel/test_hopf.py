@@ -2,9 +2,9 @@
 Set of tests for Hopf normal form model.
 """
 import unittest
+
 import numba
 import numpy as np
-import pytest
 import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.hopf import HopfModel

@@ -10,7 +10,7 @@ backends:
     - reasonable speed
 
  - `numba`: compilation of python code through `numba.njit()` - symbolic
-    derivatives are converted to strings and prepared and compiled to 
+    derivatives are converted to strings and prepared and compiled to
     numba-compatible python code; Equations are integrated using the Euler
     integration scheme.
     - Euler scheme could be less reliable
@@ -209,7 +209,7 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         derivatives_str = self._replace_past_ys(derivatives_str, dt=dt)
         assert isinstance(derivatives_str, str)
         logging.info("Compiling python code using numba's njit...")
-        numba_func = self.NUMBA_STRING_TEMPLATE.format(dt=dt, dy_eqs=derivatives_str)
+        numba_func = self.NUMBA_EULER_TEMPLATE.format(dy_eqs=derivatives_str)
         # compile numba function and load into namespace
         numba_code = compile(numba_func, "<string>", "exec")
         integrate = numba.njit(
@@ -494,7 +494,7 @@ class BackendIntegrator:
             state_var: xr.DataArray(
                 None,
                 dims=["time", "node"],
-                coords={"time": np.around(times / 1000.0, 5), "node": np.arange(num_nodes),},
+                coords={"time": np.around(times / 1000.0, 5), "node": np.arange(num_nodes)},
             )
             for state_var in names_union
         }
