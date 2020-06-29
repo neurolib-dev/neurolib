@@ -17,13 +17,11 @@ backends:
     - fixed integration time step `dt`
     - very fast
 """
-import json
+
 import logging
 import os
-import pickle
 import re
 import time
-from copy import deepcopy
 from functools import wraps
 from sys import platform
 from types import FunctionType
@@ -440,7 +438,15 @@ class BackendIntegrator:
 
     @timer
     def run(
-        self, duration, sampling_dt, noise_input, time_spin_up=0.0, metadata=None, backend=DEFAULT_BACKEND, **kwargs,
+        self,
+        duration,
+        sampling_dt,
+        noise_input,
+        time_spin_up=0.0,
+        metadata=None,
+        backend=DEFAULT_BACKEND,
+        return_xarray=True,
+        **kwargs,
     ):
         """
         Run the integration.
@@ -455,6 +461,9 @@ class BackendIntegrator:
         :type time_spin_up: float
         :param metadata: optional metadata as dict
         :type metadata: dict|None
+        :param return_xarray: whether to return xarray's Dataset, or simply time
+            and result as a matrix
+        :type return_xarray: bool
         :*kwargs: optional keyword arguments, will be passed to backend instance
         """
         assert all(hasattr(self, attr) for attr in self.NEEDED_ATTRIBUTES)
@@ -470,7 +479,11 @@ class BackendIntegrator:
         logging.info("Integration done.")
         assert times.shape[0] == result.shape[0]
         assert result.shape[1] == self.num_state_variables
-        return self._init_xarray(times=times, results=result, attributes=metadata,)
+        if return_xarray:
+            return self._init_xarray(times=times, results=result, attributes=metadata)
+        else:
+            # return result as nodes x time for compatibility with neurolib
+            return times, result.T
 
     def _init_xarray(self, times, results, attributes=None):
         """
@@ -513,73 +526,6 @@ class BackendIntegrator:
         dataset.attrs = attributes or {}
 
         return dataset
-
-    @staticmethod
-    def save_to_pickle(datafield, filename):
-        """
-        Save datafield to pickle file. Keep in mind that restoring a pickle
-        requires that the internal structure of the types for the pickled data
-        remain unchanged, o.e. not recommended for long-term storage.
-
-        :param datafield: datafield to save
-        :type datafield: xr.Dataset
-        :param filename: filename
-        :type filename: str
-        """
-        if not filename.endswith(".pkl"):
-            filename += ".pkl"
-        with open(filename, "wb") as handle:
-            pickle.dump(datafield, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    @staticmethod
-    def _save_attrs_json(attrs, filename):
-        """
-        Save attributes to json.
-        """
-
-        def sanitise_attrs(attrs):
-            sanitised = {}
-            for k, v in attrs.items():
-                if isinstance(v, list):
-                    sanitised[k] = [
-                        sanitise_attrs(vv)
-                        if isinstance(vv, dict)
-                        else vv.tolist()
-                        if isinstance(vv, np.ndarray)
-                        else vv
-                        for vv in v
-                    ]
-                elif isinstance(v, dict):
-                    sanitised[k] = sanitise_attrs(v)
-                elif isinstance(v, np.ndarray):
-                    sanitised[k] = v.tolist()
-                else:
-                    sanitised[k] = v
-            return sanitised
-
-        filename = os.path.splitext(filename)[0] + ".json"
-        with open(filename, "w") as handle:
-            json.dump(sanitise_attrs(attrs), handle)
-
-    def save_to_netcdf(self, datafield, filename):
-        """
-        Save datafield to NetCDF. NetCDF cannot handle structured attributes,
-        hence they are stripped and if there are some, they are saved as json
-        with the same filename.
-
-        :param datafield: datafield to save
-        :type datafield: xr.Dataset
-        :param filename: filename
-        :type filename: str
-        """
-        datafield = deepcopy(datafield)
-        if not filename.endswith(".nc"):
-            filename += ".nc"
-        if datafield.attrs:
-            attributes_copy = deepcopy(datafield.attrs)
-            self._save_attrs_json(attributes_copy, filename)
-            datafield.attrs = {}
-        datafield.to_netcdf(filename)
 
     def clean(self):
         """
