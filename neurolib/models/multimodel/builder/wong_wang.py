@@ -84,6 +84,7 @@ class WongWangMass(NeuralMass):
         """
         Initialize state vector.
         """
+        np.random.seed(self.seed)
         self.initial_state = (np.random.uniform(0, 1) * np.array([1.0, 0.01])).tolist()
 
     def _get_firing_rate(self, current):
@@ -102,7 +103,7 @@ class ExcitatoryWongWangMass(WongWangMass):
     mass_type = EXC
     coupling_variables = {0: f"S_{EXC}"}
     state_variable_names = [f"S_{EXC}", f"q_mean_{EXC}"]
-    required_couplings = ["node_exc_exc", "node_inh_exc", "network_exc_exc"]
+    required_couplings = ["node_exc_exc", "node_exc_inh", "network_exc_exc"]
     required_params = [
         "a",
         "b",
@@ -115,8 +116,8 @@ class ExcitatoryWongWangMass(WongWangMass):
         "lambda",
     ]
 
-    def __init__(self, params=None):
-        super().__init__(params=params or DEFAULT_PARAMS_EXC)
+    def __init__(self, params=None, seed=None):
+        super().__init__(params=params or DEFAULT_PARAMS_EXC, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [s, firing_rate] = self._unwrap_state_vector()
@@ -125,7 +126,7 @@ class ExcitatoryWongWangMass(WongWangMass):
             self.params["W"] * self.params["exc_current"]
             + coupling_variables["node_exc_exc"]
             + self.params["J"] * coupling_variables["network_exc_exc"]
-            - coupling_variables["node_inh_exc"]
+            - coupling_variables["node_exc_inh"]
         )
         firing_rate_now = self._get_firing_rate(current)
         d_s = (
@@ -150,7 +151,7 @@ class InhibitoryWongWangMass(WongWangMass):
     mass_type = INH
     coupling_variables = {0: f"S_{INH}"}
     state_variable_names = [f"S_{INH}", f"q_mean_{INH}"]
-    required_couplings = ["node_exc_inh", "node_inh_inh"]
+    required_couplings = ["node_inh_exc", "node_inh_inh"]
     required_params = [
         "a",
         "b",
@@ -161,15 +162,15 @@ class InhibitoryWongWangMass(WongWangMass):
         "lambda",
     ]
 
-    def __init__(self, params=None):
-        super().__init__(params=params or DEFAULT_PARAMS_INH)
+    def __init__(self, params=None, seed=None):
+        super().__init__(params=params or DEFAULT_PARAMS_INH, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [s, firing_rate] = self._unwrap_state_vector()
 
         current = (
             self.params["W"] * self.params["exc_current"]
-            + coupling_variables["node_exc_inh"]
+            + coupling_variables["node_inh_exc"]
             - coupling_variables["node_inh_inh"]
         )
         firing_rate_now = self._get_firing_rate(current)
@@ -202,8 +203,8 @@ class ReducedWongWangMass(WongWangMass):
         "lambda",
     ]
 
-    def __init__(self, params=None):
-        super().__init__(params=params or DEFAULT_PARAMS_REDUCED)
+    def __init__(self, params=None, seed=None):
+        super().__init__(params=params or DEFAULT_PARAMS_REDUCED, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [s, firing_rate] = self._unwrap_state_vector()
@@ -237,7 +238,7 @@ class WongWangNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
     default_output = f"S_{EXC}"
 
     def __init__(
-        self, exc_params=None, inh_params=None, connectivity=DEFAULT_WW_NODE_CONNECTIVITY,
+        self, exc_params=None, inh_params=None, connectivity=DEFAULT_WW_NODE_CONNECTIVITY, exc_seed=None, inh_seed=None,
     ):
         """
         :param exc_params: parameters for the excitatory mass
@@ -246,10 +247,16 @@ class WongWangNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
         :type inh_params: dict|None
         :param connectivity: local connectivity matrix
         :type connectivity: np.ndarray
+        :param exc_seed: seed for random number generator for the excitatory
+            mass
+        :type exc_seed: int|None
+        :param inh_seed: seed for random number generator for the inhibitory
+            mass
+        :type inh_seed: int|None
         """
-        excitatory_mass = ExcitatoryWongWangMass(exc_params)
+        excitatory_mass = ExcitatoryWongWangMass(exc_params, seed=exc_seed)
         excitatory_mass.index = 0
-        inhibitory_mass = InhibitoryWongWangMass(inh_params)
+        inhibitory_mass = InhibitoryWongWangMass(inh_params, seed=inh_seed)
         inhibitory_mass.index = 1
         super().__init__(
             neural_masses=[excitatory_mass, inhibitory_mass],
@@ -270,12 +277,14 @@ class ReducedWongWangNetworkNode(Node):
     default_network_coupling = {"network_s": 0.0}
     default_output = "S"
 
-    def __init__(self, params=None):
+    def __init__(self, params=None, seed=None):
         """
         :param params: parameters of the reduced Wong-Wang mass
         :type params: dict|None
+        :param seed: seed for random number generator
+        :type seed: int|None
         """
-        reduced_ww_mass = ReducedWongWangMass(params)
+        reduced_ww_mass = ReducedWongWangMass(params, seed=seed)
         reduced_ww_mass.index = 0
         super().__init__(neural_masses=[reduced_ww_mass])
 
