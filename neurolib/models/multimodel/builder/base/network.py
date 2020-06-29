@@ -153,7 +153,7 @@ class Node(BackendIntegrator):
         """
         for mass_key, mass_params in params_dict.items():
             if MASS_NAME_STR in mass_key:
-                mass_index = int(mass_key.split("_")[-1])
+                mass_index = self._get_index(mass_key)
                 assert mass_index == self.masses[mass_index].index
                 self.masses[mass_index].update_params(mass_params)
             else:
@@ -165,7 +165,7 @@ class Node(BackendIntegrator):
         Gets index value from the symbol name.
         """
         return int(symbol_name.split("_")[-1])
-        
+
     @staticmethod
     def _strip_index(symbol_name):
         """
@@ -337,12 +337,12 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
 
         return nested_params
 
-    def init_node(self):
+    def init_node(self, **kwargs):
         """
         Init node and construct input matrix as [to, from] array of state
         vectors with correct delays.
         """
-        super().init_node()
+        super().init_node(**kwargs)
         assert self.idx_state_var is not None
         # gather inputs form this node - assumes constant delays
         var_idx = 0
@@ -566,8 +566,8 @@ class Network(BackendIntegrator):
             for symbol in self.sync_variables
             for node_idx in range(self.num_nodes)
         }
-        for node in self:
-            node.init_node(**kwargs)
+        for node_idx, node in enumerate(self.nodes):
+            node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables)
         assert all(node.initialised for node in self)
         self.initialised = True
 
@@ -715,6 +715,26 @@ class Network(BackendIntegrator):
             )
             for node_idx in range(self.num_nodes)
         ]
+
+    def _couple(self, coupling_type, coupling_variable):
+        """
+        Perform simple coupling in the network based on the type.
+
+        :param coupling_type: type of the coupling - additive, diffusive or none
+        :type coupling_type: str
+        :param coupling_variable: perform coupling on this coupling coupling
+            variable
+        :type coupling_variable: str
+        """
+        assert coupling_variable in self.coupling_symbols
+        if coupling_type == "additive":
+            return self._additive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
+        elif coupling_type == "diffusive":
+            return self._diffusive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
+        elif coupling_type == "none":
+            return self._no_coupling(f"network_{coupling_variable}")
+        else:
+            raise ValueError(f"Unknown coupling type: {coupling_type}")
 
     def _derivatives(self):
         """
