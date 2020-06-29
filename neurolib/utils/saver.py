@@ -2,12 +2,14 @@
 Saving model output.
 """
 
-import os
 import json
+
 import pickle
-import xarray as xr
 from copy import deepcopy
+
+import os
 import numpy as np
+import xarray as xr
 
 
 def save_to_pickle(datafield, filename):
