@@ -3,10 +3,11 @@ Set of tests for FitzHugh-Nagumo model.
 """
 
 import unittest
-
+import numba
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
+from neurolib.models.fhn import FHNModel
 from neurolib.models.multimodel.builder.fitzhugh_nagumo import (
     DEFAULT_PARAMS,
     FitzHughNagumoMass,
@@ -15,9 +16,11 @@ from neurolib.models.multimodel.builder.fitzhugh_nagumo import (
 )
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
+SEED = 42
 DURATION = 100.0
 DT = 0.1
 CORR_THRESHOLD = 0.99
+NEUROLIB_VARIABLES_TO_TEST = ["x", "y"]
 
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
@@ -63,7 +66,7 @@ class TestFitzHughNagumoMass(MassTestCase):
 
 class TestFitzHughNagumoNetworkNode(unittest.TestCase):
     def _create_node(self):
-        node = FitzHughNagumoNetworkNode()
+        node = FitzHughNagumoNetworkNode(seed=SEED)
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -82,7 +85,7 @@ class TestFitzHughNagumoNetworkNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = fhn.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)), backend=backend, dt=DT,
+                DURATION, DT, noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)), backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), fhn.num_state_variables)
@@ -98,10 +101,26 @@ class TestFitzHughNagumoNetworkNode(unittest.TestCase):
             )
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
+    def test_compare_w_neurolib_native_model(self):
+        """
+        Compare with neurolib's native FitzHugh-Nagumo model.
+        """
+        # run this model
+        fhn_multi = self._create_node()
+        multi_result = fhn_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        # run neurolib's model
+        fhn = FHNModel(seed=SEED)
+        fhn.params["duration"] = DURATION
+        fhn.params["dt"] = DT
+        fhn.run()
+        for var in NEUROLIB_VARIABLES_TO_TEST:
+            corr_mat = np.corrcoef(fhn[var], multi_result[var].values.T)
+            self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+
 
 class TestFitzHughNagumoNetwork(unittest.TestCase):
-    SC = np.random.rand(2, 2)
-    DELAYS = np.array([[1.0, 2.0], [2.0, 1.0]])
+    SC = np.array(([[0.0, 1.0], [0.0, 0.0]]))
+    DELAYS = np.array([[0.0, 0.0], [0.0, 0.0]])
 
     def test_init(self):
         fhn = FitzHughNagumoNetwork(self.SC, self.DELAYS)
@@ -126,6 +145,30 @@ class TestFitzHughNagumoNetwork(unittest.TestCase):
             corr_mat = np.corrcoef(
                 np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
             )
+            self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+
+    def test_compare_w_neurolib_native_model(self):
+        """
+        Compare with neurolib's native FitzHugh-Nagumo model.
+        """
+        # run this model - default is diffusive coupling
+        fhn_multi = FitzHughNagumoNetwork(self.SC, self.DELAYS, x_coupling="diffusive", seed=SEED)
+        multi_result = fhn_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        # run neurolib's model
+        fhn_neurolib = FHNModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
+        fhn_neurolib.params["duration"] = DURATION
+        fhn_neurolib.params["dt"] = DT
+        # there is no "global coupling" parameter in MultiModel
+        fhn_neurolib.params["K_gl"] = 1.0
+        # delays <-> length matrix
+        fhn_neurolib.params["signalV"] = 1.0
+        fhn_neurolib.params["coupling"] = "diffusive"
+        fhn_neurolib.params["sigma_ou"] = 0.0
+        fhn_neurolib.params["xs_init"] = fhn_multi.initial_state[::2][:, np.newaxis]
+        fhn_neurolib.params["ys_init"] = fhn_multi.initial_state[1::2][:, np.newaxis]
+        fhn_neurolib.run()
+        for var in NEUROLIB_VARIABLES_TO_TEST:
+            corr_mat = np.corrcoef(fhn_neurolib[var], multi_result[var].values.T)
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 

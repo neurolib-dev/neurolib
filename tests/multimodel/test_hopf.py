@@ -146,24 +146,23 @@ class TestHopfNetwork(unittest.TestCase):
         Compare with neurolib's native Hopf model.
         """
         # run this model - default is diffusive coupling
-        fhn_multi = HopfNetwork(self.SC, self.DELAYS, x_coupling="diffusive", seed=SEED)
-        multi_result = fhn_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        hopf_multi = HopfNetwork(self.SC, self.DELAYS, x_coupling="diffusive", seed=SEED)
+        multi_result = hopf_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
         # run neurolib's model
-        fhn_neurolib = HopfModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
-        fhn_neurolib.params["duration"] = DURATION
-        fhn_neurolib.params["dt"] = DT
+        hopf_neurolib = HopfModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
+        hopf_neurolib.params["duration"] = DURATION
+        hopf_neurolib.params["dt"] = DT
         # there is no "global coupling" parameter in MultiModel
-        fhn_neurolib.params["K_gl"] = 1.0
+        hopf_neurolib.params["K_gl"] = 1.0
         # delays <-> length matrix
-        fhn_neurolib.params["signalV"] = 1.0
-        fhn_neurolib.params["coupling"] = "diffusive"
-        fhn_neurolib.params["sigma_ou"] = 0.0
-        fhn_neurolib.params["xs_init"] = fhn_multi.initial_state[::2][:, np.newaxis]
-        fhn_neurolib.params["ys_init"] = fhn_multi.initial_state[1::2][:, np.newaxis]
-        fhn_neurolib.run()
+        hopf_neurolib.params["signalV"] = 1.0
+        hopf_neurolib.params["coupling"] = "diffusive"
+        hopf_neurolib.params["sigma_ou"] = 0.0
+        hopf_neurolib.params["xs_init"] = hopf_multi.initial_state[::2][:, np.newaxis]
+        hopf_neurolib.params["ys_init"] = hopf_multi.initial_state[1::2][:, np.newaxis]
+        hopf_neurolib.run()
         for var in NEUROLIB_VARIABLES_TO_TEST:
-            corr_mat = np.corrcoef(fhn_neurolib[var], multi_result[var].values.T)
-            print(corr_mat)
+            corr_mat = np.corrcoef(hopf_neurolib[var], multi_result[var].values.T)
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 

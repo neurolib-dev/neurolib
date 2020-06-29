@@ -17,7 +17,6 @@ Additional reference:
 """
 
 import numpy as np
-import symengine as se
 from jitcdde import input as system_input
 
 from ..builder.base.network import Network, Node
@@ -59,14 +58,15 @@ class FitzHughNagumoMass(NeuralMass):
     ]
     required_couplings = ["network_x", "network_y"]
 
-    def __init__(self, params=None):
-        super().__init__(params=params or DEFAULT_PARAMS)
+    def __init__(self, params=None, seed=None):
+        super().__init__(params=params or DEFAULT_PARAMS, seed=seed)
 
     def _initialize_state_vector(self):
         """
         Initialize state vector.
         """
-        self.initial_state = [0.05 * np.random.uniform(0, 1)] * self.num_state_variables
+        np.random.seed(self.seed)
+        self.initial_state = (0.05 * np.random.uniform(-1, 1, size=(self.num_state_variables,))).tolist()
 
     def _derivatives(self, coupling_variables):
         [x, y] = self._unwrap_state_vector()
@@ -103,12 +103,14 @@ class FitzHughNagumoNetworkNode(Node):
     default_network_coupling = {"network_x": 0.0, "network_y": 0.0}
     default_output = "x"
 
-    def __init__(self, params=None):
+    def __init__(self, params=None, seed=None):
         """
         :param params: parameters of the FitzHugh-Nagumo mass
         :type params: dict|None
+        :param seed: seed for random number generator
+        :type seed: int|None
         """
-        fhn_mass = FitzHughNagumoMass(params)
+        fhn_mass = FitzHughNagumoMass(params, seed=seed)
         fhn_mass.index = 0
         super().__init__(neural_masses=[fhn_mass])
 
@@ -127,7 +129,7 @@ class FitzHughNagumoNetwork(Network):
     sync_variables = ["network_x", "network_y"]
 
     def __init__(
-        self, connectivity_matrix, delay_matrix, mass_params=None, x_coupling="diffusive", y_coupling="none",
+        self, connectivity_matrix, delay_matrix, mass_params=None, x_coupling="diffusive", y_coupling="none", seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -147,12 +149,15 @@ class FitzHughNagumoNetwork(Network):
         :param y_coupling: how to couple `y` variables in the nodes,
             "diffusive", "additive", or "none"
         :type y_coupling: str
+        :param seed: seed for random number generator
+        :type seed: int|None
         """
         mass_params = self._prepare_mass_params(mass_params, connectivity_matrix.shape[0])
+        seeds = self._prepare_mass_params(seed, connectivity_matrix.shape[0], native_type=int)
 
         nodes = []
         for i, node_params in enumerate(mass_params):
-            node = FitzHughNagumoNetworkNode(params=node_params)
+            node = FitzHughNagumoNetworkNode(params=node_params, seed=seeds[i])
             node.index = i
             node.idx_state_var = i * node.num_state_variables
             nodes.append(node)
@@ -169,29 +174,6 @@ class FitzHughNagumoNetwork(Network):
 
         self.x_coupling = x_coupling
         self.y_coupling = y_coupling
-
-    def _couple(self, coupling_type, coupling_variable):
-        assert coupling_variable in self.coupling_symbols
-        if coupling_type == "additive":
-            return self._additive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
-        elif coupling_type == "diffusive":
-            return self._diffusive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
-        elif coupling_type == "none":
-            return self._no_coupling(f"network_{coupling_variable}")
-        else:
-            raise ValueError(f"Unknown coupling type: {coupling_type}")
-
-    def init_network(self):
-        # create symbol for each node for input
-        self.sync_symbols = {
-            f"{symbol}_{node_idx}": se.Symbol(symbol)
-            for symbol in self.sync_variables
-            for node_idx in range(self.num_nodes)
-        }
-        for node_idx, node in enumerate(self.nodes):
-            node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables)
-        assert all(node.initialised for node in self)
-        self.initialised = True
 
     def _sync(self):
         return self._couple(self.x_coupling, "x") + self._couple(self.y_coupling, "y") + super()._sync()
