@@ -1,13 +1,13 @@
 """
 Test for the backend integrator.
 """
-
 import json
 import os
 import pickle
 import unittest
 from shutil import rmtree
 
+import numba
 import numpy as np
 import pytest
 import symengine as se
@@ -16,6 +16,7 @@ from jitcdde import t as time_vector
 from jitcdde import y as state_vector
 from neurolib.models.multimodel.builder.base.backend import BackendIntegrator, BaseBackend, JitcddeBackend, NumbaBackend
 from neurolib.models.multimodel.builder.model_input import ZeroInput
+from neurolib.utils.saver import save_to_netcdf, save_to_pickle
 
 
 class TestBaseBackend(unittest.TestCase):
@@ -181,6 +182,30 @@ class TestBackendIntegrator(unittest.TestCase):
         self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
 
+    def test_return_raw_and_xarray(self):
+        system = BackendTestingHelper()
+        results_xr = system.run(
+            self.DURATION,
+            self.DT,
+            ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
+            metadata=self.EXTRA_ATTRS,
+            backend="jitcdde",
+            return_xarray=True,
+        )
+        self.assertTrue(isinstance(results_xr, xr.Dataset))
+        times, results_raw = system.run(
+            self.DURATION,
+            self.DT,
+            ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
+            metadata=self.EXTRA_ATTRS,
+            backend="jitcdde",
+            return_xarray=False,
+        )
+        self.assertTrue(isinstance(times, np.ndarray))
+        self.assertTrue(isinstance(results_raw, np.ndarray))
+        np.testing.assert_equal(times / 1000.0, results_xr.time)
+        np.testing.assert_equal(results_raw.squeeze(), results_xr["y"].values.squeeze())
+
     def test_run_numba(self):
         system = BackendTestingHelper()
         results = system.run(
@@ -252,6 +277,10 @@ class TestBackendIntegrator(unittest.TestCase):
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
 
     def test_save_pickle(self):
+        """
+        Testing for saver done here since we have a model to integrate so it's
+        easy.
+        """
         system = BackendTestingHelper()
         # add attributes to test saving them
         results = system.run(
@@ -259,7 +288,7 @@ class TestBackendIntegrator(unittest.TestCase):
         )
         # save to pickle
         pickle_name = os.path.join(self.TEST_DIR, "pickle_test")
-        system.save_to_pickle(results, pickle_name)
+        save_to_pickle(results, pickle_name)
         pickle_name += ".pkl"
         self.assertTrue(os.path.exists(pickle_name))
         # load and check
@@ -269,13 +298,17 @@ class TestBackendIntegrator(unittest.TestCase):
         self.assertDictEqual(loaded.attrs, self.EXTRA_ATTRS)
 
     def test_save_netcdf(self):
+        """
+        Testing for saver done here since we have a model to integrate so it's
+        easy.
+        """
         system = BackendTestingHelper()
         results = system.run(
             self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), metadata=self.EXTRA_ATTRS,
         )
         # save to pickle
         nc_name = os.path.join(self.TEST_DIR, "netcdf_test")
-        system.save_to_netcdf(results, nc_name)
+        save_to_netcdf(results, nc_name)
         # actual data
         self.assertTrue(os.path.exists(nc_name + ".nc"))
         # metadata
