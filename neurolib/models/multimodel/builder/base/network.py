@@ -232,7 +232,7 @@ class Node(BackendIntegrator):
         """
         if network_coupling is None:
             network_coupling = self.default_network_coupling
-        node_system_equations = []
+        node_equation_system = []
         var_idx = 0
         for mass in self:
             # get coupling variables
@@ -245,19 +245,17 @@ class Node(BackendIntegrator):
                 {key: value for key, value in network_coupling.items() if key in mass.required_couplings}
             )
             mass.idx_state_var = self.idx_state_var + var_idx
-            node_system_equations += mass._derivatives(coupling_vars)
+            node_equation_system += mass._derivatives(coupling_vars)
             var_idx += mass.num_state_variables
-        assert len(node_system_equations) == self.num_state_variables
-        return node_system_equations
+        assert len(node_equation_system) == self.num_state_variables
+        return node_equation_system
 
 
 class SingleCouplingExcitatoryInhibitoryNode(Node):
     """
     Basic node with arbitrary number of excitatory and inhibitory populations,
     but the coupling is through one variable - usually firing rate of the
-    population. Will compute connectivity within node as per population types.
-    This node definition assumes constant delays, i.e. not dependent on time
-    nor dynamics (state variables).
+    population. Will compute connectivity within node as per mass types.
     """
 
     name = "Single coupling excitatory vs inhibitory node"
