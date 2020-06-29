@@ -139,8 +139,8 @@ class TestWilsonCowanNetworkNode(unittest.TestCase):
 
 
 class TestWilsonCowanNetwork(unittest.TestCase):
-    SC = np.random.rand(2, 2)
-    DELAYS = np.zeros((2, 2))
+    SC = np.array(([[0.0, 1.0], [0.0, 0.0]]))
+    DELAYS = np.array([[0.0, 0.0], [0.0, 0.0]])
 
     def test_init(self):
         wc = WilsonCowanNetwork(self.SC, self.DELAYS)
@@ -164,6 +164,32 @@ class TestWilsonCowanNetwork(unittest.TestCase):
                 np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
             )
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+
+    def test_compare_w_neurolib_native_model(self):
+        """
+        Compare with neurolib's native Wilson-Cowan model.
+        """
+        wc_multi = WilsonCowanNetwork(self.SC, self.DELAYS)
+        multi_result = wc_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        # run neurolib's model
+        wc_neurolib = WCModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
+        wc_neurolib.params["duration"] = DURATION
+        wc_neurolib.params["dt"] = DT
+        # there is no "global coupling" parameter in MultiModel
+        wc_neurolib.params["K_gl"] = 1.0
+        # delays <-> length matrix
+        wc_neurolib.params["signalV"] = 1.0
+        wc_neurolib.params["sigma_ou"] = 0.0
+        # match initial state
+        wc_neurolib.params["exc_init"] = wc_multi.initial_state[::2][:, np.newaxis]
+        wc_neurolib.params["inh_init"] = wc_multi.initial_state[1::2][:, np.newaxis]
+        wc_neurolib.run()
+        for (var_multi, var_neurolib) in NEUROLIB_VARIABLES_TO_TEST:
+            for node_idx in range(len(wc_multi)):
+                corr_mat = np.corrcoef(
+                    wc_neurolib[var_neurolib][node_idx, :], multi_result[var_multi].values.T[node_idx, :]
+                )
+                self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 
 if __name__ == "__main__":
