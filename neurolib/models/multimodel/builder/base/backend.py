@@ -184,15 +184,13 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         substitutions = {helper[0]: helper[1] for helper in sympified_helpers}
         return [derivative.subs(substitutions) for derivative in sympified_derivatives]
 
-    def run(self, duration, sampling_dt, noise_input, time_spin_up=0.0, **kwargs):
+    def run(self, duration, dt, noise_input, **kwargs):
         """
         Run integration.
 
-        :kwargs:
-            - dt: dt for the Euler integration
+        :kwargs: actually none - for compatiblity
         """
         assert isinstance(noise_input, np.ndarray)
-        dt = kwargs.pop("dt", self.DEFAULT_DT)
         system_size = len(self._derivatives())
 
         # substitute helpers to symbolic derivatives
@@ -224,23 +222,17 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         )
         assert callable(integrate)
         # run the numba-jitted function
-        times = time_spin_up + np.arange(sampling_dt, duration + sampling_dt, sampling_dt)
+        times = np.arange(dt, duration + dt, dt)
         logging.info(f"Integrating for {times.shape[0]} time steps...")
         result = integrate(
             dt=dt,
             n=system_size,
             max_delay=np.around(self.max_delay / dt).astype(int),
-            t_max=np.around((duration + time_spin_up) / dt).astype(int),
+            t_max=np.around(duration / dt).astype(int),
             y0=self.initial_state,
             input_y=noise_input,
         )
-        times_integrator = np.arange(dt, time_spin_up + duration + dt, dt)
-        # get indices for subsampling
-        _, subsampling_idx, _ = np.intersect1d(
-            np.around(times_integrator, decimals=5), np.around(times, decimals=5), return_indices=True,
-        )
-        np.testing.assert_allclose(times_integrator[subsampling_idx], times)
-        return times, result[subsampling_idx, :]
+        return times, result
 
 
 class JitcddeBackend(BaseBackend):
@@ -338,9 +330,7 @@ class JitcddeBackend(BaseBackend):
         if self.dde_system is not None:
             self.dde_system.check()
 
-    def run(
-        self, duration, sampling_dt, noise_input, time_spin_up=0.0, **kwargs,
-    ):
+    def run(self, duration, dt, noise_input, **kwargs):
         """
         Run integration.
 
@@ -383,7 +373,7 @@ class JitcddeBackend(BaseBackend):
         logging.info("Setting past of the state vector...")
         self._set_constant_past(self.initial_state)
         # integrate
-        times = time_spin_up + np.arange(sampling_dt, duration + sampling_dt, sampling_dt)
+        times = np.arange(dt, duration + dt, dt)
         logging.info(f"Integrating for {times.shape[0]} time steps...")
         result = np.vstack([self.dde_system.integrate(time) for time in tqdm(times)])
         if save_compiled_to is not None and not load_compiled:
@@ -438,29 +428,20 @@ class BackendIntegrator:
 
     @timer
     def run(
-        self,
-        duration,
-        sampling_dt,
-        noise_input,
-        time_spin_up=0.0,
-        metadata=None,
-        backend=DEFAULT_BACKEND,
-        return_xarray=True,
-        **kwargs,
+        self, duration, dt, noise_input, backend=DEFAULT_BACKEND, return_xarray=True, **kwargs,
     ):
         """
         Run the integration.
 
         :param duration: duration of the run, in ms
         :type duration: float
-        :param sampling_dt: sampling dt, in ms
-        :type sampling_dt: float
+        :param dt: sampling dt for `jitcdde` backend - which actually uses
+            adaptive dt, or integration dt for numba backend; in ms
+        :type dt: float
         :param noise_input: noise input to the network or node
         :type noise_input: `chspy.CubicHermiteSpline`|np.ndarray
-        :param time_spin_up: time for model spinup - will be thrown away, in ms
-        :type time_spin_up: float
-        :param metadata: optional metadata as dict
-        :type metadata: dict|None
+        :param backend: which backend to use
+        :type backend: str
         :param return_xarray: whether to return xarray's Dataset, or simply time
             and result as a matrix
         :type return_xarray: bool
@@ -473,19 +454,17 @@ class BackendIntegrator:
         logging.info(f"Initialising {backend} backend...")
         self._init_backend(backend)
         assert isinstance(self.backend_instance, BaseBackend)
-        times, result = self.backend_instance.run(
-            duration=duration, sampling_dt=sampling_dt, noise_input=noise_input, time_spin_up=time_spin_up, **kwargs,
-        )
+        times, result = self.backend_instance.run(duration=duration, dt=dt, noise_input=noise_input, **kwargs)
         logging.info("Integration done.")
         assert times.shape[0] == result.shape[0]
         assert result.shape[1] == self.num_state_variables
         if return_xarray:
-            return self._init_xarray(times=times, results=result, attributes=metadata)
+            return self._init_xarray(times=times, results=result)
         else:
             # return result as nodes x time for compatibility with neurolib
             return times, result.T
 
-    def _init_xarray(self, times, results, attributes=None):
+    def _init_xarray(self, times, results):
         """
         Initialise results array.
 
@@ -493,8 +472,6 @@ class BackendIntegrator:
         :type times: np.ndarray
         :param results: results as times x state variable
         :type results: np.ndarray
-        :param attributes: optional description attributes to add to xr.Dataset
-        :type attributes: dict|None
         """
         assert times.shape[0] == results.shape[0]
         assert results.shape[1] == sum([len(state_vars) for state_vars in self.state_variable_names])
@@ -523,7 +500,6 @@ class BackendIntegrator:
             xr_results[state_var] = array.astype(np.floating)
 
         dataset = xr.Dataset(xr_results)
-        dataset.attrs = attributes or {}
 
         return dataset
 
