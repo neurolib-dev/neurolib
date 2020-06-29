@@ -17,10 +17,13 @@ from neurolib.models.multimodel.builder.wilson_cowan import (
     WilsonCowanNetwork,
     WilsonCowanNetworkNode,
 )
+from neurolib.models.wc import WCModel
 
+SEED = 42
 DURATION = 100.0
-DT = 0.1
+DT = 0.01
 CORR_THRESHOLD = 0.99
+NEUROLIB_VARIABLES_TO_TEST = [("q_mean_EXC", "exc"), ("q_mean_INH", "inh")]
 
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
@@ -79,7 +82,7 @@ class TestWilsonCowanMass(MassTestCase):
 
 class TestWilsonCowanNetworkNode(unittest.TestCase):
     def _create_node(self):
-        node = WilsonCowanNetworkNode()
+        node = WilsonCowanNetworkNode(exc_seed=SEED, inh_seed=SEED)
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -113,6 +116,25 @@ class TestWilsonCowanNetworkNode(unittest.TestCase):
             corr_mat = np.corrcoef(
                 np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
             )
+            self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
+
+    def test_compare_w_neurolib_native_model(self):
+        """
+        Compare with neurolib's native Wilson-Cowan model.
+        """
+        # run this model
+        wc_multi = self._create_node()
+        multi_result = wc_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        # run neurolib's model
+        wc_neurolib = WCModel(seed=SEED)
+        wc_neurolib.params["duration"] = DURATION
+        wc_neurolib.params["dt"] = DT
+        # match initial state
+        wc_neurolib.params["exc_init"] = np.array([[wc_multi.initial_state[0]]])
+        wc_neurolib.params["inh_init"] = np.array([[wc_multi.initial_state[1]]])
+        wc_neurolib.run()
+        for (var_multi, var_neurolib) in NEUROLIB_VARIABLES_TO_TEST:
+            corr_mat = np.corrcoef(wc_neurolib[var_neurolib], multi_result[var_multi].values.T)
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 
