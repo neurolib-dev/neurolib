@@ -6,7 +6,7 @@ import os
 import pickle
 import unittest
 from shutil import rmtree
-import numba
+
 import numpy as np
 import pytest
 import symengine as se

@@ -68,6 +68,10 @@ class TestNode(unittest.TestCase):
         self.assertTrue(isinstance(node.default_network_coupling, dict))
         self.assertTrue(isinstance(node.sync_variables, list))
 
+    def test_sync(self):
+        node = self._create_node()
+        self.assertRaises(NotImplementedError, node._sync)
+
     def test_update_params(self):
         UPDATE_WITH = {"a": 2.4}
 
@@ -125,11 +129,20 @@ class TestSingleCouplingExcitatoryInhibitoryNode(unittest.TestCase):
     def test_update_params(self):
         UPDATE_WITH = {"a": 2.4}
         UPDATE_CONNECTIVITY = np.random.rand(2, 2)
+        UPDATE_DELAYS = np.abs(np.random.rand(2, 2))
         node = self._create_node()
-        node.update_params({"mass_0": UPDATE_WITH, "mass_1": UPDATE_WITH, "local_connectivity": UPDATE_CONNECTIVITY})
+        node.update_params(
+            {
+                "mass_0": UPDATE_WITH,
+                "mass_1": UPDATE_WITH,
+                "local_connectivity": UPDATE_CONNECTIVITY,
+                "local_delays": UPDATE_DELAYS,
+            }
+        )
         self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[0].params)
         self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[1].params)
         np.testing.assert_equal(UPDATE_CONNECTIVITY, node.connectivity)
+        np.testing.assert_equal(UPDATE_DELAYS, node.delays)
 
     def test_init_node(self):
         node = self._create_node()
@@ -187,10 +200,14 @@ class TestNetwork(unittest.TestCase):
     def test_update_params(self):
         UPDATE_CONNECTIVITY = np.random.rand(2, 2)
         UPDATE_DELAYS = np.abs(np.random.rand(2, 2))
+        UPDATE_WITH = {"a": 2.4}
         net, _ = self._create_network()
-        net.update_params({"connectivity": UPDATE_CONNECTIVITY, "delays": UPDATE_DELAYS})
+        net.update_params(
+            {"connectivity": UPDATE_CONNECTIVITY, "delays": UPDATE_DELAYS, "node_0": {"mass_0": UPDATE_WITH}}
+        )
         np.testing.assert_equal(net.connectivity, UPDATE_CONNECTIVITY)
         np.testing.assert_equal(net.delays, UPDATE_DELAYS)
+        self.assertEqual(net[0][0].params["a"], UPDATE_WITH["a"])
 
     def test_prepare_mass_params(self):
         net, _ = self._create_network()
