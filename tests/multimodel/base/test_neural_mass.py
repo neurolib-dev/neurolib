@@ -37,6 +37,10 @@ class TestNeuralMass(unittest.TestCase):
         # callbacks are UndefFunction for now
         self.assertTrue(all(isinstance(callback, se.UndefFunction) for callback in mass.callback_functions.values()))
 
+    def test_derivatives(self):
+        mass = MassTest(self.PARAMS)
+        self.assertRaises(NotImplementedError, mass._derivatives)
+
     def test_validate_params(self):
         mass = MassTest(self.PARAMS)
         self.assertDictEqual(self.PARAMS, mass.params)
