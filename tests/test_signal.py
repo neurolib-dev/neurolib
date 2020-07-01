@@ -334,3 +334,7 @@ class TestSignal(unittest.TestCase):
         self.assertTrue(isinstance(fc, xr.DataArray))
         correct_shape = (network_sig.shape[1], network_sig.shape[1])
         self.assertTupleEqual(fc.shape, correct_shape)
+
+
+if __name__ == "__main__":
+    unittest.main()
