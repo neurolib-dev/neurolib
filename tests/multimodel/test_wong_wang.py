@@ -2,7 +2,7 @@
 Set of tests for Wong-Wang model.
 """
 import unittest
-
+import numba
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
@@ -119,7 +119,7 @@ class TestWongWangNetworkNode(unittest.TestCase):
         self.assertEqual(len(ww), 2)
         self.assertDictEqual(ww[0].params, DEFAULT_PARAMS_EXC)
         self.assertDictEqual(ww[1].params, DEFAULT_PARAMS_INH)
-        self.assertEqual(len(ww.default_network_coupling), 1)
+        self.assertEqual(len(ww.default_network_coupling), 2)
         np.testing.assert_equal(
             np.array(sum([wwm.initial_state for wwm in ww], [])), ww.initial_state,
         )
