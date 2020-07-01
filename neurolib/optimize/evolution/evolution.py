@@ -742,28 +742,54 @@ class Evolution:
 
         evolution.parameterSpace = pars
         evolution.paramInterval = evolution.parameterSpace.named_tuple
-        # # we reinitialize the evolution with the arguments of the saved evolution
-        # evolution.__init__(
-        #     evalFunction=evolution.evalFunction,
-        #     parameterSpace=pars,
-        #     weightList=evolution.weightList,
-        #     model=evolution.model,
-        #     ncores=evolution.ncores,
-        #     POP_INIT_SIZE=evolution.POP_INIT_SIZE,
-        #     POP_SIZE=evolution.POP_SIZE,
-        #     NGEN=evolution.NGEN,
-        #     matingOperator=evolution.matingOperator,
-        #     MATE_P=evolution.MATE_P,
-        #     mutationOperator=evolution.mutationOperator,
-        #     MUTATE_P=evolution.MUTATE_P,
-        #     selectionOperator=evolution.selectionOperator,
-        #     SELECT_P=evolution.SELECT_P,
-        #     parentSelectionOperator=evolution.parentSelectionOperator,
-        #     PARENT_SELECT_P=evolution.PARENT_SELECT_P,
-        #     individualGenerator=evolution.individualGenerator,
-        # )
-
         return evolution
+
+    def _outputToDf(self, pop, df):
+        """Loads outputs dictionary from evolution from the .outputs attribute
+        and writes data into a dataframe.
+
+        :param pop: Population of which to get outputs from.
+        :type pop: list
+        :param df: Dataframe to which outputs are written
+        :type df: pandas.core.frame.DataFrame
+        :return: Dataframe with outputs
+        :rtype: pandas.core.frame.DataFrame
+        """
+        assert len(pop) == len(df), "Dataframe and population do not have same length."
+        # load outputs into dataframe
+        for i, p in enumerate(pop):
+            if hasattr(p, "outputs"):
+                for key, value in p.outputs.items():
+                    # only save floats, ints and arrays
+                    if isinstance(value, (float, int, np.ndarray)):
+                        # save 1-dim arrays
+                        if isinstance(value, np.ndarray):
+                            # to save a numpy array, convert column to object type
+                            if key not in df:
+                                df[key] = None
+                            df[key] = df[key].astype(object)
+                            df.at[i, key] = value
+        return df
+
+    def _dropDuplicatesFromDf(self, df):
+        """Drops duplicates from dfEvolution dataframe.
+        Tries vanilla drop_duplicates, which fails if the Dataframe contains
+        data objects like numpy.arrays. Tries to drop via key "id" if it fails.
+
+        :param df: Input dataframe with duplicates to drop
+        :type df: pandas.core.frame.DataFrame
+        :return: Dataframe without duplicates
+        :rtype: pandas.core.frame.DataFrame
+        """
+        try:
+            df = df.drop_duplicates()
+        except:
+            logging.info('Failed to drop_duplicates() without column name. Trying by column "id".')
+            try:
+                df = df.drop_duplicates(subset="id")
+            except:
+                logging.warn("Failed to drop_duplicates from dataframe.")
+        return df
 
     @property
     def dfPop(self):
@@ -784,6 +810,8 @@ class Evolution:
         dfPop["score"] = scores
         dfPop["id"] = indIds
         dfPop["gen"] = [p.gIdx for p in validPop]
+
+        dfPop = self._outputToDf(validPop, dfPop)
 
         # add fitness columns
         # NOTE: when loading an evolution with dill using loadingEvolution
@@ -815,6 +843,8 @@ class Evolution:
         dfEvolution["id"] = indIds
         dfEvolution["gen"] = [p.gIdx for p in allIndividuals]
 
+        dfEvolution = self._outputToDf(allIndividuals, dfEvolution)
+
         # add fitness columns
         # NOTE: have to do this with wvalues and divide by weights later, why?
         # Because after loading the evolution with dill, somehow multiple fitnesses
@@ -828,9 +858,8 @@ class Evolution:
         # the history keeps all individuals of all generations
         # there can be duplicates (in elitism for example), which we filter
         # out for the dataframe
-        dfEvolution = dfEvolution.drop_duplicates()
+        dfEvolution = self._dropDuplicatesFromDf(dfEvolution)
         dfEvolution = dfEvolution.reset_index(drop=True)
-
         return dfEvolution
 
     def loadResults(self, filename=None, trajectoryName=None):
