@@ -25,13 +25,11 @@ from jitcdde import input as system_input
 from symengine import exp
 
 from ..builder.base.constants import EXC, INH, LAMBDA_SPEED
-from ..builder.base.network import Node, SingleCouplingExcitatoryInhibitoryNode
+from ..builder.base.network import Network, Node, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
 
-# TODO compare with TVB (at least the reduced version - they have it)
-
 DEFAULT_PARAMS_EXC = {
-    "a": 310.0,  # nC^-1
+    "a": 0.31,  # nC^-1
     "b": 0.125,  # kHz
     "d": 160.0,  # ms
     "tau": 100.0,  # ms
@@ -42,7 +40,7 @@ DEFAULT_PARAMS_EXC = {
     "lambda": LAMBDA_SPEED,
 }
 DEFAULT_PARAMS_INH = {
-    "a": 615.0,  # nC^-1
+    "a": 0.615,  # nC^-1
     "b": 0.177,  # kHz
     "d": 87.0,  # ms
     "tau": 10.0,  # ms
@@ -190,7 +188,7 @@ class ReducedWongWangMass(WongWangMass):
 
     name = "Reduced Wong-Wang mass"
     label = "ReducedWWmass"
-    required_couplings = ["network_s"]
+    required_couplings = ["network_S"]
     required_params = [
         "a",
         "b",
@@ -211,7 +209,7 @@ class ReducedWongWangMass(WongWangMass):
 
         current = (
             self.params["w"] * self.params["J"] * s
-            + self.params["J"] * coupling_variables["network_s"]
+            + self.params["J"] * coupling_variables["network_S"]
             + self.params["exc_current"]
         )
         firing_rate_now = self._get_firing_rate(current)
@@ -274,7 +272,7 @@ class ReducedWongWangNetworkNode(Node):
     name = "Reduced Wong-Wang node"
     label = "ReducedWWnode"
 
-    default_network_coupling = {"network_s": 0.0}
+    default_network_coupling = {"network_S": 0.0}
     default_output = "S"
 
     def __init__(self, params=None, seed=None):
@@ -292,4 +290,137 @@ class ReducedWongWangNetworkNode(Node):
         return []
 
 
-# TODO add network instances for both WW versions, after checking with TVB
+class WongWangNetwork(Network):
+    """
+    Whole brain network of Wong-Wong excitatory and inhibitory nodes.
+    """
+
+    name = "Wong-Wang network"
+    label = "WWnet"
+
+    sync_variables = ["network_exc_exc"]
+
+    def __init__(
+        self,
+        connectivity_matrix,
+        delay_matrix,
+        exc_mass_params=None,
+        inh_mass_params=None,
+        local_connectivity=DEFAULT_WW_NODE_CONNECTIVITY,
+        exc_seed=None,
+        inh_seed=None,
+    ):
+        """
+        :param connectivity_matrix: connectivity matrix for between nodes
+            coupling, typically DTI structural connectivity, matrix as [to,
+            from]
+        :type connectivity_matrix: np.ndarray
+        :param delay_matrix: delay matrix between nodes, typically derived from
+            length matrix, if None, delays are all zeros, in ms, matrix as
+            [to, from]
+        :type delay_matrix: np.ndarray|None
+        :param exc_mass_params: parameters for each excitatory Wong-Wang
+            neural mass, if None, will use default
+        :type exc_mass_params: list[dict]|dict|None
+        :param inh_mass_params: parameters for each inhibitory Wong-Wang
+            neural mass, if None, will use default
+        :type inh_mass_params: list[dict]|dict|None
+        :param local_connectivity: local within-node connectivity matrix
+        :type local_connectivity: list[np.ndarray]|np.ndarray
+        :param exc_seed: seed for random number generator for the excitatory
+            masses
+        :type exc_seed: int|None
+        :param inh_seed: seed for random number generator for the excitatory
+            masses
+        :type inh_seed: int|None
+        """
+        num_nodes = connectivity_matrix.shape[0]
+        exc_mass_params = self._prepare_mass_params(exc_mass_params, num_nodes)
+        inh_mass_params = self._prepare_mass_params(inh_mass_params, num_nodes)
+        exc_seeds = self._prepare_mass_params(exc_seed, num_nodes, native_type=int)
+        inh_seeds = self._prepare_mass_params(inh_seed, num_nodes, native_type=int)
+        local_connectivity = self._prepare_mass_params(local_connectivity, num_nodes, native_type=np.ndarray)
+
+        nodes = []
+        for i, (exc_params, inh_params, local_conn) in enumerate(
+            zip(exc_mass_params, inh_mass_params, local_connectivity)
+        ):
+            node = WongWangNetworkNode(
+                exc_params=exc_params,
+                inh_params=inh_params,
+                connectivity=local_conn,
+                exc_seed=exc_seeds[i],
+                inh_seed=inh_seeds[i],
+            )
+            node.index = i
+            node.idx_state_var = i * node.num_state_variables
+            # set correct indices of noise input
+            for mass in node:
+                mass.noise_input_idx = [2 * i + mass.index]
+            nodes.append(node)
+
+        super().__init__(
+            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+        )
+        # assert we have one sync variables
+        assert len(self.sync_variables) == 1
+
+    def _sync(self):
+        # excitatory population within the node is first, hence the
+        # within_node_idx is 0
+        return self._additive_coupling(within_node_idx=0, symbol="network_exc_exc") + super()._sync()
+
+
+class ReducedWongWangNetwork(Network):
+    """
+    Whole brain network of Reduced Wong-Wang masses.
+    """
+
+    name = "Reduced Wong-Wang network"
+    label = "ReducedWWnet"
+
+    sync_variables = ["network_S"]
+
+    def __init__(self, connectivity_matrix, delay_matrix, mass_params=None, s_coupling="additive", seed=None):
+        """
+        :param connectivity_matrix: connectivity matrix for between nodes
+            coupling, typically DTI structural connectivity, matrix as [to,
+            from]
+        :type connectivity_matrix: np.ndarray
+        :param delay_matrix: delay matrix between nodes, typically derived from
+            length matrix, if None, delays are all zeros, in ms, matrix as
+            [to, from]
+        :type delay_matrix: np.ndarray|None
+        :param mass_params: parameters for each Hopf normal form neural
+            mass, if None, will use default
+        :type mass_params: list[dict]|dict|None
+        :param s_coupling: how to couple `s` variables in the nodes,
+            "diffusive", "additive", or "none"
+        :type s_coupling: str
+        :param seed: seed for random number generator
+        :type seed: int|None
+        """
+        mass_params = self._prepare_mass_params(mass_params, connectivity_matrix.shape[0])
+        seeds = self._prepare_mass_params(seed, connectivity_matrix.shape[0], native_type=int)
+
+        nodes = []
+        for i, node_params in enumerate(mass_params):
+            node = ReducedWongWangNetworkNode(params=node_params, seed=seeds[i])
+            node.index = i
+            node.idx_state_var = i * node.num_state_variables
+            nodes.append(node)
+
+        super().__init__(
+            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+        )
+        # get all coupling variables
+        all_couplings = [mass.coupling_variables for node in self.nodes for mass in node.masses]
+        # assert they are the same
+        assert all(all_couplings[0] == coupling for coupling in all_couplings)
+        # invert as to name: idx
+        self.coupling_symbols = {v: k for k, v in all_couplings[0].items()}
+
+        self.s_coupling = s_coupling
+
+    def _sync(self):
+        return self._couple(self.s_coupling, "S") + super()._sync()

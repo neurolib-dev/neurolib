@@ -177,12 +177,12 @@ class WilsonCowanNetwork(Network):
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
-            coupling, typically DTI structural connectivity, matrix as [from,
-            to]
+            coupling, typically DTI structural connectivity, matrix as [to,
+            from]
         :type connectivity_matrix: np.ndarray
         :param delay_matrix: delay matrix between nodes, typically derived from
             length matrix, if None, delays are all zeros, in ms, matrix as
-            [from, to]
+            [to, from]
         :type delay_matrix: np.ndarray|None
         :param exc_mass_params: parameters for each excitatory Wilson-Cowan
             neural mass, if None, will use default
