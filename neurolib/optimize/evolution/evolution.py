@@ -772,9 +772,9 @@ class Evolution:
                             df.at[i, key] = value
                         elif isinstance(value, (float, int)):
                             # save numbers
-                            self.dfResults.loc[runId, key] = value
+                            df.loc[runId, key] = value
                     else:
-                        self.dfResults.loc[runId, key] = nan_value
+                        df.loc[runId, key] = nan_value
         return df
 
     def _dropDuplicatesFromDf(self, df):
@@ -797,8 +797,7 @@ class Evolution:
                 logging.warning("Failed to drop_duplicates from dataframe.")
         return df
 
-    @property
-    def dfPop(self):
+    def dfPop(self, outputs=False):
         """Returns a `pandas` DataFrame of the current generation's population parameters. 
         This object can be further used to easily analyse the population.
         :return: Pandas DataFrame with all individuals and their parameters
@@ -817,7 +816,8 @@ class Evolution:
         dfPop["id"] = indIds
         dfPop["gen"] = [p.gIdx for p in validPop]
 
-        dfPop = self._outputToDf(validPop, dfPop)
+        if outputs:
+            dfPop = self._outputToDf(validPop, dfPop)
 
         # add fitness columns
         # NOTE: when loading an evolution with dill using loadingEvolution
@@ -830,8 +830,7 @@ class Evolution:
                 dfPop.loc[ip, column_name] = p.fitness.values[i]
         return dfPop
 
-    @property
-    def dfEvolution(self):
+    def dfEvolution(self, outputs=False):
         """Returns a `pandas` DataFrame with the individuals of the the whole evolution.
         This method can be usef after loading an evolution from disk using loadEvolution()
 
@@ -849,7 +848,8 @@ class Evolution:
         dfEvolution["id"] = indIds
         dfEvolution["gen"] = [p.gIdx for p in allIndividuals]
 
-        dfEvolution = self._outputToDf(allIndividuals, dfEvolution)
+        if outputs:
+            dfEvolution = self._outputToDf(allIndividuals, dfEvolution)
 
         # add fitness columns
         # NOTE: have to do this with wvalues and divide by weights later, why?
