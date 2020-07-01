@@ -9,3 +9,8 @@ tqdm
 pypet
 deap
 dill
+symengine
+sympy
+jitcdde
+chspy
+dpath
