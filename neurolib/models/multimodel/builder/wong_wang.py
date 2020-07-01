@@ -36,7 +36,8 @@ DEFAULT_PARAMS_EXC = {
     "gamma": 0.641,
     "W": 1.0,
     "exc_current": 0.382,  # nA
-    "J": 0.15,  # nA
+    "J_NMDA": 0.15,  # nA
+    "J_I": 1.0,  # nA
     "lambda": LAMBDA_SPEED,
 }
 DEFAULT_PARAMS_INH = {
@@ -46,6 +47,7 @@ DEFAULT_PARAMS_INH = {
     "tau": 10.0,  # ms
     "W": 0.7,
     "exc_current": 0.382,  # nA
+    "J_NMDA": 0.15,  # nA
     "lambda": LAMBDA_SPEED,
 }
 DEFAULT_PARAMS_REDUCED = {
@@ -110,7 +112,8 @@ class ExcitatoryWongWangMass(WongWangMass):
         "gamma",
         "W",
         "exc_current",
-        "J",
+        "J_NMDA",
+        "J_I",
         "lambda",
     ]
 
@@ -122,9 +125,9 @@ class ExcitatoryWongWangMass(WongWangMass):
 
         current = (
             self.params["W"] * self.params["exc_current"]
-            + coupling_variables["node_exc_exc"]
-            + self.params["J"] * coupling_variables["network_exc_exc"]
-            - coupling_variables["node_exc_inh"]
+            + self.params["J_NMDA"] * coupling_variables["node_exc_exc"]
+            + self.params["J_NMDA"] * coupling_variables["network_exc_exc"]
+            - self.params["J_I"] * coupling_variables["node_exc_inh"]
         )
         firing_rate_now = self._get_firing_rate(current)
         d_s = (
@@ -149,7 +152,7 @@ class InhibitoryWongWangMass(WongWangMass):
     mass_type = INH
     coupling_variables = {0: f"S_{INH}"}
     state_variable_names = [f"S_{INH}", f"q_mean_{INH}"]
-    required_couplings = ["node_inh_exc", "node_inh_inh"]
+    required_couplings = ["node_inh_exc", "node_inh_inh", "network_inh_exc"]
     required_params = [
         "a",
         "b",
@@ -157,6 +160,7 @@ class InhibitoryWongWangMass(WongWangMass):
         "tau",
         "W",
         "exc_current",
+        "J_NMDA",
         "lambda",
     ]
 
@@ -168,8 +172,9 @@ class InhibitoryWongWangMass(WongWangMass):
 
         current = (
             self.params["W"] * self.params["exc_current"]
-            + coupling_variables["node_inh_exc"]
+            + self.params["J_NMDA"] * coupling_variables["node_inh_exc"]
             - coupling_variables["node_inh_inh"]
+            + self.params["J_NMDA"] * coupling_variables["network_inh_exc"]
         )
         firing_rate_now = self._get_firing_rate(current)
         d_s = (-s / self.params["tau"]) + firing_rate_now + system_input(self.noise_input_idx[0])
@@ -233,6 +238,7 @@ class WongWangNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
     name = "Wong-Wang node"
     label = "WWnode"
 
+    default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"S_{EXC}"
 
     def __init__(
@@ -298,7 +304,7 @@ class WongWangNetwork(Network):
     name = "Wong-Wang network"
     label = "WWnet"
 
-    sync_variables = ["network_exc_exc"]
+    sync_variables = ["network_exc_exc", "network_inh_exc"]
 
     def __init__(
         self,
@@ -362,13 +368,17 @@ class WongWangNetwork(Network):
         super().__init__(
             nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
         )
-        # assert we have one sync variables
-        assert len(self.sync_variables) == 1
+        # assert we have two sync variables
+        assert len(self.sync_variables) == 2
 
     def _sync(self):
         # excitatory population within the node is first, hence the
         # within_node_idx is 0
-        return self._additive_coupling(within_node_idx=0, symbol="network_exc_exc") + super()._sync()
+        return (
+            self._additive_coupling(within_node_idx=0, symbol="network_exc_exc")
+            + self._additive_coupling(within_node_idx=0, symbol="network_inh_exc")
+            + super()._sync()
+        )
 
 
 class ReducedWongWangNetwork(Network):
