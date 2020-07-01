@@ -397,7 +397,7 @@ def construct_stimulus(
     elif stim == "dc":
         """Simple DC input and return to baseline
         """
-        stimulus = np.hstack(([stim_bias] * int(nostim_before / dt), [stim_bias + stim_amp] * int(1000 / dt),))
+        stimulus = np.hstack(([stim_bias] * int(nostim_before / dt), [stim_bias + stim_amp] * int(1000 / dt)))
         stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
         stimulus[stimulus < 0] = 0
     elif stim == "rect":
