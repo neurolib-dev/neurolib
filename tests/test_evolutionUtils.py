@@ -42,16 +42,6 @@ class TestEvolutinUtils(unittest.TestCase):
         cls.evolution.pop = pop
         cls.evolution.gIdx = 1
 
-    def test_info(self):
-        self.evolution.info()
-
-    def test_dfPop(self):
-        dfPop = self.evolution.dfPop()
-        self.assertEqual(len(dfPop), len(evolution.pop))
-
-    def test_dfEvolution(self):
-        dfEvolution = self.evolution.dfEvolution()
-
     def test_getValidPopulation(self):
         self.evolution.getValidPopulation(self.pop)
         self.evolution.getInvalidPopulation(self.pop)
