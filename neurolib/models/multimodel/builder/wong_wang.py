@@ -51,14 +51,14 @@ DEFAULT_PARAMS_INH = {
     "lambda": LAMBDA_SPEED,
 }
 DEFAULT_PARAMS_REDUCED = {
-    "a": 270.0,  # nC^-1
+    "a": 0.27,  # nC^-1
     "b": 0.108,  # kHz
     "d": 154.0,  # ms
     "tau": 100.0,  # ms
-    "gamma": 0.641 / 1000.0,
+    "gamma": 0.641,  # kinetic parameter
     "w": 0.6,
     "J": 0.2609,  # nA
-    "exc_current": 0.3,  # nA
+    "exc_current": 0.33,  # nA
     "lambda": LAMBDA_SPEED,
 }
 
