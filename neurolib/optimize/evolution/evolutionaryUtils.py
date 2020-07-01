@@ -102,7 +102,7 @@ def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0"):
     if dfPop is not None:
         dfPop = dfPop
     else:
-        dfPop = evolution.dfPop
+        dfPop = evolution.dfPop()
 
     fig = plt.figure()
     sm = sns.pairplot(
@@ -136,9 +136,9 @@ def plotSeabornScatter2(evolution, dfPop=None, save_plots=None, color="C0"):
     if dfPop is not None:
         dfPop = dfPop
     else:
-        dfPop = evolution.dfPop
+        dfPop = evolution.dfPop()
     # https://towardsdatascience.com/visualizing-data-with-pair-plots-in-python-f228cf529166
-    grid = sns.PairGrid(data=evolution.dfPop, vars=vars)
+    grid = sns.PairGrid(data=evolution.dfPop(), vars=vars)
     grid = grid.map_upper(plt.scatter, color=color, alpha=0.5)
     grid = grid.map_diag(plt.hist, bins=10, color=color, edgecolor="k")
     grid = grid.map_lower(sns.kdeplot, cmap="Reds")
