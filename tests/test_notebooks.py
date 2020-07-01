@@ -1,11 +1,12 @@
 import os
 import unittest
+from shutil import rmtree
 
-# from https://github.com/ReviewNB/treon/blob/master/tests/test_execution.py
 from treon.test_execution import execute_notebook
 
 
 def _run(notebook):
+    # from https://github.com/ReviewNB/treon/blob/master/tests/test_execution.py
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), notebook)
     return execute_notebook(path)
 
@@ -70,3 +71,14 @@ class TestExampleNotebooks(unittest.TestCase):
         fname = "../examples/example-2.2-evolution-brain-network-aln-resting-state-fit.ipynb"
         successful, output = _run(fname)
         assert successful, print(output)
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Clear after tests
+        """
+        rmtree("data")
+
+
+if __name__ == "__main__":
+    unittest.main()

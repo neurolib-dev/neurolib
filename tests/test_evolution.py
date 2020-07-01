@@ -1,21 +1,17 @@
 import logging
 import time
-import sys
 import unittest
-import pytest
+from shutil import rmtree
 
-import numpy as np
-
-from neurolib.models.aln import ALNModel
-from neurolib.utils.parameterSpace import ParameterSpace
-from neurolib.optimize.evolution import Evolution
-
-import neurolib.optimize.evolution.evolutionaryUtils as eu
 import neurolib.utils.functions as func
+import numpy as np
+from neurolib.models.aln import ALNModel
+from neurolib.optimize.evolution import Evolution
+from neurolib.utils.parameterSpace import ParameterSpace
 
 
 class TestVanillaEvolution(unittest.TestCase):
-    """Test of the evolutionary optimization without a neural model 
+    """Test of the evolutionary optimization without a neural model
     """
 
     def test_circle_optimization(self):
@@ -68,8 +64,7 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
-                model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -82,9 +77,7 @@ class TestALNEvolution(unittest.TestCase):
         alnModel = ALNModel()
         alnModel.run(bold=True)
 
-        pars = ParameterSpace(
-            ["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]]
-        )
+        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
         evolution = Evolution(
             evaluateSimulation,
             pars,
@@ -98,7 +91,7 @@ class TestALNEvolution(unittest.TestCase):
         )
         evolution.run(verbose=False)
         evolution.info(plot=False)
-        traj = evolution.loadResults()
+        _ = evolution.loadResults()
         gens, all_scores = evolution.getScoresDuringEvolution()
 
         # save the evolution and reload it from disk
@@ -113,6 +106,13 @@ class TestALNEvolution(unittest.TestCase):
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Clear after tests
+        """
+        rmtree("data")
 
     def test_nsga2(self):
         logging.info("\t > Evolution: Testing ALN single node ...")
@@ -133,8 +133,7 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
-                model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -149,9 +148,7 @@ class TestALNEvolution(unittest.TestCase):
         alnModel = ALNModel()
         alnModel.run(bold=True)
 
-        pars = ParameterSpace(
-            ["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]]
-        )
+        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
         evolution = Evolution(
             evaluateSimulation,
             pars,
