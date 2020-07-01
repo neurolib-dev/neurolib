@@ -1,15 +1,12 @@
+import copy
 import logging
-import time
 import unittest
 
 import numpy as np
-import copy
-
 from neurolib.models.aln import ALNModel
-from neurolib.models.hopf import HopfModel
 from neurolib.models.fhn import FHNModel
+from neurolib.models.hopf import HopfModel
 from neurolib.models.wc import WCModel
-
 from neurolib.utils.loadData import Dataset
 
 
@@ -82,3 +79,7 @@ class TestAutochunk(unittest.TestCase):
         for i in range(duration_dt):
             inputs = [inp_x[:, i], inp_y[:, i]]
             model.autochunk(inputs=inputs, append_outputs=True)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,5 +1,3 @@
-import logging
-import time
 import unittest
 
 import numpy as np
@@ -70,13 +68,17 @@ class TestFunctions(unittest.TestCase):
     def test_construct_stimulus(self):
         self.single_node.params["duration"] = 2000
         stimulus = func.construct_stimulus(
-            "ac", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1,
+            "ac", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
         )
         stimulus = func.construct_stimulus(
-            "dc", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1,
+            "dc", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
         )
         stimulus = func.construct_stimulus(
-            "rect", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1,
+            "rect", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
         )
 
         self.single_node.run()
+
+
+if __name__ == "__main__":
+    unittest.main()
