@@ -51,7 +51,7 @@ class Model:
 
         # function to transform model state before passing it to the bold model
         # Note: This can be used like the parameter \epsilon in Friston2000
-        # (neural efficacy) by multiplying the input with a constant via 
+        # (neural efficacy) by multiplying the input with a constant via
         # self.boldInputTransform = lambda x: x * epsilon
         if not hasattr(self, "boldInputTransform"):
             self.boldInputTransform = None

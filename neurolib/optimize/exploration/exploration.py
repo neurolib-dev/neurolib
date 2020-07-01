@@ -193,7 +193,7 @@ class BoxSearch:
             logging.warn("Random initial conditions not implemented yet")
         # get parameters of this run from pypet trajectory
         runParams = self.getParametersFromTraj(traj)
-        
+
         # set the parameters for the model
         self.model.params.update(runParams)
 
@@ -233,10 +233,9 @@ class BoxSearch:
 
         # fix rng seed, which is saved as a string if None
         if "seed" in runParams:
-            if runParams['seed'] == "None": 
-                runParams['seed'] = None 
+            if runParams["seed"] == "None":
+                runParams["seed"] = None
         return runParams
-
 
     def getParametersFromTraj(self, traj):
         """Returns the parameters of the current run as a (dot.able) dictionary
@@ -408,7 +407,11 @@ class BoxSearch:
         filename = self.HDF_FILE or filename
 
         # either use loaded pypetTrajectory or load from HDF file if it isn't available
-        pypetTrajectory = self.pypetTrajectory if hasattr(self, "pypetTrajectory") else pu.loadPypetTrajectory(filename, trajectoryName)
+        pypetTrajectory = (
+            self.pypetTrajectory
+            if hasattr(self, "pypetTrajectory")
+            else pu.loadPypetTrajectory(filename, trajectoryName)
+        )
 
         # # if there was no pypetTrajectory loaded before
         # if pypetTrajectory is None:
@@ -435,7 +438,7 @@ class BoxSearch:
 
         # load result from either the preloaded .result attribute (from .loadResults)
         # or from disk if results haven't been loaded yet
-        #result = self.results[runId] if hasattr(self, "results") else self.getRun(runId)
+        # result = self.results[runId] if hasattr(self, "results") else self.getRun(runId)
         return self.results[runId] if hasattr(self, "results") else self.getRun(runId)
 
     def info(self):
