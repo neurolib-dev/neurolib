@@ -92,7 +92,7 @@ class InhibitoryWilsonCowanMass(WilsonCowanMass):
     coupling_variables = {0: f"q_mean_{INH}"}
     state_variable_names = [f"q_mean_{INH}"]
     mass_type = INH
-    required_couplings = ["node_inh_exc", "node_inh_inh"]
+    required_couplings = ["node_inh_exc", "node_inh_inh", "network_inh_exc"]
 
     def __init__(self, params=None, seed=None):
         super().__init__(params=params or DEFAULT_PARAMS_INH, seed=seed)
@@ -103,7 +103,10 @@ class InhibitoryWilsonCowanMass(WilsonCowanMass):
             -x
             + (1.0 - x)
             * self._sigmoid(
-                coupling_variables["node_inh_exc"] - coupling_variables["node_inh_inh"] + self.params["ext_input"]
+                coupling_variables["node_inh_exc"]
+                - coupling_variables["node_inh_inh"]
+                + coupling_variables["network_inh_exc"]
+                + self.params["ext_input"]
             )
             + system_input(self.noise_input_idx[0])
         ) / self.params["tau"]
@@ -120,6 +123,7 @@ class WilsonCowanNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
     name = "Wilson-Cowan node"
     label = "WCnode"
 
+    default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"q_mean_{EXC}"
 
     def __init__(
@@ -159,7 +163,7 @@ class WilsonCowanNetwork(Network):
     name = "Wilson-Cowan network"
     label = "WCnet"
 
-    sync_variables = ["network_exc_exc"]
+    sync_variables = ["network_exc_exc", "network_inh_exc"]
 
     def __init__(
         self,
@@ -223,10 +227,14 @@ class WilsonCowanNetwork(Network):
         super().__init__(
             nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
         )
-        # assert we have only one sync variable
-        assert len(self.sync_variables) == 1
+        # assert we have two sync variables
+        assert len(self.sync_variables) == 2
 
     def _sync(self):
         # excitatory population within the node is first, hence the
         # within_node_idx is 0
-        return self._additive_coupling(within_node_idx=0, symbol=self.sync_variables[0]) + super()._sync()
+        return (
+            self._additive_coupling(within_node_idx=0, symbol="network_exc_exc")
+            + self._additive_coupling(within_node_idx=0, symbol="network_inh_exc")
+            + super()._sync()
+        )
