@@ -690,7 +690,7 @@ class Evolution:
             try:
                 self.plotProgress(reverse=reverse)
             except:
-                logging.warn("Could not plot progress, is this a previously saved simulation?")
+                logging.warning("Could not plot progress, is this a previously saved simulation?")
             eu.plotPopulation(
                 self, plotScattermatrix=True, save_plots=self.trajectoryName, color=self.plotColor,
             )
@@ -794,7 +794,7 @@ class Evolution:
             try:
                 df = df.drop_duplicates(subset="id")
             except:
-                logging.warn("Failed to drop_duplicates from dataframe.")
+                logging.warning("Failed to drop_duplicates from dataframe.")
         return df
 
     @property
