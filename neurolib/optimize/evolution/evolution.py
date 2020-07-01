@@ -756,6 +756,7 @@ class Evolution:
         :rtype: pandas.core.frame.DataFrame
         """
         assert len(pop) == len(df), "Dataframe and population do not have same length."
+        nan_value = np.nan
         # load outputs into dataframe
         for i, p in enumerate(pop):
             if hasattr(p, "outputs"):
@@ -769,6 +770,11 @@ class Evolution:
                                 df[key] = None
                             df[key] = df[key].astype(object)
                             df.at[i, key] = value
+                        elif isinstance(value, (float, int)):
+                            # save numbers
+                            self.dfResults.loc[runId, key] = value
+                    else:
+                        self.dfResults.loc[runId, key] = nan_value
         return df
 
     def _dropDuplicatesFromDf(self, df):
