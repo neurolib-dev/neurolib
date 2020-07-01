@@ -42,4 +42,7 @@ class TestParameterSpace(unittest.TestCase):
         par.named_tuple
 
         par.dict()
-        print(par)
+
+
+if __name__ == "__main__":
+    unittest.main()
