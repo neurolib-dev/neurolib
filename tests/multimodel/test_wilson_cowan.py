@@ -3,7 +3,7 @@ Set of tests for Wilson-Cowan model.
 """
 
 import unittest
-import numba
+
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
