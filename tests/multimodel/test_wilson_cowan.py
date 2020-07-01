@@ -3,7 +3,7 @@ Set of tests for Wilson-Cowan model.
 """
 
 import unittest
-
+import numba
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
@@ -94,7 +94,7 @@ class TestWilsonCowanNetworkNode(unittest.TestCase):
         self.assertEqual(len(wc), 2)
         self.assertDictEqual(wc[0].params, DEFAULT_PARAMS_EXC)
         self.assertDictEqual(wc[1].params, DEFAULT_PARAMS_INH)
-        self.assertEqual(len(wc.default_network_coupling), 1)
+        self.assertEqual(len(wc.default_network_coupling), 2)
         np.testing.assert_equal(
             np.array(sum([wcm.initial_state for wcm in wc], [])), wc.initial_state,
         )
