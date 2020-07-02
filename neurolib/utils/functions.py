@@ -75,6 +75,30 @@ def matrix_correlation(M1, M2):
     return cc
 
 
+def weighted_correlation(x, y, w):
+    """Weighted Pearson correlation of two series.
+
+    :param x: Timeseries 1
+    :type x: list, np.array
+    :param y: Timeseries 2, must have same length as x
+    :type y: list, np.array
+    :param w: Weight vector, must have same length as x and y
+    :type w: list, np.array
+    :return: Weighted correlation coefficient
+    :rtype: float
+    """
+
+    def weighted_mean(x, w):
+        """Weighted Mean"""
+        return np.sum(x * w) / np.sum(w)
+
+    def weighted_cov(x, y, w):
+        """Weighted Covariance"""
+        return np.sum(w * (x - weighted_mean(x, w)) * (y - weighted_mean(y, w))) / np.sum(w)
+
+    return weighted_cov(x, y, w) / np.sqrt(weighted_cov(x, x, w) * weighted_cov(y, y, w))
+
+
 def fc(ts):
     """Functional connectivity matrix of timeseries multidimensional `ts` (Nxt).
     Pearson correlation (from `np.corrcoef()` is used).
@@ -367,7 +391,7 @@ def construct_stimulus(
         n_periods = n_periods or int(stim_freq)
 
         stimulus = np.hstack(
-            ([stim_bias] * int(nostim_before / dt), np.tile(sinus_stim(stim_freq, stim_amp) + stim_bias, n_periods))
+            ([stim_bias] * int(nostim_before / dt), np.tile(sinus_stim(stim_freq, stim_amp) + stim_bias, n_periods),)
         )
         stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
     elif stim == "dc":

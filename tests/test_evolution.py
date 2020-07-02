@@ -104,6 +104,17 @@ class TestALNEvolution(unittest.TestCase):
         # overview of all past individuals
         evolution.dfEvolution
 
+        # evolution information
+        evolution.info()
+        dfPop = evolution.dfPop(outputs=True)
+        self.assertEqual(len(dfPop), len(evolution.pop))
+        evolution.dfEvolution()
+
+        # methods
+        evolution.getValidPopulation(evolution.pop)
+        evolution.getInvalidPopulation(evolution.pop)
+        # evolution.individualToDict(evolution.pop[0])
+
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
@@ -146,7 +157,7 @@ class TestALNEvolution(unittest.TestCase):
             return fitness_tuple, model.outputs
 
         alnModel = ALNModel()
-        alnModel.run(bold=True)
+        # alnModel.run(bold=True)
 
         pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean"], [[0.0, 4.0], [0.0, 4.0]])
         evolution = Evolution(

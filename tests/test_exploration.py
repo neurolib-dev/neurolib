@@ -72,6 +72,7 @@ class TestExplorationBrainNetwork(unittest.TestCase):
         search.getRun(0, pypetShortNames=True)
         search.getRun(0, pypetShortNames=False)
         search.loadResults()
+        search.info()
 
 
 class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
