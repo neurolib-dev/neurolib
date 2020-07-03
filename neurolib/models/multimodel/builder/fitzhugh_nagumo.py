@@ -91,7 +91,7 @@ class FitzHughNagumoMass(NeuralMass):
         return [d_x, d_y]
 
 
-class FitzHughNagumoNetworkNode(Node):
+class FitzHughNagumoNode(Node):
     """
     Default FitzHugh-Nagumo node with 1 neural mass modelled as FitzHugh-Nagumo
     oscillator.
@@ -127,9 +127,12 @@ class FitzHughNagumoNetwork(Network):
     label = "FHNnet"
 
     sync_variables = ["network_x", "network_y"]
+    # define default coupling in FitzHugh-Nagumo network
+    x_coupling = "diffusive"
+    y_coupling = "none"
 
     def __init__(
-        self, connectivity_matrix, delay_matrix, mass_params=None, x_coupling="diffusive", y_coupling="none", seed=None,
+        self, connectivity_matrix, delay_matrix, mass_params=None, seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -143,11 +146,6 @@ class FitzHughNagumoNetwork(Network):
         :param mass_params: parameters for each Hopf normal form neural
             mass, if None, will use default
         :type mass_params: list[dict]|dict|None
-        :param x_coupling: how to couple `x` variables in the nodes,
-            "diffusive", "additive", or "none"
-        :type x_coupling: str
-        :param y_coupling: how to couple `y` variables in the nodes,
-            "diffusive", "additive", or "none"
         :type y_coupling: str
         :param seed: seed for random number generator
         :type seed: int|None
@@ -157,7 +155,7 @@ class FitzHughNagumoNetwork(Network):
 
         nodes = []
         for i, node_params in enumerate(mass_params):
-            node = FitzHughNagumoNetworkNode(params=node_params, seed=seeds[i])
+            node = FitzHughNagumoNode(params=node_params, seed=seeds[i])
             node.index = i
             node.idx_state_var = i * node.num_state_variables
             nodes.append(node)
@@ -171,9 +169,6 @@ class FitzHughNagumoNetwork(Network):
         assert all(all_couplings[0] == coupling for coupling in all_couplings)
         # invert as to name: idx
         self.coupling_symbols = {v: k for k, v in all_couplings[0].items()}
-
-        self.x_coupling = x_coupling
-        self.y_coupling = y_coupling
 
     def _sync(self):
         return self._couple(self.x_coupling, "x") + self._couple(self.y_coupling, "y") + super()._sync()

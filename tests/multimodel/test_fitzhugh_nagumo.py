@@ -12,7 +12,7 @@ from neurolib.models.multimodel.builder.fitzhugh_nagumo import (
     DEFAULT_PARAMS,
     FitzHughNagumoMass,
     FitzHughNagumoNetwork,
-    FitzHughNagumoNetworkNode,
+    FitzHughNagumoNode,
 )
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
@@ -64,9 +64,9 @@ class TestFitzHughNagumoMass(MassTestCase):
         self.assertTupleEqual(result.shape, (int(DURATION / DT), fhn.num_state_variables))
 
 
-class TestFitzHughNagumoNetworkNode(unittest.TestCase):
+class TestFitzHughNagumoNode(unittest.TestCase):
     def _create_node(self):
-        node = FitzHughNagumoNetworkNode(seed=SEED)
+        node = FitzHughNagumoNode(seed=SEED)
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -74,7 +74,7 @@ class TestFitzHughNagumoNetworkNode(unittest.TestCase):
 
     def test_init(self):
         fhn = self._create_node()
-        self.assertTrue(isinstance(fhn, FitzHughNagumoNetworkNode))
+        self.assertTrue(isinstance(fhn, FitzHughNagumoNode))
         self.assertEqual(len(fhn), 1)
         self.assertDictEqual(fhn[0].params, DEFAULT_PARAMS)
         self.assertEqual(len(fhn.default_network_coupling), 2)

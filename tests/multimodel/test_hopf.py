@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.hopf import HopfModel
-from neurolib.models.multimodel.builder.hopf import DEFAULT_PARAMS, HopfMass, HopfNetwork, HopfNetworkNode
+from neurolib.models.multimodel.builder.hopf import DEFAULT_PARAMS, HopfMass, HopfNetwork, HopfNode
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 SEED = 42
@@ -58,9 +58,9 @@ class TestHopfMass(MassTestCase):
         self.assertTupleEqual(result.shape, (int(DURATION / DT), hopf.num_state_variables))
 
 
-class TestHopfNetworkNode(unittest.TestCase):
+class TestHopfNode(unittest.TestCase):
     def _create_node(self):
-        node = HopfNetworkNode(seed=SEED)
+        node = HopfNode(seed=SEED)
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -68,7 +68,7 @@ class TestHopfNetworkNode(unittest.TestCase):
 
     def test_init(self):
         hopf = self._create_node()
-        self.assertTrue(isinstance(hopf, HopfNetworkNode))
+        self.assertTrue(isinstance(hopf, HopfNode))
         self.assertEqual(len(hopf), 1)
         self.assertDictEqual(hopf[0].params, DEFAULT_PARAMS)
         self.assertEqual(len(hopf.default_network_coupling), 2)

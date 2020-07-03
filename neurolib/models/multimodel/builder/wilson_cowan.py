@@ -114,7 +114,7 @@ class InhibitoryWilsonCowanMass(WilsonCowanMass):
         return [d_x]
 
 
-class WilsonCowanNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
+class WilsonCowanNode(SingleCouplingExcitatoryInhibitoryNode):
     """
     Default Wilson-Cowan network node with 1 excitatory and 1 inhibitory
     population.
@@ -210,7 +210,7 @@ class WilsonCowanNetwork(Network):
         for i, (exc_params, inh_params, local_conn) in enumerate(
             zip(exc_mass_params, inh_mass_params, local_connectivity)
         ):
-            node = WilsonCowanNetworkNode(
+            node = WilsonCowanNode(
                 exc_params=exc_params,
                 inh_params=inh_params,
                 connectivity=local_conn,

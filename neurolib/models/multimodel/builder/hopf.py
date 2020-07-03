@@ -79,7 +79,7 @@ class HopfMass(NeuralMass):
         return [d_x, d_y]
 
 
-class HopfNetworkNode(Node):
+class HopfNode(Node):
     """
     Default Hopf normal form node with 1 neural mass modelled as Landau-Stuart
     oscillator.
@@ -115,9 +115,12 @@ class HopfNetwork(Network):
     label = "HopfNet"
 
     sync_variables = ["network_x", "network_y"]
+    # define default coupling in Hopf network
+    x_coupling = "diffusive"
+    y_coupling = "none"
 
     def __init__(
-        self, connectivity_matrix, delay_matrix, mass_params=None, x_coupling="diffusive", y_coupling="none", seed=None,
+        self, connectivity_matrix, delay_matrix, mass_params=None, seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -145,7 +148,7 @@ class HopfNetwork(Network):
 
         nodes = []
         for i, node_params in enumerate(mass_params):
-            node = HopfNetworkNode(params=node_params, seed=seeds[i])
+            node = HopfNode(params=node_params, seed=seeds[i])
             node.index = i
             node.idx_state_var = i * node.num_state_variables
             nodes.append(node)
@@ -159,9 +162,6 @@ class HopfNetwork(Network):
         assert all(all_couplings[0] == coupling for coupling in all_couplings)
         # invert as to name: idx
         self.coupling_symbols = {v: k for k, v in all_couplings[0].items()}
-
-        self.x_coupling = x_coupling
-        self.y_coupling = y_coupling
 
     def _sync(self):
         return self._couple(self.x_coupling, "x") + self._couple(self.y_coupling, "y") + super()._sync()
