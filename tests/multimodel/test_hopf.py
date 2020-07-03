@@ -146,7 +146,7 @@ class TestHopfNetwork(unittest.TestCase):
         Compare with neurolib's native Hopf model.
         """
         # run this model - default is diffusive coupling
-        hopf_multi = HopfNetwork(self.SC, self.DELAYS, x_coupling="diffusive", seed=SEED)
+        hopf_multi = HopfNetwork(self.SC, self.DELAYS, seed=SEED)
         multi_result = hopf_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
         # run neurolib's model
         hopf_neurolib = HopfModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
