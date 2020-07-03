@@ -412,6 +412,10 @@ class Network(BackendIntegrator):
     # from different nodes in this network, implemented as `jitcdde` helpers
     sync_variables = []
 
+    # defines coupling type (usually additive, diffusive or none) per coupling
+    # variable
+    default_coupling = {}
+
     # default output of the network - e.g. BOLD is computed from this
     default_output = None
 
@@ -611,7 +615,14 @@ class Network(BackendIntegrator):
         as
         [(se.Symbol, <symbolic definition>)]
         """
-        return sum([node._sync() for node in self], [])
+        # start with summing coupling from all nodes - nodal coupling
+        all_couplings = sum([node._sync() for node in self], [])
+        for coupling_var, coupling_type in self.default_coupling.items():
+            assert coupling_var in self.sync_variables
+            assert coupling_var.startswith("network_")
+            # add coupling to the list of all coupling definitions
+            all_couplings += self._couple(coupling_type, coupling_var[8:])
+        return all_couplings
 
     def _construct_input_matrix(self, within_node_idx):
         """

@@ -116,8 +116,7 @@ class HopfNetwork(Network):
 
     sync_variables = ["network_x", "network_y"]
     # define default coupling in Hopf network
-    x_coupling = "diffusive"
-    y_coupling = "none"
+    default_coupling = {"network_x": "diffusive", "network_y": "none"}
 
     def __init__(
         self, connectivity_matrix, delay_matrix, mass_params=None, seed=None,
@@ -162,6 +161,3 @@ class HopfNetwork(Network):
         assert all(all_couplings[0] == coupling for coupling in all_couplings)
         # invert as to name: idx
         self.coupling_symbols = {v: k for k, v in all_couplings[0].items()}
-
-    def _sync(self):
-        return self._couple(self.x_coupling, "x") + self._couple(self.y_coupling, "y") + super()._sync()

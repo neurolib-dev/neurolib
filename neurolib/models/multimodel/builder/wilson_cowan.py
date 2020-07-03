@@ -164,6 +164,8 @@ class WilsonCowanNetwork(Network):
     label = "WCnet"
 
     sync_variables = ["network_exc_exc", "network_inh_exc"]
+    # define default coupling in Wilson-Cowan network
+    default_coupling = {"network_exc_exc": "additive", "network_inh_exc": "additive"}
 
     def __init__(
         self,
@@ -229,12 +231,4 @@ class WilsonCowanNetwork(Network):
         )
         # assert we have two sync variables
         assert len(self.sync_variables) == 2
-
-    def _sync(self):
-        # excitatory population within the node is first, hence the
-        # within_node_idx is 0
-        return (
-            self._additive_coupling(within_node_idx=0, symbol="network_exc_exc")
-            + self._additive_coupling(within_node_idx=0, symbol="network_inh_exc")
-            + super()._sync()
-        )
+        self.coupling_symbols = {"exc_exc": 0, "inh_exc": 0}
