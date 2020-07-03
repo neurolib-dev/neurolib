@@ -152,7 +152,7 @@ class TestFitzHughNagumoNetwork(unittest.TestCase):
         Compare with neurolib's native FitzHugh-Nagumo model.
         """
         # run this model - default is diffusive coupling
-        fhn_multi = FitzHughNagumoNetwork(self.SC, self.DELAYS, x_coupling="diffusive", seed=SEED)
+        fhn_multi = FitzHughNagumoNetwork(self.SC, self.DELAYS, seed=SEED)
         multi_result = fhn_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
         # run neurolib's model
         fhn_neurolib = FHNModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
