@@ -305,6 +305,8 @@ class WongWangNetwork(Network):
     label = "WWnet"
 
     sync_variables = ["network_exc_exc", "network_inh_exc"]
+    # define default coupling in Wong-Wang network
+    default_coupling = {"network_exc_exc": "additive", "network_inh_exc": "additive"}
 
     def __init__(
         self,
@@ -370,15 +372,7 @@ class WongWangNetwork(Network):
         )
         # assert we have two sync variables
         assert len(self.sync_variables) == 2
-
-    def _sync(self):
-        # excitatory population within the node is first, hence the
-        # within_node_idx is 0
-        return (
-            self._additive_coupling(within_node_idx=0, symbol="network_exc_exc")
-            + self._additive_coupling(within_node_idx=0, symbol="network_inh_exc")
-            + super()._sync()
-        )
+        self.coupling_symbols = {"exc_exc": 0, "inh_exc": 0}
 
 
 class ReducedWongWangNetwork(Network):
@@ -391,7 +385,7 @@ class ReducedWongWangNetwork(Network):
 
     sync_variables = ["network_S"]
     # define default coupling in Reduced Wong-Wang network
-    s_coupling = "additive"
+    default_coupling = {"network_S": "additive"}
 
     def __init__(self, connectivity_matrix, delay_matrix, mass_params=None, seed=None):
         """
@@ -428,6 +422,3 @@ class ReducedWongWangNetwork(Network):
         assert all(all_couplings[0] == coupling for coupling in all_couplings)
         # invert as to name: idx
         self.coupling_symbols = {v: k for k, v in all_couplings[0].items()}
-
-    def _sync(self):
-        return self._couple(self.s_coupling, "S") + super()._sync()
