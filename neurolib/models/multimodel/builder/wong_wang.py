@@ -230,7 +230,7 @@ class ReducedWongWangMass(WongWangMass):
         return [d_s, d_firing_rate]
 
 
-class WongWangNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
+class WongWangNode(SingleCouplingExcitatoryInhibitoryNode):
     """
     Default Wong-Wang network node with 1 excitatory and 1 inhibitory popultion.
     """
@@ -270,7 +270,7 @@ class WongWangNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
         )
 
 
-class ReducedWongWangNetworkNode(Node):
+class ReducedWongWangNode(Node):
     """
     Default reduced Wong-Wang network node with 1 neural mass.
     """
@@ -351,7 +351,7 @@ class WongWangNetwork(Network):
         for i, (exc_params, inh_params, local_conn) in enumerate(
             zip(exc_mass_params, inh_mass_params, local_connectivity)
         ):
-            node = WongWangNetworkNode(
+            node = WongWangNode(
                 exc_params=exc_params,
                 inh_params=inh_params,
                 connectivity=local_conn,
@@ -390,8 +390,10 @@ class ReducedWongWangNetwork(Network):
     label = "ReducedWWnet"
 
     sync_variables = ["network_S"]
+    # define default coupling in Reduced Wong-Wang network
+    s_coupling = "additive"
 
-    def __init__(self, connectivity_matrix, delay_matrix, mass_params=None, s_coupling="additive", seed=None):
+    def __init__(self, connectivity_matrix, delay_matrix, mass_params=None, seed=None):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
             coupling, typically DTI structural connectivity, matrix as [to,
@@ -404,9 +406,6 @@ class ReducedWongWangNetwork(Network):
         :param mass_params: parameters for each Hopf normal form neural
             mass, if None, will use default
         :type mass_params: list[dict]|dict|None
-        :param s_coupling: how to couple `s` variables in the nodes,
-            "diffusive", "additive", or "none"
-        :type s_coupling: str
         :param seed: seed for random number generator
         :type seed: int|None
         """
@@ -415,7 +414,7 @@ class ReducedWongWangNetwork(Network):
 
         nodes = []
         for i, node_params in enumerate(mass_params):
-            node = ReducedWongWangNetworkNode(params=node_params, seed=seeds[i])
+            node = ReducedWongWangNode(params=node_params, seed=seeds[i])
             node.index = i
             node.idx_state_var = i * node.num_state_variables
             nodes.append(node)
@@ -429,8 +428,6 @@ class ReducedWongWangNetwork(Network):
         assert all(all_couplings[0] == coupling for coupling in all_couplings)
         # invert as to name: idx
         self.coupling_symbols = {v: k for k, v in all_couplings[0].items()}
-
-        self.s_coupling = s_coupling
 
     def _sync(self):
         return self._couple(self.s_coupling, "S") + super()._sync()

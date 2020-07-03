@@ -11,9 +11,9 @@ from neurolib.models.multimodel.builder.model_input import ZeroInput
 from neurolib.models.multimodel.builder.thalamus import (
     DEFAULT_PARAMS_TCR,
     DEFAULT_PARAMS_TRN,
-    ThalamicNetworkNode,
-    ThalamicReticularPopulation,
-    ThalamocorticalPopulation,
+    ThalamicNode,
+    ThalamicReticularMass,
+    ThalamocorticalMass,
 )
 from neurolib.models.thalamus import ThalamicMassModel
 
@@ -47,14 +47,14 @@ class MassTestCase(unittest.TestCase):
 
 class TestThalamicMass(MassTestCase):
     def _create_tcr_mass(self):
-        tcr = ThalamocorticalPopulation()
+        tcr = ThalamocorticalMass()
         tcr.index = 0
         tcr.idx_state_var = 0
         tcr.init_mass()
         return tcr
 
     def _create_trn_mass(self):
-        trn = ThalamicReticularPopulation()
+        trn = ThalamicReticularMass()
         trn.index = 0
         trn.idx_state_var = 0
         trn.init_mass()
@@ -63,8 +63,8 @@ class TestThalamicMass(MassTestCase):
     def test_init(self):
         tcr = self._create_tcr_mass()
         trn = self._create_trn_mass()
-        self.assertTrue(isinstance(tcr, ThalamocorticalPopulation))
-        self.assertTrue(isinstance(trn, ThalamicReticularPopulation))
+        self.assertTrue(isinstance(tcr, ThalamocorticalMass))
+        self.assertTrue(isinstance(trn, ThalamicReticularMass))
         self.assertDictEqual(tcr.params, DEFAULT_PARAMS_TCR)
         self.assertDictEqual(trn.params, DEFAULT_PARAMS_TRN)
         for thlm in [tcr, trn]:
@@ -84,9 +84,9 @@ class TestThalamicMass(MassTestCase):
             self.assertTupleEqual(result.shape, (int(DURATION / DT), thlm.num_state_variables))
 
 
-class TestThalamicNetworkNode(unittest.TestCase):
+class TestThalamicNode(unittest.TestCase):
     def _create_node(self):
-        node = ThalamicNetworkNode()
+        node = ThalamicNode()
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -94,7 +94,7 @@ class TestThalamicNetworkNode(unittest.TestCase):
 
     def test_init(self):
         thlm = self._create_node()
-        self.assertTrue(isinstance(thlm, ThalamicNetworkNode))
+        self.assertTrue(isinstance(thlm, ThalamicNode))
         self.assertEqual(len(thlm), 2)
         self.assertDictEqual(thlm[0].params, DEFAULT_PARAMS_TCR)
         self.assertDictEqual(thlm[1].params, DEFAULT_PARAMS_TRN)

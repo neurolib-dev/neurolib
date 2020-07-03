@@ -2,7 +2,7 @@
 Set of tests for Wong-Wang model.
 """
 import unittest
-import numba
+
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
@@ -16,9 +16,9 @@ from neurolib.models.multimodel.builder.wong_wang import (
     InhibitoryWongWangMass,
     ReducedWongWangMass,
     ReducedWongWangNetwork,
-    ReducedWongWangNetworkNode,
+    ReducedWongWangNode,
     WongWangNetwork,
-    WongWangNetworkNode,
+    WongWangNode,
 )
 
 SEED = 42
@@ -105,9 +105,9 @@ class TestReducedWongWangMass(MassTestCase):
         self.assertTupleEqual(result.shape, (int(DURATION / DT), rww.num_state_variables))
 
 
-class TestWongWangNetworkNode(unittest.TestCase):
+class TestWongWangNode(unittest.TestCase):
     def _create_node(self):
-        node = WongWangNetworkNode(exc_seed=SEED, inh_seed=SEED)
+        node = WongWangNode(exc_seed=SEED, inh_seed=SEED)
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -115,7 +115,7 @@ class TestWongWangNetworkNode(unittest.TestCase):
 
     def test_init(self):
         ww = self._create_node()
-        self.assertTrue(isinstance(ww, WongWangNetworkNode))
+        self.assertTrue(isinstance(ww, WongWangNode))
         self.assertEqual(len(ww), 2)
         self.assertDictEqual(ww[0].params, DEFAULT_PARAMS_EXC)
         self.assertDictEqual(ww[1].params, DEFAULT_PARAMS_INH)
@@ -144,9 +144,9 @@ class TestWongWangNetworkNode(unittest.TestCase):
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 
-class TestReducedWongWangNetworkNode(unittest.TestCase):
+class TestReducedWongWangNode(unittest.TestCase):
     def _create_node(self):
-        node = ReducedWongWangNetworkNode(seed=SEED)
+        node = ReducedWongWangNode(seed=SEED)
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -154,7 +154,7 @@ class TestReducedWongWangNetworkNode(unittest.TestCase):
 
     def test_init(self):
         rww = self._create_node()
-        self.assertTrue(isinstance(rww, ReducedWongWangNetworkNode))
+        self.assertTrue(isinstance(rww, ReducedWongWangNode))
         self.assertEqual(len(rww), 1)
         self.assertDictEqual(rww[0].params, DEFAULT_PARAMS_REDUCED)
         self.assertEqual(len(rww.default_network_coupling), 1)

@@ -15,7 +15,7 @@ from neurolib.models.multimodel.builder.wilson_cowan import (
     ExcitatoryWilsonCowanMass,
     InhibitoryWilsonCowanMass,
     WilsonCowanNetwork,
-    WilsonCowanNetworkNode,
+    WilsonCowanNode,
 )
 from neurolib.models.wc import WCModel
 
@@ -80,9 +80,9 @@ class TestWilsonCowanMass(MassTestCase):
             self.assertTupleEqual(result.shape, (int(DURATION / DT), wc.num_state_variables))
 
 
-class TestWilsonCowanNetworkNode(unittest.TestCase):
+class TestWilsonCowanNode(unittest.TestCase):
     def _create_node(self):
-        node = WilsonCowanNetworkNode(exc_seed=SEED, inh_seed=SEED)
+        node = WilsonCowanNode(exc_seed=SEED, inh_seed=SEED)
         node.index = 0
         node.idx_state_var = 0
         node.init_node()
@@ -90,7 +90,7 @@ class TestWilsonCowanNetworkNode(unittest.TestCase):
 
     def test_init(self):
         wc = self._create_node()
-        self.assertTrue(isinstance(wc, WilsonCowanNetworkNode))
+        self.assertTrue(isinstance(wc, WilsonCowanNode))
         self.assertEqual(len(wc), 2)
         self.assertDictEqual(wc[0].params, DEFAULT_PARAMS_EXC)
         self.assertDictEqual(wc[1].params, DEFAULT_PARAMS_INH)

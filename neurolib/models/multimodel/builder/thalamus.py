@@ -112,7 +112,7 @@ class ThalamicMass(NeuralMass):
         )
 
 
-class ThalamocorticalPopulation(ThalamicMass):
+class ThalamocorticalMass(ThalamicMass):
     """
     Excitatory mass representing thalamocortical relay neurons in the thalamus.
     """
@@ -289,7 +289,7 @@ class ThalamocorticalPopulation(ThalamicMass):
         ]
 
 
-class ThalamicReticularPopulation(ThalamicMass):
+class ThalamicReticularMass(ThalamicMass):
     """
     Inhibitory mass representing thalamic reticular nuclei neurons in the
     thalamus.
@@ -407,7 +407,7 @@ class ThalamicReticularPopulation(ThalamicMass):
         ]
 
 
-class ThalamicNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
+class ThalamicNode(SingleCouplingExcitatoryInhibitoryNode):
     """
     Thalamic mass model network node with 1 excitatory (TCR) and 1 inhibitory
     (TRN) population due to Costa et al.
@@ -430,9 +430,9 @@ class ThalamicNetworkNode(SingleCouplingExcitatoryInhibitoryNode):
         :param connectivity: local connectivity matrix
         :type connectivity: np.ndarray
         """
-        tcr_mass = ThalamocorticalPopulation(params=tcr_params)
+        tcr_mass = ThalamocorticalMass(params=tcr_params)
         tcr_mass.index = 0
-        trn_mass = ThalamicReticularPopulation(params=trn_params)
+        trn_mass = ThalamicReticularMass(params=trn_params)
         trn_mass.index = 1
         super().__init__(
             neural_masses=[tcr_mass, trn_mass],
