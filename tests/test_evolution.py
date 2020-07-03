@@ -105,7 +105,7 @@ class TestALNEvolution(unittest.TestCase):
         evolution.dfEvolution
 
         # evolution information
-        evolution.info()
+        evolution.info(plot=False)
         dfPop = evolution.dfPop(outputs=True)
         self.assertEqual(len(dfPop), len(evolution.pop))
         evolution.dfEvolution()

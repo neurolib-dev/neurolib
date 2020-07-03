@@ -33,6 +33,11 @@ class TestBaseBackend(unittest.TestCase):
         self.assertEqual(base.state_variable_names, None)
         self.assertEqual(base.label, None)
 
+    def test_methods(self):
+        base = BaseBackend()
+        base.clean()
+        self.assertRaises(NotImplementedError, base.run)
+
 
 class TestJitcddeBackend(unittest.TestCase):
     def test_init(self):
@@ -177,6 +182,21 @@ class TestBackendIntegrator(unittest.TestCase):
         )
         self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
+
+    def test_jitcdde_other_features(self):
+        system = BackendTestingHelper()
+        _ = system.run(self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), backend="jitcdde")
+        system.backend_instance._check()
+        system.backend_instance.dde_system.reset_integrator()
+        system.backend_instance._integrate_blindly(system.max_delay)
+        system.clean()
+
+    def test_backend_value_error(self):
+        system = BackendTestingHelper()
+        with pytest.raises(ValueError):
+            _ = system.run(
+                self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), backend="wrong"
+            )
 
     def test_return_raw_and_xarray(self):
         system = BackendTestingHelper()

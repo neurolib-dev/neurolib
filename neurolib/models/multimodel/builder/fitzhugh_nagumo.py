@@ -1,21 +1,19 @@
 """
-Hopf normal form model.
+FitzHugh–Nagumo model.
 
-References:
-    Landau, L. D. (1944). On the problem of turbulence. In Dokl. Akad. Nauk USSR
-    (Vol. 44, p. 311).
+Main references:
+    FitzHugh, R. (1955). Mathematical models of threshold phenomena in the
+    nerve membrane. The bulletin of mathematical biophysics, 17(4), 257-278.
 
-    Stuart, J. T. (1960). On the non-linear mechanics of wave disturbances in
-    stable and unstable parallel flows Part 1. The basic behaviour in plane
-    Poiseuille flow. Journal of Fluid Mechanics, 9(3), 353-370.
+    Nagumo, J., Arimoto, S., & Yoshizawa, S. (1962). An active pulse
+    transmission line simulating nerve axon. Proceedings of the IRE, 50(10),
+    2061-2070.
 
-    Kuznetsov, Y. A. (2013). Elements of applied bifurcation theory (Vol. 112).
-    Springer Science & Business Media.
-
-    Deco, G., Cabral, J., Woolrich, M. W., Stevner, A. B., Van Hartevelt, T. J.,
-    & Kringelbach, M. L. (2017). Single or multiple frequency generators in
-    on-going brain activity: A mechanistic whole-brain model of empirical MEG
-    data. Neuroimage, 152, 538-550.
+Additional reference:
+    Kostova, T., Ravindran, R., & Schonbek, M. (2004). FitzHugh–Nagumo
+    revisited: Types of bifurcations, periodical forcing and stability regions
+    by a Lyapunov functional. International journal of bifurcation and chaos,
+    14(03), 913-925.
 """
 
 import numpy as np
@@ -25,26 +23,39 @@ from ..builder.base.network import Network, Node
 from ..builder.base.neural_mass import NeuralMass
 
 DEFAULT_PARAMS = {
-    "a": 0.25,
-    "omega": 0.2,
-    "ext_input_x": 0.0,
+    "alpha": 3.0,
+    "beta": 4.0,
+    "gamma": -1.5,
+    "delta": 0.0,
+    "epsilon": 0.5,
+    "tau": 20.0,
+    "ext_input_x": 1.0,
     "ext_input_y": 0.0,
 }
 
 
-class HopfMass(NeuralMass):
+class FitzHughNagumoMass(NeuralMass):
     """
-    Hopf normal form (Landau-Stuart oscillator).
+    FitzHugh-Nagumo neural mass.
     """
 
-    name = "Hopf normal form mass"
-    label = "HopfMass"
+    name = "FitzHugh-Nagumo mass"
+    label = "FHNmass"
 
     num_state_variables = 2
     num_noise_variables = 2
     coupling_variables = {0: "x", 1: "y"}
     state_variable_names = ["x", "y"]
-    required_params = ["a", "omega", "ext_input_x", "ext_input_y"]
+    required_params = [
+        "alpha",
+        "beta",
+        "gamma",
+        "delta",
+        "epsilon",
+        "tau",
+        "ext_input_x",
+        "ext_input_y",
+    ]
     required_couplings = ["network_x", "network_y"]
 
     def __init__(self, params=None, seed=None):
@@ -55,22 +66,23 @@ class HopfMass(NeuralMass):
         Initialize state vector.
         """
         np.random.seed(self.seed)
-        self.initial_state = (0.5 * np.random.uniform(-1, 1, size=(self.num_state_variables,))).tolist()
+        self.initial_state = (0.05 * np.random.uniform(-1, 1, size=(self.num_state_variables,))).tolist()
 
     def _derivatives(self, coupling_variables):
         [x, y] = self._unwrap_state_vector()
 
         d_x = (
-            (self.params["a"] - x ** 2 - y ** 2) * x
-            - self.params["omega"] * y
+            -self.params["alpha"] * x ** 3
+            + self.params["beta"] * x ** 2
+            + self.params["gamma"] * x
+            - y
             + coupling_variables["network_x"]
             + system_input(self.noise_input_idx[0])
             + self.params["ext_input_x"]
         )
 
         d_y = (
-            (self.params["a"] - x ** 2 - y ** 2) * y
-            + self.params["omega"] * x
+            (x - self.params["delta"] - self.params["epsilon"] * y) / self.params["tau"]
             + coupling_variables["network_y"]
             + system_input(self.noise_input_idx[1])
             + self.params["ext_input_y"]
@@ -79,43 +91,43 @@ class HopfMass(NeuralMass):
         return [d_x, d_y]
 
 
-class HopfNode(Node):
+class FitzHughNagumoNode(Node):
     """
-    Default Hopf normal form node with 1 neural mass modelled as Landau-Stuart
+    Default FitzHugh-Nagumo node with 1 neural mass modelled as FitzHugh-Nagumo
     oscillator.
     """
 
-    name = "Hopf normal form node"
-    label = "HopfNode"
+    name = "FitzHugh-Nagumo node"
+    label = "FHNnode"
 
     default_network_coupling = {"network_x": 0.0, "network_y": 0.0}
     default_output = "x"
 
     def __init__(self, params=None, seed=None):
         """
-        :param params: parameters of the Hopf mass
+        :param params: parameters of the FitzHugh-Nagumo mass
         :type params: dict|None
         :param seed: seed for random number generator
         :type seed: int|None
         """
-        hopf_mass = HopfMass(params, seed=seed)
-        hopf_mass.index = 0
-        super().__init__(neural_masses=[hopf_mass])
+        fhn_mass = FitzHughNagumoMass(params, seed=seed)
+        fhn_mass.index = 0
+        super().__init__(neural_masses=[fhn_mass])
 
     def _sync(self):
         return []
 
 
-class HopfNetwork(Network):
+class FitzHughNagumoNetwork(Network):
     """
-    Whole brain network of Hopf normal form oscillators.
+    Whole brain network of FitzHugh-Nagumo oscillators.
     """
 
-    name = "Hopf normal form network"
-    label = "HopfNet"
+    name = "FitzHugh-Nagumo network"
+    label = "FHNnet"
 
     sync_variables = ["network_x", "network_y"]
-    # define default coupling in Hopf network
+    # define default coupling in FitzHugh-Nagumo network
     default_coupling = {"network_x": "diffusive", "network_y": "none"}
 
     def __init__(
@@ -133,11 +145,6 @@ class HopfNetwork(Network):
         :param mass_params: parameters for each Hopf normal form neural
             mass, if None, will use default
         :type mass_params: list[dict]|dict|None
-        :param x_coupling: how to couple `x` variables in the nodes,
-            "diffusive", "additive", or "none"
-        :type x_coupling: str
-        :param y_coupling: how to couple `y` variables in the nodes,
-            "diffusive", "additive", or "none"
         :type y_coupling: str
         :param seed: seed for random number generator
         :type seed: int|None
@@ -147,7 +154,7 @@ class HopfNetwork(Network):
 
         nodes = []
         for i, node_params in enumerate(mass_params):
-            node = HopfNode(params=node_params, seed=seeds[i])
+            node = FitzHughNagumoNode(params=node_params, seed=seeds[i])
             node.index = i
             node.idx_state_var = i * node.num_state_variables
             nodes.append(node)
