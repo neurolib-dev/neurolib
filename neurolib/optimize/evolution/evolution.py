@@ -772,9 +772,9 @@ class Evolution:
                             df.at[i, key] = value
                         elif isinstance(value, (float, int)):
                             # save numbers
-                            df.loc[runId, key] = value
+                            df.loc[i, key] = value
                     else:
-                        df.loc[runId, key] = nan_value
+                        df.loc[i, key] = nan_value
         return df
 
     def _dropDuplicatesFromDf(self, df):
