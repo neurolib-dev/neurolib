@@ -33,8 +33,8 @@ def _strip_keys(dict_test, strip_keys=PARAMS_NOT_TEST_KEYS):
 
 SEED = 42
 DURATION = 100.0
-DT = 0.1
-CORR_THRESHOLD = 0.95
+DT = 0.05
+CORR_THRESHOLD = 0.9
 NEUROLIB_VARIABLES_TO_TEST = [("q_mean_EXC", "rates_exc"), ("q_mean_INH", "rates_inh")]
 
 # dictionary as backend name: format in which the noise is passed
@@ -306,6 +306,7 @@ class TestAdExNetwork(unittest.TestCase):
                 corr_mat = np.corrcoef(
                     aln_neurolib[var_neurolib][node_idx, :], multi_result[var_multi].values.T[node_idx, :]
                 )
+                print(corr_mat)
                 self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
 
