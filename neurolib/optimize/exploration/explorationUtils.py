@@ -136,29 +136,37 @@ def plotExplorationResults(
             contour_alpha = kwargs["contour_alpha"] if "contour_alpha" in kwargs else 1
             contour_kwargs = kwargs["contour_kwargs"] if "contour_kwargs" in kwargs else dict()
 
-            # check if this is a dataframe
-            if isinstance(contour, pd.DataFrame):
-                contourPlotDf(
-                    contour,
-                    color=contour_color,
-                    ax=ax,
-                    levels=contour_levels,
-                    alpha=contour_alpha,
-                    contour_kwargs=contour_kwargs,
-                )
-            # if it's a string, take that value as the contour plot value
-            elif isinstance(contour, str):
-                df_contour = df.pivot_table(values=contour, index=par2, columns=par1, dropna=False)
-                if nan_to_zero:
-                    df_contour = df_contour.fillna(0)
-                contourPlotDf(
-                    df_contour,
-                    color=contour_color,
-                    ax=ax,
-                    levels=contour_levels,
-                    alpha=contour_alpha,
-                    contour_kwargs=contour_kwargs,
-                )
+            def plot_contour(contour, contour_color, contour_levels, contour_alpha, contour_kwargs):
+                # check if this is a dataframe
+                if isinstance(contour, pd.DataFrame):
+                    contourPlotDf(
+                        contour,
+                        color=contour_color,
+                        ax=ax,
+                        levels=contour_levels,
+                        alpha=contour_alpha,
+                        contour_kwargs=contour_kwargs,
+                    )
+                # if it's a string, take that value as the contour plot value
+                elif isinstance(contour, str):
+                    df_contour = df.pivot_table(values=contour, index=par2, columns=par1, dropna=False)
+                    if nan_to_zero:
+                        df_contour = df_contour.fillna(0)
+                    contourPlotDf(
+                        df_contour,
+                        color=contour_color,
+                        ax=ax,
+                        levels=contour_levels,
+                        alpha=contour_alpha,
+                        contour_kwargs=contour_kwargs,
+                    )
+
+            # check if contour is alist of variables, e.g. ["max_output", "domfr"]
+            if isinstance(contour, list):
+                for ci in range(len(contour)):
+                    plot_contour(contour[ci], contour_color[ci], contour_levels[ci], contour_alpha[ci], contour_kwargs[ci])        
+            else:
+                plot_contour(contour, contour_color, contour_levels, contour_alpha, contour_kwargs)        
 
         # colorbar
         if one_figure == False:
@@ -200,15 +208,18 @@ def contourPlotDf(
     clabel=False,
     **contour_kwargs,
 ):
-    levels = levels or [0, 1.0001]
+    levels = levels or [0, 1]
     Xi, Yi = np.meshgrid(dataframe.columns, dataframe.index)
     ax = ax or plt
 
     if contourf:
         contours = plt.contourf(Xi, Yi, dataframe, 10, levels=levels, alpha=alpha, cmap="plasma")
 
+    # unpack, why necessary??
+    contour_kwargs = contour_kwargs["contour_kwargs"]
+    
     contours = ax.contour(
-        Xi, Yi, dataframe, colors=color, linestyles="solid", levels=levels, zorder=1, alpha=alpha, **contour_kwargs,
+        Xi, Yi, dataframe, colors=color, levels=levels, zorder=1, alpha=alpha, **contour_kwargs,
     )
 
     clabel = contour_kwargs["clabel"] if "clabel" in contour_kwargs else False
