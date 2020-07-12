@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -11,7 +13,7 @@ import tqdm
 from scipy import stats
 
 from ...utils import functions as func
-
+from ...utils import paths as paths
 
 def plotExplorationResults(
     dfResults,
@@ -26,6 +28,7 @@ def plotExplorationResults(
     one_figure=False,
     contour=None,
     alpha_mask=None,
+    savename=None,
     **kwargs,
 ):
     """
@@ -186,14 +189,21 @@ def plotExplorationResults(
         if not isinstance(i, tuple):
             i = (i,)
         if by != ["_by"]:
-            ax.set_title(" ".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)]))
+            title = " ".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)])
+            ax.set_title(title)
         if one_figure == False:
+            if savename:
+                save_fname = os.path.join(paths.FIGURES_DIR, f"{title}_{savename}")
+                plt.savefig(save_fname)            
             plt.show()
         else:
             axi += 1
 
     if one_figure == True:
         plt.tight_layout()
+        if savename:
+            save_fname = os.path.join(paths.FIGURES_DIR, f"{savename}")
+            plt.savefig(save_fname)
         plt.show()
 
 
