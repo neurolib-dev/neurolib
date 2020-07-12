@@ -24,7 +24,7 @@ from neurolib.models.multimodel.builder.wong_wang import (
 SEED = 42
 DURATION = 100.0
 DT = 0.1
-CORR_THRESHOLD = 0.99
+CORR_THRESHOLD = 0.95
 
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
