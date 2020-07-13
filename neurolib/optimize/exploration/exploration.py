@@ -381,7 +381,7 @@ class BoxSearch:
         :type trajectoryName: str, optional
         """
         # chose HDF file to load
-        filename = self.HDF_FILE or filename
+        filename = filename or self.HDF_FILE
         self.pypetTrajectory = pu.loadPypetTrajectory(filename, trajectoryName)
         self.nResults = len(self.pypetTrajectory.f_get_run_names())
 

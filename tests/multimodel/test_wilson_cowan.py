@@ -150,7 +150,7 @@ class TestWilsonCowanNetwork(unittest.TestCase):
         self.assertEqual(wc.default_output, f"q_mean_{EXC}")
 
     def test_run(self):
-        wc = WilsonCowanNetwork(self.SC, self.DELAYS)
+        wc = WilsonCowanNetwork(self.SC, self.DELAYS, exc_seed=SEED, inh_seed=SEED)
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = wc.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)), backend=backend,)
