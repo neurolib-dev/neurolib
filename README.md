@@ -6,18 +6,17 @@
   <a href="https://travis-ci.org/neurolib-dev/neurolib">
   	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master"></a>
   
-  <a href="https://www.python.org/downloads/release">
-  	<img alt="Python 3.6+" src="https://img.shields.io/badge/python-3.6+-blue.svg"></a>
+  <a href="https://zenodo.org/badge/latestdoi/236208651">
+  	<img alt="DOI" src="https://zenodo.org/badge/236208651.svg"></a>
     
    
   <a href="https://github.com/neurolib-dev/neurolib/releases">
   	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib"></a>
   
-  <a href="https://pypi.org/project/neurolib/">
-  	<img alt="PyPI" src="https://img.shields.io/pypi/v/neurolib"></a>
-  
   <a href="https://codecov.io/gh/neurolib-dev/neurolib">
   	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg"></a>
+  
+  <br>
   
   <a href="https://pepy.tech/project/neurolib">
   	<img alt="Downloads" src="https://pepy.tech/badge/neurolib"></a>
