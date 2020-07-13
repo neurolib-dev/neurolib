@@ -7,4 +7,9 @@ coverage:
     - "neurolib/utils/devutils.py"
     - "neurolib/utils/atlases.py"
   status:
+    project:
+      default:
+        enabled: yes
+        target: auto
+        threshold: 5%
     patch: off
