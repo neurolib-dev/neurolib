@@ -13,10 +13,10 @@
   <a href="https://github.com/neurolib-dev/neurolib/releases">
   	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib"></a>
   
+  <br>
+  
   <a href="https://codecov.io/gh/neurolib-dev/neurolib">
   	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg"></a>
-  
-  <br>
   
   <a href="https://pepy.tech/project/neurolib">
   	<img alt="Downloads" src="https://pepy.tech/badge/neurolib"></a>
