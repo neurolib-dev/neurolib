@@ -36,14 +36,13 @@ jobs:
         homebrew:
           update: true
           packages:
-            - python3
+            - python@3.7
             - llvm
             - libomp
       before_install:
-        - brew link --overwrite python
         - export PATH=/usr/local/opt/llvm/bin:$PATH
         - pip3 install virtualenv
-        - virtualenv -p python3 ~/venv
+        - virtualenv -p /usr/local/opt/python@3.7/bin/python3 ~/venv
         - source ~/venv/bin/activate
     # - stage: test
     #   os: windows
