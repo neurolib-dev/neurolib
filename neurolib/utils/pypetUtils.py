@@ -18,7 +18,7 @@ def getTrajectorynamesInFile(filename):
     :rtype: list[str]
     """
     assert pathlib.Path(filename).exists(), f"{filename} does not exist!"
-    hdf = h5py.File(filename)
+    hdf = h5py.File(filename, "r")
     all_traj_names = list(hdf.keys())
     hdf.close()
     return all_traj_names
