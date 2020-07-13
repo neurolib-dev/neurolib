@@ -42,7 +42,7 @@ jobs:
       before_install:
         - export PATH=/usr/local/opt/llvm/bin:$PATH
         - pip3 install virtualenv
-        - virtualenv -p /usr/local/opt/python@3.7/libexec/bin/python3 ~/venv
+        - virtualenv -p /usr/local/opt/python@3.7/bin/python3 ~/venv
         - source ~/venv/bin/activate
     # - stage: test
     #   os: windows
