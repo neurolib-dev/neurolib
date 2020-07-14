@@ -3,7 +3,7 @@ Set of tests for Wilson-Cowan model.
 """
 
 import unittest
-import numba
+
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
@@ -160,9 +160,11 @@ class TestWilsonCowanNetwork(unittest.TestCase):
             all_results.append(result)
         # test results are the same from different backends
         for state_var in all_results[0]:
-            corr_mat = np.corrcoef(
-                np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
-            )
+            all_ts = np.vstack([result[state_var].values.flatten().astype(float) for result in all_results])
+            if np.isnan(all_ts).any():
+                continue
+            corr_mat = np.corrcoef(all_ts)
+            print(corr_mat)
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
     def test_compare_w_neurolib_native_model(self):
