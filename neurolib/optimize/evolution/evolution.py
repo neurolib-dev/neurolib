@@ -15,6 +15,7 @@ import pandas as pd
 
 from ...utils import paths as paths
 from ...utils import pypetUtils as pu
+from ...utils.parameterSpace import ParameterSpace
 
 from . import evolutionaryUtils as eu
 from . import deapUtils as du
@@ -154,8 +155,8 @@ class Evolution:
 
         # -------- simulation
         self.parameterSpace = parameterSpace
-        self.ParametersInterval = parameterSpace.named_tuple_constructor
-        self.paramInterval = parameterSpace.named_tuple
+        self.ParametersInterval = self.parameterSpace.named_tuple_constructor
+        self.paramInterval = self.parameterSpace.named_tuple
 
         self.toolbox = deap.base.Toolbox()
 
@@ -281,6 +282,21 @@ class Evolution:
         model = self.model
         model.params.update(self.individualToDict(self.getIndividualFromTraj(traj)))
         return model
+
+    def getIndividualFromHistory(self, id):
+        """Searches the entire evolution history for an individual with a specific id and returns it.
+
+        :param id: Individual id
+        :type id: int
+        :return: Individual (`DEAP` type)
+        :rtype: `deap.creator.Individual`
+        """
+        for key, value in self.history.items():
+            for p in value:
+                if p.id == id:
+                    return p
+        logging.warning(f"No individual with id={id} found. Returning `None`")
+        return None
 
     def individualToDict(self, individual):
         """Convert an individual to a parameter dictionary.
@@ -732,16 +748,14 @@ class Evolution:
         import dill
 
         evolution = dill.load(open(fname, "rb"))
-
         # parameter space is not saved correctly in dill, don't know why
         # that is why we recreate it using the values of
         # the parameter space in the dill
-        from neurolib.utils.parameterSpace import ParameterSpace
-
         pars = ParameterSpace(evolution.parameterSpace.parameterNames, evolution.parameterSpace.parameterValues,)
 
         evolution.parameterSpace = pars
         evolution.paramInterval = evolution.parameterSpace.named_tuple
+        evolution.ParametersInterval = evolution.parameterSpace.named_tuple_constructor
         return evolution
 
     def _outputToDf(self, pop, df):
