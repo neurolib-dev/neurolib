@@ -86,12 +86,12 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     params.mui_ou = params.mui_ext_mean * np.ones((params.N,))  # np.zeros((params.N,))
 
     # external neuronal firing rate input
-    params.ext_exc_rate = 0.0  # kHz external excitatory rate drive
-    params.ext_inh_rate = 0.0  # kHz external inhibiroty rate drive
+    params.ext_exc_rate = np.zeros((params.N,))  # kHz external excitatory rate drive
+    params.ext_inh_rate = np.zeros((params.N,))  # kHz external inhibiroty rate drive
 
     # externaln input currents, same as mue_ext_mean but can be time-dependent!
-    params.ext_exc_current = 0.0  # external excitatory input current [mV/ms], C*[]V/s=[]nA
-    params.ext_inh_current = 0.0  # external inhibiroty input current [mV/ms]
+    params.ext_exc_current = np.zeros((params.N,))  # external excitatory input current [mV/ms], C*[]V/s=[]nA
+    params.ext_inh_current = np.zeros((params.N,))  # external inhibiroty input current [mV/ms]
 
     # Fokker Planck noise (for N->inf)
     params.sigmae_ext = 1.5  # mV/sqrt(ms) (fixed, for now) [1-5] (Internal noise due to random coupling)
@@ -196,12 +196,10 @@ def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
     """
     Compute the delay matrix from the fiber length matrix and the signal
     velocity
-
         :param lengthMat:       A matrix containing the connection length in
             segment
         :param signalV:         Signal velocity in m/s
         :param segmentLength:   Length of a single segment in mm
-
         :returns:    A matrix of connexion delay in ms
     """
 
@@ -215,9 +213,7 @@ def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
 
 def generateRandomICs(N, seed=None):
     """ Generates random Initial Conditions for the interareal network
-
         :params N:  Number of area in the large scale network
-
         :returns:   A tuple of 9 N-length numpy arrays representining:
                         mufe_init, IA_init, mufi_init, sem_init, sev_init,
                         sim_init, siv_init, rates_exc_init, rates_inh_init

@@ -1,10 +1,11 @@
 import numpy as np
 import numba
+import logging
 
 from . import loadDefaultParams as dp
 
 
-def timeIntegration(params):
+def timeIntegration(params, control):
     """Sets up the parameters for time integration
     
     Return:
@@ -22,15 +23,14 @@ def timeIntegration(params):
       seiv :      N vector    : final value of seiv  for each node
       siev :      N vector    : final value of siev  for each node
       siiv :      N vector    : final value of siiv  for each node
-
     :param params: Parameter dictionary of the model
     :type params: dict
     :return: Integrated activity variables of the model
     :rtype: (numpy.ndarray,)
     """
 
-    dt = params["dt"]  # Time step for the Euler intergration (ms)
-    duration = params["duration"]  # imulation duration (ms)
+    dt = float(params["dt"])  # Time step for the Euler intergration (ms)
+    duration = float(params["duration"])  # imulation duration (ms)
     RNGseed = params["seed"]  # seed for RNG
 
     # set to 0 for faster computation
@@ -42,7 +42,7 @@ def timeIntegration(params):
     # Interareal relative coupling strengths (values between 0 and 1), Cmat(i,j) connnection from jth to ith
     Cmat = params["Cmat"]
     c_gl = params["c_gl"]  # EPSP amplitude between areas
-    Ke_gl = params["Ke_gl"]  # number of incoming E connections (to E population) from each area
+    Ke_gl = float(params["Ke_gl"])  # number of incoming E connections (to E population) from each area
 
     N = len(Cmat)  # Number of areas
 
@@ -59,6 +59,9 @@ def timeIntegration(params):
         Dmat[np.eye(len(Dmat)) == 1] = np.ones(len(Dmat)) * params["de"]
 
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
+    
+    checkMatrixShape(Cmat, np.zeros((N,N)))
+    checkMatrixShape(Dmat, np.zeros((N,N)))
 
     # ------------------------------------------------------------------------
 
@@ -74,39 +77,39 @@ def timeIntegration(params):
     distr_delay = params["distr_delay"]
 
     # external input parameters:
-    tau_ou = params["tau_ou"]  # Parameter of the Ornstein-Uhlenbeck process for the external input(ms)
+    tau_ou = float(params["tau_ou"])  # Parameter of the Ornstein-Uhlenbeck process for the external input(ms)
     # Parameter of the Ornstein-Uhlenbeck (OU) process for the external input ( mV/ms/sqrt(ms) )
-    sigma_ou = params["sigma_ou"]
-    mue_ext_mean = params["mue_ext_mean"]  # Mean external excitatory input (OU process) (mV/ms)
-    mui_ext_mean = params["mui_ext_mean"]  # Mean external inhibitory input (OU process) (mV/ms)
-    sigmae_ext = params["sigmae_ext"]  # External exc input standard deviation ( mV/sqrt(ms) )
-    sigmai_ext = params["sigmai_ext"]  # External inh input standard deviation ( mV/sqrt(ms) )
+    sigma_ou = float(params["sigma_ou"])
+    mue_ext_mean = float(params["mue_ext_mean"])  # Mean external excitatory input (OU process) (mV/ms)
+    mui_ext_mean = float(params["mui_ext_mean"])  # Mean external inhibitory input (OU process) (mV/ms)
+    sigmae_ext = float(params["sigmae_ext"])  # External exc input standard deviation ( mV/sqrt(ms) )
+    sigmai_ext = float(params["sigmai_ext"])  # External inh input standard deviation ( mV/sqrt(ms) )
 
     # recurrent coupling parameters
-    Ke = params["Ke"]  # Recurrent Exc coupling. "EE = IE" assumed for act_dep_coupling in current implementation
-    Ki = params["Ki"]  # Recurrent Exc coupling. "EI = II" assumed for act_dep_coupling in current implementation
+    Ke = float(params["Ke"])  # Recurrent Exc coupling. "EE = IE" assumed for act_dep_coupling in current implementation
+    Ki = float(params["Ki"])  # Recurrent Exc coupling. "EI = II" assumed for act_dep_coupling in current implementation
 
     # Recurrent connection delays
-    de = params["de"]  # Local constant delay "EE = IE" (ms)
-    di = params["di"]  # Local constant delay "EI = II" (ms)
+    de = float(params["de"])  # Local constant delay "EE = IE" (ms)
+    di = float(params["di"])  # Local constant delay "EI = II" (ms)
 
-    tau_se = params["tau_se"]  # Synaptic decay time constant for exc. connections "EE = IE" (ms)
-    tau_si = params["tau_si"]  # Synaptic decay time constant for inh. connections  "EI = II" (ms)
-    tau_de = params["tau_de"]
-    tau_di = params["tau_di"]
+    tau_se = float(params["tau_se"])  # Synaptic decay time constant for exc. connections "EE = IE" (ms)
+    tau_si = float(params["tau_si"])  # Synaptic decay time constant for inh. connections  "EI = II" (ms)
+    tau_de = float(params["tau_de"])
+    tau_di = float(params["tau_di"])
 
-    cee = params["cee"]  # strength of exc. connection
+    cee = float(params["cee"])  # strength of exc. connection
     #  -> determines ePSP magnitude in state-dependent way (in the original model)
-    cie = params["cie"]  # strength of inh. connection
+    cie = float(params["cie"] ) # strength of inh. connection
     #   -> determines iPSP magnitude in state-dependent way (in the original model)
-    cei = params["cei"]
-    cii = params["cii"]
+    cei = float(params["cei"])
+    cii = float(params["cii"])
 
     # Recurrent connections coupling strength
-    Jee_max = params["Jee_max"]  # ( mV/ms )
-    Jei_max = params["Jei_max"]  # ( mV/ms )
-    Jie_max = params["Jie_max"]  # ( mV/ms )
-    Jii_max = params["Jii_max"]  # ( mV/ms )
+    Jee_max = float(params["Jee_max"])  # ( mV/ms )
+    Jei_max = float(params["Jei_max"])  # ( mV/ms )
+    Jie_max = float(params["Jie_max"])  # ( mV/ms )
+    Jii_max = float(params["Jii_max"])  # ( mV/ms )
 
     # rescales c's here: multiplication with tau_se makes
     # the increase of s subject to a single input spike invariant to tau_se
@@ -120,20 +123,28 @@ def timeIntegration(params):
     c_gl = c_gl * tau_se / Jee_max  # ms
 
     # neuron model parameters
-    a = params["a"]  # Adaptation coupling term ( nS )
-    b = params["b"]  # Spike triggered adaptation ( pA )
-    EA = params["EA"]  # Adaptation reversal potential ( mV )
-    tauA = params["tauA"]  # Adaptation time constant ( ms )
+    a = float(params["a"])  # Adaptation coupling term ( nS )
+    b = float(params["b"])  # Spike triggered adaptation ( pA )
+    EA = float(params["EA"])  # Adaptation reversal potential ( mV )
+    tauA = float(params["tauA"])  # Adaptation time constant ( ms )
     # if params below are changed, preprocessing required
-    C = params["C"]  # membrane capacitance ( pF )
-    gL = params["gL"]  # Membrane conductance ( nS )
-    EL = params["EL"]  # Leak reversal potential ( mV )
-    DeltaT = params["DeltaT"]  # Slope factor ( EIF neuron ) ( mV )
-    VT = params["VT"]  # Effective threshold (in exp term of the aEIF model)(mV)
-    Vr = params["Vr"]  # Membrane potential reset value (mV)
-    Vs = params["Vs"]  # Cutoff or spike voltage value, determines the time of spike (mV)
-    Tref = params["Tref"]  # Refractory time (ms)
+    C = float(params["C"])  # membrane capacitance ( pF )
+    gL = float(params["gL"])  # Membrane conductance ( nS )
+    EL = float(params["EL"])  # Leak reversal potential ( mV )
+    DeltaT = float(params["DeltaT"])  # Slope factor ( EIF neuron ) ( mV )
+    VT = float(params["VT"])  # Effective threshold (in exp term of the aEIF model)(mV)
+    Vr = float(params["Vr"])  # Membrane potential reset value (mV)
+    Vs = float(params["Vs"])  # Cutoff or spike voltage value, determines the time of spike (mV)
+    Tref = float(params["Tref"])  # Refractory time (ms)
     taum = C / gL  # membrane time constant
+    
+    floats = [dt, duration, c_gl, Ke_gl, tau_ou, sigma_ou, mue_ext_mean, mui_ext_mean, sigmae_ext, sigmai_ext, Ke, Ki, de, di, tau_se,
+        tau_si, tau_de, tau_di, cee, cie, cii, cei, Jee_max, Jei_max, Jie_max, Jii_max, a, b, EA, tauA, C, gL, EL, DeltaT,
+        VT, Vr, Vs, Tref, taum]
+    for par in floats:
+        checkFloatParams(par)
+    
+
 
     # ------------------------------------------------------------------------
 
@@ -167,6 +178,7 @@ def timeIntegration(params):
     #    Dmat_ndt[l, l] = ndt_de  # if no distributed, this is a fixed value (E-E coupling)
 
     max_global_delay = max(np.max(Dmat_ndt), ndt_de, ndt_di)
+    #print(Dmat_ndt, ndt_de, ndt_di)
     startind = int(max_global_delay + 1)
 
     # state variable arrays, have length of t + startind
@@ -174,7 +186,7 @@ def timeIntegration(params):
     rates_exc = np.zeros((N, startind + len(t)))
     rates_inh = np.zeros((N, startind + len(t)))
     IA = np.zeros((N, startind + len(t)))
-
+    
     # ------------------------------------------------------------------------
     # Set initial values
     mufe = params["mufe_init"].copy()  # Filtered mean input (mu) for exc. population
@@ -191,21 +203,65 @@ def timeIntegration(params):
 
     mue_ou = params["mue_ou"].copy()  # Mean of external exc OU input (mV/ms)
     mui_ou = params["mui_ou"].copy()  # Mean of external inh ON inout (mV/ms)
+    
+    par = [mufe, mufi, seem, seim, seev, seiv, siim, siem, siiv, siev]
+    for p in par:
+        checkMatrixShape(p, np.zeros((N)))
 
     # Set the initial firing rates.
-    # if initial values are just a Nx1 array
-    if np.shape(params["rates_exc_init"])[1] == 1:
-        # repeat the 1-dim value stardind times
-        rates_exc_init = np.dot(params["rates_exc_init"], np.ones((1, startind)))  # kHz
-        rates_inh_init = np.dot(params["rates_inh_init"], np.ones((1, startind)))  # kHz
-        # set initial adaptation current
-        IA_init = np.dot(params["IA_init"], np.ones((1, startind)))
-    # if initial values are a Nxt array
-    else:
-        rates_exc_init = params["rates_exc_init"][:, -startind:]
-        rates_inh_init = params["rates_inh_init"][:, -startind:]
-        IA_init = params["IA_init"][:, -startind:]
-
+    # Result is (N x startind)-array
+    
+    par = [np.zeros((N, startind)), np.zeros((N, startind)), np.zeros((N, startind))]
+    par_name = ["rates_exc_init", "rates_inh_init", "IA_init"]
+    
+    for i in range(len(par)):
+        
+        # if initial value is float
+        if type(params[par_name[i]]) is float:
+            print("just float as input")
+            par[i] = params[par_name[i]] * np.array( np.ones((N, startind)) )
+            continue
+        elif type(params[par_name[i]]) is list:
+            params[par_name[i]] = np.array( params[par_name[i]] )
+        
+        if np.shape(params[par_name[i]])[0] < N:
+            if np.shape(params[par_name[i]])[0] == 1:
+                logging.warning("one-dimensional input for initial condition, interpret as equal input for all nodes")
+            else:
+                logging.error("Invalid input for initial conditions: input does not fit network size. Set to zero instead")
+                continue
+        if type(params[par_name[i]][0]) is not type(np.array(())):
+            logging.error("Invalid input for initial conditions: no equal dimensions in input matrix. Set to zero instead")
+            continue
+        if np.ndim(params[par_name[i]]) > 2:
+            logging.error("Invalid input for initial conditions: input too high-dimensional. Set to zero instead")
+            continue
+            
+        # if initial value is N-array    
+        if np.ndim(params[par_name[i]]) == 1:
+            par[i] = np.dot( np.array( [params[par_name[i]] ] ).T, np.ones((1, startind)) )
+        # if initial value is Nx1 array
+        elif np.shape(params[par_name[i]])[1] == 1:
+            # repeat the 1-dim value stardind times
+            par[i] = np.dot(params[par_name[i]], np.ones((1, startind)))  # kHz
+        # if initial value is (N x startind) array
+        elif np.shape(params[par_name[i]])[1] >= startind:
+            par[i] = params[par_name[i]][:, -startind:]
+        # if initial value is (N x given_initial_timesteps) array, smaller than startind
+        else:
+            given_initial_timesteps = np.shape(params[par_name[i]])[1]
+            par[i][:, -given_initial_timesteps:] = params[par_name[i]][:, :]
+            for j in range(startind - given_initial_timesteps):
+                par[i][:, j] = params[par_name[i]][:, 0]
+            
+    rates_exc_init = par[0]
+    rates_inh_init = par[1]
+    IA_init = par[2]
+     
+    checkMatrixShape( rates_exc_init, np.zeros((N, startind)) )
+    checkMatrixShape( rates_exc_init, np.zeros((N, startind)) )
+    checkMatrixShape( rates_exc_init, np.zeros((N, startind)) )
+            
     if RNGseed:
         np.random.seed(RNGseed)
 
@@ -223,9 +279,12 @@ def timeIntegration(params):
 
     # tile external inputs to appropriate shape
     ext_exc_current = adjust_shape(params["ext_exc_current"], rates_exc)
+    print("ext exc current = ", ext_exc_current)
     ext_inh_current = adjust_shape(params["ext_inh_current"], rates_exc)
     ext_exc_rate = adjust_shape(params["ext_exc_rate"], rates_exc)
     ext_inh_rate = adjust_shape(params["ext_inh_rate"], rates_exc)
+    
+    control_ext = control.copy()
 
     # ------------------------------------------------------------------------
 
@@ -311,6 +370,7 @@ def timeIntegration(params):
         ext_inh_current,
         noise_exc,
         noise_inh,
+        control_ext,
     )
 
 
@@ -397,6 +457,7 @@ def timeIntegration_njit_elementwise(
     ext_inh_current,
     noise_exc,
     noise_inh,
+    control_ext,
 ):
 
     # squared Jee_max
@@ -414,6 +475,8 @@ def timeIntegration_njit_elementwise(
     if filter_sigma:
         sigmae_f = sigmae_ext
         sigmai_f = sigmai_ext
+        
+    #print("start index = ", startind)
 
     ### integrate ODE system:
     for i in range(startind, startind + len(t)):
@@ -428,6 +491,8 @@ def timeIntegration_njit_elementwise(
                     rd_exc[l, no] = rates_exc[no, i - Dmat_ndt[l, no] - 1] * 1e-3  # convert Hz to kHz
                 # Warning: this is a vector and not a matrix as rd_exc
                 rd_inh[no] = rates_inh[no, i - ndt_di - 1] * 1e-3  # convert Hz to kHz
+               # print("excitatory and inhibitory rates : ", rates_exc[no, i - Dmat_ndt[l, no] - 1], " index ",  no, i - Dmat_ndt[l, no] - 1)
+                #print("inh =", rates_inh[no, i - ndt_di - 1], " index ", no, i - ndt_di - 1)
 
         # loop through all the nodes
         for no in range(N):
@@ -436,8 +501,10 @@ def timeIntegration_njit_elementwise(
             noise_exc[no] = rates_exc[no, i]
             noise_inh[no] = rates_inh[no, i]
 
-            mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ou[no] + ext_exc_current[no, i]
-            mui = Jie_max * siem[no] + Jii_max * siim[no] + mui_ou[no] + ext_inh_current[no, i]
+            mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ou[no] + ext_exc_current[no, i] + control_ext[no, 0, i-startind]
+            mui = Jie_max * siem[no] + Jii_max * siim[no] + mui_ou[no] + ext_inh_current[no, i] + control_ext[no, 1, i-startind]
+            #if (i in range(startind, startind + 3,1)):
+            #    print("mui computation: ", control_ext[no, 1, i-startind])
 
             # compute row sum of Cmat*rd_exc and Cmat**2*rd_exc
             rowsum = 0
@@ -455,6 +522,7 @@ def timeIntegration_njit_elementwise(
                 cie * Ke * rd_exc[no, no] + c_gl * Ke_gl * ext_inh_rate[no, i]
             )  # first test of external rate input to inh. population
             z1ii = cii * Ki * rd_inh[no]
+            #print("parameters of calculation: rd_exc[no, no], rd_inh[no]", rd_exc[no, no], rd_inh[no])
             # z2: weighted sum of delayed rates, weights=c^2*K (see thesis last ch.)
             z2ee = (
                 cee ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * rowsumsq + c_gl ** 2 * Ke_gl * ext_exc_rate[no, i]
@@ -476,6 +544,8 @@ def timeIntegration_njit_elementwise(
                 + 2 * sq_Jii_max * siiv[no] * tau_si * taum / ((1 + z1ii) * taum + tau_si)
                 + sigmai_ext ** 2
             )  # mV/sqrt(ms)
+            #print("integration, sigmai ", sigmai)
+            #print("calculated from z1ie,  z1ii ", z1ie,  z1ii)
 
             if not filter_sigma:
                 sigmae_f = sigmae
@@ -483,6 +553,9 @@ def timeIntegration_njit_elementwise(
 
             # Read the transfer function from the lookup table
             # -------------------------------------------------------------
+            
+            #print("integration, inital parameters:: mufe,mufi,seem,seim,siem,siim,seev,seiv,siev,siiv,mue_ou,mui_ou",
+            #      mufe, mufi, seem, seim, siem, siim, seev, seiv, siev, siiv, mue_ou, mui_ou)
 
             # ------- excitatory population
             # mufe[no] - IA[no] / C is the total current of the excitatory population
@@ -491,6 +564,7 @@ def timeIntegration_njit_elementwise(
             )
             xid1, yid1 = int(xid1), int(yid1)
 
+            #print("integration: xid1, yid1, dxid, dyid = ", xid1, yid1, dxid, dyid)
             rates_exc[no, i] = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3  # convert kHz to Hz
             Vmean_exc = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
             tau_exc = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
@@ -499,12 +573,26 @@ def timeIntegration_njit_elementwise(
 
             # ------- inhibitory population
             #  mufi[no] are the (filtered) currents of the inhibitory population
+            
             xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, mufi[no])
             xid1, yid1 = int(xid1), int(yid1)
+            
+            #print("integration, ds, sigmai_f, dI", ds, sigmai_f, dI)
+            #print("integration, mufi = ", mufi[no])
+            
+            #if (i in range(startind, startind + 3,1)):
+                #print("sigmarange = ", sigmarange)
+                #print("ds = ", ds)
+                #print("sigmai_f = ", sigmai_f)
+                #print("Irange = ", Irange)
+                #print("dI = ", dI)
+                #print("mufi[no] = ", mufi[no])
+                #print("xid1, yid1, dxid, dyid = ", xid1, yid1, dxid, dyid)
 
             rates_inh[no, i] = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
             # Vmean_inh = interpolate_values(precalc_V, xid1, yid1, dxid, dyid) # not used
             tau_inh = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+            #print("integration: tau calculated from ", xid1, yid1, dxid, dyid)
             if filter_sigma:
                 tau_sigmai_eff = interpolate_values(precalc_tau_sigma, xid1, yid1, dxid, dyid)
 
@@ -514,6 +602,7 @@ def timeIntegration_njit_elementwise(
 
             mufe_rhs = (mue - mufe[no]) / tau_exc
             mufi_rhs = (mui - mufi[no]) / tau_inh
+            #print("integration: mufi rhs different because tau_inh different = ", tau_inh)
 
             # rate has to be kHz
             IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
@@ -541,6 +630,8 @@ def timeIntegration_njit_elementwise(
 
             mufe[no] = mufe[no] + dt * mufe_rhs
             mufi[no] = mufi[no] + dt * mufi_rhs
+            #if (i in range(startind, startind + 3,1)):
+                #print("mui, mufi[no], tau_inh, mufi rhs = ", mui, mufi[no], tau_inh, mufi_rhs)
             IA[no, i] = IA[no, i - 1] + dt * IA_rhs
 
             if distr_delay:
@@ -580,6 +671,8 @@ def timeIntegration_njit_elementwise(
             mui_ou[no] = (
                 mui_ou[no] + (mui_ext_mean - mui_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[no]
             )  # mV/ms
+            
+            #print("integration, final parameters::  mufe,mufi,seem,seim,siem,siim,seev,seiv,siev,siiv,mue_ou,mui_ou, mufi)
 
     return t, rates_exc, rates_inh, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, mue_ou, mui_ou
 
@@ -601,12 +694,10 @@ def lookup_no_interp(x, dx, xi, y, dy, yi):
     """
     Return the indices for the closest values for a look-up table
     Choose the closest point in the grid
-
     x     ... range of x values
     xi    ... interpolation value on x-axis
     dx    ... grid width of x ( dx = x[1]-x[0])
                (same for y)
-
     return:   idxX and idxY
     """
 
@@ -637,48 +728,46 @@ def lookup_no_interp(x, dx, xi, y, dy, yi):
 
     return idxX, idxY
 
-
 def adjust_shape(original, target):
     """
-    Tiles and then cuts an array (or list or float) such that
-    it has the same shape as target at the end.
     This is used to make sure that any input parameter like external current has
     the same shape as the rate array.
     """
-
-    # make an ext_exc_current ARRAY from a LIST or INT
+    
+    result = np.zeros(target.shape)
+    
+    # original is float input
     if not hasattr(original, "__len__"):
-        original = [original]
-    original = np.array(original)
-
-    # repeat original in y until larger (or same size) as target
-
-    # tile until N
-
-    # either (x,) shape or (y,x) shape
-    if len(original.shape) == 1:
-        # if original.shape[0] > 1:
-        rep_y = target.shape[0]
-    elif target.shape[0] > original.shape[0]:
-        rep_y = int(target.shape[0] / original.shape[0]) + 1
+        result[:,:] = original
+        return result
+        
+    # if list input
+    elif type(original) is list:
+        original = np.array(original)
+     
+    # only one input value, use for all nodes
+    if original.size == 1:
+        result[:,:] = original[0]
+    elif original.ndim > 2:
+        logging.error("Invalid external input: too high dimensionality. Set to zero instead")
+    # N array as input
+    elif original.ndim == 1 and original.shape[0] == result.shape[0]:
+        for t in range(result.shape[1]):
+            result[:,t] = original[:]
+    # Nx1 matrix input
+    elif original.ndim == 2 and original.shape[0] == result.shape[0] and original.shape[1] == 1:
+        for t in range(result.shape[1]):
+            result[:,t] = original[:,0]
+    # N x sth matrix input, cut from the end
+    elif original.ndim == 2 and original.shape[0] == result.shape[0]:
+        for t in range(original.shape[1]):
+            result[:,-original.shape[1]+t] = original[:,t]
+        if (original.shape[1] < result.shape[1]):
+            logging.warning("Input does not provide full time information, set to first value before start")
     else:
-        rep_y = 1
-
-    # tile once so the array has shape (N,1)
-    original = np.tile(original, (rep_y, 1))
-
-    # tile until t
-
-    if target.shape[1] > original.shape[1]:
-        rep_x = int(target.shape[1] / original.shape[1]) + 1
-    else:
-        rep_x = 1
-    original = np.tile(original, (1, rep_x))
-
-    # cut from end because the beginning can be initial condition
-    original = original[: target.shape[0], -target.shape[1] :]
-
-    return original
+        logging.error("Invalid external input. Set to zero instead")
+        
+    return result
 
 
 @numba.njit(locals={"xid1": numba.int64, "yid1": numba.int64, "dxid": numba.float64, "dyid": numba.float64})
@@ -689,12 +778,10 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
     - bilinear (2D) interpolation within ranges,
     - linear (1D) if "one edge" is crossed,
     - corner value if "two edges" are crossed
-
     x     ... range of the x value
     xi    ... interpolation value on x-axis
     dx    ... grid width of x ( dx = x[1]-x[0] )
     (same for y)
-
     return:   xid1    ... index of the lower interpolation value
               dxid    ... distance of xi to the lower interpolation value
               (same for y)
@@ -762,3 +849,16 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
         dyid = yid - yid1
 
     return xid1, yid1, dxid, dyid
+
+def checkFloatParams(parameter):
+    if type(parameter) is not float:
+        logging.error("wrong type for parameter, float required")
+        
+#def checkNArrayParams(parameter, N):
+#    targetshape = np.zeros((N))
+#    if parameter.shape is not targetshape:
+#        logging.error("wrong type for parameter, N-array required")
+        
+def checkMatrixShape( inputarray, testarray ):
+    if (inputarray.ndim != testarray.ndim or inputarray.size != testarray.size):
+        logging.error("wrong shape of input")
