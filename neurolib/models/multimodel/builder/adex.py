@@ -267,7 +267,7 @@ class AdExMass(NeuralMass):
             g_L = params_dict["g_L"] if "g_L" in params_dict else self.params["g_L"]
             params_dict["tau_m"] = C_m / g_L
 
-        # if we are chaning any of the J_exc_max, tau_syn_exc or c_global, rescale c_global
+        # if we are changing any of the J_exc_max, tau_syn_exc or c_global, rescale c_global
         if any(k in params_dict for k in ("c_global", "J_exc_max", "tau_syn_exc")):
             # get original c_global
             c_global = (
