@@ -29,7 +29,7 @@ from ..builder.base.neural_mass import NeuralMass
 
 DEFAULT_CASCADE_FILENAME = "quantities_cascade.h5"
 
-DEFAULT_PARAMS_EXC = {
+ADEX_EXC_DEFAULT_PARAMS = {
     # number of inputs per neuron from EXC/INH
     "K_exc": 800.0,
     "K_inh": 200.0,
@@ -61,7 +61,7 @@ DEFAULT_PARAMS_EXC = {
     "lambda": LAMBDA_SPEED,
 }
 
-DEFAULT_PARAMS_INH = {
+ADEX_INH_DEFAULT_PARAMS = {
     # number of inputs per neuron from EXC/INH
     "K_exc": 800.0,
     "K_inh": 200.0,
@@ -87,9 +87,9 @@ DEFAULT_PARAMS_INH = {
 }
 # matrices as [to, from], masses as (EXC, INH)
 # EXC is index 0, INH is index 1
-DEFAULT_ADEX_NODE_CONNECTIVITY = np.array([[0.3, 0.5], [0.3, 0.5]])
+ADEX_NODE_DEFAULT_CONNECTIVITY = np.array([[0.3, 0.5], [0.3, 0.5]])
 # same but delays, in ms
-DEFAULT_ADEX_NODE_DELAYS = np.array([[4.0, 2.0], [4.0, 2.0]])
+ADEX_NODE_DEFAULT_DELAYS = np.array([[4.0, 2.0], [4.0, 2.0]])
 
 
 @numba.njit()
@@ -426,7 +426,7 @@ class ExcitatoryAdExMass(AdExMass):
 
     def __init__(self, params=None, lin_nonlin_cascade_filename=None, seed=None):
         super().__init__(
-            params=params or DEFAULT_PARAMS_EXC, lin_nonlin_cascade_filename=lin_nonlin_cascade_filename, seed=seed
+            params=params or ADEX_EXC_DEFAULT_PARAMS, lin_nonlin_cascade_filename=lin_nonlin_cascade_filename, seed=seed
         )
 
     def _initialize_state_vector(self):
@@ -584,7 +584,7 @@ class InhibitoryAdExMass(AdExMass):
 
     def __init__(self, params=None, lin_nonlin_cascade_filename=None, seed=None):
         super().__init__(
-            params=params or DEFAULT_PARAMS_INH, lin_nonlin_cascade_filename=lin_nonlin_cascade_filename, seed=seed
+            params=params or ADEX_INH_DEFAULT_PARAMS, lin_nonlin_cascade_filename=lin_nonlin_cascade_filename, seed=seed
         )
 
     def _initialize_state_vector(self):
@@ -733,8 +733,8 @@ class AdExNode(SingleCouplingExcitatoryInhibitoryNode):
         inh_params=None,
         exc_lin_nonlin_cascade_filename=None,
         inh_lin_nonlin_cascade_filename=None,
-        connectivity=DEFAULT_ADEX_NODE_CONNECTIVITY,
-        delays=DEFAULT_ADEX_NODE_DELAYS,
+        connectivity=ADEX_NODE_DEFAULT_CONNECTIVITY,
+        delays=ADEX_NODE_DEFAULT_DELAYS,
         exc_seed=None,
         inh_seed=None,
     ):
@@ -834,8 +834,8 @@ class AdExNetwork(Network):
         inh_mass_params=None,
         exc_lin_nonlin_cascade_filename=None,
         inh_lin_nonlin_cascade_filename=None,
-        local_connectivity=DEFAULT_ADEX_NODE_CONNECTIVITY,
-        local_delays=DEFAULT_ADEX_NODE_DELAYS,
+        local_connectivity=ADEX_NODE_DEFAULT_CONNECTIVITY,
+        local_delays=ADEX_NODE_DEFAULT_DELAYS,
         exc_seed=None,
         inh_seed=None,
     ):

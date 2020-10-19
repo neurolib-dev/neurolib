@@ -22,7 +22,7 @@ from jitcdde import input as system_input
 from ..builder.base.network import Network, Node
 from ..builder.base.neural_mass import NeuralMass
 
-DEFAULT_PARAMS = {
+FHN_DEFAULT_PARAMS = {
     "alpha": 3.0,
     "beta": 4.0,
     "gamma": -1.5,
@@ -59,7 +59,7 @@ class FitzHughNagumoMass(NeuralMass):
     required_couplings = ["network_x", "network_y"]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS, seed=seed)
+        super().__init__(params=params or FHN_DEFAULT_PARAMS, seed=seed)
 
     def _initialize_state_vector(self):
         """
