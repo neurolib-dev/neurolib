@@ -29,8 +29,8 @@ FHN_DEFAULT_PARAMS = {
     "delta": 0.0,
     "epsilon": 0.5,
     "tau": 20.0,
-    "ext_input_x": 1.0,
-    "ext_input_y": 0.0,
+    "x_ext": 1.0,
+    "y_ext": 0.0,
 }
 
 
@@ -53,8 +53,8 @@ class FitzHughNagumoMass(NeuralMass):
         "delta",
         "epsilon",
         "tau",
-        "ext_input_x",
-        "ext_input_y",
+        "x_ext",
+        "y_ext",
     ]
     required_couplings = ["network_x", "network_y"]
 
@@ -78,14 +78,14 @@ class FitzHughNagumoMass(NeuralMass):
             - y
             + coupling_variables["network_x"]
             + system_input(self.noise_input_idx[0])
-            + self.params["ext_input_x"]
+            + self.params["x_ext"]
         )
 
         d_y = (
             (x - self.params["delta"] - self.params["epsilon"] * y) / self.params["tau"]
             + coupling_variables["network_y"]
             + system_input(self.noise_input_idx[1])
-            + self.params["ext_input_y"]
+            + self.params["y_ext"]
         )
 
         return [d_x, d_y]
@@ -131,7 +131,11 @@ class FitzHughNagumoNetwork(Network):
     default_coupling = {"network_x": "diffusive", "network_y": "none"}
 
     def __init__(
-        self, connectivity_matrix, delay_matrix, mass_params=None, seed=None,
+        self,
+        connectivity_matrix,
+        delay_matrix,
+        mass_params=None,
+        seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -160,7 +164,9 @@ class FitzHughNagumoNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+            nodes=nodes,
+            connectivity_matrix=connectivity_matrix,
+            delay_matrix=delay_matrix,
         )
         # get all coupling variables
         all_couplings = [mass.coupling_variables for node in self.nodes for mass in node.masses]

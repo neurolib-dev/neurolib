@@ -10,9 +10,9 @@ import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.aln import ALNModel
 from neurolib.models.multimodel.builder.adex import (
-    ADEX_NODE_DEFAULT_CONNECTIVITY,
     ADEX_EXC_DEFAULT_PARAMS,
     ADEX_INH_DEFAULT_PARAMS,
+    ADEX_NODE_DEFAULT_CONNECTIVITY,
     AdExNetwork,
     AdExNode,
     ExcitatoryAdExMass,
@@ -24,7 +24,7 @@ from neurolib.models.multimodel.builder.base.constants import EXC
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 # these keys do not test since they are rescaled on the go
-PARAMS_NOT_TEST_KEYS = ["c_global", "tau_m"]
+PARAMS_NOT_TEST_KEYS = ["c_gl", "taum"]
 
 
 def _strip_keys(dict_test, strip_keys=PARAMS_NOT_TEST_KEYS):
@@ -61,7 +61,12 @@ class TestAdExCallbacks(unittest.TestCase):
         print(type(_get_interpolation_values))
         self.assertTrue(isinstance(_get_interpolation_values, numba.core.registry.CPUDispatcher))
         interp_result = _get_interpolation_values(
-            self.SIGMA_TEST, self.MU_TEST, self.mass.sigma_range, self.mass.mu_range, self.mass.d_sigma, self.mass.d_mu,
+            self.SIGMA_TEST,
+            self.MU_TEST,
+            self.mass.sigma_range,
+            self.mass.mu_range,
+            self.mass.d_sigma,
+            self.mass.d_mu,
         )
         self.assertTupleEqual(interp_result, self.INTERP_EXPECTED)
 
@@ -107,7 +112,9 @@ class ALNMassTestCase(unittest.TestCase):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
         noise = ZeroInput(duration, dt, independent_realisations=node.num_noise_variables).as_cubic_splines()
         system = jitcdde_input(
-            node._derivatives(coupling_variables), input=noise, callback_functions=node._callbacks(),
+            node._derivatives(coupling_variables),
+            input=noise,
+            callback_functions=node._callbacks(),
         )
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()
@@ -160,18 +167,19 @@ class TestAdExMass(ALNMassTestCase):
             # test derivatives
             coupling_variables = {k: 0.0 for k in adex.required_couplings}
             self.assertEqual(
-                len(adex._derivatives(coupling_variables)), adex.num_state_variables,
+                len(adex._derivatives(coupling_variables)),
+                adex.num_state_variables,
             )
             self.assertEqual(len(adex.initial_state), adex.num_state_variables)
             self.assertEqual(len(adex.noise_input_idx), adex.num_noise_variables)
 
     def test_update_rescale_params(self):
         # update params that have to do something with rescaling
-        UPDATE_PARAMS = {"C_m": 150.0, "J_exc_max": 3.0}
+        UPDATE_PARAMS = {"C": 150.0, "Je_max": 3.0}
         adex = self._create_exc_mass()
         adex.update_params(UPDATE_PARAMS)
-        self.assertEqual(adex.params["tau_m"], 15.0)
-        self.assertEqual(adex.params["c_global"], 0.4 * adex.params["tau_syn_exc"] / 3.0)
+        self.assertEqual(adex.params["taum"], 15.0)
+        self.assertEqual(adex.params["c_gl"], 0.4 * adex.params["tau_se"] / 3.0)
 
     def test_run(self):
         adex_exc = self._create_exc_mass()
@@ -200,7 +208,8 @@ class TestAdExNode(unittest.TestCase):
         self.assertEqual(len(adex._sync()), 4 * len(adex))
         self.assertEqual(len(adex.default_network_coupling), 2)
         np.testing.assert_equal(
-            np.array(sum([adexm.initial_state for adexm in adex], [])), adex.initial_state,
+            np.array(sum([adexm.initial_state for adexm in adex], [])),
+            adex.initial_state,
         )
 
     def test_update_rescale_params(self):
@@ -265,7 +274,10 @@ class TestAdExNetwork(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = adex.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, adex.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, adex.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), adex.num_state_variables / adex.num_nodes)

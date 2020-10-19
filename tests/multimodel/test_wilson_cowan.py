@@ -10,8 +10,13 @@ from jitcdde import jitcdde_input
 from neurolib.models.multimodel.builder.base.constants import EXC
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 from neurolib.models.multimodel.builder.wilson_cowan import (
-    WC_EXC_DEFAULT_PARAMS, WC_INH_DEFAULT_PARAMS, ExcitatoryWilsonCowanMass,
-    InhibitoryWilsonCowanMass, WilsonCowanNetwork, WilsonCowanNode)
+    WC_EXC_DEFAULT_PARAMS,
+    WC_INH_DEFAULT_PARAMS,
+    ExcitatoryWilsonCowanMass,
+    InhibitoryWilsonCowanMass,
+    WilsonCowanNetwork,
+    WilsonCowanNode,
+)
 from neurolib.models.wc import WCModel
 
 SEED = 42
@@ -91,14 +96,20 @@ class TestWilsonCowanNode(unittest.TestCase):
         self.assertDictEqual(wc[1].params, WC_INH_DEFAULT_PARAMS)
         self.assertEqual(len(wc.default_network_coupling), 2)
         np.testing.assert_equal(
-            np.array(sum([wcm.initial_state for wcm in wc], [])), wc.initial_state,
+            np.array(sum([wcm.initial_state for wcm in wc], [])),
+            wc.initial_state,
         )
 
     def test_run(self):
         wc = self._create_node()
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
-            result = wc.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)), backend=backend,)
+            result = wc.run(
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)),
+                backend=backend,
+            )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), wc.num_state_variables)
             self.assertTrue(all(state_var in result for state_var in wc.state_variable_names[0]))
@@ -148,7 +159,12 @@ class TestWilsonCowanNetwork(unittest.TestCase):
         wc = WilsonCowanNetwork(self.SC, self.DELAYS, exc_seed=SEED, inh_seed=SEED)
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
-            result = wc.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)), backend=backend,)
+            result = wc.run(
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)),
+                backend=backend,
+            )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), wc.num_state_variables / wc.num_nodes)
             self.assertTrue(all(result[result_].shape == (int(DURATION / DT), wc.num_nodes) for result_ in result))

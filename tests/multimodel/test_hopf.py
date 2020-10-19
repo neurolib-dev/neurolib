@@ -7,9 +7,7 @@ import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.hopf import HopfModel
-from neurolib.models.multimodel.builder.hopf import (HOPF_DEFAULT_PARAMS,
-                                                     HopfMass, HopfNetwork,
-                                                     HopfNode)
+from neurolib.models.multimodel.builder.hopf import HOPF_DEFAULT_PARAMS, HopfMass, HopfNetwork, HopfNode
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 SEED = 42
@@ -81,7 +79,10 @@ class TestHopfNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = hopf.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), hopf.num_state_variables)
@@ -130,7 +131,10 @@ class TestHopfNetwork(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = hopf.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), hopf.num_state_variables / hopf.num_nodes)

@@ -59,7 +59,13 @@ class TestWienerProcess(unittest.TestCase):
 class TestOrnsteinUhlenbeckProcess(unittest.TestCase):
     def test_generate_input(self):
         ou = OrnsteinUhlenbeckProcess(
-            duration=DURATION, dt=DT, mu=3.0, sigma=0.1, tau=2 * DT, independent_realisations=2, seed=42,
+            duration=DURATION,
+            dt=DT,
+            mu=3.0,
+            sigma=0.1,
+            tau=2 * DT,
+            independent_realisations=2,
+            seed=42,
         ).generate_input()
         self.assertTrue(isinstance(ou, np.ndarray))
         self.assertTupleEqual(ou.shape, SHAPE)
@@ -70,7 +76,11 @@ class TestStepInput(unittest.TestCase):
 
     def test_generate_input(self):
         step = StepInput(
-            duration=DURATION, dt=DT, step_size=self.STEP_SIZE, independent_realisations=2, seed=42,
+            duration=DURATION,
+            dt=DT,
+            step_size=self.STEP_SIZE,
+            independent_realisations=2,
+            seed=42,
         ).generate_input()
         self.assertTrue(isinstance(step, np.ndarray))
         self.assertTupleEqual(step.shape, SHAPE)
@@ -97,7 +107,12 @@ class TestSinusoidalInput(unittest.TestCase):
     def test_generate_input(self):
 
         sin = SinusoidalInput(
-            duration=DURATION, dt=DT, amplitude=self.AMPLITUDE, period=self.PERIOD, independent_realisations=2, seed=42,
+            duration=DURATION,
+            dt=DT,
+            amplitude=self.AMPLITUDE,
+            period=self.PERIOD,
+            independent_realisations=2,
+            seed=42,
         ).generate_input()
         self.assertTrue(isinstance(sin, np.ndarray))
         self.assertTupleEqual(sin.shape, SHAPE)
@@ -125,7 +140,12 @@ class TestSquareInput(unittest.TestCase):
     def test_generate_input(self):
 
         sq = SquareInput(
-            duration=DURATION, dt=DT, amplitude=self.AMPLITUDE, period=self.PERIOD, independent_realisations=2, seed=42,
+            duration=DURATION,
+            dt=DT,
+            amplitude=self.AMPLITUDE,
+            period=self.PERIOD,
+            independent_realisations=2,
+            seed=42,
         ).generate_input()
         self.assertTrue(isinstance(sq, np.ndarray))
         self.assertTupleEqual(sq.shape, SHAPE)

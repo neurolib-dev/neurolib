@@ -9,8 +9,11 @@ import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.fhn import FHNModel
 from neurolib.models.multimodel.builder.fitzhugh_nagumo import (
-    FHN_DEFAULT_PARAMS, FitzHughNagumoMass, FitzHughNagumoNetwork,
-    FitzHughNagumoNode)
+    FHN_DEFAULT_PARAMS,
+    FitzHughNagumoMass,
+    FitzHughNagumoNetwork,
+    FitzHughNagumoNode,
+)
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 SEED = 42
@@ -82,7 +85,10 @@ class TestFitzHughNagumoNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = fhn.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), fhn.num_state_variables)
@@ -131,7 +137,10 @@ class TestFitzHughNagumoNetwork(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = fhn.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), fhn.num_state_variables / fhn.num_nodes)
