@@ -33,7 +33,7 @@ def _strip_keys(dict_test, strip_keys=PARAMS_NOT_TEST_KEYS):
 
 SEED = 42
 DURATION = 100.0
-DT = 0.01
+DT = 0.005
 CORR_THRESHOLD = 0.9
 NEUROLIB_VARIABLES_TO_TEST = [("q_mean_EXC", "rates_exc"), ("q_mean_INH", "rates_inh")]
 
