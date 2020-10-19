@@ -9,11 +9,8 @@ import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.fhn import FHNModel
 from neurolib.models.multimodel.builder.fitzhugh_nagumo import (
-    DEFAULT_PARAMS,
-    FitzHughNagumoMass,
-    FitzHughNagumoNetwork,
-    FitzHughNagumoNode,
-)
+    FHN_DEFAULT_PARAMS, FitzHughNagumoMass, FitzHughNagumoNetwork,
+    FitzHughNagumoNode)
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 SEED = 42
@@ -51,7 +48,7 @@ class TestFitzHughNagumoMass(MassTestCase):
     def test_init(self):
         fhn = self._create_mass()
         self.assertTrue(isinstance(fhn, FitzHughNagumoMass))
-        self.assertDictEqual(fhn.params, DEFAULT_PARAMS)
+        self.assertDictEqual(fhn.params, FHN_DEFAULT_PARAMS)
         coupling_variables = {k: 0.0 for k in fhn.required_couplings}
         self.assertEqual(len(fhn._derivatives(coupling_variables)), fhn.num_state_variables)
         self.assertEqual(len(fhn.initial_state), fhn.num_state_variables)
@@ -76,7 +73,7 @@ class TestFitzHughNagumoNode(unittest.TestCase):
         fhn = self._create_node()
         self.assertTrue(isinstance(fhn, FitzHughNagumoNode))
         self.assertEqual(len(fhn), 1)
-        self.assertDictEqual(fhn[0].params, DEFAULT_PARAMS)
+        self.assertDictEqual(fhn[0].params, FHN_DEFAULT_PARAMS)
         self.assertEqual(len(fhn.default_network_coupling), 2)
         np.testing.assert_equal(np.array(fhn[0].initial_state), fhn.initial_state)
 

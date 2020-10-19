@@ -24,7 +24,7 @@ from jitcdde import input as system_input
 from ..builder.base.network import Network, Node
 from ..builder.base.neural_mass import NeuralMass
 
-DEFAULT_PARAMS = {
+HOPF_DEFAULT_PARAMS = {
     "a": 0.25,
     "omega": 0.2,
     "ext_input_x": 0.0,
@@ -48,7 +48,7 @@ class HopfMass(NeuralMass):
     required_couplings = ["network_x", "network_y"]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS, seed=seed)
+        super().__init__(params=params or HOPF_DEFAULT_PARAMS, seed=seed)
 
     def _initialize_state_vector(self):
         """

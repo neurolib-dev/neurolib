@@ -10,9 +10,9 @@ import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.aln import ALNModel
 from neurolib.models.multimodel.builder.adex import (
-    DEFAULT_ADEX_NODE_CONNECTIVITY,
-    DEFAULT_PARAMS_EXC,
-    DEFAULT_PARAMS_INH,
+    ADEX_NODE_DEFAULT_CONNECTIVITY,
+    ADEX_EXC_DEFAULT_PARAMS,
+    ADEX_INH_DEFAULT_PARAMS,
     AdExNetwork,
     AdExNode,
     ExcitatoryAdExMass,
@@ -135,8 +135,8 @@ class TestAdExMass(ALNMassTestCase):
         adex_inh = self._create_inh_mass()
         self.assertTrue(isinstance(adex_exc, ExcitatoryAdExMass))
         self.assertTrue(isinstance(adex_inh, InhibitoryAdExMass))
-        self.assertDictEqual(_strip_keys(adex_exc.params), _strip_keys(DEFAULT_PARAMS_EXC))
-        self.assertDictEqual(_strip_keys(adex_inh.params), _strip_keys(DEFAULT_PARAMS_INH))
+        self.assertDictEqual(_strip_keys(adex_exc.params), _strip_keys(ADEX_EXC_DEFAULT_PARAMS))
+        self.assertDictEqual(_strip_keys(adex_inh.params), _strip_keys(ADEX_INH_DEFAULT_PARAMS))
         # test cascade
         np.testing.assert_equal(adex_exc.mu_range, adex_inh.mu_range)
         np.testing.assert_equal(adex_exc.sigma_range, adex_inh.sigma_range)
@@ -194,8 +194,8 @@ class TestAdExNode(unittest.TestCase):
         adex = self._create_node()
         self.assertTrue(isinstance(adex, AdExNode))
         self.assertEqual(len(adex), 2)
-        self.assertDictEqual(_strip_keys(adex[0].params), _strip_keys(DEFAULT_PARAMS_EXC))
-        self.assertDictEqual(_strip_keys(adex[1].params), _strip_keys(DEFAULT_PARAMS_INH))
+        self.assertDictEqual(_strip_keys(adex[0].params), _strip_keys(ADEX_EXC_DEFAULT_PARAMS))
+        self.assertDictEqual(_strip_keys(adex[1].params), _strip_keys(ADEX_INH_DEFAULT_PARAMS))
         self.assertTrue(hasattr(adex, "_rescale_connectivity"))
         self.assertEqual(len(adex._sync()), 4 * len(adex))
         self.assertEqual(len(adex.default_network_coupling), 2)
@@ -207,7 +207,7 @@ class TestAdExNode(unittest.TestCase):
         adex = self._create_node()
         # update connectivity and check rescaling
         old_rescaled = adex.connectivity.copy()
-        adex.update_params({"local_connectivity": 2 * DEFAULT_ADEX_NODE_CONNECTIVITY})
+        adex.update_params({"local_connectivity": 2 * ADEX_NODE_DEFAULT_CONNECTIVITY})
         np.testing.assert_equal(adex.connectivity, 2 * old_rescaled)
 
     def test_run(self):
