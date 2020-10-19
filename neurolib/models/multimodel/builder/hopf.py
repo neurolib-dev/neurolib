@@ -26,9 +26,9 @@ from ..builder.base.neural_mass import NeuralMass
 
 HOPF_DEFAULT_PARAMS = {
     "a": 0.25,
-    "omega": 0.2,
-    "ext_input_x": 0.0,
-    "ext_input_y": 0.0,
+    "w": 0.2,
+    "x_ext": 0.0,
+    "y_ext": 0.0,
 }
 
 
@@ -44,7 +44,7 @@ class HopfMass(NeuralMass):
     num_noise_variables = 2
     coupling_variables = {0: "x", 1: "y"}
     state_variable_names = ["x", "y"]
-    required_params = ["a", "omega", "ext_input_x", "ext_input_y"]
+    required_params = ["a", "w", "x_ext", "y_ext"]
     required_couplings = ["network_x", "network_y"]
 
     def __init__(self, params=None, seed=None):
@@ -62,18 +62,18 @@ class HopfMass(NeuralMass):
 
         d_x = (
             (self.params["a"] - x ** 2 - y ** 2) * x
-            - self.params["omega"] * y
+            - self.params["w"] * y
             + coupling_variables["network_x"]
             + system_input(self.noise_input_idx[0])
-            + self.params["ext_input_x"]
+            + self.params["x_ext"]
         )
 
         d_y = (
             (self.params["a"] - x ** 2 - y ** 2) * y
-            + self.params["omega"] * x
+            + self.params["w"] * x
             + coupling_variables["network_y"]
             + system_input(self.noise_input_idx[1])
-            + self.params["ext_input_y"]
+            + self.params["y_ext"]
         )
 
         return [d_x, d_y]
@@ -119,7 +119,11 @@ class HopfNetwork(Network):
     default_coupling = {"network_x": "diffusive", "network_y": "none"}
 
     def __init__(
-        self, connectivity_matrix, delay_matrix, mass_params=None, seed=None,
+        self,
+        connectivity_matrix,
+        delay_matrix,
+        mass_params=None,
+        seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -153,7 +157,9 @@ class HopfNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+            nodes=nodes,
+            connectivity_matrix=connectivity_matrix,
+            delay_matrix=delay_matrix,
         )
         # get all coupling variables
         all_couplings = [mass.coupling_variables for node in self.nodes for mass in node.masses]

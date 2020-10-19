@@ -8,11 +8,13 @@ import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.multimodel.builder.model_input import ZeroInput
-from neurolib.models.multimodel.builder.thalamus import (TCR_DEFAULT_PARAMS,
-                                                         TRN_DEFAULT_PARAMS,
-                                                         ThalamicNode,
-                                                         ThalamicReticularMass,
-                                                         ThalamocorticalMass)
+from neurolib.models.multimodel.builder.thalamus import (
+    TCR_DEFAULT_PARAMS,
+    TRN_DEFAULT_PARAMS,
+    ThalamicNode,
+    ThalamicReticularMass,
+    ThalamocorticalMass,
+)
 from neurolib.models.thalamus import ThalamicMassModel
 
 DURATION = 100.0

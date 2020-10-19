@@ -9,9 +9,17 @@ from jitcdde import jitcdde_input
 from neurolib.models.multimodel.builder.base.constants import EXC
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 from neurolib.models.multimodel.builder.wong_wang import (
-    WW_EXC_DEFAULT_PARAMS, WW_INH_DEFAULT_PARAMS, WW_REDUCED_DEFAULT_PARAMS,
-    ExcitatoryWongWangMass, InhibitoryWongWangMass, ReducedWongWangMass,
-    ReducedWongWangNetwork, ReducedWongWangNode, WongWangNetwork, WongWangNode)
+    WW_EXC_DEFAULT_PARAMS,
+    WW_INH_DEFAULT_PARAMS,
+    WW_REDUCED_DEFAULT_PARAMS,
+    ExcitatoryWongWangMass,
+    InhibitoryWongWangMass,
+    ReducedWongWangMass,
+    ReducedWongWangNetwork,
+    ReducedWongWangNode,
+    WongWangNetwork,
+    WongWangNode,
+)
 
 SEED = 42
 DURATION = 100.0
@@ -113,14 +121,20 @@ class TestWongWangNode(unittest.TestCase):
         self.assertDictEqual(ww[1].params, WW_INH_DEFAULT_PARAMS)
         self.assertEqual(len(ww.default_network_coupling), 2)
         np.testing.assert_equal(
-            np.array(sum([wwm.initial_state for wwm in ww], [])), ww.initial_state,
+            np.array(sum([wwm.initial_state for wwm in ww], [])),
+            ww.initial_state,
         )
 
     def test_run(self):
         ww = self._create_node()
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
-            result = ww.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, ww.num_noise_variables)), backend=backend,)
+            result = ww.run(
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, ww.num_noise_variables)),
+                backend=backend,
+            )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), ww.num_state_variables)
             self.assertTrue(all(state_var in result for state_var in ww.state_variable_names[0]))
@@ -189,7 +203,12 @@ class TestWongWangNetwork(unittest.TestCase):
         ww = WongWangNetwork(self.SC, self.DELAYS, exc_seed=SEED, inh_seed=SEED)
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
-            result = ww.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, ww.num_noise_variables)), backend=backend,)
+            result = ww.run(
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, ww.num_noise_variables)),
+                backend=backend,
+            )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), ww.num_state_variables / ww.num_nodes)
             self.assertTrue(all(result[result_].shape == (int(DURATION / DT), ww.num_nodes) for result_ in result))
@@ -218,7 +237,10 @@ class TestReducedWongWangNetwork(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = rww.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, rww.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, rww.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), rww.num_state_variables / rww.num_nodes)

@@ -227,7 +227,9 @@ class WilsonCowanNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+            nodes=nodes,
+            connectivity_matrix=connectivity_matrix,
+            delay_matrix=delay_matrix,
         )
         # assert we have two sync variables
         assert len(self.sync_variables) == 2
