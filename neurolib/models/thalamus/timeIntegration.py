@@ -66,24 +66,43 @@ def timeIntegration(params):
     # init
     V_t[:startind] = params["V_t_init"]
     V_r[:startind] = params["V_r_init"]
-    Ca = params["Ca_init"]
-    h_T_t = params["h_T_t_init"]
-    h_T_r = params["h_T_r_init"]
-    m_h1 = params["m_h1_init"]
-    m_h2 = params["m_h2_init"]
-    s_et = params["s_et_init"]
-    s_gt = params["s_gt_init"]
-    s_er = params["s_er_init"]
-    s_gr = params["s_gr_init"]
-    ds_et = params["ds_et_init"]
-    ds_gt = params["ds_gt_init"]
-    ds_er = params["ds_er_init"]
-    ds_gr = params["ds_gr_init"]
+    Ca = float(params["Ca_init"])
+    h_T_t = float(params["h_T_t_init"])
+    h_T_r = float(params["h_T_r_init"])
+    m_h1 = float(params["m_h1_init"])
+    m_h2 = float(params["m_h2_init"])
+    s_et = float(params["s_et_init"])
+    s_gt = float(params["s_gt_init"])
+    s_er = float(params["s_er_init"])
+    s_gr = float(params["s_gr_init"])
+    ds_et = float(params["ds_et_init"])
+    ds_gt = float(params["ds_gt_init"])
+    ds_er = float(params["ds_er_init"])
+    ds_gr = float(params["ds_gr_init"])
 
     np.random.seed(RNGseed)
     noise = np.random.standard_normal((len(t)))
 
-    return timeIntegration_njit_elementwise(
+    (
+        t,
+        V_t,
+        V_r,
+        Q_t,
+        Q_r,
+        Ca,
+        h_T_t,
+        h_T_r,
+        m_h1,
+        m_h2,
+        s_et,
+        s_gt,
+        s_er,
+        s_gr,
+        ds_et,
+        ds_gt,
+        ds_er,
+        ds_gr,
+    ) = timeIntegration_njit_elementwise(
         startind,
         t,
         dt,
@@ -142,6 +161,26 @@ def timeIntegration(params):
         ds_gt,
         ds_er,
         ds_gr,
+    )
+    return (
+        t,
+        V_t[np.newaxis, :],
+        V_r[np.newaxis, :],
+        Q_t[np.newaxis, :],
+        Q_r[np.newaxis, :],
+        np.array(Ca),
+        np.array(h_T_t),
+        np.array(h_T_r),
+        np.array(m_h1),
+        np.array(m_h2),
+        np.array(s_et),
+        np.array(s_gt),
+        np.array(s_er),
+        np.array(s_gr),
+        np.array(ds_et),
+        np.array(ds_gt),
+        np.array(ds_er),
+        np.array(ds_gr),
     )
 
 
@@ -304,4 +343,4 @@ def timeIntegration_njit_elementwise(
     Q_t *= 1000.0
     Q_r *= 1000.0
 
-    return t, V_t, V_r, Q_t, Q_r
+    return t, V_t, V_r, Q_t, Q_r, Ca, h_T_t, h_T_r, m_h1, m_h2, s_et, s_gt, s_er, s_gr, ds_et, ds_gt, ds_er, ds_gr

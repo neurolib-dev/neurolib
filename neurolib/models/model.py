@@ -8,8 +8,7 @@ from ..utils.collections import dotdict
 
 
 class Model:
-    """The Model superclass runs simulations and manages inputs and outputs of all models.
-    """
+    """The Model superclass runs simulations and manages inputs and outputs of all models."""
 
     def __init__(self, integration, params):
         if hasattr(self, "name"):
@@ -45,8 +44,7 @@ class Model:
         logging.info(f"{self.name}: Model initialized.")
 
     def initializeBold(self):
-        """Initialize BOLD model.
-        """
+        """Initialize BOLD model."""
         self.boldInitialized = False
 
         # function to transform model state before passing it to the bold model
@@ -61,7 +59,7 @@ class Model:
         # logging.info(f"{self.name}: BOLD model initialized.")
 
     def simulateBold(self, t, variables, append=False):
-        """Gets the default output of the model and simulates the BOLD model. 
+        """Gets the default output of the model and simulates the BOLD model.
         Adds the simulated BOLD signal to outputs.
         """
         if self.boldInitialized:
@@ -101,8 +99,7 @@ class Model:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
 
     def checkChunkwise(self):
-        """Checks if the model fulfills requirements for chunkwise simulation. Throws errors if not.
-        """
+        """Checks if the model fulfills requirements for chunkwise simulation. Throws errors if not."""
         assert self.state_vars is not None, "State variable names not given."
         assert self.init_vars is not None, "Initial value variable names not given."
         assert len(self.state_vars) == len(self.init_vars), "State variables are not same length as initial values."
@@ -137,12 +134,12 @@ class Model:
         append_outputs=None,
         continue_run=False,
     ):
-        """Main interfacing function to run a model. 
+        """Main interfacing function to run a model.
         The model can be run in three different ways:
         1) `model.run()` starts a new run.
         2) `model.run(chunkwise=True)` runs the simulation in chunks of length `chunksize`.
         3) `mode.run(continue_run=True)` continues the simulation of a previous run.
-        
+
         :param inputs: list of inputs to the model, must have the same order as model.input_vars. Note: no sanity check is performed for performance reasons. Take care of the inputs yourself.
         :type inputs: list[np.ndarray|]
         :param continue_run: continue a simulation by using the initial values from a previous simulation
@@ -200,7 +197,7 @@ class Model:
 
     def integrate(self, append_outputs=False, simulate_bold=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
-        
+
         :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
         :type append: bool, optional
         """
@@ -219,8 +216,8 @@ class Model:
 
     def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
-        If `bold==True`, the BOLD model is simulated after each chunk.     
-        
+        If `bold==True`, the BOLD model is simulated after each chunk.
+
         :param chunksize: size of each chunk to simulate in units of dt
         :type chunksize: int
         :param bold: simulate BOLD model after each chunk, defaults to False
@@ -249,8 +246,7 @@ class Model:
         self.params["duration"] = totalDuration
 
     def clearModelState(self):
-        """Clears the model's state to create a fresh one
-        """
+        """Clears the model's state to create a fresh one"""
         self.state = dotdict({})
         self.outputs = dotdict({})
         # reinitialize bold model
@@ -258,7 +254,7 @@ class Model:
 
     def storeOutputsAndStates(self, t, variables, append=False):
         """Takes the simulated variables of the integration and stores it to the appropriate model output and state object.
-        
+
         :param t: time vector
         :type t: list
         :param variables: variable from time integration
@@ -276,11 +272,10 @@ class Model:
             self.setStateVariables(svn, sv)
 
     def setInitialValuesToLastState(self):
-        """Reads the last state of the model and sets the initial conditions to that state for continuing a simulation.
-        """
+        """Reads the last state of the model and sets the initial conditions to that state for continuing a simulation."""
         for iv, sv in zip(self.init_vars, self.state_vars):
             # if state variables are one-dimensional (in space only)
-            if self.state[sv].ndim == 1:
+            if (self.state[sv].ndim == 0) or (self.state[sv].ndim == 1):
                 self.params[iv] = self.state[sv]
             # if they are space-time arrays
             else:
@@ -289,7 +284,7 @@ class Model:
 
     def randomICs(self, min=0, max=1):
         """Generates a new set of uniformly-distributed random initial conditions for the model.
-        
+
         TODO: All parameters are drawn from the same distribution / range. Allow for independent ranges.
 
         :param min: Minium of uniform distribution
@@ -306,7 +301,7 @@ class Model:
     def setInputs(self, inputs):
         """Take inputs from a list and store it in the appropriate model parameter for external input.
         TODO: This is not safe yet, checks should be implemented whether the model has inputs defined or not for example.
-        
+
         :param inputs: list of inputs
         :type inputs: list[np.ndarray(), ...]
         """
@@ -316,8 +311,8 @@ class Model:
     def autochunk(self, inputs=None, chunksize=1, append_outputs=False, bold=False):
         """Executes a single chunk of integration, either for a given duration
         or a single timestep `dt`. Gathers all inputs to the model and resets
-        the initial conditions as a preparation for the next chunk. 
-        
+        the initial conditions as a preparation for the next chunk.
+
         :param inputs: list of input values, ordered according to self.input_vars, defaults to None
         :type inputs: list[np.ndarray|], optional
         :param chunksize: length of a chunk to simulate in dt, defaults 1
@@ -342,12 +337,12 @@ class Model:
     def getMaxDelay(self):
         """Computes the maximum delay of the model. This function should be overloaded
         if the model has internal delays (additional to delay between nodes defined by Dmat)
-        such as the delay between an excitatory and inhibitory population within each brain area. 
-        If this function is not overloaded, the maximum delay is assumed to be defined from the 
-        global delay matrix `Dmat`. 
-        
+        such as the delay between an excitatory and inhibitory population within each brain area.
+        If this function is not overloaded, the maximum delay is assumed to be defined from the
+        global delay matrix `Dmat`.
+
         Note: Maxmimum delay is given in units of dt.
-        
+
         :return: maxmimum delay of the model in units of dt
         :rtype: int
         """
@@ -366,11 +361,11 @@ class Model:
         return max_global_delay
 
     def setStateVariables(self, name, data):
-        """Saves the models current state variables. 
-        
+        """Saves the models current state variables.
+
         TODO: Cut state variables to length of self.maxDelay
         However, this could be time-memory tradeoff
-        
+
         :param name: name of the state variable
         :type name: str
         :param data: value of the variable
@@ -466,8 +461,7 @@ class Model:
         return lastOutput
 
     def __getitem__(self, key):
-        """Index outputs with a dictionary-like key
-        """
+        """Index outputs with a dictionary-like key"""
         return self.getOutput(key)
 
     def getOutputs(self, group=""):
@@ -505,8 +499,7 @@ class Model:
 
     @property
     def output(self):
-        """Returns value of default output.
-        """
+        """Returns value of default output."""
         assert self.default_output is not None, "Default output has not been set yet. Use `setDefaultOutput()`."
         return self.getOutput(self.default_output)
 

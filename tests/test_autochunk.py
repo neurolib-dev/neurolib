@@ -6,6 +6,7 @@ import numpy as np
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.hopf import HopfModel
+from neurolib.models.thalamus import ThalamicMassModel
 from neurolib.models.wc import WCModel
 from neurolib.utils.loadData import Dataset
 
@@ -16,21 +17,21 @@ class TestAutochunk(unittest.TestCase):
     """
 
     def test_check_chunkwise(self):
-        """Full test of chunkwise integration over all models
-        """
+        """Full test of chunkwise integration over all models"""
         ds = Dataset("hcp")
-        Models = [ALNModel, FHNModel, HopfModel, WCModel]
+        Models = [ALNModel, FHNModel, HopfModel, WCModel, ThalamicMassModel]
         durations = [0.1, 0.5, 10.5, 22.3]
         chunksizes = [1, 5, 7, 33, 55, 123]
         modes = ["single", "network"]
         signalVs = [0, 1, 10, 10000]
 
-        plot = False
         for mode in modes:
             for Model in Models:
                 for duration in durations:
                     for chunksize in chunksizes:
                         for signalV in signalVs:
+                            if Model == ThalamicMassModel and mode == "network":
+                                continue
                             if mode == "network":
                                 m1 = Model(Cmat=ds.Cmat, Dmat=ds.Dmat)
                             else:
@@ -52,6 +53,7 @@ class TestAutochunk(unittest.TestCase):
                                 m1.output.shape == m2.output.shape
                             ), "Shape of chunkwise output does not match normal output!"
                             difference = np.sum(abs(m1.output - m2.output))
+                            # self.assertAlmostEqual(difference, 0.0, places=4)
                             assert (
                                 difference == 0
                             ), f"difference: {difference} > Model: {Model.name}, Mode: {mode}, signalV: {signalV}, Chunksize: {chunksize}, Duration: {duration}"
@@ -61,8 +63,7 @@ class TestAutochunk(unittest.TestCase):
                                 )
 
     def test_onstep_input_autochunk(self):
-        """Tests passing an input array to a model.
-        """
+        """Tests passing an input array to a model."""
         model = ALNModel()
         model.params["duration"] = 1000
         duration_dt = int(model.params["duration"] / model.params["dt"])
