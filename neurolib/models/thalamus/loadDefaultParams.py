@@ -106,10 +106,10 @@ def generateRandomICs(seed=None):
     """
     np.random.seed(seed)
 
-    V_t_init = np.random.uniform(-75, -50)
-    V_r_init = np.random.uniform(-75, -50)
-    Q_t_init = np.random.uniform(0.0, 0.2)
-    Q_r_init = np.random.uniform(0.0, 0.2)
+    V_t_init = np.random.uniform(-75, -50, (1,))
+    V_r_init = np.random.uniform(-75, -50, (1,))
+    Q_t_init = np.random.uniform(0.0, 200.0, (1,))
+    Q_r_init = np.random.uniform(0.0, 200.0, (1,))
     Ca_init = 2.4e-4
     h_T_t_init = 0.0
     h_T_r_init = 0.0
@@ -125,10 +125,10 @@ def generateRandomICs(seed=None):
     ds_gr_init = 0.0
 
     return (
-        np.array(V_t_init),
-        np.array(V_r_init),
-        np.array(Q_t_init),
-        np.array(Q_r_init),
+        V_t_init,
+        V_r_init,
+        Q_t_init,
+        Q_r_init,
         np.array(Ca_init),
         np.array(h_T_t_init),
         np.array(h_T_r_init),

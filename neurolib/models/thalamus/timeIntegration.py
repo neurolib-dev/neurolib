@@ -59,13 +59,13 @@ def timeIntegration(params):
     ext_current_r = params["ext_current_r"]
 
     # model output
-    V_t = np.zeros((startind + len(t),))
-    V_r = np.zeros((startind + len(t),))
-    Q_t = np.zeros((startind + len(t),))
-    Q_r = np.zeros((startind + len(t),))
+    V_t = np.zeros((1, startind + len(t)))
+    V_r = np.zeros((1, startind + len(t)))
+    Q_t = np.zeros((1, startind + len(t)))
+    Q_r = np.zeros((1, startind + len(t)))
     # init
-    V_t[:startind] = params["V_t_init"]
-    V_r[:startind] = params["V_r_init"]
+    V_t[:, :startind] = params["V_t_init"]
+    V_r[:, :startind] = params["V_r_init"]
     Ca = float(params["Ca_init"])
     h_T_t = float(params["h_T_t_init"])
     h_T_r = float(params["h_T_r_init"])
@@ -164,10 +164,10 @@ def timeIntegration(params):
     )
     return (
         t,
-        V_t[np.newaxis, :],
-        V_r[np.newaxis, :],
-        Q_t[np.newaxis, :],
-        Q_r[np.newaxis, :],
+        V_t,
+        V_r,
+        Q_t,
+        Q_r,
         np.array(Ca),
         np.array(h_T_t),
         np.array(h_T_r),
@@ -262,27 +262,27 @@ def timeIntegration_njit_elementwise(
 
     for i in range(startind, startind + len(t)):
         # leak current
-        I_leak_t = _leak_current(V_t[i - 1])
-        I_leak_r = _leak_current(V_r[i - 1])
+        I_leak_t = _leak_current(V_t[0, i - 1])
+        I_leak_r = _leak_current(V_r[0, i - 1])
 
         # synaptic currents
-        I_et = _syn_exc_current(V_t[i - 1], s_et)
-        I_gt = _syn_inh_current(V_t[i - 1], s_gt)
-        I_er = _syn_exc_current(V_r[i - 1], s_er)
-        I_gr = _syn_inh_current(V_r[i - 1], s_gr)
+        I_et = _syn_exc_current(V_t[0, i - 1], s_et)
+        I_gt = _syn_inh_current(V_t[0, i - 1], s_gt)
+        I_er = _syn_exc_current(V_r[0, i - 1], s_er)
+        I_gr = _syn_inh_current(V_r[0, i - 1], s_gr)
 
         # potassium leak current
-        I_LK_t = _potassium_leak_current(V_t[i - 1])
-        I_LK_r = _potassium_leak_current(V_r[i - 1])
+        I_LK_t = _potassium_leak_current(V_t[0, i - 1])
+        I_LK_r = _potassium_leak_current(V_r[0, i - 1])
 
         # T-type Ca current
-        m_inf_T_t = 1.0 / (1.0 + np.exp(-(V_t[i - 1] + 59.0) / 6.2))
-        m_inf_T_r = 1.0 / (1.0 + np.exp(-(V_r[i - 1] + 52.0) / 7.4))
-        I_T_t = g_T_t * m_inf_T_t * m_inf_T_t * h_T_t * (V_t[i - 1] - E_Ca)
-        I_T_r = g_T_r * m_inf_T_r * m_inf_T_r * h_T_r * (V_r[i - 1] - E_Ca)
+        m_inf_T_t = 1.0 / (1.0 + np.exp(-(V_t[0, i - 1] + 59.0) / 6.2))
+        m_inf_T_r = 1.0 / (1.0 + np.exp(-(V_r[0, i - 1] + 52.0) / 7.4))
+        I_T_t = g_T_t * m_inf_T_t * m_inf_T_t * h_T_t * (V_t[0, i - 1] - E_Ca)
+        I_T_r = g_T_r * m_inf_T_r * m_inf_T_r * h_T_r * (V_r[0, i - 1] - E_Ca)
 
         # h-type current
-        I_h = g_h * (m_h1 + g_inc * m_h2) * (V_t[i - 1] - E_h)
+        I_h = g_h * (m_h1 + g_inc * m_h2) * (V_t[0, i - 1] - E_h)
 
         ### define derivatives
         # membrane potential
@@ -291,18 +291,18 @@ def timeIntegration_njit_elementwise(
         # Calcium concentration
         d_Ca = alpha_Ca * I_T_t - (Ca - Ca_0) / tau_Ca
         # channel dynamics
-        h_inf_T_t = 1.0 / (1.0 + np.exp((V_t[i - 1] + 81.0) / 4.0))
-        h_inf_T_r = 1.0 / (1.0 + np.exp((V_r[i - 1] + 80.0) / 5.0))
+        h_inf_T_t = 1.0 / (1.0 + np.exp((V_t[0, i - 1] + 81.0) / 4.0))
+        h_inf_T_r = 1.0 / (1.0 + np.exp((V_r[0, i - 1] + 80.0) / 5.0))
         tau_h_T_t = (
-            30.8 + (211.4 + np.exp((V_t[i - 1] + 115.2) / 5.0)) / (1.0 + np.exp((V_t[i - 1] + 86.0) / 3.2))
+            30.8 + (211.4 + np.exp((V_t[0, i - 1] + 115.2) / 5.0)) / (1.0 + np.exp((V_t[0, i - 1] + 86.0) / 3.2))
         ) / 3.7371928
         tau_h_T_r = (
-            85.0 + 1.0 / (np.exp((V_r[i - 1] + 48.0) / 4.0) + np.exp(-(V_r[i - 1] + 407.0) / 50.0))
+            85.0 + 1.0 / (np.exp((V_r[0, i - 1] + 48.0) / 4.0) + np.exp(-(V_r[0, i - 1] + 407.0) / 50.0))
         ) / 3.7371928
         d_h_T_t = (h_inf_T_t - h_T_t) / tau_h_T_t
         d_h_T_r = (h_inf_T_r - h_T_r) / tau_h_T_r
-        m_inf_h = 1.0 / (1.0 + np.exp((V_t[i - 1] + 75.0) / 5.5))
-        tau_m_h = 20.0 + 1000.0 / (np.exp((V_t[i - 1] + 71.5) / 14.2) + np.exp(-(V_t[i - 1] + 89.0) / 11.6))
+        m_inf_h = 1.0 / (1.0 + np.exp((V_t[0, i - 1] + 75.0) / 5.5))
+        tau_m_h = 20.0 + 1000.0 / (np.exp((V_t[0, i - 1] + 71.5) / 14.2) + np.exp(-(V_t[0, i - 1] + 89.0) / 11.6))
         # Calcium channel dynamics
         P_h = k1 * Ca ** n_P / (k1 * Ca ** n_P + k2)
         d_m_h1 = (m_inf_h * (1.0 - m_h2) - m_h1) / tau_m_h - k3 * P_h * m_h1 + k4 * m_h2
@@ -314,16 +314,16 @@ def timeIntegration_njit_elementwise(
         d_s_gr = ds_gr
         d_ds_et = 0.0
         # d_ds_et = gamma_e ** 2 * (N_tp * cortical_rowsum - s_et) - 2 * gamma_e * ds_et
-        d_ds_er = gamma_e ** 2 * (N_rt * Q_t[i - 1] - s_er) - 2 * gamma_e * ds_er
-        # d_ds_er = gamma_e ** 2 * (N_rt * Q_t[i - 1] + N_rp * cortical_rowsum - s_er) - 2 * gamma_e * ds_er
-        d_ds_gt = gamma_r ** 2 * (N_tr * Q_r[i - 1] - s_gt) - 2 * gamma_r * ds_gt
-        d_ds_gr = gamma_r ** 2 * (N_rr * Q_r[i - 1] - s_gr) - 2 * gamma_r * ds_gr
+        d_ds_er = gamma_e ** 2 * (N_rt * _firing_rate(V_t[0, i - 1]) - s_er) - 2 * gamma_e * ds_er
+        # d_ds_er = gamma_e ** 2 * (N_rt * _firing_rate(V_t[0, i - 1]) + N_rp * cortical_rowsum - s_er) - 2 * gamma_e * ds_er
+        d_ds_gt = gamma_r ** 2 * (N_tr * _firing_rate(V_r[0, i - 1]) - s_gt) - 2 * gamma_r * ds_gt
+        d_ds_gr = gamma_r ** 2 * (N_rr * _firing_rate(V_r[0, i - 1]) - s_gr) - 2 * gamma_r * ds_gr
 
         ### Euler integration
-        V_t[i] = V_t[i - 1] + dt * d_V_t
-        V_r[i] = V_r[i - 1] + dt * d_V_r
-        Q_t[i] = _firing_rate(V_t[i])
-        Q_r[i] = _firing_rate(V_r[i])
+        V_t[0, i] = V_t[0, i - 1] + dt * d_V_t
+        V_r[0, i] = V_r[0, i - 1] + dt * d_V_r
+        Q_t[0, i] = _firing_rate(V_t[0, i]) * 1e3  # convert kHz to Hz
+        Q_r[0, i] = _firing_rate(V_r[0, i]) * 1e3  # convert kHz to Hz
         Ca = Ca + dt * d_Ca
         h_T_t = h_T_t + dt * d_h_T_t
         h_T_r = h_T_r + dt * d_h_T_r
@@ -338,9 +338,5 @@ def timeIntegration_njit_elementwise(
         ds_gt = ds_gt + dt * d_ds_gt
         ds_er = ds_er + dt * d_ds_er
         ds_gr = ds_gr + dt * d_ds_gr
-
-    # kHz -> Hz for firing rates
-    Q_t *= 1000.0
-    Q_r *= 1000.0
 
     return t, V_t, V_r, Q_t, Q_r, Ca, h_T_t, h_T_r, m_h1, m_h2, s_et, s_gt, s_er, s_gr, ds_et, ds_gt, ds_er, ds_gr
