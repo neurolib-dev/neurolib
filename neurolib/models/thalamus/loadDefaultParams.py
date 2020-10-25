@@ -6,6 +6,8 @@ from ...utils.collections import dotdict
 def loadDefaultParams(seed=None):
     """
     Load default parameters for the thalamic mass model due to Costa et al.
+    Subscript t (_t) referes to thalamocortical relay population (TCR), while
+    sucscript r (_r) referes to the thalamic reticular nuclei (TRN).
 
     :return: A dictionary with the default parameters of the model
     :rtype: dict
@@ -68,21 +70,25 @@ def loadDefaultParams(seed=None):
     params.ext_current_r = 0.0
 
     # init
-    params.V_t_init = -68.0
-    params.V_r_init = -68.0
-    params.Ca_init = 2.4e-4
-    params.h_T_t_init = 0.0
-    params.h_T_r_init = 0.0
-    params.m_h1_init = 0.0
-    params.m_h2_init = 0.0
-    params.s_et_init = 0.0
-    params.s_gt_init = 0.0
-    params.s_er_init = 0.0
-    params.s_gr_init = 0.0
-    params.ds_et_init = 0.0
-    params.ds_gt_init = 0.0
-    params.ds_er_init = 0.0
-    params.ds_gr_init = 0.0
+    (
+        params.V_t_init,
+        params.V_r_init,
+        params.Q_t_init,
+        params.Q_r_init,
+        params.Ca_init,
+        params.h_T_t_init,
+        params.h_T_r_init,
+        params.m_h1_init,
+        params.m_h2_init,
+        params.s_et_init,
+        params.s_gt_init,
+        params.s_er_init,
+        params.s_gr_init,
+        params.ds_et_init,
+        params.ds_gt_init,
+        params.ds_er_init,
+        params.ds_gr_init,
+    ) = generateRandomICs(seed=seed)
 
     # always 1 node only - no network of multiple "thalamuses"
     params.N = 1
@@ -90,3 +96,50 @@ def loadDefaultParams(seed=None):
     params.lengthMat = np.zeros((1, 1))
 
     return params
+
+
+def generateRandomICs(seed=None):
+    """Generates random Initial Conditions for the interareal network
+
+    :returns:   A tuple of 15 floats for representing initial state of the
+                thalamus
+    """
+    np.random.seed(seed)
+
+    V_t_init = np.random.uniform(-75, -50, (1,))
+    V_r_init = np.random.uniform(-75, -50, (1,))
+    Q_t_init = np.random.uniform(0.0, 200.0, (1,))
+    Q_r_init = np.random.uniform(0.0, 200.0, (1,))
+    Ca_init = 2.4e-4
+    h_T_t_init = 0.0
+    h_T_r_init = 0.0
+    m_h1_init = 0.0
+    m_h2_init = 0.0
+    s_et_init = 0.0
+    s_gt_init = 0.0
+    s_er_init = 0.0
+    s_gr_init = 0.0
+    ds_et_init = 0.0
+    ds_gt_init = 0.0
+    ds_er_init = 0.0
+    ds_gr_init = 0.0
+
+    return (
+        V_t_init,
+        V_r_init,
+        Q_t_init,
+        Q_r_init,
+        np.array(Ca_init),
+        np.array(h_T_t_init),
+        np.array(h_T_r_init),
+        np.array(m_h1_init),
+        np.array(m_h2_init),
+        np.array(s_et_init),
+        np.array(s_gt_init),
+        np.array(s_er_init),
+        np.array(s_gr_init),
+        np.array(ds_et_init),
+        np.array(ds_gt_init),
+        np.array(ds_er_init),
+        np.array(ds_gr_init),
+    )

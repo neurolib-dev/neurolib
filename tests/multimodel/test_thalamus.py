@@ -70,7 +70,8 @@ class TestThalamicMass(MassTestCase):
         for thlm in [tcr, trn]:
             coupling_variables = {k: 0.0 for k in thlm.required_couplings}
             self.assertEqual(
-                len(thlm._derivatives(coupling_variables)), thlm.num_state_variables,
+                len(thlm._derivatives(coupling_variables)),
+                thlm.num_state_variables,
             )
             self.assertEqual(len(thlm.initial_state), thlm.num_state_variables)
             self.assertEqual(len(thlm.noise_input_idx), thlm.num_noise_variables)
@@ -100,7 +101,8 @@ class TestThalamicNode(unittest.TestCase):
         self.assertDictEqual(thlm[1].params, DEFAULT_PARAMS_TRN)
         self.assertEqual(len(thlm.default_network_coupling), 2)
         np.testing.assert_equal(
-            np.array(sum([thlmm.initial_state for thlmm in thlm], [])), thlm.initial_state,
+            np.array(sum([thlmm.initial_state for thlmm in thlm], [])),
+            thlm.initial_state,
         )
 
     def test_run(self):
@@ -108,7 +110,10 @@ class TestThalamicNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = thlm.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, thlm.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, thlm.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), thlm.num_state_variables)
@@ -139,6 +144,8 @@ class TestThalamicNode(unittest.TestCase):
         thlm_neurolib = ThalamicMassModel()
         thlm_neurolib.params["duration"] = DURATION
         thlm_neurolib.params["dt"] = DT
+        thlm_neurolib.params["V_t_init"] = np.array([-70])
+        thlm_neurolib.params["V_r_init"] = np.array([-70])
         thlm_neurolib.run()
         for (var_multi, var_neurolib) in NEUROLIB_VARIABLES_TO_TEST:
             corr_mat = np.corrcoef(thlm_neurolib[var_neurolib], multi_result[var_multi].values.T)
