@@ -168,7 +168,7 @@ def _table_lookup(
     mu_range,
     d_sigma,
     d_mu,
-    transferfunction_table,
+    transfer_function_table,
 ):
     """
     Translate mean and std. deviation of the current to selected quantity using
@@ -179,14 +179,14 @@ def _table_lookup(
         current_sigma, current_mu, sigma_range, mu_range, d_sigma, d_mu
     )
     return (
-        transferfunction_table[y_idx, x_idx] * (1 - dx_idx) * (1 - dy_idx)
-        + transferfunction_table[y_idx, x_idx + 1] * dx_idx * (1 - dy_idx)
-        + transferfunction_table[y_idx + 1, x_idx] * (1 - dx_idx) * dy_idx
-        + transferfunction_table[y_idx + 1, x_idx + 1] * dx_idx * dy_idx
+        transfer_function_table[y_idx, x_idx] * (1 - dx_idx) * (1 - dy_idx)
+        + transfer_function_table[y_idx, x_idx + 1] * dx_idx * (1 - dy_idx)
+        + transfer_function_table[y_idx + 1, x_idx] * (1 - dx_idx) * dy_idx
+        + transfer_function_table[y_idx + 1, x_idx + 1] * dx_idx * dy_idx
     )
 
 
-class ALN(NeuralMass):
+class ALNMass(NeuralMass):
     """
     Adaptive linear-nonlinear neural mass model of exponential integrate-and-fire (AdEx)
     neurons.
@@ -210,19 +210,19 @@ class ALN(NeuralMass):
 
     num_noise_variables = 1
 
-    def __init__(self, params, lin_nonlin_transferfunction_filename=None, seed=None):
+    def __init__(self, params, lin_nonlin_transfer_function_filename=None, seed=None):
         """
-        :param lin_nonlin_transferfunction_filename: filename for precomputed
+        :param lin_nonlin_transfer_function_filename: filename for precomputed
             transfer functions of the ALN model, if None, will look for it in this
             directory
-        :type lin_nonlin_transferfunction_filename: str|None
+        :type lin_nonlin_transfer_function_filename: str|None
         :param seed: seed for random number generator
         :type seed: int|None
         """
         params = self._rescale_strengths(params)
         super().__init__(params=params, seed=seed)
         # use the same file as neurolib's native
-        lin_nonlin_transferfunction_filename = lin_nonlin_transferfunction_filename or os.path.join(
+        lin_nonlin_transfer_function_filename = lin_nonlin_transfer_function_filename or os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             "..",
             "..",
@@ -230,9 +230,9 @@ class ALN(NeuralMass):
             "aln-precalc",
             DEFAULT_QUANTITIES_CASCADE_FILENAME,
         )
-        self._load_lin_nonlin_transferfunction(lin_nonlin_transferfunction_filename)
+        self._load_lin_nonlin_transfer_function(lin_nonlin_transfer_function_filename)
 
-    def _load_lin_nonlin_transferfunction(self, filename):
+    def _load_lin_nonlin_transfer_function(self, filename):
         """
         Load precomputed transfer functions from h5 file.
         """
@@ -243,9 +243,9 @@ class ALN(NeuralMass):
         self.d_mu = self.mu_range[1] - self.mu_range[0]
         self.sigma_range = np.array(loaded_h5["sigma_vals"])
         self.d_sigma = self.sigma_range[1] - self.sigma_range[0]
-        self.firing_rate_transferfunction = np.array(loaded_h5["r_ss"])
-        self.voltage_transferfunction = np.array(loaded_h5["V_mean_ss"])
-        self.tau_transferfunction = np.array(loaded_h5["tau_mu_exp"])
+        self.firing_rate_transfer_function = np.array(loaded_h5["r_ss"])
+        self.voltage_transfer_function = np.array(loaded_h5["V_mean_ss"])
+        self.tau_transfer_function = np.array(loaded_h5["tau_mu_exp"])
         logging.info("All transfer functions loaded.")
         # close the file
         loaded_h5.close()
@@ -254,7 +254,7 @@ class ALN(NeuralMass):
     def describe(self):
         return {
             **super().describe(),
-            "lin_nonlin_transferfunction_filename": self.lin_nonlin_fname,
+            "lin_nonlin_transfer_function_filename": self.lin_nonlin_fname,
         }
 
     def _callbacks(self):
@@ -275,7 +275,7 @@ class ALN(NeuralMass):
         because of the internals.
         """
 
-        def _table_numba_gen(sigma_range, mu_range, d_sigma, d_mu, transferfunction):
+        def _table_numba_gen(sigma_range, mu_range, d_sigma, d_mu, transfer_function):
             """
             Function generator for numba callbacks. This works similarly as
             `functools.partial` (i.e. sets some of the arguments of the inner
@@ -291,7 +291,7 @@ class ALN(NeuralMass):
                     mu_range,
                     d_sigma,
                     d_mu,
-                    transferfunction,
+                    transfer_function,
                 )
 
             return inner
@@ -305,7 +305,7 @@ class ALN(NeuralMass):
                         self.mu_range,
                         self.d_sigma,
                         self.d_mu,
-                        self.firing_rate_transferfunction,
+                        self.firing_rate_transfer_function,
                     )
                 ),
             ),
@@ -313,7 +313,7 @@ class ALN(NeuralMass):
                 "voltage_lookup",
                 numba.njit(
                     _table_numba_gen(
-                        self.sigma_range, self.mu_range, self.d_sigma, self.d_mu, self.voltage_transferfunction
+                        self.sigma_range, self.mu_range, self.d_sigma, self.d_mu, self.voltage_transfer_function
                     )
                 ),
             ),
@@ -321,7 +321,7 @@ class ALN(NeuralMass):
                 "tau_lookup",
                 numba.njit(
                     _table_numba_gen(
-                        self.sigma_range, self.mu_range, self.d_sigma, self.d_mu, self.tau_transferfunction
+                        self.sigma_range, self.mu_range, self.d_sigma, self.d_mu, self.tau_transfer_function
                     )
                 ),
             ),
@@ -339,7 +339,7 @@ class ALN(NeuralMass):
             self.mu_range,
             self.d_sigma,
             self.d_mu,
-            self.firing_rate_transferfunction,
+            self.firing_rate_transfer_function,
         )
 
     def voltage_lookup(self, y, current_mu, current_sigma):
@@ -354,7 +354,7 @@ class ALN(NeuralMass):
             self.mu_range,
             self.d_sigma,
             self.d_mu,
-            self.voltage_transferfunction,
+            self.voltage_transfer_function,
         )
 
     def tau_lookup(self, y, current_mu, current_sigma):
@@ -369,11 +369,11 @@ class ALN(NeuralMass):
             self.mu_range,
             self.d_sigma,
             self.d_mu,
-            self.tau_transferfunction,
+            self.tau_transfer_function,
         )
 
 
-class ExcitatoryALN(ALN):
+class ExcitatoryALN(ALNMass):
     """
     Excitatory ALN neural mass. Contains firing rate adaptation current.
     """
@@ -433,10 +433,10 @@ class ExcitatoryALN(ALN):
         params["taum"] = params["C"] / params["gL"]
         return params
 
-    def __init__(self, params=None, lin_nonlin_transferfunction_filename=None, seed=None):
+    def __init__(self, params=None, lin_nonlin_transfer_function_filename=None, seed=None):
         super().__init__(
             params=params or ALN_EXC_DEFAULT_PARAMS,
-            lin_nonlin_transferfunction_filename=lin_nonlin_transferfunction_filename,
+            lin_nonlin_transfer_function_filename=lin_nonlin_transfer_function_filename,
             seed=seed,
         )
 
@@ -574,7 +574,7 @@ class ExcitatoryALN(ALN):
         ]
 
 
-class InhibitoryALN(ALN):
+class InhibitoryALN(ALNMass):
     """
     Inhibitory ALN neural mass. In contrast to excitatory, inhibitory mass do
     not contain fiting rate adaptation current.
@@ -628,10 +628,10 @@ class InhibitoryALN(ALN):
         params["taum"] = params["C"] / params["gL"]
         return params
 
-    def __init__(self, params=None, lin_nonlin_transferfunction_filename=None, seed=None):
+    def __init__(self, params=None, lin_nonlin_transfer_function_filename=None, seed=None):
         super().__init__(
             params=params or ALN_INH_DEFAULT_PARAMS,
-            lin_nonlin_transferfunction_filename=lin_nonlin_transferfunction_filename,
+            lin_nonlin_transfer_function_filename=lin_nonlin_transfer_function_filename,
             seed=seed,
         )
 
@@ -811,8 +811,8 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
         self,
         exc_params=None,
         inh_params=None,
-        exc_lin_nonlin_transferfunction_filename=None,
-        inh_lin_nonlin_transferfunction_filename=None,
+        exc_lin_nonlin_transfer_function_filename=None,
+        inh_lin_nonlin_transfer_function_filename=None,
         connectivity=ALN_NODE_DEFAULT_CONNECTIVITY,
         delays=ALN_NODE_DEFAULT_DELAYS,
         exc_seed=None,
@@ -823,14 +823,14 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
         :type exc_params: dict|None
         :param inh_params: parameters for the inhibitory mass
         :type inh_params: dict|None
-        :param exc_lin_nonlin_transferfunction_filename: filename for precomputed
+        :param exc_lin_nonlin_transfer_function_filename: filename for precomputed
             linear-nonlinear transfer functions for excitatory ALN mass, if None, will
             look for it in this directory
-        :type exc_lin_nonlin_transferfunction_filename: str|None
-        :param inh_lin_nonlin_transferfunction_filename: filename for precomputed
+        :type exc_lin_nonlin_transfer_function_filename: str|None
+        :param inh_lin_nonlin_transfer_function_filename: filename for precomputed
             linear-nonlinear transfer functions for inhibitory ALN mass, if None, will
             look for it in this directory
-        :type inh_lin_nonlin_transferfunction_filename: str|None
+        :type inh_lin_nonlin_transfer_function_filename: str|None
         :param connectivity: local connectivity matrix
         :type connectivity: np.ndarray
         :param delays: local delay matrix
@@ -844,13 +844,13 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
         """
         excitatory_mass = ExcitatoryALN(
             params=exc_params,
-            lin_nonlin_transferfunction_filename=exc_lin_nonlin_transferfunction_filename,
+            lin_nonlin_transfer_function_filename=exc_lin_nonlin_transfer_function_filename,
             seed=exc_seed,
         )
         excitatory_mass.index = 0
         inhibitory_mass = InhibitoryALN(
             params=inh_params,
-            lin_nonlin_transferfunction_filename=inh_lin_nonlin_transferfunction_filename,
+            lin_nonlin_transfer_function_filename=inh_lin_nonlin_transfer_function_filename,
             seed=inh_seed,
         )
         inhibitory_mass.index = 1
@@ -918,8 +918,8 @@ class ALNNetwork(Network):
         delay_matrix,
         exc_mass_params=None,
         inh_mass_params=None,
-        exc_lin_nonlin_transferfunction_filename=None,
-        inh_lin_nonlin_transferfunction_filename=None,
+        exc_lin_nonlin_transfer_function_filename=None,
+        inh_lin_nonlin_transfer_function_filename=None,
         local_connectivity=ALN_NODE_DEFAULT_CONNECTIVITY,
         local_delays=ALN_NODE_DEFAULT_DELAYS,
         exc_seed=None,
@@ -938,14 +938,14 @@ class ALNNetwork(Network):
         :param inh_mass_params: parameters for each inhibitory ALN neural
             mass, if None, will use default
         :type inh_mass_params: list[dict]|dict|None
-        param exc_lin_nonlin_transferfunction_filename: filename for precomputed
-            linear-nonlinear transferfunction for excitatory ALN mass, if None, will
+        param exc_lin_nonlin_transfer_function_filename: filename for precomputed
+            linear-nonlinear transfer_function for excitatory ALN mass, if None, will
             look for it in this directory
-        :type exc_lin_nonlin_transferfunction_filename: list[str]|str|None
-        :param inh_lin_nonlin_transferfunction_filename: filename for precomputed
-            linear-nonlinear transferfunction for inhibitory ALN mass, if None, will
+        :type exc_lin_nonlin_transfer_function_filename: list[str]|str|None
+        :param inh_lin_nonlin_transfer_function_filename: filename for precomputed
+            linear-nonlinear transfer_function for inhibitory ALN mass, if None, will
             look for it in this directory
-        :type inh_lin_nonlin_transferfunction_filename: list[str]|str|None
+        :type inh_lin_nonlin_transfer_function_filename: list[str]|str|None
         :param local_connectivity: local within-node connectivity matrix
         :type local_connectivity: np.ndarray
         :param local_delays: local within-node delay matrix
@@ -960,11 +960,11 @@ class ALNNetwork(Network):
         num_nodes = connectivity_matrix.shape[0]
         exc_mass_params = self._prepare_mass_params(exc_mass_params, num_nodes)
         inh_mass_params = self._prepare_mass_params(inh_mass_params, num_nodes)
-        exc_lin_nonlin_transferfunction_filename = self._prepare_mass_params(
-            exc_lin_nonlin_transferfunction_filename, num_nodes, native_type=str
+        exc_lin_nonlin_transfer_function_filename = self._prepare_mass_params(
+            exc_lin_nonlin_transfer_function_filename, num_nodes, native_type=str
         )
-        inh_lin_nonlin_transferfunction_filename = self._prepare_mass_params(
-            inh_lin_nonlin_transferfunction_filename, num_nodes, native_type=str
+        inh_lin_nonlin_transfer_function_filename = self._prepare_mass_params(
+            inh_lin_nonlin_transfer_function_filename, num_nodes, native_type=str
         )
         local_connectivity = self._prepare_mass_params(local_connectivity, num_nodes, native_type=np.ndarray)
         local_delays = self._prepare_mass_params(local_delays, num_nodes, native_type=np.ndarray)
@@ -974,13 +974,13 @@ class ALNNetwork(Network):
         nodes = []
         for (
             i,
-            (exc_params, inh_params, exc_transferfunction, inh_transferfunction, local_conn, local_dels),
+            (exc_params, inh_params, exc_transfer_function, inh_transfer_function, local_conn, local_dels),
         ) in enumerate(
             zip(
                 exc_mass_params,
                 inh_mass_params,
-                exc_lin_nonlin_transferfunction_filename,
-                inh_lin_nonlin_transferfunction_filename,
+                exc_lin_nonlin_transfer_function_filename,
+                inh_lin_nonlin_transfer_function_filename,
                 local_connectivity,
                 local_delays,
             )
@@ -988,8 +988,8 @@ class ALNNetwork(Network):
             node = ALNNode(
                 exc_params=exc_params,
                 inh_params=inh_params,
-                exc_lin_nonlin_transferfunction_filename=exc_transferfunction,
-                inh_lin_nonlin_transferfunction_filename=inh_transferfunction,
+                exc_lin_nonlin_transfer_function_filename=exc_transfer_function,
+                inh_lin_nonlin_transfer_function_filename=inh_transfer_function,
                 connectivity=local_conn,
                 delays=local_dels,
                 exc_seed=exc_seeds[i],
