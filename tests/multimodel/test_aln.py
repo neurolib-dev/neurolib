@@ -15,8 +15,8 @@ from neurolib.models.multimodel.builder.aln import (
     ALN_NODE_DEFAULT_CONNECTIVITY,
     ALNNetwork,
     ALNNode,
-    ExcitatoryALN,
-    InhibitoryALN,
+    ExcitatoryALNMass,
+    InhibitoryALNMass,
     _get_interpolation_values,
     _table_lookup,
 )
@@ -54,7 +54,7 @@ class TestALNCallbacks(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.mass = ExcitatoryALN()
+        cls.mass = ExcitatoryALNMass()
 
     def test_get_interpolation_values(self):
         self.assertTrue(callable(_get_interpolation_values))
@@ -124,14 +124,14 @@ class ALNMassTestCase(unittest.TestCase):
 
 class TestALNMass(ALNMassTestCase):
     def _create_exc_mass(self):
-        exc = ExcitatoryALN()
+        exc = ExcitatoryALNMass()
         exc.index = 0
         exc.idx_state_var = 0
         exc.init_mass()
         return exc
 
     def _create_inh_mass(self):
-        inh = InhibitoryALN()
+        inh = InhibitoryALNMass()
         inh.index = 0
         inh.idx_state_var = 0
         inh.init_mass()
@@ -140,8 +140,8 @@ class TestALNMass(ALNMassTestCase):
     def test_init(self):
         aln_exc = self._create_exc_mass()
         aln_inh = self._create_inh_mass()
-        self.assertTrue(isinstance(aln_exc, ExcitatoryALN))
-        self.assertTrue(isinstance(aln_inh, InhibitoryALN))
+        self.assertTrue(isinstance(aln_exc, ExcitatoryALNMass))
+        self.assertTrue(isinstance(aln_inh, InhibitoryALNMass))
         self.assertDictEqual(_strip_keys(aln_exc.params), _strip_keys(ALN_EXC_DEFAULT_PARAMS))
         self.assertDictEqual(_strip_keys(aln_inh.params), _strip_keys(ALN_INH_DEFAULT_PARAMS))
         # test cascade

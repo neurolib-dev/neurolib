@@ -373,7 +373,7 @@ class ALNMass(NeuralMass):
         )
 
 
-class ExcitatoryALN(ALNMass):
+class ExcitatoryALNMass(ALNMass):
     """
     Excitatory ALN neural mass. Contains firing rate adaptation current.
     """
@@ -574,7 +574,7 @@ class ExcitatoryALN(ALNMass):
         ]
 
 
-class InhibitoryALN(ALNMass):
+class InhibitoryALNMass(ALNMass):
     """
     Inhibitory ALN neural mass. In contrast to excitatory, inhibitory mass do
     not contain fiting rate adaptation current.
@@ -842,13 +842,13 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
             mass
         :type inh_seed: int|None
         """
-        excitatory_mass = ExcitatoryALN(
+        excitatory_mass = ExcitatoryALNMass(
             params=exc_params,
             lin_nonlin_transfer_function_filename=exc_lin_nonlin_transfer_function_filename,
             seed=exc_seed,
         )
         excitatory_mass.index = 0
-        inhibitory_mass = InhibitoryALN(
+        inhibitory_mass = InhibitoryALNMass(
             params=inh_params,
             lin_nonlin_transfer_function_filename=inh_lin_nonlin_transfer_function_filename,
             seed=inh_seed,
