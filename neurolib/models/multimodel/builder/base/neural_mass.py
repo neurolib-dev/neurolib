@@ -1,6 +1,3 @@
-"""
-Base for all mass models.
-"""
 import numpy as np
 import symengine as se
 from jitcdde import y as state_vector
@@ -8,7 +5,7 @@ from jitcdde import y as state_vector
 
 class NeuralMass:
     """
-    Represent a neural population with given parameters and equations, in
+    Represents a neural population with given parameters and equations, in
     particular, the derivatives of the state vector.
     """
 
@@ -53,7 +50,7 @@ class NeuralMass:
 
     # list of callbacks functions in pure python, that are called from the
     # symbolic derivative, useful when part of neural dynamics cannot be
-    # expressed as symbolic expression (e.g. table lookups in AdEx models)
+    # expressed as symbolic expression (e.g. table lookups in aln model)
     # provide names of the functions here - this name shall be used in
     # definition of the derivative;
     # NOTE callbacks should be defined as jitted function (i.e. decorated with

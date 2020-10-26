@@ -1,21 +1,3 @@
-"""
-FitzHugh–Nagumo model.
-
-Main references:
-    FitzHugh, R. (1955). Mathematical models of threshold phenomena in the
-    nerve membrane. The bulletin of mathematical biophysics, 17(4), 257-278.
-
-    Nagumo, J., Arimoto, S., & Yoshizawa, S. (1962). An active pulse
-    transmission line simulating nerve axon. Proceedings of the IRE, 50(10),
-    2061-2070.
-
-Additional reference:
-    Kostova, T., Ravindran, R., & Schonbek, M. (2004). FitzHugh–Nagumo
-    revisited: Types of bifurcations, periodical forcing and stability regions
-    by a Lyapunov functional. International journal of bifurcation and chaos,
-    14(03), 913-925.
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 
@@ -36,7 +18,7 @@ FHN_DEFAULT_PARAMS = {
 
 class FitzHughNagumoMass(NeuralMass):
     """
-    FitzHugh-Nagumo neural mass.
+    FitzHugh-Nagumo model.
     """
 
     name = "FitzHugh-Nagumo mass"
@@ -131,11 +113,7 @@ class FitzHughNagumoNetwork(Network):
     default_coupling = {"network_x": "diffusive", "network_y": "none"}
 
     def __init__(
-        self,
-        connectivity_matrix,
-        delay_matrix,
-        mass_params=None,
-        seed=None,
+        self, connectivity_matrix, delay_matrix, mass_params=None, seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -164,9 +142,7 @@ class FitzHughNagumoNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes,
-            connectivity_matrix=connectivity_matrix,
-            delay_matrix=delay_matrix,
+            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
         )
         # get all coupling variables
         all_couplings = [mass.coupling_variables for node in self.nodes for mass in node.masses]

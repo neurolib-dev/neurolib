@@ -1,13 +1,3 @@
-"""
-Thalamic mass models.
-
-References:
-    Costa, M. S., Weigenand, A., Ngo, H. V. V., Marshall, L., Born, J.,
-    Martinetz, T., & Claussen, J. C. (2016). A thalamocortical neural mass
-    model of the EEG during NREM sleep and its response to auditory stimulation.
-    PLoS computational biology, 12(9).
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 from symengine import exp
@@ -77,7 +67,13 @@ THALAMUS_NODE_DEFAULT_CONNECTIVITY = np.array([[0.0, 5.0], [3.0, 25.0]])
 
 class ThalamicMass(NeuralMass):
     """
-    Base for thalamic neural populations due to Costa et al.
+    Base for thalamic neural populations
+    
+    Reference:
+        Costa, M. S., Weigenand, A., Ngo, H. V. V., Marshall, L., Born, J.,
+        Martinetz, T., & Claussen, J. C. (2016). A thalamocortical neural mass
+        model of the EEG during NREM sleep and its response to auditory stimulation.
+        PLoS computational biology, 12(9).
     """
 
     name = "Thalamic mass"

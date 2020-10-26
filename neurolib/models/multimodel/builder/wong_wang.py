@@ -1,25 +1,3 @@
-"""
-Wong-Wang model. Contains both:
-    - classical Wong-Wang with one network node containing one excitatory and
-        one inhibitory mass
-    - Reduced Wong-Wang model with one mass per node
-
-Main reference:
-    [original] Wong, K. F., & Wang, X. J. (2006). A recurrent network mechanism
-    of time integration in perceptual decisions. Journal of Neuroscience, 26(4),
-    1314-1328.
-
-Additional references:
-    [reduced] Deco, G., Ponce-Alvarez, A., Mantini, D., Romani, G. L., Hagmann,
-    P., & Corbetta, M. (2013). Resting-state functional connectivity emerges
-    from structurally and dynamically shaped slow linear fluctuations. Journal
-    of Neuroscience, 33(27), 11239-11252.
-
-    [original] Deco, G., Ponce-Alvarez, A., Hagmann, P., Romani, G. L., Mantini,
-    D., & Corbetta, M. (2014). How local excitation–inhibition ratio impacts the
-    whole brain dynamics. Journal of Neuroscience, 34(23), 7886-7898.
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 from symengine import exp
@@ -70,6 +48,26 @@ class WongWangMass(NeuralMass):
     """
     Wong-Wang neural mass. Can be excitatory or inhibitory, depending on the
     parameters. Also a base for reduced Wong-Wang mass.
+
+    Wong-Wang model. Contains both:
+        - classical Wong-Wang with one network node containing one excitatory and
+            one inhibitory mass
+        - Reduced Wong-Wang model with one mass per node
+
+    Main reference:
+        [original] Wong, K. F., & Wang, X. J. (2006). A recurrent network mechanism
+        of time integration in perceptual decisions. Journal of Neuroscience, 26(4),
+        1314-1328.
+
+    Additional references:
+        [reduced] Deco, G., Ponce-Alvarez, A., Mantini, D., Romani, G. L., Hagmann,
+        P., & Corbetta, M. (2013). Resting-state functional connectivity emerges
+        from structurally and dynamically shaped slow linear fluctuations. Journal
+        of Neuroscience, 33(27), 11239-11252.
+
+        [original] Deco, G., Ponce-Alvarez, A., Hagmann, P., Romani, G. L., Mantini,
+        D., & Corbetta, M. (2014). How local excitation–inhibition ratio impacts the
+        whole brain dynamics. Journal of Neuroscience, 34(23), 7886-7898.    
     """
 
     name = "Wong-Wang mass"
