@@ -1,18 +1,3 @@
-"""
-Wilson-Cowan model.
-
-Main reference:
-    Wilson, H. R., & Cowan, J. D. (1972). Excitatory and inhibitory
-    interactions in localized populations of model neurons. Biophysical journal,
-    12(1), 1-24.
-
-Additional reference:
-    Papadopoulos, L., Lynn, C. W., Battaglia, D., & Bassett, D. S. (2020).
-    Relations between large scale brain connectivity and effects of regional
-    stimulation depend on collective dynamical state. arXiv preprint
-    arXiv:2002.00094.
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 from symengine import exp
@@ -31,6 +16,11 @@ class WilsonCowanMass(NeuralMass):
     """
     Wilson-Cowan neural mass. Can be excitatory or inhibitory, depending on the
     parameters.
+
+    Reference:
+        Wilson, H. R., & Cowan, J. D. (1972). Excitatory and inhibitory
+        interactions in localized populations of model neurons. Biophysical journal,
+        12(1), 1-24.    
     """
 
     name = "Wilson-Cowan mass"
@@ -227,9 +217,7 @@ class WilsonCowanNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes,
-            connectivity_matrix=connectivity_matrix,
-            delay_matrix=delay_matrix,
+            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
         )
         # assert we have two sync variables
         assert len(self.sync_variables) == 2

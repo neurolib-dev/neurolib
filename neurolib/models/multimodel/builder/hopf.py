@@ -1,23 +1,3 @@
-"""
-Hopf normal form model.
-
-References:
-    Landau, L. D. (1944). On the problem of turbulence. In Dokl. Akad. Nauk USSR
-    (Vol. 44, p. 311).
-
-    Stuart, J. T. (1960). On the non-linear mechanics of wave disturbances in
-    stable and unstable parallel flows Part 1. The basic behaviour in plane
-    Poiseuille flow. Journal of Fluid Mechanics, 9(3), 353-370.
-
-    Kuznetsov, Y. A. (2013). Elements of applied bifurcation theory (Vol. 112).
-    Springer Science & Business Media.
-
-    Deco, G., Cabral, J., Woolrich, M. W., Stevner, A. B., Van Hartevelt, T. J.,
-    & Kringelbach, M. L. (2017). Single or multiple frequency generators in
-    on-going brain activity: A mechanistic whole-brain model of empirical MEG
-    data. Neuroimage, 152, 538-550.
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 
@@ -35,6 +15,14 @@ HOPF_DEFAULT_PARAMS = {
 class HopfMass(NeuralMass):
     """
     Hopf normal form (Landau-Stuart oscillator).
+
+    References:
+        Landau, L. D. (1944). On the problem of turbulence. In Dokl. Akad. Nauk USSR
+        (Vol. 44, p. 311).
+
+        Stuart, J. T. (1960). On the non-linear mechanics of wave disturbances in
+        stable and unstable parallel flows Part 1. The basic behaviour in plane
+        Poiseuille flow. Journal of Fluid Mechanics, 9(3), 353-370.
     """
 
     name = "Hopf normal form mass"
@@ -119,11 +107,7 @@ class HopfNetwork(Network):
     default_coupling = {"network_x": "diffusive", "network_y": "none"}
 
     def __init__(
-        self,
-        connectivity_matrix,
-        delay_matrix,
-        mass_params=None,
-        seed=None,
+        self, connectivity_matrix, delay_matrix, mass_params=None, seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -157,9 +141,7 @@ class HopfNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes,
-            connectivity_matrix=connectivity_matrix,
-            delay_matrix=delay_matrix,
+            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
         )
         # get all coupling variables
         all_couplings = [mass.coupling_variables for node in self.nodes for mass in node.masses]
