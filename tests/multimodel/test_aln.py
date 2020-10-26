@@ -80,7 +80,7 @@ class TestALNCallbacks(unittest.TestCase):
             self.mass.mu_range,
             self.mass.d_sigma,
             self.mass.d_mu,
-            self.mass.firing_rate_transferfunction,
+            self.mass.firing_rate_transfer_function,
         )
         self.assertEqual(firing_rate, self.FIRING_RATE_EXPECTED)
 
@@ -91,7 +91,7 @@ class TestALNCallbacks(unittest.TestCase):
             self.mass.mu_range,
             self.mass.d_sigma,
             self.mass.d_mu,
-            self.mass.voltage_transferfunction,
+            self.mass.voltage_transfer_function,
         )
         self.assertEqual(voltage, self.VOLTAGE_EXPECTED)
 
@@ -102,7 +102,7 @@ class TestALNCallbacks(unittest.TestCase):
             self.mass.mu_range,
             self.mass.d_sigma,
             self.mass.d_mu,
-            self.mass.tau_transferfunction,
+            self.mass.tau_transfer_function,
         )
         self.assertEqual(tau, self.TAU_EXPECTED)
 
@@ -147,9 +147,9 @@ class TestALNMass(ALNMassTestCase):
         # test cascade
         np.testing.assert_equal(aln_exc.mu_range, aln_inh.mu_range)
         np.testing.assert_equal(aln_exc.sigma_range, aln_inh.sigma_range)
-        np.testing.assert_equal(aln_exc.firing_rate_transferfunction, aln_inh.firing_rate_transferfunction)
-        np.testing.assert_equal(aln_exc.voltage_transferfunction, aln_inh.voltage_transferfunction)
-        np.testing.assert_equal(aln_exc.tau_transferfunction, aln_inh.tau_transferfunction)
+        np.testing.assert_equal(aln_exc.firing_rate_transfer_function, aln_inh.firing_rate_transfer_function)
+        np.testing.assert_equal(aln_exc.voltage_transfer_function, aln_inh.voltage_transfer_function)
+        np.testing.assert_equal(aln_exc.tau_transfer_function, aln_inh.tau_transfer_function)
         for aln in [aln_exc, aln_inh]:
             # test cascade
             self.assertTrue(callable(getattr(aln, "firing_rate_lookup")))
