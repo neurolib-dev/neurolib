@@ -28,8 +28,8 @@ ALN_EXC_DEFAULT_PARAMS = {
     # internal Fokker-Planck noise due to random coupling
     "sigmae_ext": 1.5,  # mV/sqrt(ms)
     # maximum synaptic current between EXC/INH nodes in mV/ms
-    "Je_max": 2.43,
-    "Ji_max": -3.3,
+    "Jee_max": 2.43,
+    "Jei_max": -3.3,
     # single neuron parameters
     "C": 200.0,
     "gL": 10.0,
@@ -60,8 +60,8 @@ ALN_INH_DEFAULT_PARAMS = {
     # internal Fokker-Planck noise due to random coupling
     "sigmai_ext": 1.5,  # mV/sqrt(ms)
     # maximum synaptic current between EXC/INH nodes in mV/ms
-    "Je_max": 2.60,
-    "Ji_max": -1.64,
+    "Jie_max": 2.60,
+    "Jii_max": -1.64,
     # single neuron parameters
     "C": 200.0,
     "gL": 10.0,
@@ -162,7 +162,13 @@ def _get_interpolation_values(xi, yi, sigma_range, mu_range, d_sigma, d_mu):
 
 @numba.njit()
 def _table_lookup(
-    current_mu, current_sigma, sigma_range, mu_range, d_sigma, d_mu, transferfunction_table,
+    current_mu,
+    current_sigma,
+    sigma_range,
+    mu_range,
+    d_sigma,
+    d_mu,
+    transferfunction_table,
 ):
     """
     Translate mean and std. deviation of the current to selected quantity using
@@ -182,18 +188,18 @@ def _table_lookup(
 
 class ALN(NeuralMass):
     """
-    Adaptive linear-nonlinear neural mass model of exponential integrate-and-fire (AdEx) 
+    Adaptive linear-nonlinear neural mass model of exponential integrate-and-fire (AdEx)
     neurons.
 
     References:
         Cakan C., Obermayer K. (2020). Biophysically grounded mean-field models of
         neural populations under electrical stimulation. PLoS Comput Biol, 16(4),
-        e1007822.    
+        e1007822.
 
         Augustin, M., Ladenbauer, J., Baumann, F., & Obermayer, K. (2017).
         Low-dimensional spike rate models derived from networks of adaptive
         integrate-and-fire neurons: comparison and implementation. PLoS Comput Biol,
-        13(6), e1005545.        
+        13(6), e1005545.
     """
 
     name = "ALN neural mass model"
@@ -203,18 +209,6 @@ class ALN(NeuralMass):
     python_callbacks = ["firing_rate_lookup", "voltage_lookup", "tau_lookup"]
 
     num_noise_variables = 1
-
-    @staticmethod
-    def _rescale_strengths(params):
-        """
-        Rescale connection strengths.
-        """
-        params = deepcopy(params)
-        assert isinstance(params, dict)
-        params["c_gl"] = params["c_gl"] * params["tau_se"] / params["Je_max"]
-
-        params["taum"] = params["C"] / params["gL"]
-        return params
 
     def __init__(self, params, lin_nonlin_transferfunction_filename=None, seed=None):
         """
@@ -257,31 +251,6 @@ class ALN(NeuralMass):
         loaded_h5.close()
         self.lin_nonlin_fname = filename
 
-    def update_params(self, params_dict):
-        """
-        Update parameters as in the base class but also rescale.
-        """
-        # if we are changing C_m or g_L, update tau_m as well
-        if any(k in params_dict for k in ("C", "gL")):
-            C_m = params_dict["C"] if "C" in params_dict else self.params["C"]
-            g_L = params_dict["gL"] if "gL" in params_dict else self.params["gL"]
-            params_dict["taum"] = C_m / g_L
-
-        # if we are changing any of the J_exc_max, tau_syn_exc or c_global, rescale c_global
-        if any(k in params_dict for k in ("c_gl", "Je_max", "tau_se")):
-            # get original c_global
-            c_global = (
-                params_dict["c_gl"]
-                if "c_gl" in params_dict
-                else self.params["c_gl"] * (self.params["Je_max"] / self.params["tau_se"])
-            )
-            tau_syn_exc = params_dict["tau_se"] if "tau_se" in params_dict else self.params["tau_se"]
-            J_exc_max = params_dict["Je_max"] if "Je_max" in params_dict else self.params["Je_max"]
-            params_dict["c_gl"] = c_global * tau_syn_exc / J_exc_max
-
-        # update all parameters finally
-        super().update_params(params_dict)
-
     def describe(self):
         return {
             **super().describe(),
@@ -315,7 +284,15 @@ class ALN(NeuralMass):
             """
 
             def inner(current_mu, current_sigma):
-                return _table_lookup(current_mu, current_sigma, sigma_range, mu_range, d_sigma, d_mu, transferfunction,)
+                return _table_lookup(
+                    current_mu,
+                    current_sigma,
+                    sigma_range,
+                    mu_range,
+                    d_sigma,
+                    d_mu,
+                    transferfunction,
+                )
 
             return inner
 
@@ -324,7 +301,11 @@ class ALN(NeuralMass):
                 "firing_rate_lookup",
                 numba.njit(
                     _table_numba_gen(
-                        self.sigma_range, self.mu_range, self.d_sigma, self.d_mu, self.firing_rate_transferfunction,
+                        self.sigma_range,
+                        self.mu_range,
+                        self.d_sigma,
+                        self.d_mu,
+                        self.firing_rate_transferfunction,
                     )
                 ),
             ),
@@ -427,8 +408,8 @@ class ExcitatoryALN(ALN):
         "tau_se",
         "tau_si",
         "sigmae_ext",
-        "Je_max",
-        "Ji_max",
+        "Jee_max",
+        "Jei_max",
         "taum",
         "C",
         "ext_exc_current",
@@ -440,12 +421,49 @@ class ExcitatoryALN(ALN):
         "lambda",
     ]
 
+    @staticmethod
+    def _rescale_strengths(params):
+        """
+        Rescale connection strengths.
+        """
+        params = deepcopy(params)
+        assert isinstance(params, dict)
+        params["c_gl"] = params["c_gl"] * params["tau_se"] / params["Jee_max"]
+
+        params["taum"] = params["C"] / params["gL"]
+        return params
+
     def __init__(self, params=None, lin_nonlin_transferfunction_filename=None, seed=None):
         super().__init__(
             params=params or ALN_EXC_DEFAULT_PARAMS,
             lin_nonlin_transferfunction_filename=lin_nonlin_transferfunction_filename,
             seed=seed,
         )
+
+    def update_params(self, params_dict):
+        """
+        Update parameters as in the base class but also rescale.
+        """
+        # if we are changing C_m or g_L, update tau_m as well
+        if any(k in params_dict for k in ("C", "gL")):
+            C_m = params_dict["C"] if "C" in params_dict else self.params["C"]
+            g_L = params_dict["gL"] if "gL" in params_dict else self.params["gL"]
+            params_dict["taum"] = C_m / g_L
+
+        # if we are changing any of the J_exc_max, tau_syn_exc or c_global, rescale c_global
+        if any(k in params_dict for k in ("c_gl", "Jee_max", "tau_se")):
+            # get original c_global
+            c_global = (
+                params_dict["c_gl"]
+                if "c_gl" in params_dict
+                else self.params["c_gl"] * (self.params["Jee_max"] / self.params["tau_se"])
+            )
+            tau_syn_exc = params_dict["tau_se"] if "tau_se" in params_dict else self.params["tau_se"]
+            J_exc_max = params_dict["Jee_max"] if "Jee_max" in params_dict else self.params["Jee_max"]
+            params_dict["c_gl"] = c_global * tau_syn_exc / J_exc_max
+
+        # update all parameters finally
+        super().update_params(params_dict)
 
     def _initialize_state_vector(self):
         """
@@ -495,13 +513,13 @@ class ExcitatoryALN(ALN):
 
         I_sigma = se.sqrt(
             2
-            * self.params["Je_max"] ** 2
+            * self.params["Jee_max"] ** 2
             * I_syn_sigma_exc
             * self.params["tau_se"]
             * self.params["taum"]
             / ((1.0 + exc_inp) * self.params["taum"] + self.params["tau_se"])
             + 2
-            * self.params["Ji_max"] ** 2
+            * self.params["Jei_max"] ** 2
             * I_syn_sigma_inh
             * self.params["tau_si"]
             * self.params["taum"]
@@ -515,8 +533,8 @@ class ExcitatoryALN(ALN):
         tau = self.callback_functions["tau_lookup"](I_mu - I_adaptation / self.params["C"], I_sigma)
 
         d_I_mu = (
-            self.params["Je_max"] * I_syn_mu_exc
-            + self.params["Ji_max"] * I_syn_mu_inh
+            self.params["Jee_max"] * I_syn_mu_exc
+            + self.params["Jei_max"] * I_syn_mu_inh
             + system_input(self.noise_input_idx[0])
             + self.params["ext_exc_current"]
             - I_mu
@@ -589,8 +607,8 @@ class InhibitoryALN(ALN):
         "tau_se",
         "tau_si",
         "sigmai_ext",
-        "Je_max",
-        "Ji_max",
+        "Jie_max",
+        "Jii_max",
         "taum",
         "C",
         "ext_inh_current",
@@ -598,12 +616,49 @@ class InhibitoryALN(ALN):
         "lambda",
     ]
 
+    @staticmethod
+    def _rescale_strengths(params):
+        """
+        Rescale connection strengths.
+        """
+        params = deepcopy(params)
+        assert isinstance(params, dict)
+        params["c_gl"] = params["c_gl"] * params["tau_se"] / params["Jie_max"]
+
+        params["taum"] = params["C"] / params["gL"]
+        return params
+
     def __init__(self, params=None, lin_nonlin_transferfunction_filename=None, seed=None):
         super().__init__(
             params=params or ALN_INH_DEFAULT_PARAMS,
             lin_nonlin_transferfunction_filename=lin_nonlin_transferfunction_filename,
             seed=seed,
         )
+
+    def update_params(self, params_dict):
+        """
+        Update parameters as in the base class but also rescale.
+        """
+        # if we are changing C_m or g_L, update tau_m as well
+        if any(k in params_dict for k in ("C", "gL")):
+            C_m = params_dict["C"] if "C" in params_dict else self.params["C"]
+            g_L = params_dict["gL"] if "gL" in params_dict else self.params["gL"]
+            params_dict["taum"] = C_m / g_L
+
+        # if we are changing any of the J_exc_max, tau_syn_exc or c_global, rescale c_global
+        if any(k in params_dict for k in ("c_gl", "Jie_max", "tau_se")):
+            # get original c_global
+            c_global = (
+                params_dict["c_gl"]
+                if "c_gl" in params_dict
+                else self.params["c_gl"] * (self.params["Jie_max"] / self.params["tau_se"])
+            )
+            tau_syn_exc = params_dict["tau_se"] if "tau_se" in params_dict else self.params["tau_se"]
+            J_exc_max = params_dict["Jie_max"] if "Jie_max" in params_dict else self.params["Jie_max"]
+            params_dict["c_gl"] = c_global * tau_syn_exc / J_exc_max
+
+        # update all parameters finally
+        super().update_params(params_dict)
 
     def _initialize_state_vector(self):
         """
@@ -637,19 +692,26 @@ class InhibitoryALN(ALN):
         )
 
     def _derivatives(self, coupling_variables):
-        (I_mu, I_syn_mu_exc, I_syn_mu_inh, I_syn_sigma_exc, I_syn_sigma_inh, firing_rate,) = self._unwrap_state_vector()
+        (
+            I_mu,
+            I_syn_mu_exc,
+            I_syn_mu_inh,
+            I_syn_sigma_exc,
+            I_syn_sigma_inh,
+            firing_rate,
+        ) = self._unwrap_state_vector()
 
         exc_inp, inh_inp, exc_inp_sq, inh_inp_sq = self._compute_couplings(coupling_variables)
 
         I_sigma = se.sqrt(
             2
-            * self.params["Je_max"] ** 2
+            * self.params["Jie_max"] ** 2
             * I_syn_sigma_exc
             * self.params["tau_se"]
             * self.params["taum"]
             / ((1.0 + exc_inp) * self.params["taum"] + self.params["tau_se"])
             + 2
-            * self.params["Ji_max"] ** 2
+            * self.params["Jii_max"] ** 2
             * I_syn_sigma_inh
             * self.params["tau_si"]
             * self.params["taum"]
@@ -662,8 +724,8 @@ class InhibitoryALN(ALN):
         tau = self.callback_functions["tau_lookup"](I_mu, I_sigma)
 
         d_I_mu = (
-            self.params["Je_max"] * I_syn_mu_exc
-            + self.params["Ji_max"] * I_syn_mu_inh
+            self.params["Jie_max"] * I_syn_mu_exc
+            + self.params["Jii_max"] * I_syn_mu_inh
             + system_input(self.noise_input_idx[0])
             + self.params["ext_inh_current"]
             - I_mu
@@ -737,7 +799,7 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
             tau_mat[:, col] = mass_from.params[f"tau_s{mass_from.mass_type.lower()[0]}"]
             # Js are specific: take J from "to" mass but of type "from" mass
             for row, mass_to in enumerate(self.masses):
-                J_mat[row, col] = mass_to.params[f"J{mass_from.mass_type.lower()[0]}_max"]
+                J_mat[row, col] = mass_to.params[f"J{mass_to.mass_type.lower()[0]}{mass_from.mass_type.lower()[0]}_max"]
 
         # multiplication with tau makes the increase of synaptic activity
         # subject to a single input spike invariant to tau and division by J
@@ -793,7 +855,9 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
         )
         inhibitory_mass.index = 1
         super().__init__(
-            neural_masses=[excitatory_mass, inhibitory_mass], local_connectivity=connectivity, local_delays=delays,
+            neural_masses=[excitatory_mass, inhibitory_mass],
+            local_connectivity=connectivity,
+            local_delays=delays,
         )
         self._rescale_connectivity()
 
@@ -865,7 +929,7 @@ class ALNNetwork(Network):
         :param connectivity_matrix: connectivity matrix for coupling between
              nodes, defined as [from, to]
         :type connectivity_matrix: np.ndarray
-        :param delay_matrix: delay matrix between nodes, if None, delays are 
+        :param delay_matrix: delay matrix between nodes, if None, delays are
         all zeros, in ms, defined as [from, to]
         :type delay_matrix: np.ndarray|None
         :param exc_mass_params: parameters for each excitatory ALN neural
@@ -910,7 +974,7 @@ class ALNNetwork(Network):
         nodes = []
         for (
             i,
-            (exc_params, inh_params, exc_transferfunction, inh_transferfunction, local_conn, local_dels,),
+            (exc_params, inh_params, exc_transferfunction, inh_transferfunction, local_conn, local_dels),
         ) in enumerate(
             zip(
                 exc_mass_params,
@@ -938,9 +1002,7 @@ class ALNNetwork(Network):
                 mass.noise_input_idx = [2 * i + mass.index]
             nodes.append(node)
 
-        super().__init__(
-            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
-        )
+        super().__init__(nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix)
         # assert we have 2 sync variable
         assert len(self.sync_variables) == 2
 
