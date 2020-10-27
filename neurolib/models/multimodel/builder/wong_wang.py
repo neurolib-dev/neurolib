@@ -1,25 +1,3 @@
-"""
-Wong-Wang model. Contains both:
-    - classical Wong-Wang with one network node containing one excitatory and
-        one inhibitory mass
-    - Reduced Wong-Wang model with one mass per node
-
-Main reference:
-    [original] Wong, K. F., & Wang, X. J. (2006). A recurrent network mechanism
-    of time integration in perceptual decisions. Journal of Neuroscience, 26(4),
-    1314-1328.
-
-Additional references:
-    [reduced] Deco, G., Ponce-Alvarez, A., Mantini, D., Romani, G. L., Hagmann,
-    P., & Corbetta, M. (2013). Resting-state functional connectivity emerges
-    from structurally and dynamically shaped slow linear fluctuations. Journal
-    of Neuroscience, 33(27), 11239-11252.
-
-    [original] Deco, G., Ponce-Alvarez, A., Hagmann, P., Romani, G. L., Mantini,
-    D., & Corbetta, M. (2014). How local excitation–inhibition ratio impacts the
-    whole brain dynamics. Journal of Neuroscience, 34(23), 7886-7898.
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 from symengine import exp
@@ -28,7 +6,7 @@ from ..builder.base.constants import EXC, INH, LAMBDA_SPEED
 from ..builder.base.network import Network, Node, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
 
-DEFAULT_PARAMS_EXC = {
+WW_EXC_DEFAULT_PARAMS = {
     "a": 0.31,  # nC^-1
     "b": 0.125,  # kHz
     "d": 160.0,  # ms
@@ -40,7 +18,7 @@ DEFAULT_PARAMS_EXC = {
     "J_I": 1.0,  # nA
     "lambda": LAMBDA_SPEED,
 }
-DEFAULT_PARAMS_INH = {
+WW_INH_DEFAULT_PARAMS = {
     "a": 0.615,  # nC^-1
     "b": 0.177,  # kHz
     "d": 87.0,  # ms
@@ -50,7 +28,7 @@ DEFAULT_PARAMS_INH = {
     "J_NMDA": 0.15,  # nA
     "lambda": LAMBDA_SPEED,
 }
-DEFAULT_PARAMS_REDUCED = {
+WW_REDUCED_DEFAULT_PARAMS = {
     "a": 0.27,  # nC^-1
     "b": 0.108,  # kHz
     "d": 154.0,  # ms
@@ -63,13 +41,33 @@ DEFAULT_PARAMS_REDUCED = {
 }
 
 # matrix as [to, from], masses as (EXC, INH)
-DEFAULT_WW_NODE_CONNECTIVITY = np.array([[1.4, 1.0], [1.0, 1.0]])
+WW_NODE_DEFAULT_CONNECTIVITY = np.array([[1.4, 1.0], [1.0, 1.0]])
 
 
 class WongWangMass(NeuralMass):
     """
     Wong-Wang neural mass. Can be excitatory or inhibitory, depending on the
     parameters. Also a base for reduced Wong-Wang mass.
+
+    Wong-Wang model. Contains both:
+        - classical Wong-Wang with one network node containing one excitatory and
+            one inhibitory mass
+        - Reduced Wong-Wang model with one mass per node
+
+    Main reference:
+        [original] Wong, K. F., & Wang, X. J. (2006). A recurrent network mechanism
+        of time integration in perceptual decisions. Journal of Neuroscience, 26(4),
+        1314-1328.
+
+    Additional references:
+        [reduced] Deco, G., Ponce-Alvarez, A., Mantini, D., Romani, G. L., Hagmann,
+        P., & Corbetta, M. (2013). Resting-state functional connectivity emerges
+        from structurally and dynamically shaped slow linear fluctuations. Journal
+        of Neuroscience, 33(27), 11239-11252.
+
+        [original] Deco, G., Ponce-Alvarez, A., Hagmann, P., Romani, G. L., Mantini,
+        D., & Corbetta, M. (2014). How local excitation–inhibition ratio impacts the
+        whole brain dynamics. Journal of Neuroscience, 34(23), 7886-7898.    
     """
 
     name = "Wong-Wang mass"
@@ -118,7 +116,7 @@ class ExcitatoryWongWangMass(WongWangMass):
     ]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS_EXC, seed=seed)
+        super().__init__(params=params or WW_EXC_DEFAULT_PARAMS, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [s, firing_rate] = self._unwrap_state_vector()
@@ -165,7 +163,7 @@ class InhibitoryWongWangMass(WongWangMass):
     ]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS_INH, seed=seed)
+        super().__init__(params=params or WW_INH_DEFAULT_PARAMS, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [s, firing_rate] = self._unwrap_state_vector()
@@ -207,7 +205,7 @@ class ReducedWongWangMass(WongWangMass):
     ]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS_REDUCED, seed=seed)
+        super().__init__(params=params or WW_REDUCED_DEFAULT_PARAMS, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [s, firing_rate] = self._unwrap_state_vector()
@@ -242,7 +240,7 @@ class WongWangNode(SingleCouplingExcitatoryInhibitoryNode):
     default_output = f"S_{EXC}"
 
     def __init__(
-        self, exc_params=None, inh_params=None, connectivity=DEFAULT_WW_NODE_CONNECTIVITY, exc_seed=None, inh_seed=None,
+        self, exc_params=None, inh_params=None, connectivity=WW_NODE_DEFAULT_CONNECTIVITY, exc_seed=None, inh_seed=None,
     ):
         """
         :param exc_params: parameters for the excitatory mass
@@ -314,7 +312,7 @@ class WongWangNetwork(Network):
         delay_matrix,
         exc_mass_params=None,
         inh_mass_params=None,
-        local_connectivity=DEFAULT_WW_NODE_CONNECTIVITY,
+        local_connectivity=WW_NODE_DEFAULT_CONNECTIVITY,
         exc_seed=None,
         inh_seed=None,
     ):

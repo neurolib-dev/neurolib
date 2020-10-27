@@ -1,6 +1,3 @@
-"""
-Base for "network" and "node" operations on neural masses.
-"""
 import logging
 
 import numpy as np

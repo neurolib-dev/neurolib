@@ -397,7 +397,7 @@ class Model:
         assert isinstance(data, np.ndarray), "Output must be a `numpy.ndarray`."
 
         # remove initial conditions from output
-        if removeICs and name is not "t":
+        if removeICs and name != "t":
             if data.ndim == 1:
                 data = data[self.startindt :]
             elif data.ndim == 2:

@@ -1,42 +1,24 @@
-"""
-FitzHugh–Nagumo model.
-
-Main references:
-    FitzHugh, R. (1955). Mathematical models of threshold phenomena in the
-    nerve membrane. The bulletin of mathematical biophysics, 17(4), 257-278.
-
-    Nagumo, J., Arimoto, S., & Yoshizawa, S. (1962). An active pulse
-    transmission line simulating nerve axon. Proceedings of the IRE, 50(10),
-    2061-2070.
-
-Additional reference:
-    Kostova, T., Ravindran, R., & Schonbek, M. (2004). FitzHugh–Nagumo
-    revisited: Types of bifurcations, periodical forcing and stability regions
-    by a Lyapunov functional. International journal of bifurcation and chaos,
-    14(03), 913-925.
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 
 from ..builder.base.network import Network, Node
 from ..builder.base.neural_mass import NeuralMass
 
-DEFAULT_PARAMS = {
+FHN_DEFAULT_PARAMS = {
     "alpha": 3.0,
     "beta": 4.0,
     "gamma": -1.5,
     "delta": 0.0,
     "epsilon": 0.5,
     "tau": 20.0,
-    "ext_input_x": 1.0,
-    "ext_input_y": 0.0,
+    "x_ext": 1.0,
+    "y_ext": 0.0,
 }
 
 
 class FitzHughNagumoMass(NeuralMass):
     """
-    FitzHugh-Nagumo neural mass.
+    FitzHugh-Nagumo model.
     """
 
     name = "FitzHugh-Nagumo mass"
@@ -53,13 +35,13 @@ class FitzHughNagumoMass(NeuralMass):
         "delta",
         "epsilon",
         "tau",
-        "ext_input_x",
-        "ext_input_y",
+        "x_ext",
+        "y_ext",
     ]
     required_couplings = ["network_x", "network_y"]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS, seed=seed)
+        super().__init__(params=params or FHN_DEFAULT_PARAMS, seed=seed)
 
     def _initialize_state_vector(self):
         """
@@ -78,14 +60,14 @@ class FitzHughNagumoMass(NeuralMass):
             - y
             + coupling_variables["network_x"]
             + system_input(self.noise_input_idx[0])
-            + self.params["ext_input_x"]
+            + self.params["x_ext"]
         )
 
         d_y = (
             (x - self.params["delta"] - self.params["epsilon"] * y) / self.params["tau"]
             + coupling_variables["network_y"]
             + system_input(self.noise_input_idx[1])
-            + self.params["ext_input_y"]
+            + self.params["y_ext"]
         )
 
         return [d_x, d_y]

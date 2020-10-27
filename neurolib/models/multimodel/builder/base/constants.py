@@ -1,7 +1,3 @@
-"""
-Set of constants for model building.
-"""
-
 ### -- NAMING CONVENTIONS --
 # names for excitatory and inhibitory masses
 EXC = "EXC"

@@ -1,18 +1,3 @@
-"""
-Wilson-Cowan model.
-
-Main reference:
-    Wilson, H. R., & Cowan, J. D. (1972). Excitatory and inhibitory
-    interactions in localized populations of model neurons. Biophysical journal,
-    12(1), 1-24.
-
-Additional reference:
-    Papadopoulos, L., Lynn, C. W., Battaglia, D., & Bassett, D. S. (2020).
-    Relations between large scale brain connectivity and effects of regional
-    stimulation depend on collective dynamical state. arXiv preprint
-    arXiv:2002.00094.
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 from symengine import exp
@@ -21,16 +6,21 @@ from ..builder.base.constants import EXC, INH
 from ..builder.base.network import Network, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
 
-DEFAULT_PARAMS_EXC = {"a": 1.5, "mu": 3.0, "tau": 2.5, "ext_input": 1.0}
-DEFAULT_PARAMS_INH = {"a": 1.5, "mu": 3.0, "tau": 3.75, "ext_input": 0.0}
+WC_EXC_DEFAULT_PARAMS = {"a": 1.5, "mu": 3.0, "tau": 2.5, "ext_input": 1.0}
+WC_INH_DEFAULT_PARAMS = {"a": 1.5, "mu": 3.0, "tau": 3.75, "ext_input": 0.0}
 # matrix as [to, from], masses as (EXC, INH)
-DEFAULT_WC_NODE_CONNECTIVITY = np.array([[16.0, 12.0], [15.0, 3.0]])
+WC_NODE_DEFAULT_CONNECTIVITY = np.array([[16.0, 12.0], [15.0, 3.0]])
 
 
 class WilsonCowanMass(NeuralMass):
     """
     Wilson-Cowan neural mass. Can be excitatory or inhibitory, depending on the
     parameters.
+
+    Reference:
+        Wilson, H. R., & Cowan, J. D. (1972). Excitatory and inhibitory
+        interactions in localized populations of model neurons. Biophysical journal,
+        12(1), 1-24.    
     """
 
     name = "Wilson-Cowan mass"
@@ -66,7 +56,7 @@ class ExcitatoryWilsonCowanMass(WilsonCowanMass):
     required_couplings = ["node_exc_exc", "node_exc_inh", "network_exc_exc"]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS_EXC, seed=seed)
+        super().__init__(params=params or WC_EXC_DEFAULT_PARAMS, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [x] = self._unwrap_state_vector()
@@ -95,7 +85,7 @@ class InhibitoryWilsonCowanMass(WilsonCowanMass):
     required_couplings = ["node_inh_exc", "node_inh_inh", "network_inh_exc"]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS_INH, seed=seed)
+        super().__init__(params=params or WC_INH_DEFAULT_PARAMS, seed=seed)
 
     def _derivatives(self, coupling_variables):
         [x] = self._unwrap_state_vector()
@@ -127,7 +117,7 @@ class WilsonCowanNode(SingleCouplingExcitatoryInhibitoryNode):
     default_output = f"q_mean_{EXC}"
 
     def __init__(
-        self, exc_params=None, inh_params=None, connectivity=DEFAULT_WC_NODE_CONNECTIVITY, exc_seed=None, inh_seed=None
+        self, exc_params=None, inh_params=None, connectivity=WC_NODE_DEFAULT_CONNECTIVITY, exc_seed=None, inh_seed=None
     ):
         """
         :param exc_params: parameters for the excitatory mass
@@ -173,7 +163,7 @@ class WilsonCowanNetwork(Network):
         delay_matrix,
         exc_mass_params=None,
         inh_mass_params=None,
-        local_connectivity=DEFAULT_WC_NODE_CONNECTIVITY,
+        local_connectivity=WC_NODE_DEFAULT_CONNECTIVITY,
         exc_seed=None,
         inh_seed=None,
     ):

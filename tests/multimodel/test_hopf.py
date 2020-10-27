@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.hopf import HopfModel
-from neurolib.models.multimodel.builder.hopf import DEFAULT_PARAMS, HopfMass, HopfNetwork, HopfNode
+from neurolib.models.multimodel.builder.hopf import HOPF_DEFAULT_PARAMS, HopfMass, HopfNetwork, HopfNode
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 SEED = 42
@@ -45,7 +45,7 @@ class TestHopfMass(MassTestCase):
     def test_init(self):
         hopf = self._create_mass()
         self.assertTrue(isinstance(hopf, HopfMass))
-        self.assertDictEqual(hopf.params, DEFAULT_PARAMS)
+        self.assertDictEqual(hopf.params, HOPF_DEFAULT_PARAMS)
         coupling_variables = {k: 0.0 for k in hopf.required_couplings}
         self.assertEqual(len(hopf._derivatives(coupling_variables)), hopf.num_state_variables)
         self.assertEqual(len(hopf.initial_state), hopf.num_state_variables)
@@ -70,7 +70,7 @@ class TestHopfNode(unittest.TestCase):
         hopf = self._create_node()
         self.assertTrue(isinstance(hopf, HopfNode))
         self.assertEqual(len(hopf), 1)
-        self.assertDictEqual(hopf[0].params, DEFAULT_PARAMS)
+        self.assertDictEqual(hopf[0].params, HOPF_DEFAULT_PARAMS)
         self.assertEqual(len(hopf.default_network_coupling), 2)
         np.testing.assert_equal(np.array(hopf[0].initial_state), hopf.initial_state)
 
@@ -79,7 +79,10 @@ class TestHopfNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = hopf.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), hopf.num_state_variables)
@@ -128,7 +131,10 @@ class TestHopfNetwork(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = hopf.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), hopf.num_state_variables / hopf.num_nodes)
