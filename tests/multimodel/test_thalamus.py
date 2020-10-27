@@ -9,8 +9,8 @@ import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 from neurolib.models.multimodel.builder.thalamus import (
-    DEFAULT_PARAMS_TCR,
-    DEFAULT_PARAMS_TRN,
+    TCR_DEFAULT_PARAMS,
+    TRN_DEFAULT_PARAMS,
     ThalamicNode,
     ThalamicReticularMass,
     ThalamocorticalMass,
@@ -65,8 +65,8 @@ class TestThalamicMass(MassTestCase):
         trn = self._create_trn_mass()
         self.assertTrue(isinstance(tcr, ThalamocorticalMass))
         self.assertTrue(isinstance(trn, ThalamicReticularMass))
-        self.assertDictEqual(tcr.params, DEFAULT_PARAMS_TCR)
-        self.assertDictEqual(trn.params, DEFAULT_PARAMS_TRN)
+        self.assertDictEqual(tcr.params, TCR_DEFAULT_PARAMS)
+        self.assertDictEqual(trn.params, TRN_DEFAULT_PARAMS)
         for thlm in [tcr, trn]:
             coupling_variables = {k: 0.0 for k in thlm.required_couplings}
             self.assertEqual(
@@ -97,8 +97,8 @@ class TestThalamicNode(unittest.TestCase):
         thlm = self._create_node()
         self.assertTrue(isinstance(thlm, ThalamicNode))
         self.assertEqual(len(thlm), 2)
-        self.assertDictEqual(thlm[0].params, DEFAULT_PARAMS_TCR)
-        self.assertDictEqual(thlm[1].params, DEFAULT_PARAMS_TRN)
+        self.assertDictEqual(thlm[0].params, TCR_DEFAULT_PARAMS)
+        self.assertDictEqual(thlm[1].params, TRN_DEFAULT_PARAMS)
         self.assertEqual(len(thlm.default_network_coupling), 2)
         np.testing.assert_equal(
             np.array(sum([thlmm.initial_state for thlmm in thlm], [])),

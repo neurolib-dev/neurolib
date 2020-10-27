@@ -1,40 +1,28 @@
-"""
-Hopf normal form model.
-
-References:
-    Landau, L. D. (1944). On the problem of turbulence. In Dokl. Akad. Nauk USSR
-    (Vol. 44, p. 311).
-
-    Stuart, J. T. (1960). On the non-linear mechanics of wave disturbances in
-    stable and unstable parallel flows Part 1. The basic behaviour in plane
-    Poiseuille flow. Journal of Fluid Mechanics, 9(3), 353-370.
-
-    Kuznetsov, Y. A. (2013). Elements of applied bifurcation theory (Vol. 112).
-    Springer Science & Business Media.
-
-    Deco, G., Cabral, J., Woolrich, M. W., Stevner, A. B., Van Hartevelt, T. J.,
-    & Kringelbach, M. L. (2017). Single or multiple frequency generators in
-    on-going brain activity: A mechanistic whole-brain model of empirical MEG
-    data. Neuroimage, 152, 538-550.
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 
 from ..builder.base.network import Network, Node
 from ..builder.base.neural_mass import NeuralMass
 
-DEFAULT_PARAMS = {
+HOPF_DEFAULT_PARAMS = {
     "a": 0.25,
-    "omega": 0.2,
-    "ext_input_x": 0.0,
-    "ext_input_y": 0.0,
+    "w": 0.2,
+    "x_ext": 0.0,
+    "y_ext": 0.0,
 }
 
 
 class HopfMass(NeuralMass):
     """
     Hopf normal form (Landau-Stuart oscillator).
+
+    References:
+        Landau, L. D. (1944). On the problem of turbulence. In Dokl. Akad. Nauk USSR
+        (Vol. 44, p. 311).
+
+        Stuart, J. T. (1960). On the non-linear mechanics of wave disturbances in
+        stable and unstable parallel flows Part 1. The basic behaviour in plane
+        Poiseuille flow. Journal of Fluid Mechanics, 9(3), 353-370.
     """
 
     name = "Hopf normal form mass"
@@ -44,11 +32,11 @@ class HopfMass(NeuralMass):
     num_noise_variables = 2
     coupling_variables = {0: "x", 1: "y"}
     state_variable_names = ["x", "y"]
-    required_params = ["a", "omega", "ext_input_x", "ext_input_y"]
+    required_params = ["a", "w", "x_ext", "y_ext"]
     required_couplings = ["network_x", "network_y"]
 
     def __init__(self, params=None, seed=None):
-        super().__init__(params=params or DEFAULT_PARAMS, seed=seed)
+        super().__init__(params=params or HOPF_DEFAULT_PARAMS, seed=seed)
 
     def _initialize_state_vector(self):
         """
@@ -62,18 +50,18 @@ class HopfMass(NeuralMass):
 
         d_x = (
             (self.params["a"] - x ** 2 - y ** 2) * x
-            - self.params["omega"] * y
+            - self.params["w"] * y
             + coupling_variables["network_x"]
             + system_input(self.noise_input_idx[0])
-            + self.params["ext_input_x"]
+            + self.params["x_ext"]
         )
 
         d_y = (
             (self.params["a"] - x ** 2 - y ** 2) * y
-            + self.params["omega"] * x
+            + self.params["w"] * x
             + coupling_variables["network_y"]
             + system_input(self.noise_input_idx[1])
-            + self.params["ext_input_y"]
+            + self.params["y_ext"]
         )
 
         return [d_x, d_y]

@@ -3,9 +3,10 @@ coverage:
   round: nearest
   range: "50...90"
   ignore:
-    - "neurolib/models/**/timeIntegration.py" 
+    - "neurolib/models/**/timeIntegration.py"
     - "neurolib/utils/devutils.py"
     - "neurolib/utils/atlases.py"
+    - "neurolib/models/multimodel/builder/aln.py"
   status:
     project:
       default:

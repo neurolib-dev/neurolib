@@ -1,13 +1,3 @@
-"""
-Thalamic mass models.
-
-References:
-    Costa, M. S., Weigenand, A., Ngo, H. V. V., Marshall, L., Born, J.,
-    Martinetz, T., & Claussen, J. C. (2016). A thalamocortical neural mass
-    model of the EEG during NREM sleep and its response to auditory stimulation.
-    PLoS computational biology, 12(9).
-"""
-
 import numpy as np
 from jitcdde import input as system_input
 from symengine import exp
@@ -16,7 +6,7 @@ from ..builder.base.constants import EXC, INH, LAMBDA_SPEED
 from ..builder.base.network import SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
 
-DEFAULT_PARAMS_TCR = {
+TCR_DEFAULT_PARAMS = {
     "tau": 20.0,  # ms
     "Q_max": 400.0e-3,  # 1/ms
     "theta": -58.5,  # mV
@@ -49,7 +39,7 @@ DEFAULT_PARAMS_TCR = {
     "ext_current": 0.0,
     "lambda": LAMBDA_SPEED,
 }
-DEFAULT_PARAMS_TRN = {
+TRN_DEFAULT_PARAMS = {
     "tau": 20.0,  # ms
     "Q_max": 400.0e-3,  # 1/ms
     "theta": -58.5,  # mV
@@ -72,12 +62,18 @@ DEFAULT_PARAMS_TRN = {
     "lambda": LAMBDA_SPEED,
 }
 # matrix as [to, from], masses as (TCR, TRN)
-DEFAULT_THALAMIC_CONNECTIVITY = np.array([[0.0, 5.0], [3.0, 25.0]])
+THALAMUS_NODE_DEFAULT_CONNECTIVITY = np.array([[0.0, 5.0], [3.0, 25.0]])
 
 
 class ThalamicMass(NeuralMass):
     """
-    Base for thalamic neural populations due to Costa et al.
+    Base for thalamic neural populations
+    
+    Reference:
+        Costa, M. S., Weigenand, A., Ngo, H. V. V., Marshall, L., Born, J.,
+        Martinetz, T., & Claussen, J. C. (2016). A thalamocortical neural mass
+        model of the EEG during NREM sleep and its response to auditory stimulation.
+        PLoS computational biology, 12(9).
     """
 
     name = "Thalamic mass"
@@ -172,7 +168,7 @@ class ThalamocorticalMass(ThalamicMass):
     ]
 
     def __init__(self, params=None):
-        super().__init__(params=params or DEFAULT_PARAMS_TCR)
+        super().__init__(params=params or TCR_DEFAULT_PARAMS)
 
     def _initialize_state_vector(self):
         """
@@ -336,7 +332,7 @@ class ThalamicReticularMass(ThalamicMass):
     ]
 
     def __init__(self, params=None):
-        super().__init__(params=params or DEFAULT_PARAMS_TRN)
+        super().__init__(params=params or TRN_DEFAULT_PARAMS)
 
     def _m_inf_T(self, voltage):
         return 1.0 / (1.0 + exp(-(voltage + 52.0) / 7.4))
@@ -420,7 +416,7 @@ class ThalamicNode(SingleCouplingExcitatoryInhibitoryNode):
     default_output = f"q_mean_{EXC}"
 
     def __init__(
-        self, tcr_params=None, trn_params=None, connectivity=DEFAULT_THALAMIC_CONNECTIVITY,
+        self, tcr_params=None, trn_params=None, connectivity=THALAMUS_NODE_DEFAULT_CONNECTIVITY,
     ):
         """
         :param tcr_params: parameters for the excitatory (TCR) mass

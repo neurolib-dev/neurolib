@@ -6,6 +6,13 @@ from . import timeIntegration as ti
 class ThalamicMassModel(Model):
     """
     Two population thalamic model
+    
+    Reference:
+    Costa, M. S., Weigenand, A., Ngo, H. V. V., Marshall, L., Born, J.,
+    Martinetz, T., & Claussen, J. C. (2016). A thalamocortical neural mass
+    model of the EEG during NREM sleep and its response to auditory stimulation.
+    PLoS computational biology, 12(9).
+
     """
 
     name = "thalamus"

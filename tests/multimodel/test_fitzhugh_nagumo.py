@@ -3,13 +3,13 @@ Set of tests for FitzHugh-Nagumo model.
 """
 
 import unittest
-import numba
+
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.fhn import FHNModel
 from neurolib.models.multimodel.builder.fitzhugh_nagumo import (
-    DEFAULT_PARAMS,
+    FHN_DEFAULT_PARAMS,
     FitzHughNagumoMass,
     FitzHughNagumoNetwork,
     FitzHughNagumoNode,
@@ -51,7 +51,7 @@ class TestFitzHughNagumoMass(MassTestCase):
     def test_init(self):
         fhn = self._create_mass()
         self.assertTrue(isinstance(fhn, FitzHughNagumoMass))
-        self.assertDictEqual(fhn.params, DEFAULT_PARAMS)
+        self.assertDictEqual(fhn.params, FHN_DEFAULT_PARAMS)
         coupling_variables = {k: 0.0 for k in fhn.required_couplings}
         self.assertEqual(len(fhn._derivatives(coupling_variables)), fhn.num_state_variables)
         self.assertEqual(len(fhn.initial_state), fhn.num_state_variables)
@@ -76,7 +76,7 @@ class TestFitzHughNagumoNode(unittest.TestCase):
         fhn = self._create_node()
         self.assertTrue(isinstance(fhn, FitzHughNagumoNode))
         self.assertEqual(len(fhn), 1)
-        self.assertDictEqual(fhn[0].params, DEFAULT_PARAMS)
+        self.assertDictEqual(fhn[0].params, FHN_DEFAULT_PARAMS)
         self.assertEqual(len(fhn.default_network_coupling), 2)
         np.testing.assert_equal(np.array(fhn[0].initial_state), fhn.initial_state)
 
@@ -85,7 +85,10 @@ class TestFitzHughNagumoNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = fhn.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), fhn.num_state_variables)
@@ -134,7 +137,10 @@ class TestFitzHughNagumoNetwork(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = fhn.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), fhn.num_state_variables / fhn.num_nodes)
