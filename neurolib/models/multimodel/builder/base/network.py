@@ -68,6 +68,9 @@ class Node(BackendIntegrator):
             f": {', '.join([mass.name for mass in self])}"
         )
 
+    def __repr__(self):
+        return self.__str__()
+
     def describe(self):
         """
         Return description dict.
@@ -197,7 +200,12 @@ class Node(BackendIntegrator):
         """
         Return initial state of this node, i.e. sum of initial states of all masses.
         """
-        return np.array(sum([mass.initial_state for mass in self], [],))
+        return np.array(
+            sum(
+                [mass.initial_state for mass in self],
+                [],
+            )
+        )
 
     def all_couplings(self, mass_indices=None):
         """
@@ -270,7 +278,10 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
     default_network_coupling = {"network_exc_exc": 0.0}
 
     def __init__(
-        self, neural_masses, local_connectivity, local_delays=None,
+        self,
+        neural_masses,
+        local_connectivity,
+        local_delays=None,
     ):
         """
         :param neural_masses: list of neural masses in this node
@@ -455,6 +466,9 @@ class Network(BackendIntegrator):
         String representation.
         """
         return f"Brain network {self.name} with {self.num_nodes} nodes"
+
+    def __repr__(self):
+        return self.__str__()
 
     def describe(self):
         """
@@ -645,7 +659,8 @@ class Network(BackendIntegrator):
             for to_node in range(self.num_nodes):
                 # input at `to` x `from`
                 inputs[to_node, from_node] = state_vector(
-                    var_idx + node_var_idx, time=time_vector - self.delays[to_node, from_node],
+                    var_idx + node_var_idx,
+                    time=time_vector - self.delays[to_node, from_node],
                 )
             var_idx += node.num_state_variables
 
@@ -734,9 +749,15 @@ class Network(BackendIntegrator):
         """
         assert coupling_variable in self.coupling_symbols
         if coupling_type == "additive":
-            return self._additive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
+            return self._additive_coupling(
+                self.coupling_symbols[coupling_variable],
+                f"network_{coupling_variable}",
+            )
         elif coupling_type == "diffusive":
-            return self._diffusive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
+            return self._diffusive_coupling(
+                self.coupling_symbols[coupling_variable],
+                f"network_{coupling_variable}",
+            )
         elif coupling_type == "none":
             return self._no_coupling(f"network_{coupling_variable}")
         else:

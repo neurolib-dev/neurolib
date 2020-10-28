@@ -101,6 +101,9 @@ class NeuralMass:
             f"state variables: {', '.join(self.state_variable_names)}"
         )
 
+    def __repr__(self):
+        return self.__str__()
+
     def describe(self):
         """
         Return description dict.
@@ -188,7 +191,13 @@ class NeuralMass:
         Unwrap state vector into individual variables. Uses global
         `state_vector` from `jitc*de`.
         """
-        return [state_vector(i) for i in range(self.idx_state_var, self.idx_state_var + self.num_state_variables,)]
+        return [
+            state_vector(i)
+            for i in range(
+                self.idx_state_var,
+                self.idx_state_var + self.num_state_variables,
+            )
+        ]
 
     def _derivatives(self, coupling_variables=None):
         """
