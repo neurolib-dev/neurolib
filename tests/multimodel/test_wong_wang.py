@@ -28,15 +28,15 @@ CORR_THRESHOLD = 0.95
 
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
-    "jitcdde": lambda x: x.as_cubic_splines(),
-    "numba": lambda x: x.as_array(),
+    "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
+    "numba": lambda x, d, dt: x.as_array(d, dt),
 }
 
 
 class MassTestCase(unittest.TestCase):
     def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(duration, dt, independent_realisations=node.num_noise_variables).as_cubic_splines()
+        noise = ZeroInput(independent_realisations=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()
@@ -132,7 +132,7 @@ class TestWongWangNode(unittest.TestCase):
             result = ww.run(
                 DURATION,
                 DT,
-                noise_func(ZeroInput(DURATION, DT, ww.num_noise_variables)),
+                noise_func(ZeroInput(ww.num_noise_variables), DURATION, DT),
                 backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
@@ -171,7 +171,7 @@ class TestReducedWongWangNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = rww.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, rww.num_noise_variables)), backend=backend
+                DURATION, DT, noise_func(ZeroInput(rww.num_noise_variables), DURATION, DT), backend=backend
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), rww.num_state_variables)
@@ -206,7 +206,7 @@ class TestWongWangNetwork(unittest.TestCase):
             result = ww.run(
                 DURATION,
                 DT,
-                noise_func(ZeroInput(DURATION, DT, ww.num_noise_variables)),
+                noise_func(ZeroInput(ww.num_noise_variables), DURATION, DT),
                 backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
@@ -239,7 +239,7 @@ class TestReducedWongWangNetwork(unittest.TestCase):
             result = rww.run(
                 DURATION,
                 DT,
-                noise_func(ZeroInput(DURATION, DT, rww.num_noise_variables)),
+                noise_func(ZeroInput(rww.num_noise_variables), DURATION, DT),
                 backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
