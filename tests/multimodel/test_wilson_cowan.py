@@ -27,15 +27,15 @@ NEUROLIB_VARIABLES_TO_TEST = [("q_mean_EXC", "exc"), ("q_mean_INH", "inh")]
 
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
-    "jitcdde": lambda x: x.as_cubic_splines(),
-    "numba": lambda x: x.as_array(),
+    "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
+    "numba": lambda x, d, dt: x.as_array(d, dt),
 }
 
 
 class MassTestCase(unittest.TestCase):
     def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(duration, dt, independent_realisations=node.num_noise_variables).as_cubic_splines()
+        noise = ZeroInput(independent_realisations=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()
@@ -107,7 +107,7 @@ class TestWilsonCowanNode(unittest.TestCase):
             result = wc.run(
                 DURATION,
                 DT,
-                noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)),
+                noise_func(ZeroInput(wc.num_noise_variables), DURATION, DT),
                 backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
@@ -130,7 +130,7 @@ class TestWilsonCowanNode(unittest.TestCase):
         """
         # run this model
         wc_multi = self._create_node()
-        multi_result = wc_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        multi_result = wc_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
         # run neurolib's model
         wc_neurolib = WCModel(seed=SEED)
         wc_neurolib.params["duration"] = DURATION
@@ -162,7 +162,7 @@ class TestWilsonCowanNetwork(unittest.TestCase):
             result = wc.run(
                 DURATION,
                 DT,
-                noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)),
+                noise_func(ZeroInput(wc.num_noise_variables), DURATION, DT),
                 backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
@@ -183,7 +183,7 @@ class TestWilsonCowanNetwork(unittest.TestCase):
         Compare with neurolib's native Wilson-Cowan model.
         """
         wc_multi = WilsonCowanNetwork(self.SC, self.DELAYS)
-        multi_result = wc_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        multi_result = wc_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
         # run neurolib's model
         wc_neurolib = WCModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         wc_neurolib.params["duration"] = DURATION
