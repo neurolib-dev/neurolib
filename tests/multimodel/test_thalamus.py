@@ -37,7 +37,7 @@ BACKENDS_TO_TEST = {
 class MassTestCase(unittest.TestCase):
     def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(independent_realisations=node.num_noise_variables).as_cubic_splines(duration, dt)
+        noise = ZeroInput(num_iid=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()

@@ -30,12 +30,12 @@ class TestCubicSplines(unittest.TestCase):
     RESULT_ARRAY = np.array([0.59646435, 0.05520635])
 
     def test_splines(self):
-        dW = WienerProcess(independent_realisations=2, seed=42).as_cubic_splines(duration=DURATION, dt=DT)
+        dW = WienerProcess(num_iid=2, seed=42).as_cubic_splines(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(dW, CubicHermiteSpline))
         np.testing.assert_allclose(self.RESULT_SPLINES, dW.get_state(TESTING_TIME))
 
     def test_arrays(self):
-        dW = WienerProcess(independent_realisations=2, seed=42).as_array(duration=DURATION, dt=DT)
+        dW = WienerProcess(num_iid=2, seed=42).as_array(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(dW, np.ndarray))
         time_idx = np.around(TESTING_TIME / DT).astype(int)
         np.testing.assert_allclose(self.RESULT_ARRAY, dW[time_idx, :])
@@ -43,25 +43,25 @@ class TestCubicSplines(unittest.TestCase):
 
 class TestZeroInput(unittest.TestCase):
     def test_generate_input(self):
-        nn = ZeroInput(independent_realisations=2, seed=42).generate_input(duration=DURATION, dt=DT)
+        nn = ZeroInput(num_iid=2, seed=42).generate_input(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(nn, np.ndarray))
         self.assertTupleEqual(nn.shape, SHAPE)
         np.testing.assert_allclose(nn, np.zeros(SHAPE))
 
     def test_params(self):
-        nn = ZeroInput(independent_realisations=2, seed=42)
+        nn = ZeroInput(num_iid=2, seed=42)
         params = nn.get_parameters()
         self.assertDictEqual(params, {"num_iid": 2, "seed": 42})
 
 
 class TestWienerProcess(unittest.TestCase):
     def test_generate_input(self):
-        dW = WienerProcess(independent_realisations=2, seed=42).generate_input(duration=DURATION, dt=DT)
+        dW = WienerProcess(num_iid=2, seed=42).generate_input(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(dW, np.ndarray))
         self.assertTupleEqual(dW.shape, SHAPE)
 
     def test_params(self):
-        dW = WienerProcess(independent_realisations=2, seed=42)
+        dW = WienerProcess(num_iid=2, seed=42)
         params = dW.get_parameters()
         self.assertDictEqual(params, {"num_iid": 2, "seed": 42})
 
@@ -72,7 +72,7 @@ class TestOrnsteinUhlenbeckProcess(unittest.TestCase):
             mu=3.0,
             sigma=0.1,
             tau=2 * DT,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).generate_input(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(ou, np.ndarray))
@@ -83,7 +83,7 @@ class TestOrnsteinUhlenbeckProcess(unittest.TestCase):
             mu=3.0,
             sigma=0.1,
             tau=2 * DT,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         )
         params = ou.get_parameters()
@@ -96,7 +96,7 @@ class TestStepInput(unittest.TestCase):
     def test_generate_input(self):
         step = StepInput(
             step_size=self.STEP_SIZE,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).generate_input(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(step, np.ndarray))
@@ -108,7 +108,7 @@ class TestStepInput(unittest.TestCase):
             stim_start=STIM_START,
             stim_end=STIM_END,
             step_size=self.STEP_SIZE,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).as_array(duration=DURATION, dt=DT)
         np.testing.assert_allclose(step[: int(STIM_START / DT) - 1, :], 0.0)
@@ -123,7 +123,7 @@ class TestSinusoidalInput(unittest.TestCase):
         sin = SinusoidalInput(
             amplitude=self.AMPLITUDE,
             period=self.PERIOD,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).generate_input(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(sin, np.ndarray))
@@ -136,7 +136,7 @@ class TestSinusoidalInput(unittest.TestCase):
             stim_end=STIM_END,
             amplitude=self.AMPLITUDE,
             period=self.PERIOD,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).as_array(duration=DURATION, dt=DT)
         np.testing.assert_allclose(sin[: int(STIM_START / DT) - 1, :], 0.0)
@@ -148,11 +148,10 @@ class TestSinusoidalInput(unittest.TestCase):
             stim_end=STIM_END,
             amplitude=self.AMPLITUDE,
             period=self.PERIOD,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         )
         params = sin.get_parameters()
-        print(params)
         self.assertDictEqual(
             params,
             {
@@ -176,7 +175,7 @@ class TestSquareInput(unittest.TestCase):
         sq = SquareInput(
             amplitude=self.AMPLITUDE,
             period=self.PERIOD,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).generate_input(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(sq, np.ndarray))
@@ -189,7 +188,7 @@ class TestSquareInput(unittest.TestCase):
             stim_end=STIM_END,
             amplitude=self.AMPLITUDE,
             period=self.PERIOD,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).as_array(duration=DURATION, dt=DT)
         np.testing.assert_allclose(sq[: int(STIM_START / DT) - 1, :], 0.0)
@@ -201,7 +200,7 @@ class TestSquareInput(unittest.TestCase):
             stim_end=STIM_END,
             amplitude=self.AMPLITUDE,
             period=self.PERIOD,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         )
         params = sq.get_parameters()
@@ -226,9 +225,9 @@ class TestLinearRampInput(unittest.TestCase):
     def test_generate_input(self):
 
         ramp = LinearRampInput(
-            input_max=self.INP_MAX,
+            inp_max=self.INP_MAX,
             ramp_length=self.RAMP_LENGTH,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).generate_input(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(ramp, np.ndarray))
@@ -240,9 +239,9 @@ class TestLinearRampInput(unittest.TestCase):
         ramp = LinearRampInput(
             stim_start=STIM_START,
             stim_end=STIM_END,
-            input_max=self.INP_MAX,
+            inp_max=self.INP_MAX,
             ramp_length=self.RAMP_LENGTH,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         ).as_array(duration=DURATION, dt=DT)
         np.testing.assert_allclose(ramp[: int(STIM_START / DT) - 1, :], 0.0)
@@ -252,9 +251,9 @@ class TestLinearRampInput(unittest.TestCase):
         ramp = LinearRampInput(
             stim_start=STIM_START,
             stim_end=STIM_END,
-            input_max=self.INP_MAX,
+            inp_max=self.INP_MAX,
             ramp_length=self.RAMP_LENGTH,
-            independent_realisations=2,
+            num_iid=2,
             seed=42,
         )
         params = ramp.get_parameters()

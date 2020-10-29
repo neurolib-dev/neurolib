@@ -3,6 +3,7 @@ Handles input to model. Constructs both noisy and stimulation-like input
 and supports both CubicHermiteSplines for jitcdde backend and np.array for numba
 backend.
 """
+import inspect
 
 import numba
 import numpy as np
@@ -15,27 +16,28 @@ class ModelInput:
     Generates input to model.
     """
 
-    param_names = ["seed", "num_iid"]
-
-    def __init__(self, independent_realisations=1, seed=None):
+    def __init__(self, num_iid=1, seed=None):
         """
-        :param independent_realisations: how many independent realisation of
+        :param num_iid: how many independent realisation of
             the input we want - for constant inputs the array is just copied,
             for noise this means independent realisation
-        :type independent_realisations: int
+        :type num_iid: int
         :param seed: optional seed for noise generator
         :type seed: int|None
         """
-        self.num_iid = independent_realisations
+        self.num_iid = num_iid
         self.seed = seed
         # seed the generator
         np.random.seed(seed)
+        # get parameter names
+        self.param_names = inspect.getfullargspec(self.__init__).args
+        self.param_names.remove("self")
 
     def get_parameters(self):
         """
         Return model input parameters as dict.
         """
-        assert all(hasattr(self, name) for name in self.param_names)
+        assert all(hasattr(self, name) for name in self.param_names), self.param_names
         return {name: getattr(self, name) for name in self.param_names}
 
     def _get_times(self, duration, dt):
@@ -89,13 +91,11 @@ class StimulusInput(ModelInput):
     Generates stimulus input with optional start and end times.
     """
 
-    param_names = ["seed", "num_iid", "stim_start", "stim_end"]
-
     def __init__(
         self,
         stim_start=None,
         stim_end=None,
-        independent_realisations=1,
+        num_iid=1,
         seed=None,
     ):
         """
@@ -107,7 +107,7 @@ class StimulusInput(ModelInput):
         self.stim_start = stim_start
         self.stim_end = stim_end
         super().__init__(
-            independent_realisations=independent_realisations,
+            num_iid=num_iid,
             seed=seed,
         )
 
@@ -144,8 +144,6 @@ class ZeroInput(ModelInput):
     No noise input, i.e. all zeros. For convenience.
     """
 
-    param_names = ["seed", "num_iid"]
-
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
         return np.zeros((self.times.shape[0], self.num_iid))
@@ -155,8 +153,6 @@ class WienerProcess(ModelInput):
     """
     Basic Wiener process, dW, i.e. drawn from standard normal N(0, sqrt(dt)).
     """
-
-    param_names = ["seed", "num_iid"]
 
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
@@ -169,14 +165,12 @@ class OrnsteinUhlenbeckProcess(ModelInput):
         dX = (mu - X)/tau * dt + sigma*dW
     """
 
-    param_names = ["seed", "num_iid", "mu", "sigma", "tau"]
-
     def __init__(
         self,
         mu,
         sigma,
         tau,
-        independent_realisations=1,
+        num_iid=1,
         seed=None,
     ):
         """
@@ -191,7 +185,7 @@ class OrnsteinUhlenbeckProcess(ModelInput):
         self.sigma = sigma
         self.tau = tau
         super().__init__(
-            independent_realisations=independent_realisations,
+            num_iid=num_iid,
             seed=seed,
         )
 
@@ -217,14 +211,12 @@ class StepInput(StimulusInput):
     Basic step process.
     """
 
-    param_names = ["seed", "num_iid", "stim_start", "stim_end", "step_size"]
-
     def __init__(
         self,
         step_size,
         stim_start=None,
         stim_end=None,
-        independent_realisations=1,
+        num_iid=1,
         seed=None,
     ):
         """
@@ -235,7 +227,7 @@ class StepInput(StimulusInput):
         super().__init__(
             stim_start=stim_start,
             stim_end=stim_end,
-            independent_realisations=independent_realisations,
+            num_iid=num_iid,
             seed=seed,
         )
 
@@ -249,8 +241,6 @@ class SinusoidalInput(StimulusInput):
     Sinusoidal input.
     """
 
-    param_names = ["seed", "num_iid", "stim_start", "stim_end", "amplitude", "period", "nonnegative"]
-
     def __init__(
         self,
         amplitude,
@@ -258,7 +248,7 @@ class SinusoidalInput(StimulusInput):
         nonnegative=True,
         stim_start=None,
         stim_end=None,
-        independent_realisations=1,
+        num_iid=1,
         seed=None,
     ):
         """
@@ -276,7 +266,7 @@ class SinusoidalInput(StimulusInput):
         super().__init__(
             stim_start=stim_start,
             stim_end=stim_end,
-            independent_realisations=independent_realisations,
+            num_iid=num_iid,
             seed=seed,
         )
 
@@ -293,8 +283,6 @@ class SquareInput(StimulusInput):
     Square input.
     """
 
-    param_names = ["seed", "num_iid", "stim_start", "stim_end", "amplitude", "period", "nonnegative"]
-
     def __init__(
         self,
         amplitude,
@@ -302,7 +290,7 @@ class SquareInput(StimulusInput):
         nonnegative=True,
         stim_start=None,
         stim_end=None,
-        independent_realisations=1,
+        num_iid=1,
         seed=None,
     ):
         """
@@ -320,7 +308,7 @@ class SquareInput(StimulusInput):
         super().__init__(
             stim_start=stim_start,
             stim_end=stim_end,
-            independent_realisations=independent_realisations,
+            num_iid=num_iid,
             seed=seed,
         )
 
@@ -337,29 +325,27 @@ class LinearRampInput(StimulusInput):
     Linear ramp input.
     """
 
-    param_names = ["seed", "num_iid", "stim_start", "stim_end", "inp_max", "ramp_length"]
-
     def __init__(
         self,
-        input_max,
+        inp_max,
         ramp_length,
         stim_start=None,
         stim_end=None,
-        independent_realisations=1,
+        num_iid=1,
         seed=None,
     ):
         """
-        :param input_max: maximum of stimulus
-        :type input_max: float
+        :param inp_max: maximum of stimulus
+        :type inp_max: float
         :param ramp_length: length of linear ramp, in miliseconds
         :type ramp_length: float
         """
-        self.inp_max = input_max
+        self.inp_max = inp_max
         self.ramp_length = ramp_length
         super().__init__(
             stim_start=stim_start,
             stim_end=stim_end,
-            independent_realisations=independent_realisations,
+            num_iid=num_iid,
             seed=seed,
         )
 

@@ -111,7 +111,7 @@ class TestALNCallbacks(unittest.TestCase):
 class ALNMassTestCase(unittest.TestCase):
     def _run_node(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(independent_realisations=node.num_noise_variables).as_cubic_splines(duration, dt)
+        noise = ZeroInput(num_iid=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(
             node._derivatives(coupling_variables),
             input=noise,
