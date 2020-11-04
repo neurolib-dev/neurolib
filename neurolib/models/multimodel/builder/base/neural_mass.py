@@ -2,6 +2,8 @@ import numpy as np
 import symengine as se
 from jitcdde import y as state_vector
 
+from ..model_input import ModelInput
+
 
 class NeuralMass:
     """
@@ -37,6 +39,9 @@ class NeuralMass:
 
     # number of noise variables / inputs
     num_noise_variables = 0
+
+    # inputs to the mass - usually noise
+    noise_input = []
 
     # names for the state variables to link them with results
     state_variable_names = []
@@ -151,6 +156,8 @@ class NeuralMass:
             start_idx_for_noise = self.index
         if self.noise_input_idx is None:
             self.noise_input_idx = [start_idx_for_noise + i for i in range(self.num_noise_variables)]
+        assert len(self.noise_input) == self.num_noise_variables
+        assert all(isinstance(noise_process, ModelInput) for noise_process in self.noise_input)
         self.initialised = True
 
     def update_params(self, params_dict):
