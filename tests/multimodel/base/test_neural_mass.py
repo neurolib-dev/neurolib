@@ -6,6 +6,7 @@ import unittest
 
 import symengine as se
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
+from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 
 class MassTest(NeuralMass):
@@ -14,6 +15,7 @@ class MassTest(NeuralMass):
     num_noise_variables = 2
     helper_variables = ["helper_test"]
     python_callbacks = ["test_callback"]
+    noise_input = [ZeroInput(), ZeroInput()]
 
 
 class TestNeuralMass(unittest.TestCase):

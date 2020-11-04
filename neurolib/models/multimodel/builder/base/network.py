@@ -52,6 +52,8 @@ class Node(BackendIntegrator):
         # for all masses
         self.num_state_variables = sum([mass.num_state_variables for mass in self])
         self.num_noise_variables = sum([mass.num_noise_variables for mass in self])
+        self.noise_input = sum([mass.noise_input for mass in self], [])
+        assert len(self.noise_input) == self.num_noise_variables
         self.idx_state_var = None
         self.initialised = False
         assert self.default_output in self.state_variable_names[0]
@@ -444,6 +446,8 @@ class Network(BackendIntegrator):
         self.nodes = nodes
         self.num_state_variables = sum([node.num_state_variables for node in self])
         self.num_noise_variables = sum([node.num_noise_variables for node in self])
+        self.noise_input = sum([mass.noise_input for mass in self], [])
+        assert len(self.noise_input) == self.num_noise_variables
         assert connectivity_matrix.shape[0] == self.num_nodes
         if delay_matrix is None:
             delay_matrix = np.zeros_like(connectivity_matrix)
