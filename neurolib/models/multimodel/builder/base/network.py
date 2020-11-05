@@ -152,6 +152,15 @@ class Node(BackendIntegrator):
         self._initial_state = np.array(sum([mass.initial_state for mass in self], []))
         self.initialised = True
 
+    @staticmethod
+    def _sanitize_update_params(params_dict):
+        """
+        If dictionary with parameters for update have one title level, trim this.
+        """
+        if len(params_dict) == 1 and NODE_NAME_STR in next(iter(params_dict)):
+            params_dict = next(iter(params_dict.values()))
+        return params_dict
+
     def update_params(self, params_dict):
         """
         Update parameters of the node, i.e. recursively update all parameters of masses within this node.
@@ -160,6 +169,7 @@ class Node(BackendIntegrator):
             `get_nested_params`, i.e. nested dict
         :type params_dict: dict
         """
+        params_dict = self._sanitize_update_params(params_dict)
         for mass_key, mass_params in params_dict.items():
             if MASS_NAME_STR in mass_key:
                 mass_index = self._get_index(mass_key)
@@ -388,6 +398,7 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         Update params - also update local connectivity and local delays,
         then pass to base class.
         """
+        params_dict = self._sanitize_update_params(params_dict)
         local_connectivity = params_dict.pop(NODE_CONNECTIVITY, None)
         local_delays = params_dict.pop(NODE_DELAYS, None)
         if local_connectivity is not None and isinstance(local_connectivity, np.ndarray):
@@ -630,6 +641,8 @@ class Network(BackendIntegrator):
         :param params_dict: new parameters for the network
         :type params_dict: dict
         """
+        if len(params_dict) == 1 and NETWORK_NAME_STR in next(iter(params_dict)):
+            params_dict = next(iter(params_dict.values()))
         for node_key, node_params in params_dict.items():
             if NODE_NAME_STR in node_key:
                 node_index = int(node_key.split("_")[-1])

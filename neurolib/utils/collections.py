@@ -26,7 +26,7 @@ class star_dotdict(dotdict):
     """Support star notation in dotdict. Nested dicts are now treated as glob"""
 
     def __getitem__(self, attr):
-        # if using star notaion -> return dict of all keys that match
+        # if using star notation -> return dict of all keys that match
         if "*" in attr:
             return search(self, attr, separator=DEFAULT_STAR_SEPARATOR)
         # otherwise -> basic dict.get
@@ -34,7 +34,7 @@ class star_dotdict(dotdict):
             return dict.get(self, attr)
 
     def __setitem__(self, attr, val):
-        # if using star notaion -> search and set all keys matching
+        # if using star notation -> search and set all keys matching
         if "*" in attr:
             for k, _ in search(self, attr, yielded=True, separator=DEFAULT_STAR_SEPARATOR):
                 setattr(self, k, val)

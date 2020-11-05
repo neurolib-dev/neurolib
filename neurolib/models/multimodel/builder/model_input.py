@@ -39,7 +39,7 @@ class ModelInput:
         """
         assert all(hasattr(self, name) for name in self.param_names), self.param_names
         params = {name: getattr(self, name) for name in self.param_names}
-        return {"type": self.__class__.mro()[0], **params}
+        return {"type": self.__class__.__name__, **params}
 
     def _get_times(self, duration, dt):
         """

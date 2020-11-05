@@ -3,8 +3,9 @@ import logging
 import numpy as np
 from chspy import join
 
-from ...utils.collections import dotdict, flatten_nested_dict, star_dotdict
+from ...utils.collections import dotdict, flat_dict_to_nested, flatten_nested_dict, star_dotdict
 from ..model import Model
+from .builder.base.constants import NETWORK_NAME_STR, NODE_NAME_STR
 from .builder.base.network import Network, Node
 
 # default run parameters for MultiModels
@@ -46,7 +47,6 @@ class MultiModel(Model):
         # create parameters
         self.params = self._set_model_params()
 
-        # TODO resolve how to integrate in neurolib's fashion
         self.integration = None
         self.init_vars = None
 
@@ -80,6 +80,10 @@ class MultiModel(Model):
         """
         return int(np.around(self.model_instance.max_delay / self.params["dt"]))
 
+    def _update_model_params(self):
+        params_to_update = {k: v for k, v in self.params.items() if (NODE_NAME_STR in k) or (NETWORK_NAME_STR in k)}
+        self.model_instance.update_params(flat_dict_to_nested(params_to_update))
+
     def run(
         self,
         chunkwise=False,
@@ -90,7 +94,7 @@ class MultiModel(Model):
         continue_run=False,
         noise_input=None,
     ):
-        # ! TODO update parameters from self.params where they can be changed
+        self._update_model_params()
 
         # TODO: legacy argument support
         if append_outputs is not None:
