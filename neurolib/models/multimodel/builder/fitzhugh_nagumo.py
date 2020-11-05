@@ -89,6 +89,7 @@ class FitzHughNagumoNode(Node):
 
     default_network_coupling = {"network_x": 0.0, "network_y": 0.0}
     default_output = "x"
+    output_vars = ["x", "y"]
 
     def __init__(self, params=None, seed=None):
         """
@@ -116,6 +117,7 @@ class FitzHughNagumoNetwork(Network):
     sync_variables = ["network_x", "network_y"]
     # define default coupling in FitzHugh-Nagumo network
     default_coupling = {"network_x": "diffusive", "network_y": "none"}
+    output_vars = ["x", "y"]
 
     def __init__(
         self,

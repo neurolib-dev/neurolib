@@ -40,6 +40,7 @@ class MultiModel(Model):
         self.name = self.model_instance.label
         self.state_vars = self.model_instance.state_variable_names
         self.default_output = self.model_instance.default_output
+        self.output_vars = self.model_instance.output_vars
         assert isinstance(self.default_output, str), "`default_output` must be a string."
 
         # create parameters
@@ -79,8 +80,46 @@ class MultiModel(Model):
         """
         return int(np.around(self.model_instance.max_delay / self.params["dt"]))
 
-    def run(self):
-        pass
+    def run(
+        self,
+        chunkwise=False,
+        chunksize=None,
+        bold=False,
+        append=False,
+        append_outputs=None,
+        continue_run=False,
+        noise_input=None,
+    ):
+        # ! TODO update parameters from self.params where they can be changed
+
+        # TODO: legacy argument support
+        if append_outputs is not None:
+            append = append_outputs
+
+        # if a previous run is not to be continued clear the model's state
+        if continue_run is False:
+            self.clearModelState()
+
+        self.initializeRun(initializeBold=bold)
+
+        if chunkwise is False:
+            self.integrate(append_outputs=append, simulate_bold=bold, noise_input=noise_input)
+            if continue_run:
+                raise NotImplementedError("for now")
+                # self.setInitialValuesToLastState()
+
+        else:
+            if chunksize is None:
+                chunksize = int(2000 / self.params["dt"])
+            # check if model is safe for chunkwise integration
+            self.checkChunkwise()
+            if bold and not self.boldInitialized:
+                logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
+                bold = False
+            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
+
+        # check if there was a problem with the simulated data
+        self.checkOutputs()
 
     def _init_noise_inputs(self, backend):
         """
@@ -123,15 +162,18 @@ class MultiModel(Model):
         if simulate_bold and self.boldInitialized:
             self.simulateBold(result[self.default_output].values, append=True)
 
+    def integrateChunkwise(self, chunksize, bold, append_outputs):
+        raise NotImplementedError("for now...")
+
     def storeOutputsAndStates(self, results, append):
         # save time array
-        self.setOutput("t", results.time.values(), append=append, removeICs=True)
-        self.setStateVariables("t", results.time.values())
+        self.setOutput("t", results.time.values, append=append, removeICs=False)
+        self.setStateVariables("t", results.time.values)
         # save outputs
         for variable in results:
             if variable in self.output_vars:
-                self.setOutput(variable, results[variable].values, append=append, removeICs=True)
-            self.setStateVariables(variable, results[variable].values)
+                self.setOutput(variable, results[variable].values.T, append=append, removeICs=False)
+            self.setStateVariables(variable, results[variable].values.T)
 
     def simulateBold(self, bold_variable, append):
         if self.boldInitialized:

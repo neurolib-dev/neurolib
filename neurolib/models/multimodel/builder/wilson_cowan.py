@@ -117,6 +117,7 @@ class WilsonCowanNode(SingleCouplingExcitatoryInhibitoryNode):
 
     default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"q_mean_{EXC}"
+    output_vars = [f"q_mean_{EXC}", f"q_mean_{INH}"]
 
     def __init__(
         self, exc_params=None, inh_params=None, connectivity=WC_NODE_DEFAULT_CONNECTIVITY, exc_seed=None, inh_seed=None
@@ -158,6 +159,7 @@ class WilsonCowanNetwork(Network):
     sync_variables = ["network_exc_exc", "network_inh_exc"]
     # define default coupling in Wilson-Cowan network
     default_coupling = {"network_exc_exc": "additive", "network_inh_exc": "additive"}
+    output_vars = [f"q_mean_{EXC}", f"q_mean_{INH}"]
 
     def __init__(
         self,
