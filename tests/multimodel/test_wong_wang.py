@@ -29,7 +29,7 @@ CORR_THRESHOLD = 0.95
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
     "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
-    "numba": lambda x, d, dt: x.as_array(d, dt),
+    "numba": lambda x, d, dt: x.as_array(d, dt).T,
 }
 
 

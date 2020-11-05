@@ -19,7 +19,7 @@ NEUROLIB_VARIABLES_TO_TEST = ["x", "y"]
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
     "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
-    "numba": lambda x, d, dt: x.as_array(d, dt),
+    "numba": lambda x, d, dt: x.as_array(d, dt).T,
 }
 
 

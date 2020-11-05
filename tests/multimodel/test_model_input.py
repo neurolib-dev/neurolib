@@ -50,7 +50,8 @@ class TestZeroInput(unittest.TestCase):
 
     def test_params(self):
         nn = ZeroInput(num_iid=2, seed=42)
-        params = nn.get_parameters()
+        params = nn.get_params()
+        params.pop("type")
         self.assertDictEqual(params, {"num_iid": 2, "seed": 42})
 
 
@@ -62,7 +63,8 @@ class TestWienerProcess(unittest.TestCase):
 
     def test_params(self):
         dW = WienerProcess(num_iid=2, seed=42)
-        params = dW.get_parameters()
+        params = dW.get_params()
+        params.pop("type")
         self.assertDictEqual(params, {"num_iid": 2, "seed": 42})
 
 
@@ -86,7 +88,8 @@ class TestOrnsteinUhlenbeckProcess(unittest.TestCase):
             num_iid=2,
             seed=42,
         )
-        params = ou.get_parameters()
+        params = ou.get_params()
+        params.pop("type")
         self.assertDictEqual(params, {"num_iid": 2, "seed": 42, "mu": 3.0, "sigma": 0.1, "tau": 2 * DT})
 
 
@@ -151,7 +154,8 @@ class TestSinusoidalInput(unittest.TestCase):
             num_iid=2,
             seed=42,
         )
-        params = sin.get_parameters()
+        params = sin.get_params()
+        params.pop("type")
         self.assertDictEqual(
             params,
             {
@@ -203,7 +207,8 @@ class TestSquareInput(unittest.TestCase):
             num_iid=2,
             seed=42,
         )
-        params = sq.get_parameters()
+        params = sq.get_params()
+        params.pop("type")
         self.assertDictEqual(
             params,
             {
@@ -256,7 +261,8 @@ class TestLinearRampInput(unittest.TestCase):
             num_iid=2,
             seed=42,
         )
-        params = ramp.get_parameters()
+        params = ramp.get_params()
+        params.pop("type")
         self.assertDictEqual(
             params,
             {

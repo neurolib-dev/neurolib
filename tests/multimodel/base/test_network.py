@@ -4,7 +4,7 @@ Test for network class.
 
 import unittest
 from copy import deepcopy
-
+import numba
 import numpy as np
 import symengine as se
 from neurolib.models.multimodel.builder.base.constants import EXC, INH
@@ -92,6 +92,20 @@ class TestNode(unittest.TestCase):
         node = self._create_node()
         all_couplings = node.all_couplings()
         self.assertDictEqual(all_couplings, ALL_COUPLING)
+
+    def test_initial_state(self):
+        node = self._create_node()
+        node.index = 0
+        node.init_node(start_idx_for_noise=0)
+        np.testing.assert_equal(np.zeros((node.num_state_variables)), node.initial_state)
+        # 1D case
+        new_init_state = np.random.rand(node.num_state_variables)
+        node.initial_state = new_init_state
+        np.testing.assert_equal(node.initial_state, new_init_state)
+        # 2D case
+        new_init_state = np.random.normal(size=(node.num_state_variables, 5))
+        node.initial_state = new_init_state
+        np.testing.assert_equal(node.initial_state, new_init_state)
 
     def test_init_node(self):
         node = self._create_node()
@@ -219,6 +233,18 @@ class TestNetwork(unittest.TestCase):
         np.testing.assert_equal(net.connectivity, UPDATE_CONNECTIVITY)
         np.testing.assert_equal(net.delays, UPDATE_DELAYS)
         self.assertEqual(net[0][0].params["a"], UPDATE_WITH["a"])
+
+    def test_initial_state(self):
+        net, _ = self._create_network()
+        np.testing.assert_equal(np.zeros((net.num_state_variables)), net.initial_state)
+        # 1D case
+        new_init_state = np.random.rand(net.num_state_variables)
+        net.initial_state = new_init_state
+        np.testing.assert_equal(net.initial_state, new_init_state)
+        # 2D case
+        new_init_state = np.random.normal(size=(net.num_state_variables, 5))
+        net.initial_state = new_init_state
+        np.testing.assert_equal(net.initial_state, new_init_state)
 
     def test_prepare_mass_params(self):
         net, _ = self._create_network()
