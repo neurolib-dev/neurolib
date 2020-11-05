@@ -63,21 +63,21 @@ class TestNumbaBackend(unittest.TestCase):
     def test_replace_current_ys(self):
         backend = NumbaBackend()
         STRING_IN = "0.4*(1.0*(1.0 - current_y(0))"
-        EXPECTED = "0.4*(1.0*(1.0 - y[max_delay + i - 1, 0])"
+        EXPECTED = "0.4*(1.0*(1.0 - y[0, max_delay + i - 1])"
         result = backend._replace_current_ys(STRING_IN)
         self.assertEqual(result, EXPECTED)
 
     def test_replace_past_ys(self):
         backend = NumbaBackend()
-        STRING_IN = "0.06*past_y(-3.21 + t, 2, anchors(-3.21 + t)) + 0.23*" "past_y(-0.5 + t, 0, anchors(-0.5 + t))"
-        EXPECTED = "0.06*y[max_delay + i - 1 - 32, 2] + 0.23*y[max_delay + i" " - 1 - 5, 0]"
+        STRING_IN = "0.06*past_y(-3.21 + t, 2, anchors(-3.21 + t)) + 0.23*past_y(-0.5 + t, 0, anchors(-0.5 + t))"
+        EXPECTED = "0.06*y[2, max_delay + i - 1 - 32] + 0.23*y[0, max_delay + i - 1 - 5]"
         result = backend._replace_past_ys(STRING_IN, dt=0.1)
         self.assertEqual(result, EXPECTED)
 
     def test_replace_inputs(self):
         backend = NumbaBackend()
         STRING_IN = "12.4*past_y(-external_input + t, 3 + input_base_n, " "anchors(-external_input + t))"
-        EXPECTED = "12.4*input_y[i, 3]"
+        EXPECTED = "12.4*input_y[3, i]"
         result = backend._replace_inputs(STRING_IN)
         self.assertEqual(result, EXPECTED)
 

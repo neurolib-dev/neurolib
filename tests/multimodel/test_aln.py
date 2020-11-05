@@ -25,7 +25,7 @@ from neurolib.models.multimodel.builder.base.constants import EXC
 from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 # these keys do not test since they are rescaled on the go
-PARAMS_NOT_TEST_KEYS = ["c_gl", "taum"]
+PARAMS_NOT_TEST_KEYS = ["c_gl", "taum", "noise_0"]
 
 
 def _strip_keys(dict_test, strip_keys=PARAMS_NOT_TEST_KEYS):
@@ -41,7 +41,7 @@ NEUROLIB_VARIABLES_TO_TEST = [("r_mean_EXC", "rates_exc"), ("r_mean_INH", "rates
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
     "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
-    "numba": lambda x, d, dt: x.as_array(d, dt),
+    "numba": lambda x, d, dt: x.as_array(d, dt).T,
 }
 
 
@@ -247,7 +247,9 @@ class TestALNNode(unittest.TestCase):
         """
         # run this model
         aln_multi = self._create_node()
-        multi_result = aln_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
+        multi_result = aln_multi.run(
+            DURATION, DT, ZeroInput(aln_multi.num_noise_variables).as_array(DURATION, DT), backend="numba"
+        )
         # run neurolib's model
         aln_neurolib = ALNModel(seed=SEED)
         aln_neurolib.params["duration"] = DURATION
@@ -303,7 +305,9 @@ class TestALNNetwork(unittest.TestCase):
         Linux, no idea why, but the model works...
         """
         aln_multi = ALNNetwork(self.SC, self.DELAYS, exc_seed=SEED, inh_seed=SEED)
-        multi_result = aln_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
+        multi_result = aln_multi.run(
+            DURATION, DT, ZeroInput(aln_multi.num_noise_variables).as_array(DURATION, DT), backend="numba"
+        )
         # run neurolib's model
         aln_neurolib = ALNModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         aln_neurolib.params["duration"] = DURATION
