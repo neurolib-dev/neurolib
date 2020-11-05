@@ -82,6 +82,7 @@ class Dataset:
         assert self.has_subjects
 
         self.Cmats = self._normalizeCmats(self.getDataPerSubject("cm"), method=normalizeCmats)
+        self.Dmats = self.getDataPerSubject("len")
 
         # take the average of all
         self.Cmat = np.mean(self.Cmats, axis=0)
