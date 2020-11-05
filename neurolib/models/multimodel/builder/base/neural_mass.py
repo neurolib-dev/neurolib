@@ -157,7 +157,9 @@ class NeuralMass:
         if self.noise_input_idx is None:
             self.noise_input_idx = [start_idx_for_noise + i for i in range(self.num_noise_variables)]
         assert len(self.noise_input) == self.num_noise_variables
-        assert all(isinstance(noise_process, ModelInput) for noise_process in self.noise_input)
+        assert all(isinstance(noise_process, ModelInput) for noise_process in self.noise_input), self.noise_input
+        for i, noise_process in enumerate(self.noise_input):
+            self.params[f"noise_{i}"] = noise_process.get_params()
         self.initialised = True
 
     def update_params(self, params_dict):

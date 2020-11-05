@@ -33,12 +33,13 @@ class ModelInput:
         self.param_names = inspect.getfullargspec(self.__init__).args
         self.param_names.remove("self")
 
-    def get_parameters(self):
+    def get_params(self):
         """
         Return model input parameters as dict.
         """
         assert all(hasattr(self, name) for name in self.param_names), self.param_names
-        return {name: getattr(self, name) for name in self.param_names}
+        params = {name: getattr(self, name) for name in self.param_names}
+        return {"type": self.__class__.mro()[0], **params}
 
     def _get_times(self, duration, dt):
         """

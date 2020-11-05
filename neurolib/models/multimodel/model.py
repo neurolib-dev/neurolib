@@ -2,7 +2,6 @@ import logging
 
 import numpy as np
 from chspy import join
-from numpy.core.fromnumeric import var
 
 from ...utils.collections import dotdict, flatten_nested_dict, star_dotdict
 from ..model import Model
@@ -72,7 +71,6 @@ class MultiModel(Model):
             params.update({"N": 1, "Cmat": np.zeros((1, 1))})
         else:
             params.update({"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity})
-        # TODO add noise params here
         return params
 
     def getMaxDelay(self):
@@ -93,7 +91,7 @@ class MultiModel(Model):
             join_func = lambda x: join(*x)
         elif backend == "numba":
             init_func = lambda noise: noise.as_array(duration=self.params["duration"], dt=self.params["dt"])
-            join_func = lambda x: np.hstack(x)
+            join_func = lambda x: np.hstack(x).T
         else:
             raise ValueError(f"Unknown backend {backend}")
         # initialise each noise / stimulation process and join
@@ -118,9 +116,8 @@ class MultiModel(Model):
         )
         self.storeOutputsAndStates(result, append=append_outputs)
         # force bold if params['bold'] == True
-        if "bold" in self.params:
-            if self.params["bold"]:
-                simulate_bold = True
+        if self.params.get("bold", False):
+            simulate_bold = True
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
@@ -146,7 +143,8 @@ class MultiModel(Model):
                 if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
                     append = False
                     logging.warn(
-                        f"Output size {bold_input.shape[1]} is not a multiple of BOLD sample length { self.boldModel.samplingRate_NDt}, will not append data."
+                        f"Output size {bold_input.shape[1]} is not a multiple of BOLD sample length "
+                        f"{ self.boldModel.samplingRate_NDt}, will not append data."
                     )
                 logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
 
@@ -163,7 +161,8 @@ class MultiModel(Model):
                 self.setOutput("BOLD.BOLD", BOLD)
             else:
                 logging.warn(
-                    f"Will not simulate BOLD if output {bold_input.shape[1]*self.params['dt']} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
+                    f"Will not simulate BOLD if output {bold_input.shape[1]*self.params['dt']} not at least of duration"
+                    f" {self.boldModel.samplingRate_NDt*self.params['dt']}"
                 )
         else:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
