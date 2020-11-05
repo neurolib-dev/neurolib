@@ -1,4 +1,5 @@
 import logging
+from itertools import chain
 
 import numpy as np
 import symengine as se
@@ -41,6 +42,9 @@ class Node(BackendIntegrator):
     # default output of the node - all nodes need to have this variable defined
     default_output = None
 
+    # typical output variables of the model - these will be available in model instance
+    output_vars = []
+
     def __init__(self, neural_masses):
         """
         :param neural_masses: list of neural masses in this node
@@ -57,6 +61,7 @@ class Node(BackendIntegrator):
         self.idx_state_var = None
         self.initialised = False
         assert self.default_output in self.state_variable_names[0]
+        assert all(var in self.state_variable_names[0] for var in self.output_vars)
         # mass types needs to be unique for all masses!
         mass_types = [mass.mass_type for mass in self]
         assert len(set(mass_types)) == len(mass_types), f"Mass types needs to be different: {mass_types}"
@@ -439,6 +444,9 @@ class Network(BackendIntegrator):
     # default output of the network - e.g. BOLD is computed from this
     default_output = None
 
+    # typical output variables of the model - these will be available in model instance
+    output_vars = []
+
     def __init__(self, nodes, connectivity_matrix, delay_matrix=None):
         """
         :param nodes: list of nodes in this network
@@ -472,6 +480,7 @@ class Network(BackendIntegrator):
             assert len(default_output) == 1
             self.default_output = next(iter(default_output))
 
+        assert all(var in chain.from_iterable(self.state_variable_names) for var in self.output_vars)
         assert all(self.default_output in node_state_vars for node_state_vars in self.state_variable_names)
 
         self.init_network()

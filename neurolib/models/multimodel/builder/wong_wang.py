@@ -240,6 +240,7 @@ class WongWangNode(SingleCouplingExcitatoryInhibitoryNode):
 
     default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"S_{EXC}"
+    output_vars = [f"S_{EXC}", f"q_mean_{EXC}", f"S_{INH}", f"q_mean_{INH}"]
 
     def __init__(
         self,
@@ -285,6 +286,7 @@ class ReducedWongWangNode(Node):
 
     default_network_coupling = {"network_S": 0.0}
     default_output = "S"
+    output_vars = ["S", "q_mean"]
 
     def __init__(self, params=None, seed=None):
         """
@@ -312,6 +314,7 @@ class WongWangNetwork(Network):
     sync_variables = ["network_exc_exc", "network_inh_exc"]
     # define default coupling in Wong-Wang network
     default_coupling = {"network_exc_exc": "additive", "network_inh_exc": "additive"}
+    output_vars = [f"S_{EXC}", f"q_mean_{EXC}", f"S_{INH}", f"q_mean_{INH}"]
 
     def __init__(
         self,
@@ -393,6 +396,7 @@ class ReducedWongWangNetwork(Network):
     sync_variables = ["network_S"]
     # define default coupling in Reduced Wong-Wang network
     default_coupling = {"network_S": "additive"}
+    output_vars = ["S", "q_mean"]
 
     def __init__(self, connectivity_matrix, delay_matrix, mass_params=None, seed=None):
         """

@@ -25,7 +25,6 @@ import time
 from functools import wraps
 from sys import platform
 from types import FunctionType
-from jitcdde import past
 
 import numba
 import numpy as np

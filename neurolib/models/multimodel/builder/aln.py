@@ -790,6 +790,7 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
     }
 
     default_output = f"r_mean_{EXC}"
+    output_vars = [f"r_mean_{EXC}", f"r_mean_{INH}", f"I_A_{EXC}"]
 
     def _rescale_connectivity(self):
         """
@@ -916,6 +917,7 @@ class ALNNetwork(Network):
     label = "ALNNet"
 
     sync_variables = ["network_exc_exc", "network_exc_exc_sq"]
+    output_vars = [f"r_mean_{EXC}", f"r_mean_{INH}", f"I_A_{EXC}"]
 
     def __init__(
         self,

@@ -425,6 +425,7 @@ class ThalamicNode(SingleCouplingExcitatoryInhibitoryNode):
 
     default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"q_mean_{EXC}"
+    output_vars = [f"q_mean_{EXC}", f"q_mean_{INH}", f"V_{EXC}", f"V_{INH}"]
 
     def __init__(
         self,
