@@ -60,6 +60,7 @@ class Node(BackendIntegrator):
         # mass types needs to be unique for all masses!
         mass_types = [mass.mass_type for mass in self]
         assert len(set(mass_types)) == len(mass_types), f"Mass types needs to be different: {mass_types}"
+        self._initial_state = None
 
     def __str__(self):
         """
@@ -143,6 +144,7 @@ class Node(BackendIntegrator):
         for mass in self:
             mass.init_mass(**kwargs)
         assert all(mass.initialised for mass in self)
+        self._initial_state = np.array(sum([mass.initial_state for mass in self], []))
         self.initialised = True
 
     def update_params(self, params_dict):
@@ -202,12 +204,20 @@ class Node(BackendIntegrator):
         """
         Return initial state of this node, i.e. sum of initial states of all masses.
         """
-        return np.array(
-            sum(
-                [mass.initial_state for mass in self],
-                [],
-            )
-        )
+        return self._initial_state
+
+    @initial_state.setter
+    def initial_state(self, initial_state):
+        """
+        Manually set initial state - be sure what you are doing!
+
+        :param initial_state: vector representing the initial state, if 2D pass as nodes x time
+        :type initial_state: np.ndarray
+        """
+        assert isinstance(initial_state, np.ndarray)
+        assert initial_state.ndim in [1, 2]
+        assert initial_state.shape[0] == self.num_state_variables
+        self._initial_state = initial_state
 
     def all_couplings(self, mass_indices=None):
         """
@@ -454,6 +464,7 @@ class Network(BackendIntegrator):
         assert connectivity_matrix.shape == delay_matrix.shape
         self.connectivity = connectivity_matrix
         self.delays = delay_matrix
+        self._initial_state = None
         self.initialised = False
 
         if self.default_output is None:
@@ -519,7 +530,20 @@ class Network(BackendIntegrator):
         """
         Return initial state for whole network.
         """
-        return np.concatenate([node.initial_state for node in self], axis=0)
+        return self._initial_state
+
+    @initial_state.setter
+    def initial_state(self, initial_state):
+        """
+        Manually set initial state - be sure what you are doing!
+
+        :param initial_state: vector representing the initial state, if 2D pass as nodes x time
+        :type initial_state: np.ndarray
+        """
+        assert isinstance(initial_state, np.ndarray)
+        assert initial_state.ndim in [1, 2]
+        assert initial_state.shape[0] == self.num_state_variables
+        self._initial_state = initial_state
 
     @staticmethod
     def _strip_index(symbol_name):
@@ -586,6 +610,7 @@ class Network(BackendIntegrator):
         for node_idx, node in enumerate(self.nodes):
             node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables)
         assert all(node.initialised for node in self)
+        self._initial_state = np.concatenate([node.initial_state for node in self], axis=0)
         self.initialised = True
 
     def update_params(self, params_dict):
