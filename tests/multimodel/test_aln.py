@@ -252,6 +252,8 @@ class TestALNNode(unittest.TestCase):
         aln_neurolib = ALNModel(seed=SEED)
         aln_neurolib.params["duration"] = DURATION
         aln_neurolib.params["dt"] = DT
+        aln_neurolib.params["mue_ext_mean"] = 0.0
+        aln_neurolib.params["mui_ext_mean"] = 0.0
         aln_neurolib.run()
         for (var_multi, var_neurolib) in NEUROLIB_VARIABLES_TO_TEST:
             corr_mat = np.corrcoef(aln_neurolib[var_neurolib], multi_result[var_multi].values.T)
@@ -311,6 +313,8 @@ class TestALNNetwork(unittest.TestCase):
         # delays <-> length matrix
         aln_neurolib.params["signalV"] = 1.0
         aln_neurolib.params["sigma_ou"] = 0.0
+        aln_neurolib.params["mue_ext_mean"] = 0.0
+        aln_neurolib.params["mui_ext_mean"] = 0.0
         # match initial state at least for current - this seems to be enough
         aln_neurolib.params["mufe_init"] = np.array(
             [aln_multi[0][0].initial_state[0], aln_multi[1][0].initial_state[0]]
