@@ -145,7 +145,7 @@ class MultiModel(Model):
         :param noise_input: custom noise input if desired, if None, will use
             default, it's type depends on backend:
             - for `numba` backend as np.ndarray
-            -for `jitcdde` backend as interpolated Cubic Hermite Splines
+            - for `jitcdde` backend as interpolated Cubic Hermite Splines
                 (`chspy.CubicHermiteSpline`)
         :type noise_input: np.ndarray|chspy.CubicHermiteSpline
         """

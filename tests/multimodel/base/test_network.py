@@ -4,7 +4,7 @@ Test for network class.
 
 import unittest
 from copy import deepcopy
-import numba
+
 import numpy as np
 import symengine as se
 from neurolib.models.multimodel.builder.base.constants import EXC, INH
