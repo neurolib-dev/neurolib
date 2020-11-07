@@ -116,6 +116,13 @@ class Model:
         # length of the initial condition
         self.startindt = self.maxDelay + 1
 
+        # check dt / sampling_dt
+        if self.params["sampling_dt"] is None:
+            self.params["sampling_dt"] = self.params["dt"]
+        assert self.params["sampling_dt"] >= self.params["dt"]
+        assert self.params["duration"] >= self.params["sampling_dt"]
+        self.sample_every = int(self.params["sampling_dt"] / self.params["dt"])
+
         # force bold if params['bold'] == True
         if "bold" in self.params:
             if self.params["bold"]:
@@ -171,6 +178,11 @@ class Model:
         else:
             if chunksize is None:
                 chunksize = int(2000 / self.params["dt"])
+            assert chunksize > self.params["sampling_dt"]
+            assert ((chunksize * self.params["dt"]) % self.params["sampling_dt"]) < self.params["sampling_dt"], (
+                f"Chunksize {chunksize * self.params['dt']} must be divisible by sampling dt "
+                f"{self.params['sampling_dt']}"
+            )
             # check if model is safe for chunkwise integration
             self.checkChunkwise()
             if bold and not self.boldInitialized:
@@ -404,6 +416,14 @@ class Model:
                 data = data[:, self.startindt :]
             else:
                 raise ValueError(f"Don't know how to truncate data of shape {data.shape}.")
+
+        # subsample to sampling dt
+        if data.ndim == 1:
+            data = data[:: self.sample_every]
+        elif data.ndim == 2:
+            data = data[:, :: self.sample_every]
+        else:
+            raise ValueError(f"Don't know how to subsample data of shape {data.shape}.")
 
         # if the output is a single name (not dot.separated)
         if "." not in name:
