@@ -18,6 +18,7 @@ def loadDefaultParams(seed=None):
     ### runtime parameters
     # thalamus is really sensitive, so either you integrate with very small dt or use an adaptive integration step
     params.dt = 0.01  # ms
+    params.sampling_dt = 10.0  # sampling dt (ms)
     params.duration = 60000  # Simulation duration (ms)
     np.random.seed(seed)  # seed for RNG of noise and ICs
     params.seed = seed

@@ -15,7 +15,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     :type lookUpTableFileName: str, optional
     :param seed: Seed for the random number generator, defaults to None
     :type seed: int, optional
-    
+
     :return: A dictionary with the default parameters of the model
     :rtype: dict
     """
@@ -30,6 +30,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
 
     # runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
+    params.sampling_dt = 10.0  # sampling dt (ms)
     params.duration = 2000  # Simulation duration (ms)
     np.random.seed(seed)  # seed for RNG of noise and ICs
     params.seed = seed
@@ -209,13 +210,13 @@ def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
 
 
 def generateRandomICs(N, seed=None):
-    """ Generates random Initial Conditions for the interareal network
+    """Generates random Initial Conditions for the interareal network
 
-        :params N:  Number of area in the large scale network
+    :params N:  Number of area in the large scale network
 
-        :returns:   A tuple of 9 N-length numpy arrays representining:
-                        mufe_init, IA_init, mufi_init, sem_init, sev_init,
-                        sim_init, siv_init, rates_exc_init, rates_inh_init
+    :returns:   A tuple of 9 N-length numpy arrays representining:
+                    mufe_init, IA_init, mufi_init, sem_init, sev_init,
+                    sim_init, siv_init, rates_exc_init, rates_inh_init
     """
     np.random.seed(seed)
 
