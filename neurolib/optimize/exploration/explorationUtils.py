@@ -1,4 +1,5 @@
 import os
+import logging
 
 import numpy as np
 import pandas as pd
@@ -187,6 +188,11 @@ def plotExplorationResults(
         ax.set_xlabel(par1_label)
         ax.set_ylabel(par2_label)
 
+        # tick marks
+        ax.tick_params(
+            axis="both", direction="out", length=3, idth=1, bottom=True, left=True,
+        )
+
         # multiply / rescale axis
         if multiply_axis:
             ax.set_xticklabels(np.round(np.multiply(ax.get_xticks(), multiply_axis), 2))
@@ -196,12 +202,13 @@ def plotExplorationResults(
         if not isinstance(i, tuple):
             i = (i,)
         if by != ["_by"]:
-            title = " ".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)])
+            title = "-".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)])
             ax.set_title(title)
         if one_figure == False:
             if savename:
                 save_fname = os.path.join(paths.FIGURES_DIR, f"{title}_{savename}")
                 plt.savefig(save_fname)
+                logging.info(f"Saving to {save_fname}")
             plt.show()
         else:
             axi += 1
@@ -211,6 +218,7 @@ def plotExplorationResults(
         if savename:
             save_fname = os.path.join(paths.FIGURES_DIR, f"{savename}")
             plt.savefig(save_fname)
+            logging.info(f"Saving to {save_fname}")
         plt.show()
 
 
