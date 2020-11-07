@@ -135,6 +135,7 @@ class TestWilsonCowanNode(unittest.TestCase):
         wc_neurolib = WCModel(seed=SEED)
         wc_neurolib.params["duration"] = DURATION
         wc_neurolib.params["dt"] = DT
+        wc_neurolib.params["sampling_dt"] = None
         # match initial state
         wc_neurolib.params["exc_init"] = np.array([[wc_multi.initial_state[0]]])
         wc_neurolib.params["inh_init"] = np.array([[wc_multi.initial_state[1]]])
@@ -188,6 +189,7 @@ class TestWilsonCowanNetwork(unittest.TestCase):
         wc_neurolib = WCModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         wc_neurolib.params["duration"] = DURATION
         wc_neurolib.params["dt"] = DT
+        wc_neurolib.params["sampling_dt"] = None
         # there is no "global coupling" parameter in MultiModel
         wc_neurolib.params["K_gl"] = 1.0
         # delays <-> length matrix

@@ -251,6 +251,7 @@ class TestALNNode(unittest.TestCase):
         aln_neurolib = ALNModel(seed=SEED)
         aln_neurolib.params["duration"] = DURATION
         aln_neurolib.params["dt"] = DT
+        aln_neurolib.params["sampling_dt"] = None
         aln_neurolib.run()
         for (var_multi, var_neurolib) in NEUROLIB_VARIABLES_TO_TEST:
             corr_mat = np.corrcoef(aln_neurolib[var_neurolib], multi_result[var_multi].values.T)
@@ -302,6 +303,7 @@ class TestALNNetwork(unittest.TestCase):
         aln_neurolib = ALNModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         aln_neurolib.params["duration"] = DURATION
         aln_neurolib.params["dt"] = DT
+        aln_neurolib.params["sampling_dt"] = None
         # there is no "global coupling" parameter in MultiModel
         aln_neurolib.params["K_gl"] = 1.0
         # delays <-> length matrix

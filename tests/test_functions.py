@@ -23,6 +23,7 @@ class TestFunctions(unittest.TestCase):
         aln.params["sigma_ou"] = 0.09
         aln.params["b"] = 5.0
         aln.params["duration"] = 0.2 * 60 * 1000
+        aln.params["sampling_dt"] = None
         aln.run(bold=True, chunkwise=True)
 
         cls.model = aln
@@ -51,12 +52,16 @@ class TestFunctions(unittest.TestCase):
 
     def test_ts_kolmogorov(self):
         func.ts_kolmogorov(
-            self.model.rates_exc[::20, :], self.model.rates_exc, stepsize=250, windowsize=30,
+            self.model.rates_exc[::20, :],
+            self.model.rates_exc,
+            stepsize=250,
+            windowsize=30,
         )
 
     def test_matrix_kolmogorov(self):
         func.matrix_kolmogorov(
-            func.fc(self.model.rates_exc[::20, :]), func.fc(self.model.rates_exc[::20, :]),
+            func.fc(self.model.rates_exc[::20, :]),
+            func.fc(self.model.rates_exc[::20, :]),
         )
 
     def test_getPowerSpectrum(self):

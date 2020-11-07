@@ -29,8 +29,13 @@ class TestExplorationUtils(unittest.TestCase):
         model = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
         model.params.duration = 11 * 1000  # ms
         model.params.dt = 0.2
+        model.params.sampling_dt = None
         parameters = ParameterSpace(
-            {"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2), "b": [0.0, 10.0],},
+            {
+                "mue_ext_mean": np.linspace(0, 3, 2),
+                "mui_ext_mean": np.linspace(0, 3, 2),
+                "b": [0.0, 10.0],
+            },
             kind="grid",
         )
         search = BoxSearch(

@@ -144,6 +144,7 @@ class TestThalamicNode(unittest.TestCase):
         thlm_neurolib = ThalamicMassModel()
         thlm_neurolib.params["duration"] = DURATION
         thlm_neurolib.params["dt"] = DT
+        thlm_neurolib.params["sampling_dt"] = None
         thlm_neurolib.params["V_t_init"] = np.array([-70])
         thlm_neurolib.params["V_r_init"] = np.array([-70])
         thlm_neurolib.run()
