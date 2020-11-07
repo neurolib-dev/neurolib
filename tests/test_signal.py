@@ -30,6 +30,7 @@ class TestSignal(unittest.TestCase):
         # simulate 10 seconds
         aln.params["duration"] = 10.0 * 1000
         aln.params["sigma_ou"] = 0.1  # add some noise
+        aln.params["sampling_dt"] = None
         aln.run()
         # init RatesSignal
         cls.signal = RatesSignal.from_model_output(aln)
@@ -105,7 +106,10 @@ class TestSignal(unittest.TestCase):
         start_time = self.signal.data.time.values[0]
         end_time = self.signal.data.time.values[correct_shape[-1] - 1]
         for win in self.signal.sliding_window(
-            length=window_length, step=window_step, window_function="boxcar", lengths_in_seconds=True,
+            length=window_length,
+            step=window_step,
+            window_function="boxcar",
+            lengths_in_seconds=True,
         ):
             # check correct shape and indices bounds for each window
             self.assertTrue(isinstance(win, RatesSignal))
@@ -143,11 +147,13 @@ class TestSignal(unittest.TestCase):
             # assert we actually did input `const_value`
             if side in ["before", "both"]:
                 np.testing.assert_allclose(
-                    padded.isel([0, int(2 * padded.sampling_frequency)], inplace=False).data, const_value,
+                    padded.isel([0, int(2 * padded.sampling_frequency)], inplace=False).data,
+                    const_value,
                 )
             if side in ["after", "both"]:
                 np.testing.assert_allclose(
-                    padded.isel([-int(2 * padded.sampling_frequency), None], inplace=False).data, const_value,
+                    padded.isel([-int(2 * padded.sampling_frequency), None], inplace=False).data,
+                    const_value,
                 )
             # test inplace
             sig = deepcopy(self.signal)
@@ -303,7 +309,8 @@ class TestSignal(unittest.TestCase):
             )
         self.assertTrue(isinstance(operation, xr.DataArray))
         xr.testing.assert_equal(
-            operation, xr.apply_ufunc(do_operation_2, self.signal.data, input_core_dims=[["time"]]),
+            operation,
+            xr.apply_ufunc(do_operation_2, self.signal.data, input_core_dims=[["time"]]),
         )
 
     def test_functional_connectivity(self):
@@ -312,7 +319,8 @@ class TestSignal(unittest.TestCase):
         with self.assertLogs(root_logger, level="ERROR") as cm:
             fcs = self.signal.functional_connectivity()
             self.assertEqual(
-                cm.output, ["ERROR:root:Cannot compute functional connectivity from one timeseries."],
+                cm.output,
+                ["ERROR:root:Cannot compute functional connectivity from one timeseries."],
             )
         # should be None when computing on one timeseries
         self.assertEqual(None, fcs)

@@ -115,6 +115,7 @@ class TestFitzHughNagumoNode(unittest.TestCase):
         fhn = FHNModel(seed=SEED)
         fhn.params["duration"] = DURATION
         fhn.params["dt"] = DT
+        fhn.params["sampling_dt"] = None
         fhn.run()
         for var in NEUROLIB_VARIABLES_TO_TEST:
             corr_mat = np.corrcoef(fhn[var], multi_result[var].values.T)
@@ -164,6 +165,7 @@ class TestFitzHughNagumoNetwork(unittest.TestCase):
         fhn_neurolib = FHNModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         fhn_neurolib.params["duration"] = DURATION
         fhn_neurolib.params["dt"] = DT
+        fhn_neurolib.params["sampling_dt"] = None
         # there is no "global coupling" parameter in MultiModel
         fhn_neurolib.params["K_gl"] = 1.0
         # delays <-> length matrix

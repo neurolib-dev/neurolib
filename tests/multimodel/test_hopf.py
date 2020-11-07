@@ -109,6 +109,7 @@ class TestHopfNode(unittest.TestCase):
         hopf_neurolib = HopfModel(seed=SEED)
         hopf_neurolib.params["duration"] = DURATION
         hopf_neurolib.params["dt"] = DT
+        hopf_neurolib.params["sampling_dt"] = None
         hopf_neurolib.run()
         for var in NEUROLIB_VARIABLES_TO_TEST:
             corr_mat = np.corrcoef(hopf_neurolib[var], multi_result[var].values.T)
@@ -158,6 +159,7 @@ class TestHopfNetwork(unittest.TestCase):
         hopf_neurolib = HopfModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         hopf_neurolib.params["duration"] = DURATION
         hopf_neurolib.params["dt"] = DT
+        hopf_neurolib.params["sampling_dt"] = None
         # there is no "global coupling" parameter in MultiModel
         hopf_neurolib.params["K_gl"] = 1.0
         # delays <-> length matrix

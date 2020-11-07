@@ -38,6 +38,8 @@ class TestAutochunk(unittest.TestCase):
                                 m1 = Model()
                             m1.params.signalV = signalV
                             m1.params["duration"] = duration
+                            # do not subsample in this test
+                            m1.params["sampling_dt"] = None
                             pars_bak = copy.deepcopy(m1.params)
 
                             m1.run()
