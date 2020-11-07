@@ -21,6 +21,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     ### runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
+    params.sampling_dt = 10.0  # sampling dt (ms)
     params.duration = 2000  # Simulation duration (ms)
     np.random.seed(seed)  # seed for RNG of noise and ICs
     params.seed = seed
@@ -85,11 +86,11 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
     """Compute the delay matrix from the fiber length matrix and the signal velocity
 
-        :param lengthMat:       A matrix containing the connection length in segment
-        :param signalV:         Signal velocity in m/s
-        :param segmentLength:   Length of a single segment in mm
+    :param lengthMat:       A matrix containing the connection length in segment
+    :param signalV:         Signal velocity in m/s
+    :param segmentLength:   Length of a single segment in mm
 
-        :returns:    A matrix of connexion delay in ms
+    :returns:    A matrix of connexion delay in ms
     """
 
     normalizedLenMat = lengthMat * segmentLength
