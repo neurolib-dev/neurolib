@@ -190,7 +190,7 @@ def plotExplorationResults(
 
         # tick marks
         ax.tick_params(
-            axis="both", direction="out", length=3, idth=1, bottom=True, left=True,
+            axis="both", direction="out", length=3, width=1, bottom=True, left=True,
         )
 
         # multiply / rescale axis
