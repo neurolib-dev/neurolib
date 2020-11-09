@@ -193,15 +193,18 @@ class TestMultiModel(unittest.TestCase):
         DELAY = 13.0
         fhn_net = FitzHughNagumoNetwork(np.random.rand(2, 2), np.array([[0.0, DELAY], [DELAY, 0.0]]))
         model = MultiModel(fhn_net)
-        model.params["dt"] = 10.0
+        model.params["sampling_dt"] = 10.0
         # run MultiModel
         model.run()
         # run model instance
         inst_res = fhn_net.run(
             duration=model.params["duration"],
-            dt=model.params["dt"],
+            dt=model.params["sampling_dt"],
             noise_input=join(
-                *[noise.as_cubic_splines(model.params["duration"], model.params["dt"]) for noise in fhn_net.noise_input]
+                *[
+                    noise.as_cubic_splines(model.params["duration"], model.params["sampling_dt"])
+                    for noise in fhn_net.noise_input
+                ]
             ),
             backend=model.params["backend"],
         )
@@ -211,16 +214,16 @@ class TestMultiModel(unittest.TestCase):
     def test_run_node(self):
         fhn_node = FitzHughNagumoNode()
         model = MultiModel.init_node(fhn_node)
-        model.params["dt"] = 10.0
+        model.params["sampling_dt"] = 10.0
         # run MultiModel
         model.run()
         # run model instance
         inst_res = fhn_node.run(
             duration=model.params["duration"],
-            dt=model.params["dt"],
+            dt=model.params["sampling_dt"],
             noise_input=join(
                 *[
-                    noise.as_cubic_splines(model.params["duration"], model.params["dt"])
+                    noise.as_cubic_splines(model.params["duration"], model.params["sampling_dt"])
                     for noise in fhn_node.noise_input
                 ]
             ),

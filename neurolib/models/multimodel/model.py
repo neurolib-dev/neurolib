@@ -130,7 +130,9 @@ class MultiModel(Model):
         Build noise / stimulus input to the model.
         """
         if backend == "jitcdde":
-            init_func = lambda noise: noise.as_cubic_splines(duration=self.params["duration"], dt=self.params["dt"])
+            init_func = lambda noise: noise.as_cubic_splines(
+                duration=self.params["duration"], dt=self.params["sampling_dt"]
+            )
             join_func = lambda x: join(*x)
         elif backend == "numba":
             init_func = lambda noise: noise.as_array(duration=self.params["duration"], dt=self.params["dt"])
@@ -149,10 +151,16 @@ class MultiModel(Model):
                 (`chspy.CubicHermiteSpline`)
         :type noise_input: np.ndarray|chspy.CubicHermiteSpline
         """
+        if self.params["backend"] == "jitcdde":
+            # jitcdde has adaptive time step, so actually its `dt` is `sampling_dt`
+            dt = self.params["sampling_dt"]
+            self.sample_every = 1
+        else:
+            dt = self.params["dt"]
         noise_input = noise_input or self._init_noise_inputs(self.params["backend"])
         result = self.model_instance.run(
             duration=self.params["duration"],
-            dt=self.params["dt"],
+            dt=dt,
             noise_input=noise_input,
             backend=self.params["backend"],
             return_xarray=True,
