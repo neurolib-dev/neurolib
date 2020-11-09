@@ -107,8 +107,10 @@ class Model:
         assert len(self.state_vars) == len(self.init_vars), "State variables are not same length as initial values."
 
         # throw a warning if the user is nasty
-        if self.params["duration"] % chunksize * self.params["dt"] > 0:
-            logging.warning("It is strongly advised to use a `chunksize` that is a divisor of `duration / dt`.")
+        if int(self.params["duration"] / self.params["dt"]) % chunksize != 0:
+            logging.warning(
+                f"It is strongly advised to use a `chunksize` ({chunksize}) that is a divisor of `duration / dt` ({int(self.params['duration']/self.params['dt'])})."
+            )
 
         # if `sampling_dt` is set, do some checks
         if self.params.get("sampling_dt") is not None:

@@ -30,7 +30,6 @@ class TestSignal(unittest.TestCase):
         # simulate 10 seconds
         aln.params["duration"] = 10.0 * 1000
         aln.params["sigma_ou"] = 0.1  # add some noise
-        aln.params["sampling_dt"] = None
         aln.run()
         # init RatesSignal
         cls.signal = RatesSignal.from_model_output(aln)
