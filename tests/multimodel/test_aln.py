@@ -61,12 +61,7 @@ class TestALNCallbacks(unittest.TestCase):
         print(type(_get_interpolation_values))
         self.assertTrue(isinstance(_get_interpolation_values, numba.core.registry.CPUDispatcher))
         interp_result = _get_interpolation_values(
-            self.SIGMA_TEST,
-            self.MU_TEST,
-            self.mass.sigma_range,
-            self.mass.mu_range,
-            self.mass.d_sigma,
-            self.mass.d_mu,
+            self.SIGMA_TEST, self.MU_TEST, self.mass.sigma_range, self.mass.mu_range, self.mass.d_sigma, self.mass.d_mu,
         )
         self.assertTupleEqual(interp_result, self.INTERP_EXPECTED)
 
@@ -112,9 +107,7 @@ class ALNMassTestCase(unittest.TestCase):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
         noise = ZeroInput(duration, dt, independent_realisations=node.num_noise_variables).as_cubic_splines()
         system = jitcdde_input(
-            node._derivatives(coupling_variables),
-            input=noise,
-            callback_functions=node._callbacks(),
+            node._derivatives(coupling_variables), input=noise, callback_functions=node._callbacks(),
         )
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()
@@ -167,8 +160,7 @@ class TestALNMass(ALNMassTestCase):
             # test derivatives
             coupling_variables = {k: 0.0 for k in aln.required_couplings}
             self.assertEqual(
-                len(aln._derivatives(coupling_variables)),
-                aln.num_state_variables,
+                len(aln._derivatives(coupling_variables)), aln.num_state_variables,
             )
             self.assertEqual(len(aln.initial_state), aln.num_state_variables)
             self.assertEqual(len(aln.noise_input_idx), aln.num_noise_variables)
@@ -208,8 +200,7 @@ class TestALNNode(unittest.TestCase):
         self.assertEqual(len(aln._sync()), 4 * len(aln))
         self.assertEqual(len(aln.default_network_coupling), 2)
         np.testing.assert_equal(
-            np.array(sum([alnm.initial_state for alnm in aln], [])),
-            aln.initial_state,
+            np.array(sum([alnm.initial_state for alnm in aln], [])), aln.initial_state,
         )
 
     def test_update_rescale_params(self):
@@ -251,7 +242,6 @@ class TestALNNode(unittest.TestCase):
         aln_neurolib = ALNModel(seed=SEED)
         aln_neurolib.params["duration"] = DURATION
         aln_neurolib.params["dt"] = DT
-        aln_neurolib.params["sampling_dt"] = None
         aln_neurolib.run()
         for (var_multi, var_neurolib) in NEUROLIB_VARIABLES_TO_TEST:
             corr_mat = np.corrcoef(aln_neurolib[var_neurolib], multi_result[var_multi].values.T)
@@ -275,10 +265,7 @@ class TestALNNetwork(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = aln.run(
-                DURATION,
-                DT,
-                noise_func(ZeroInput(DURATION, DT, aln.num_noise_variables)),
-                backend=backend,
+                DURATION, DT, noise_func(ZeroInput(DURATION, DT, aln.num_noise_variables)), backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), aln.num_state_variables / aln.num_nodes)
@@ -303,7 +290,6 @@ class TestALNNetwork(unittest.TestCase):
         aln_neurolib = ALNModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         aln_neurolib.params["duration"] = DURATION
         aln_neurolib.params["dt"] = DT
-        aln_neurolib.params["sampling_dt"] = None
         # there is no "global coupling" parameter in MultiModel
         aln_neurolib.params["K_gl"] = 1.0
         # delays <-> length matrix
