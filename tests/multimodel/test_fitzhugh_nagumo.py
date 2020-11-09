@@ -85,7 +85,10 @@ class TestFitzHughNagumoNode(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = fhn.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), fhn.num_state_variables)
@@ -134,7 +137,10 @@ class TestFitzHughNagumoNetwork(unittest.TestCase):
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
             result = fhn.run(
-                DURATION, DT, noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)), backend=backend,
+                DURATION,
+                DT,
+                noise_func(ZeroInput(DURATION, DT, fhn.num_noise_variables)),
+                backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), fhn.num_state_variables / fhn.num_nodes)
