@@ -117,7 +117,7 @@ class Model:
         self.startindt = self.maxDelay + 1
 
         # check dt / sampling_dt
-        if self.params["sampling_dt"] is None:
+        if self.params.get("sampling_dt", None) is None:
             self.params["sampling_dt"] = self.params["dt"]
         assert self.params["sampling_dt"] >= self.params["dt"]
         assert self.params["duration"] >= self.params["sampling_dt"]
