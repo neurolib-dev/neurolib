@@ -51,12 +51,16 @@ class TestFunctions(unittest.TestCase):
 
     def test_ts_kolmogorov(self):
         func.ts_kolmogorov(
-            self.model.rates_exc[::20, :], self.model.rates_exc, stepsize=250, windowsize=30,
+            self.model.rates_exc[::20, :],
+            self.model.rates_exc,
+            stepsize=250,
+            windowsize=30,
         )
 
     def test_matrix_kolmogorov(self):
         func.matrix_kolmogorov(
-            func.fc(self.model.rates_exc[::20, :]), func.fc(self.model.rates_exc[::20, :]),
+            func.fc(self.model.rates_exc[::20, :]),
+            func.fc(self.model.rates_exc[::20, :]),
         )
 
     def test_getPowerSpectrum(self):
