@@ -76,7 +76,7 @@ class Model:
                         if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
                             append = False
                             logging.warn(
-                                f"Output size {bold_input.shape[1]} is not a multiple of BOLD sample length { self.boldModel.samplingRate_NDt}, will not append data."
+                                f"Output size {bold_input.shape[1]} is not a multiple of BOLD sampling length { self.boldModel.samplingRate_NDt}, will not append data."
                             )
                         logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
 
@@ -98,11 +98,56 @@ class Model:
         else:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
 
-    def checkChunkwise(self):
-        """Checks if the model fulfills requirements for chunkwise simulation. Throws errors if not."""
+    def checkChunkwise(self, chunksize):
+        """Checks if the model fulfills requirements for chunkwise simulation.
+        Checks whether the sampling rate for outputs fits to chunksize and duration.
+        Throws errors if not."""
         assert self.state_vars is not None, "State variable names not given."
         assert self.init_vars is not None, "Initial value variable names not given."
         assert len(self.state_vars) == len(self.init_vars), "State variables are not same length as initial values."
+
+        # throw a warning if the user is nasty
+        if int(self.params["duration"] / self.params["dt"]) % chunksize != 0:
+            logging.warning(
+                f"It is strongly advised to use a `chunksize` ({chunksize}) that is a divisor of `duration / dt` ({int(self.params['duration']/self.params['dt'])})."
+            )
+
+        # if `sampling_dt` is set, do some checks
+        if self.params.get("sampling_dt") is not None:
+            # sample_dt checks are required after setting chunksize
+            assert (
+                chunksize * self.params["dt"] >= self.params["sampling_dt"]
+            ), "`chunksize * dt` must be >= `sampling_dt`"
+
+            # ugly floating point modulo hack: instead of float1%float2==0, we do
+            # (float1/float2)%1==0
+            assert ((chunksize * self.params["dt"]) / self.params["sampling_dt"]) % 1 == 0, (
+                f"Chunksize {chunksize * self.params['dt']} must be divisible by sampling dt "
+                f"{self.params['sampling_dt']}"
+            )
+            assert (
+                (self.params["duration"] % (chunksize * self.params["dt"])) / self.params["sampling_dt"]
+            ) % 1 == 0, (
+                f"Last chunk of size {self.params['duration'] % (chunksize * self.params['dt'])} must be divisible by sampling dt "
+                f"{self.params['sampling_dt']}"
+            )
+
+    def setSamplingDt(self):
+        """Checks if sampling_dt is set correctly and sets self.`sample_every`
+        1) Check if sampling_dt is multiple of dt
+        2) Check if semplind_dt is greater than duration
+        """
+
+        if self.params.get("sampling_dt") is None:
+            self.sample_every = 1
+        elif self.params.get("sampling_dt") > 0:
+            assert self.params["sampling_dt"] >= self.params["dt"], "`sampling_dt` needs to be >= `dt`"
+            assert (
+                self.params["duration"] >= self.params["sampling_dt"]
+            ), "`sampling_dt` needs to be lower than `duration`"
+            self.sample_every = int(self.params["sampling_dt"] / self.params["dt"])
+        else:
+            raise ValueError(f"Can't handle `sampling_dt`={self.params.get('sampling_dt')}")
 
     def initializeRun(self, initializeBold=False):
         """Initialization before each run.
@@ -116,10 +161,12 @@ class Model:
         # length of the initial condition
         self.startindt = self.maxDelay + 1
 
+        # check dt / sampling_dt
+        self.setSamplingDt()
+
         # force bold if params['bold'] == True
-        if "bold" in self.params:
-            if self.params["bold"]:
-                initializeBold = True
+        if self.params.get("bold"):
+            initializeBold = True
         # set up the bold model, if it didn't happen yet
         if initializeBold and not self.boldInitialized:
             self.initializeBold()
@@ -163,6 +210,9 @@ class Model:
 
         self.initializeRun(initializeBold=bold)
 
+        # enable chunkwise if chunksize is set
+        chunkwise = chunkwise if chunksize is None else True
+
         if chunkwise is False:
             self.integrate(append_outputs=append, simulate_bold=bold)
             if continue_run:
@@ -171,8 +221,10 @@ class Model:
         else:
             if chunksize is None:
                 chunksize = int(2000 / self.params["dt"])
+
             # check if model is safe for chunkwise integration
-            self.checkChunkwise()
+            # and whether sampling_dt is compatible with duration and chunksize
+            self.checkChunkwise(chunksize)
             if bold and not self.boldInitialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
@@ -206,9 +258,8 @@ class Model:
         self.storeOutputsAndStates(t, variables, append=append_outputs)
 
         # force bold if params['bold'] == True
-        if "bold" in self.params:
-            if self.params["bold"]:
-                simulate_bold = True
+        if self.params.get("bold"):
+            simulate_bold = True
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
@@ -404,6 +455,14 @@ class Model:
                 data = data[:, self.startindt :]
             else:
                 raise ValueError(f"Don't know how to truncate data of shape {data.shape}.")
+
+        # subsample to sampling dt
+        if data.ndim == 1:
+            data = data[:: self.sample_every]
+        elif data.ndim == 2:
+            data = data[:, :: self.sample_every]
+        else:
+            raise ValueError(f"Don't know how to subsample data of shape {data.shape}.")
 
         # if the output is a single name (not dot.separated)
         if "." not in name:
