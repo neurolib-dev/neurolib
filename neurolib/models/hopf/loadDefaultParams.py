@@ -21,7 +21,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     ### runtime parameters
     params.dt = 0.1  # ms 0.1ms is reasonable
-    params.sampling_dt = params.dt  # sampling dt (ms)
     params.duration = 2000  # Simulation duration (ms)
     np.random.seed(seed)  # seed for RNG of noise and ICs
     # set seed to 0 if None, pypet will complain otherwise
