@@ -99,7 +99,7 @@ class Model:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
 
     def checkChunkwise(self, chunksize):
-        """Checks if the model fulfills requirements for chunkwise simulation. 
+        """Checks if the model fulfills requirements for chunkwise simulation.
         Checks whether the sampling rate for outputs fits to chunksize and duration.
         Throws errors if not."""
         assert self.state_vars is not None, "State variable names not given."
@@ -111,11 +111,11 @@ class Model:
             logging.warning("It is strongly advised to use a `chunksize` that is a divisor of `duration / dt`.")
 
         # if `sampling_dt` is set, do some checks
-        if self.params.get("sampling_dt", None) is not None:
+        if self.params.get("sampling_dt") is not None:
             # sample_dt checks are required after setting chunksize
             assert (
-                chunksize * self.params["dt"] > self.params["sampling_dt"]
-            ), "`chunksize * dt` must be greater than `sampling_dt`"
+                chunksize * self.params["dt"] >= self.params["sampling_dt"]
+            ), "`chunksize * dt` must be >= `sampling_dt`"
 
             # ugly floating point modulo hack: instead of float1%float2==0, we do
             # (float1/float2)%1==0
@@ -136,9 +136,9 @@ class Model:
         2) Check if semplind_dt is greater than duration
         """
 
-        if self.params.get("sampling_dt", None) is None:
+        if self.params.get("sampling_dt") is None:
             self.sample_every = 1
-        elif self.params.get("sampling_dt", None) > 0:
+        elif self.params.get("sampling_dt") > 0:
             assert self.params["sampling_dt"] >= self.params["dt"], "`sampling_dt` needs to be >= `dt`"
             assert (
                 self.params["duration"] >= self.params["sampling_dt"]
