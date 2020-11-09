@@ -23,12 +23,9 @@ class TestAln(unittest.TestCase):
 
         aln = ALNModel()
         aln.params["duration"] = 10.0 * 1000
-        aln.params["sampling_dt"] = 1.0
         aln.params["sigma_ou"] = 0.1  # add some noise
         # load new initial parameters
         aln.run(bold=True)
-        exp_shape = (1, int(aln.params["duration"] / aln.params["sampling_dt"]))
-        self.assertTupleEqual(aln.rates_exc.shape, exp_shape)
         # access outputs
         aln.xr()
         aln.xr("BOLD")
@@ -45,11 +42,8 @@ class TestAln(unittest.TestCase):
         aln = ALNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
 
         aln.params["duration"] = 10 * 1000
-        aln.params["sampling_dt"] = 10.0
 
         aln.run(chunkwise=True, bold=True, append_outputs=True)
-        exp_shape = (ds.Cmat.shape[0], int(aln.params["duration"] / aln.params["sampling_dt"]))
-        self.assertTupleEqual(aln.rates_exc.shape, exp_shape)
 
         # access outputs
         aln.xr()
