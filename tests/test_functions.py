@@ -23,7 +23,6 @@ class TestFunctions(unittest.TestCase):
         aln.params["sigma_ou"] = 0.09
         aln.params["b"] = 5.0
         aln.params["duration"] = 0.2 * 60 * 1000
-        aln.params["sampling_dt"] = None
         aln.run(bold=True, chunkwise=True)
 
         cls.model = aln
