@@ -96,20 +96,14 @@ class TestWilsonCowanNode(unittest.TestCase):
         self.assertDictEqual(wc[1].params, WC_INH_DEFAULT_PARAMS)
         self.assertEqual(len(wc.default_network_coupling), 2)
         np.testing.assert_equal(
-            np.array(sum([wcm.initial_state for wcm in wc], [])),
-            wc.initial_state,
+            np.array(sum([wcm.initial_state for wcm in wc], [])), wc.initial_state,
         )
 
     def test_run(self):
         wc = self._create_node()
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
-            result = wc.run(
-                DURATION,
-                DT,
-                noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)),
-                backend=backend,
-            )
+            result = wc.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)), backend=backend,)
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), wc.num_state_variables)
             self.assertTrue(all(state_var in result for state_var in wc.state_variable_names[0]))
@@ -135,7 +129,6 @@ class TestWilsonCowanNode(unittest.TestCase):
         wc_neurolib = WCModel(seed=SEED)
         wc_neurolib.params["duration"] = DURATION
         wc_neurolib.params["dt"] = DT
-        wc_neurolib.params["sampling_dt"] = None
         # match initial state
         wc_neurolib.params["exc_init"] = np.array([[wc_multi.initial_state[0]]])
         wc_neurolib.params["inh_init"] = np.array([[wc_multi.initial_state[1]]])
@@ -160,12 +153,7 @@ class TestWilsonCowanNetwork(unittest.TestCase):
         wc = WilsonCowanNetwork(self.SC, self.DELAYS, exc_seed=SEED, inh_seed=SEED)
         all_results = []
         for backend, noise_func in BACKENDS_TO_TEST.items():
-            result = wc.run(
-                DURATION,
-                DT,
-                noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)),
-                backend=backend,
-            )
+            result = wc.run(DURATION, DT, noise_func(ZeroInput(DURATION, DT, wc.num_noise_variables)), backend=backend,)
             self.assertTrue(isinstance(result, xr.Dataset))
             self.assertEqual(len(result), wc.num_state_variables / wc.num_nodes)
             self.assertTrue(all(result[result_].shape == (int(DURATION / DT), wc.num_nodes) for result_ in result))
@@ -189,7 +177,6 @@ class TestWilsonCowanNetwork(unittest.TestCase):
         wc_neurolib = WCModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         wc_neurolib.params["duration"] = DURATION
         wc_neurolib.params["dt"] = DT
-        wc_neurolib.params["sampling_dt"] = None
         # there is no "global coupling" parameter in MultiModel
         wc_neurolib.params["K_gl"] = 1.0
         # delays <-> length matrix
