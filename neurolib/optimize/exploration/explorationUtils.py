@@ -1,4 +1,5 @@
 import os
+import logging
 
 import numpy as np
 import pandas as pd
@@ -15,6 +16,7 @@ from scipy import stats
 from ...utils import functions as func
 from ...utils import paths as paths
 
+
 def plotExplorationResults(
     dfResults,
     par1,
@@ -28,6 +30,7 @@ def plotExplorationResults(
     one_figure=False,
     contour=None,
     alpha_mask=None,
+    multiply_axis=None,
     savename=None,
     **kwargs,
 ):
@@ -92,9 +95,7 @@ def plotExplorationResults(
         if nan_to_zero:
             df_pivot = df_pivot.fillna(0)
 
-        plot_clim = (
-            kwargs["plot_clim"] if "plot_clim" in kwargs else (np.nanmin(df_pivot.values), np.nanmax(df_pivot.values))
-        )
+        plot_clim = kwargs.get("plot_clim", (np.nanmin(df_pivot.values), np.nanmax(df_pivot.values)))
 
         if symmetric_colorbar:
             plot_clim = (-np.max(np.abs(plot_clim)), np.max(np.abs(plot_clim)))
@@ -104,10 +105,10 @@ def plotExplorationResults(
         # -----
         # alpha mask
         if alpha_mask is not None:
-            mask_threshold = kwargs["mask_threshold"] if "mask_threshold" in kwargs else 1
-            mask_alpha = kwargs["mask_alpha"] if "mask_alpha" in kwargs else 0.5
-            mask_style = kwargs["mask_style"] if "mask_style" in kwargs else None
-            mask_invert = kwargs["mask_invert"] if "mask_invert" in kwargs else False
+            mask_threshold = kwargs.get("mask_threshold", 1)
+            mask_alpha = kwargs.get("mask_alpha", 0.5)
+            mask_style = kwargs.get("mask_style", None)
+            mask_invert = kwargs.get("mask_invert", False)
 
             # alpha_mask can either be a pd.DataFrame or an np.ndarray that is
             # layed over the image, a string that is a key in the results df
@@ -134,10 +135,10 @@ def plotExplorationResults(
         # ------------------
         # plot contours
         if contour is not None:
-            contour_color = kwargs["contour_color"] if "contour_color" in kwargs else "white"
-            contour_levels = kwargs["contour_levels"] if "contour_levels" in kwargs else None
-            contour_alpha = kwargs["contour_alpha"] if "contour_alpha" in kwargs else 1
-            contour_kwargs = kwargs["contour_kwargs"] if "contour_kwargs" in kwargs else dict()
+            contour_color = kwargs.get("contour_color", "white")
+            contour_levels = kwargs.get("contour_levels", None)
+            contour_alpha = kwargs.get("contour_alpha", 1)
+            contour_kwargs = kwargs.get("contour_kwargs", dict())
 
             def plot_contour(contour, contour_color, contour_levels, contour_alpha, contour_kwargs):
                 # check if this is a dataframe
@@ -167,9 +168,11 @@ def plotExplorationResults(
             # check if contour is alist of variables, e.g. ["max_output", "domfr"]
             if isinstance(contour, list):
                 for ci in range(len(contour)):
-                    plot_contour(contour[ci], contour_color[ci], contour_levels[ci], contour_alpha[ci], contour_kwargs[ci])        
+                    plot_contour(
+                        contour[ci], contour_color[ci], contour_levels[ci], contour_alpha[ci], contour_kwargs[ci]
+                    )
             else:
-                plot_contour(contour, contour_color, contour_levels, contour_alpha, contour_kwargs)        
+                plot_contour(contour, contour_color, contour_levels, contour_alpha, contour_kwargs)
 
         # colorbar
         if one_figure == False:
@@ -185,16 +188,27 @@ def plotExplorationResults(
         ax.set_xlabel(par1_label)
         ax.set_ylabel(par2_label)
 
+        # tick marks
+        ax.tick_params(
+            axis="both", direction="out", length=3, width=1, bottom=True, left=True,
+        )
+
+        # multiply / rescale axis
+        if multiply_axis:
+            ax.set_xticklabels(np.round(np.multiply(ax.get_xticks(), multiply_axis), 2))
+            ax.set_yticklabels(np.round(np.multiply(ax.get_yticks(), multiply_axis), 2))
+
         # single by-values need to become tuple
         if not isinstance(i, tuple):
             i = (i,)
         if by != ["_by"]:
-            title = " ".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)])
+            title = "-".join([f"{bb}={bi}" for bb, bi in zip(by_label, i)])
             ax.set_title(title)
         if one_figure == False:
             if savename:
                 save_fname = os.path.join(paths.FIGURES_DIR, f"{title}_{savename}")
-                plt.savefig(save_fname)            
+                plt.savefig(save_fname)
+                logging.info(f"Saving to {save_fname}")
             plt.show()
         else:
             axi += 1
@@ -204,6 +218,7 @@ def plotExplorationResults(
         if savename:
             save_fname = os.path.join(paths.FIGURES_DIR, f"{savename}")
             plt.savefig(save_fname)
+            logging.info(f"Saving to {save_fname}")
         plt.show()
 
 
@@ -227,10 +242,8 @@ def contourPlotDf(
 
     # unpack, why necessary??
     contour_kwargs = contour_kwargs["contour_kwargs"]
-    
-    contours = ax.contour(
-        Xi, Yi, dataframe, colors=color, levels=levels, zorder=1, alpha=alpha, **contour_kwargs,
-    )
+
+    contours = ax.contour(Xi, Yi, dataframe, colors=color, levels=levels, zorder=1, alpha=alpha, **contour_kwargs,)
 
     clabel = contour_kwargs["clabel"] if "clabel" in contour_kwargs else False
     if clabel:
