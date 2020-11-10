@@ -47,7 +47,7 @@ class ModelInput:
 
         :param duration: duration of the input, in miliseconds
         :type duration: float
-        :param dt: some reasonable "speed" of input, in miliseconds
+        :param dt: dt of input, in miliseconds
         :type dt: float
         """
         self.times = np.arange(dt, duration + dt, dt)
@@ -58,7 +58,7 @@ class ModelInput:
 
         :param duration: duration of the input, in miliseconds
         :type duration: float
-        :param dt: some reasonable "speed" of input, in miliseconds
+        :param dt: dt of input, in miliseconds
         :type dt: float
         """
         raise NotImplementedError
