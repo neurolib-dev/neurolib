@@ -3,8 +3,8 @@
   	<img alt="Header image of neurolib - A Python simulation framework foreasy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neurolib/raw/master/resources/readme_header.png" ></a>
 </p> 
 <p align="center">
-  <a href="https://travis-ci.org/neurolib-dev/neurolib">
-  	<img alt="Build" src="https://travis-ci.org/neurolib-dev/neurolib.svg?branch=master"></a>
+  <a href="https://github.com/neurolib-dev/neurolib/actions">
+  	<img alt="Build" src="https://img.shields.io/github/workflow/status/neurolib-dev/neurolib/ci"></a>
   
   <a href="https://zenodo.org/badge/latestdoi/236208651">
   	<img alt="DOI" src="https://zenodo.org/badge/236208651.svg"></a>
