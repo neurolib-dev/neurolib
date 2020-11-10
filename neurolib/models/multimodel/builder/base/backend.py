@@ -294,7 +294,7 @@ class JitcddeBackend(BaseBackend):
         use_open_mp=False,
     ):
         """
-        Initialise DDE system and compiled to C.
+        Initialise DDE system and compile to C.
         """
         logging.info("Setting up the DDE system...")
         if platform == "darwin":
@@ -337,10 +337,32 @@ class JitcddeBackend(BaseBackend):
         )
 
     def _set_constant_past(self, past_state):
+        """
+        Sets past of the delayed system with a constant vector. This usually
+        means that `past_state` is 1D vector of length `num_state_variables`.
+        `jitcdde` automatically determines how long into the past it need to
+        extrapolate based on `max_delay`.
+
+        :param past_state: vector of past states of length `num_state_variables`
+        :type past_state: np.ndarray
+        """
         self.dde_system.constant_past(past_state)
         self.dde_system.adjust_diff()
 
     def _set_past_from_vector(self, past_state, dt):
+        """
+        Sets past of the delayed system with temporal dependance. This means
+        that `past_state` is 2D array as (`num_state_variables` x `time`) and
+        each time vector is added as so-called `Anchor`. `jitcdde` then
+        automatically interpolate in between `dt`s when needed.
+
+        :param past_state: vector of past states as (`num_state_variables` x
+            `time`)
+        :type past_state: np.ndarray
+        :param dt: dt of the system, to infer how much in to the past the vector
+            is (in `jitcdde` this is actually sampling dt)
+        :type dt: float
+        """
         derivatives = np.concatenate(np.zeros((past_state.shape[0])), np.diff(past_state, axis=1), axis=0)
         assert derivatives.shape == past_state.shape
         for t in past_state.shape[1]:
@@ -348,9 +370,22 @@ class JitcddeBackend(BaseBackend):
         self.dde_system.adjust_diff()
 
     def _integrate_blindly(self, max_delay):
+        """
+        Deals with initial discontinuities using `integrate_blindly` method,
+        where the adaptive integrator just integrates until 1.5 * `max_delay`
+        which smooths the initial and past discontinuities. Currently not used,
+        but something is telling me this would be necessary for autochunk
+        feature to work with `jitcdde` with adaptive time step.
+
+        :param max_delay: maximum delay in the system, in ms
+        :type max_delay: float
+        """
         self.dde_system.integrate_blindly(max_delay * 1.5)
 
     def _check(self):
+        """
+        Check the delay system.
+        """
         if self.dde_system is not None:
             self.dde_system.check()
 
