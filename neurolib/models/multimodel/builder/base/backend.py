@@ -363,9 +363,9 @@ class JitcddeBackend(BaseBackend):
             is (in `jitcdde` this is actually sampling dt)
         :type dt: float
         """
-        derivatives = np.concatenate(np.zeros((past_state.shape[0])), np.diff(past_state, axis=1), axis=0)
+        derivatives = np.hstack([np.zeros((past_state.shape[0], 1)), np.diff(past_state, axis=1)])
         assert derivatives.shape == past_state.shape
-        for t in past_state.shape[1]:
+        for t in range(past_state.shape[1]):
             self.dde_system.add_past_point(-t * dt, past_state[:, -t], derivatives[:, -t])
         self.dde_system.adjust_diff()
 
@@ -428,6 +428,7 @@ class JitcddeBackend(BaseBackend):
                 use_open_mp=use_open_mp,
             )
         assert self.dde_system is not None
+        self.dde_system.purge_past()
         self.dde_system.reset_integrator()
         logging.info("Setting past of the state vector...")
         if self.initial_state.ndim == 1:
