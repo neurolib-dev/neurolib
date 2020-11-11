@@ -46,6 +46,7 @@ class TestJitcddeBackend(unittest.TestCase):
         self.assertTrue(isinstance(backend, BaseBackend))
         self.assertTrue(hasattr(backend, "_init_and_compile_C"))
         self.assertTrue(hasattr(backend, "_set_constant_past"))
+        self.assertTrue(hasattr(backend, "_set_past_from_vector"))
         self.assertTrue(hasattr(backend, "_integrate_blindly"))
         self.assertTrue(hasattr(backend, "_check"))
 
@@ -90,10 +91,6 @@ class TestNumbaBackend(unittest.TestCase):
         DERIVATIVES = [-b * a + y, y ** 2]
         result = backend._substitute_helpers(DERIVATIVES, HELPERS)
         self.assertListEqual(result, [-b * se.exp(-12 * y) + y, y ** 2])
-
-    @pytest.mark.skip("currently does nothing")
-    def test_prepare_callbacks(self):
-        pass
 
 
 class BackendTestingHelper(BackendIntegrator):
@@ -193,6 +190,9 @@ class TestBackendIntegrator(unittest.TestCase):
         system.backend_instance._check()
         system.backend_instance.dde_system.reset_integrator()
         system.backend_instance._integrate_blindly(system.max_delay)
+        system.backend_instance.dde_system.purge_past()
+        # past state as nodes x time
+        system.backend_instance._set_past_from_vector(np.random.rand(1, 4), dt=self.DT)
         system.clean()
 
     def test_backend_value_error(self):

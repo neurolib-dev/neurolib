@@ -27,6 +27,9 @@ class TestCollections(unittest.TestCase):
         # change params by star
         params["*a"] = 0.7
         self.assertDictEqual(params["*a"], self.PARAMS_ALL_A_CHANGED)
+        # delete params
+        del params["*a"]
+        self.assertFalse("a" in params)
 
 
 if __name__ == "__main__":
