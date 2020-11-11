@@ -172,7 +172,7 @@ class MultiModel(Model):
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
-            self.simulateBold(result[self.default_output].values, append=True)
+            self.simulateBold(result[self.default_output].values.T, append=True)
 
     def integrateChunkwise(self, chunksize, bold, append_outputs):
         raise NotImplementedError("for now...")

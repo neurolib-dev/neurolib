@@ -3,6 +3,7 @@ import time
 import unittest
 
 import numpy as np
+import xarray as xr
 from chspy import join
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
@@ -188,6 +189,18 @@ class TestMultiModel(unittest.TestCase):
         self.assertTrue(model.integration is None)
         max_delay = int(DELAY / model.params["dt"])
         self.assertEqual(model.getMaxDelay(), max_delay)
+
+    def test_run_numba_w_bold(self):
+        DELAY = 13.0
+        fhn_net = FitzHughNagumoNetwork(np.random.rand(2, 2), np.array([[0.0, DELAY], [DELAY, 0.0]]))
+        model = MultiModel(fhn_net)
+        model.params["backend"] = "numba"
+        model.params["duration"] = 10000
+        model.params["dt"] = 0.1
+        model.run(bold=True)
+        # access outputs
+        self.assertTrue(isinstance(model.xr(), xr.DataArray))
+        self.assertTrue(isinstance(model.xr("BOLD"), xr.DataArray))
 
     def test_run_network(self):
         DELAY = 13.0
