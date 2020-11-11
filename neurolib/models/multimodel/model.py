@@ -116,7 +116,7 @@ class MultiModel(Model):
             if chunksize is None:
                 chunksize = int(2000 / self.params["dt"])
             # check if model is safe for chunkwise integration
-            self.checkChunkwise()
+            self.checkChunkwise(chunksize)
             if bold and not self.boldInitialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
