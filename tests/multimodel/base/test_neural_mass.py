@@ -26,6 +26,7 @@ class TestNeuralMass(unittest.TestCase):
         mass = MassTest(self.PARAMS)
         self.assertTrue(isinstance(mass, NeuralMass))
         self.assertTrue(isinstance(mass.__str__(), str))
+        self.assertEqual(mass.__str__(), mass.__repr__())
         self.assertTrue(isinstance(mass.describe(), dict))
         mass._initialize_state_vector()
         self.assertEqual(len(mass.initial_state), mass.num_state_variables)
