@@ -35,7 +35,7 @@ jobs:
           set -e
           brew update
           brew install llvm libomp
-          export PATH=/usr/local/opt/llvm/bin:$PATH
+          echo "/usr/local/opt/llvm/bin" >> $GITHUB_PATH
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
