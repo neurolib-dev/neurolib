@@ -6,7 +6,7 @@ import os
 import pickle
 import unittest
 from shutil import rmtree
-
+import numba
 import numpy as np
 import pytest
 import symengine as se
@@ -183,6 +183,23 @@ class TestBackendIntegrator(unittest.TestCase):
         )
         self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
+
+    def test_run_jitcdde_vector_past(self):
+        system = BackendTestingHelper()
+        system.initial_state = np.random.rand(1, 4)
+        results = system.run(
+            self.DURATION,
+            self.DT,
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
+            backend="jitcdde",
+        )
+        self.assertTrue(isinstance(results, xr.Dataset))
+        self.assertEqual(len(results), 1)
+        self.assertTupleEqual(
+            results[system.state_variable_names[0][0]].shape,
+            (int(self.DURATION / self.DT), 1),
+        )
+        self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
 
     def test_jitcdde_other_features(self):
         system = BackendTestingHelper()
