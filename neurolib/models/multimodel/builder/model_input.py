@@ -119,14 +119,27 @@ class StimulusInput(ModelInput):
         assert self.stim_start < duration
         assert self.stim_end <= duration
 
+    def _trim_stim_input(self, stim_input):
+        """
+        Trim stimulation input. Translate the start of the stimulation by
+        padding with zeros and just nullify end of the stimulation.
+        """
+        # trim start
+        how_much = int(np.sum(self.times < self.stim_start))
+        # translate start of the stim by padding the beginning with zeros
+        stim_input = np.pad(stim_input, ((how_much, 0), (0, 0)), mode="constant")
+        if how_much > 0:
+            stim_input = stim_input[:-how_much, :]
+        # trim end
+        stim_input[self.times > self.stim_end] = 0.0
+        return stim_input
+
     def as_array(self, duration, dt):
         """
         Return input as numpy array after checking stimulus bounds.
         """
         self._get_times(duration, dt)
-        stim_input = self.generate_input(duration, dt)
-        stim_input[self.times < self.stim_start] = 0.0
-        stim_input[self.times > self.stim_end] = 0.0
+        stim_input = self._trim_stim_input(self.generate_input(duration, dt))
         return stim_input
 
     def as_cubic_splines(self, duration, dt):
@@ -134,9 +147,7 @@ class StimulusInput(ModelInput):
         Return as cubic Hermite splines after checking stimulus bounds.
         """
         self._get_times(duration, dt)
-        stim_input = self.generate_input(duration, dt)
-        stim_input[self.times < self.stim_start] = 0.0
-        stim_input[self.times > self.stim_end] = 0.0
+        stim_input = self._trim_stim_input(self.generate_input(duration, dt))
         return CubicHermiteSpline.from_data(self.times, stim_input)
 
 
