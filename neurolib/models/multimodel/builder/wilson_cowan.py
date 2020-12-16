@@ -5,6 +5,7 @@ from symengine import exp
 from ..builder.base.constants import EXC, INH
 from ..builder.base.network import Network, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
+from .model_input import OrnsteinUhlenbeckProcess
 
 WC_EXC_DEFAULT_PARAMS = {"a": 1.5, "mu": 3.0, "tau": 2.5, "ext_input": 1.0}
 WC_INH_DEFAULT_PARAMS = {"a": 1.5, "mu": 3.0, "tau": 3.75, "ext_input": 0.0}
@@ -20,7 +21,7 @@ class WilsonCowanMass(NeuralMass):
     Reference:
         Wilson, H. R., & Cowan, J. D. (1972). Excitatory and inhibitory
         interactions in localized populations of model neurons. Biophysical journal,
-        12(1), 1-24.    
+        12(1), 1-24.
     """
 
     name = "Wilson-Cowan mass"
@@ -31,6 +32,7 @@ class WilsonCowanMass(NeuralMass):
     coupling_variables = {0: "q_mean"}
     state_variable_names = ["q_mean"]
     required_params = ["a", "mu", "tau", "ext_input"]
+    noise_input = [OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0)]
 
     def _initialize_state_vector(self):
         """
@@ -115,6 +117,7 @@ class WilsonCowanNode(SingleCouplingExcitatoryInhibitoryNode):
 
     default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"q_mean_{EXC}"
+    output_vars = [f"q_mean_{EXC}", f"q_mean_{INH}"]
 
     def __init__(
         self, exc_params=None, inh_params=None, connectivity=WC_NODE_DEFAULT_CONNECTIVITY, exc_seed=None, inh_seed=None
@@ -156,6 +159,7 @@ class WilsonCowanNetwork(Network):
     sync_variables = ["network_exc_exc", "network_inh_exc"]
     # define default coupling in Wilson-Cowan network
     default_coupling = {"network_exc_exc": "additive", "network_inh_exc": "additive"}
+    output_vars = [f"q_mean_{EXC}", f"q_mean_{INH}"]
 
     def __init__(
         self,
@@ -217,7 +221,9 @@ class WilsonCowanNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+            nodes=nodes,
+            connectivity_matrix=connectivity_matrix,
+            delay_matrix=delay_matrix,
         )
         # assert we have two sync variables
         assert len(self.sync_variables) == 2

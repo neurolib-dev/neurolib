@@ -17,16 +17,25 @@ class TestEvolutinUtils(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pars = ParameterSpace(["mue_ext_mean", "mui_ext_mean", "b"], [[0.0, 3.0], [0.0, 3.0], [0.0, 100.0]],)
+        pars = ParameterSpace(
+            ["mue_ext_mean", "mui_ext_mean", "b"],
+            [[0.0, 3.0], [0.0, 3.0], [0.0, 100.0]],
+        )
+        fitness_length = 3
         evolution = Evolution(
-            lambda v: v, pars, weightList=[1.0], POP_INIT_SIZE=4, POP_SIZE=4, NGEN=2, filename="TestEvolutinUtils.hdf",
+            lambda v: v,
+            pars,
+            weightList=np.repeat(1, fitness_length),
+            POP_INIT_SIZE=4,
+            POP_SIZE=4,
+            NGEN=2,
+            filename="TestEvolutionUtils.hdf",
         )
 
         cls.evolution = evolution
 
         # fake population
         pop = evolution.toolbox.population(n=100)
-        fitness_length = 3
 
         for i, p in enumerate(pop):
             if random.random() < 0.1:

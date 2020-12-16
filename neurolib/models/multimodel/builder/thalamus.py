@@ -5,6 +5,7 @@ from symengine import exp
 from ..builder.base.constants import EXC, INH, LAMBDA_SPEED
 from ..builder.base.network import SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
+from .model_input import OrnsteinUhlenbeckProcess, ZeroInput
 
 TCR_DEFAULT_PARAMS = {
     "tau": 20.0,  # ms
@@ -68,7 +69,7 @@ THALAMUS_NODE_DEFAULT_CONNECTIVITY = np.array([[0.0, 5.0], [3.0, 25.0]])
 class ThalamicMass(NeuralMass):
     """
     Base for thalamic neural populations
-    
+
     Reference:
         Costa, M. S., Weigenand, A., Ngo, H. V. V., Marshall, L., Born, J.,
         Martinetz, T., & Claussen, J. C. (2016). A thalamocortical neural mass
@@ -166,6 +167,7 @@ class ThalamocorticalMass(ThalamicMass):
         "ext_current",
         "lambda",
     ]
+    noise_input = [OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0)]
 
     def __init__(self, params=None):
         super().__init__(params=params or TCR_DEFAULT_PARAMS)
@@ -330,6 +332,7 @@ class ThalamicReticularMass(ThalamicMass):
         "ext_current",
         "lambda",
     ]
+    noise_input = [ZeroInput()]
 
     def __init__(self, params=None):
         super().__init__(params=params or TRN_DEFAULT_PARAMS)
@@ -358,7 +361,15 @@ class ThalamicReticularMass(ThalamicMass):
         ]
 
     def _derivatives(self, coupling_variables):
-        (voltage, h_T, syn_ext, syn_inh, dsyn_ext, dsyn_inh, firing_rate,) = self._unwrap_state_vector()
+        (
+            voltage,
+            h_T,
+            syn_ext,
+            syn_inh,
+            dsyn_ext,
+            dsyn_inh,
+            firing_rate,
+        ) = self._unwrap_state_vector()
         # voltage dynamics
         d_voltage = -(
             self._get_leak_current(voltage)
@@ -414,9 +425,13 @@ class ThalamicNode(SingleCouplingExcitatoryInhibitoryNode):
 
     default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"q_mean_{EXC}"
+    output_vars = [f"q_mean_{EXC}", f"q_mean_{INH}", f"V_{EXC}", f"V_{INH}"]
 
     def __init__(
-        self, tcr_params=None, trn_params=None, connectivity=THALAMUS_NODE_DEFAULT_CONNECTIVITY,
+        self,
+        tcr_params=None,
+        trn_params=None,
+        connectivity=THALAMUS_NODE_DEFAULT_CONNECTIVITY,
     ):
         """
         :param tcr_params: parameters for the excitatory (TCR) mass

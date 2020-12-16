@@ -3,6 +3,7 @@ from jitcdde import input as system_input
 
 from ..builder.base.network import Network, Node
 from ..builder.base.neural_mass import NeuralMass
+from .model_input import OrnsteinUhlenbeckProcess
 
 HOPF_DEFAULT_PARAMS = {
     "a": 0.25,
@@ -34,6 +35,10 @@ class HopfMass(NeuralMass):
     state_variable_names = ["x", "y"]
     required_params = ["a", "w", "x_ext", "y_ext"]
     required_couplings = ["network_x", "network_y"]
+    noise_input = [
+        OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0),
+        OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0),
+    ]
 
     def __init__(self, params=None, seed=None):
         super().__init__(params=params or HOPF_DEFAULT_PARAMS, seed=seed)
@@ -78,6 +83,7 @@ class HopfNode(Node):
 
     default_network_coupling = {"network_x": 0.0, "network_y": 0.0}
     default_output = "x"
+    output_vars = ["x", "y"]
 
     def __init__(self, params=None, seed=None):
         """
@@ -105,9 +111,14 @@ class HopfNetwork(Network):
     sync_variables = ["network_x", "network_y"]
     # define default coupling in Hopf network
     default_coupling = {"network_x": "diffusive", "network_y": "none"}
+    output_vars = ["x", "y"]
 
     def __init__(
-        self, connectivity_matrix, delay_matrix, mass_params=None, seed=None,
+        self,
+        connectivity_matrix,
+        delay_matrix,
+        mass_params=None,
+        seed=None,
     ):
         """
         :param connectivity_matrix: connectivity matrix for between nodes
@@ -141,7 +152,9 @@ class HopfNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+            nodes=nodes,
+            connectivity_matrix=connectivity_matrix,
+            delay_matrix=delay_matrix,
         )
         # get all coupling variables
         all_couplings = [mass.coupling_variables for node in self.nodes for mass in node.masses]

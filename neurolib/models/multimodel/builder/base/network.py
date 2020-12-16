@@ -1,4 +1,5 @@
 import logging
+from itertools import chain
 
 import numpy as np
 import symengine as se
@@ -41,6 +42,9 @@ class Node(BackendIntegrator):
     # default output of the node - all nodes need to have this variable defined
     default_output = None
 
+    # typical output variables of the model - these will be available in model instance
+    output_vars = []
+
     def __init__(self, neural_masses):
         """
         :param neural_masses: list of neural masses in this node
@@ -52,12 +56,16 @@ class Node(BackendIntegrator):
         # for all masses
         self.num_state_variables = sum([mass.num_state_variables for mass in self])
         self.num_noise_variables = sum([mass.num_noise_variables for mass in self])
+        self.noise_input = sum([mass.noise_input for mass in self], [])
+        assert len(self.noise_input) == self.num_noise_variables
         self.idx_state_var = None
         self.initialised = False
         assert self.default_output in self.state_variable_names[0]
+        assert all(var in self.state_variable_names[0] for var in self.output_vars)
         # mass types needs to be unique for all masses!
         mass_types = [mass.mass_type for mass in self]
         assert len(set(mass_types)) == len(mass_types), f"Mass types needs to be different: {mass_types}"
+        self._initial_state = None
 
     def __str__(self):
         """
@@ -67,6 +75,9 @@ class Node(BackendIntegrator):
             f"Network node: {self.name} with {len(self.masses)} neural mass(es)"
             f": {', '.join([mass.name for mass in self])}"
         )
+
+    def __repr__(self):
+        return self.__str__()
 
     def describe(self):
         """
@@ -138,7 +149,17 @@ class Node(BackendIntegrator):
         for mass in self:
             mass.init_mass(**kwargs)
         assert all(mass.initialised for mass in self)
+        self._initial_state = np.array(sum([mass.initial_state for mass in self], []))
         self.initialised = True
+
+    @staticmethod
+    def _sanitize_update_params(params_dict):
+        """
+        If dictionary with parameters for update have one title level, trim this.
+        """
+        if len(params_dict) == 1 and NODE_NAME_STR in next(iter(params_dict)):
+            params_dict = next(iter(params_dict.values()))
+        return params_dict
 
     def update_params(self, params_dict):
         """
@@ -148,6 +169,7 @@ class Node(BackendIntegrator):
             `get_nested_params`, i.e. nested dict
         :type params_dict: dict
         """
+        params_dict = self._sanitize_update_params(params_dict)
         for mass_key, mass_params in params_dict.items():
             if MASS_NAME_STR in mass_key:
                 mass_index = self._get_index(mass_key)
@@ -197,7 +219,20 @@ class Node(BackendIntegrator):
         """
         Return initial state of this node, i.e. sum of initial states of all masses.
         """
-        return np.array(sum([mass.initial_state for mass in self], [],))
+        return self._initial_state
+
+    @initial_state.setter
+    def initial_state(self, initial_state):
+        """
+        Manually set initial state - be sure what you are doing!
+
+        :param initial_state: vector representing the initial state, if 2D pass as nodes x time
+        :type initial_state: np.ndarray
+        """
+        assert isinstance(initial_state, np.ndarray)
+        assert initial_state.ndim in [1, 2]
+        assert initial_state.shape[0] == self.num_state_variables
+        self._initial_state = initial_state
 
     def all_couplings(self, mass_indices=None):
         """
@@ -270,7 +305,10 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
     default_network_coupling = {"network_exc_exc": 0.0}
 
     def __init__(
-        self, neural_masses, local_connectivity, local_delays=None,
+        self,
+        neural_masses,
+        local_connectivity,
+        local_delays=None,
     ):
         """
         :param neural_masses: list of neural masses in this node
@@ -360,6 +398,7 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         Update params - also update local connectivity and local delays,
         then pass to base class.
         """
+        params_dict = self._sanitize_update_params(params_dict)
         local_connectivity = params_dict.pop(NODE_CONNECTIVITY, None)
         local_delays = params_dict.pop(NODE_DELAYS, None)
         if local_connectivity is not None and isinstance(local_connectivity, np.ndarray):
@@ -416,6 +455,9 @@ class Network(BackendIntegrator):
     # default output of the network - e.g. BOLD is computed from this
     default_output = None
 
+    # typical output variables of the model - these will be available in model instance
+    output_vars = []
+
     def __init__(self, nodes, connectivity_matrix, delay_matrix=None):
         """
         :param nodes: list of nodes in this network
@@ -433,12 +475,15 @@ class Network(BackendIntegrator):
         self.nodes = nodes
         self.num_state_variables = sum([node.num_state_variables for node in self])
         self.num_noise_variables = sum([node.num_noise_variables for node in self])
+        self.noise_input = sum([mass.noise_input for mass in self], [])
+        assert len(self.noise_input) == self.num_noise_variables
         assert connectivity_matrix.shape[0] == self.num_nodes
         if delay_matrix is None:
             delay_matrix = np.zeros_like(connectivity_matrix)
         assert connectivity_matrix.shape == delay_matrix.shape
         self.connectivity = connectivity_matrix
         self.delays = delay_matrix
+        self._initial_state = None
         self.initialised = False
 
         if self.default_output is None:
@@ -446,6 +491,7 @@ class Network(BackendIntegrator):
             assert len(default_output) == 1
             self.default_output = next(iter(default_output))
 
+        assert all(var in chain.from_iterable(self.state_variable_names) for var in self.output_vars)
         assert all(self.default_output in node_state_vars for node_state_vars in self.state_variable_names)
 
         self.init_network()
@@ -455,6 +501,9 @@ class Network(BackendIntegrator):
         String representation.
         """
         return f"Brain network {self.name} with {self.num_nodes} nodes"
+
+    def __repr__(self):
+        return self.__str__()
 
     def describe(self):
         """
@@ -501,7 +550,20 @@ class Network(BackendIntegrator):
         """
         Return initial state for whole network.
         """
-        return np.concatenate([node.initial_state for node in self], axis=0)
+        return self._initial_state
+
+    @initial_state.setter
+    def initial_state(self, initial_state):
+        """
+        Manually set initial state - be sure what you are doing!
+
+        :param initial_state: vector representing the initial state, if 2D pass as nodes x time
+        :type initial_state: np.ndarray
+        """
+        assert isinstance(initial_state, np.ndarray)
+        assert initial_state.ndim in [1, 2]
+        assert initial_state.shape[0] == self.num_state_variables
+        self._initial_state = initial_state
 
     @staticmethod
     def _strip_index(symbol_name):
@@ -568,6 +630,7 @@ class Network(BackendIntegrator):
         for node_idx, node in enumerate(self.nodes):
             node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables)
         assert all(node.initialised for node in self)
+        self._initial_state = np.concatenate([node.initial_state for node in self], axis=0)
         self.initialised = True
 
     def update_params(self, params_dict):
@@ -578,6 +641,8 @@ class Network(BackendIntegrator):
         :param params_dict: new parameters for the network
         :type params_dict: dict
         """
+        if len(params_dict) == 1 and NETWORK_NAME_STR in next(iter(params_dict)):
+            params_dict = next(iter(params_dict.values()))
         for node_key, node_params in params_dict.items():
             if NODE_NAME_STR in node_key:
                 node_index = int(node_key.split("_")[-1])
@@ -645,7 +710,8 @@ class Network(BackendIntegrator):
             for to_node in range(self.num_nodes):
                 # input at `to` x `from`
                 inputs[to_node, from_node] = state_vector(
-                    var_idx + node_var_idx, time=time_vector - self.delays[to_node, from_node],
+                    var_idx + node_var_idx,
+                    time=time_vector - self.delays[to_node, from_node],
                 )
             var_idx += node.num_state_variables
 
@@ -734,9 +800,15 @@ class Network(BackendIntegrator):
         """
         assert coupling_variable in self.coupling_symbols
         if coupling_type == "additive":
-            return self._additive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
+            return self._additive_coupling(
+                self.coupling_symbols[coupling_variable],
+                f"network_{coupling_variable}",
+            )
         elif coupling_type == "diffusive":
-            return self._diffusive_coupling(self.coupling_symbols[coupling_variable], f"network_{coupling_variable}",)
+            return self._diffusive_coupling(
+                self.coupling_symbols[coupling_variable],
+                f"network_{coupling_variable}",
+            )
         elif coupling_type == "none":
             return self._no_coupling(f"network_{coupling_variable}")
         else:

@@ -5,6 +5,7 @@ from symengine import exp
 from ..builder.base.constants import EXC, INH, LAMBDA_SPEED
 from ..builder.base.network import Network, Node, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
+from .model_input import OrnsteinUhlenbeckProcess
 
 WW_EXC_DEFAULT_PARAMS = {
     "a": 0.31,  # nC^-1
@@ -67,7 +68,7 @@ class WongWangMass(NeuralMass):
 
         [original] Deco, G., Ponce-Alvarez, A., Hagmann, P., Romani, G. L., Mantini,
         D., & Corbetta, M. (2014). How local excitation–inhibition ratio impacts the
-        whole brain dynamics. Journal of Neuroscience, 34(23), 7886-7898.    
+        whole brain dynamics. Journal of Neuroscience, 34(23), 7886-7898.
     """
 
     name = "Wong-Wang mass"
@@ -77,6 +78,7 @@ class WongWangMass(NeuralMass):
     num_noise_variables = 1
     coupling_variables = {0: "S"}
     state_variable_names = ["S", "q_mean"]
+    noise_input = [OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0)]
 
     def _initialize_state_vector(self):
         """
@@ -238,9 +240,15 @@ class WongWangNode(SingleCouplingExcitatoryInhibitoryNode):
 
     default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
     default_output = f"S_{EXC}"
+    output_vars = [f"S_{EXC}", f"q_mean_{EXC}", f"S_{INH}", f"q_mean_{INH}"]
 
     def __init__(
-        self, exc_params=None, inh_params=None, connectivity=WW_NODE_DEFAULT_CONNECTIVITY, exc_seed=None, inh_seed=None,
+        self,
+        exc_params=None,
+        inh_params=None,
+        connectivity=WW_NODE_DEFAULT_CONNECTIVITY,
+        exc_seed=None,
+        inh_seed=None,
     ):
         """
         :param exc_params: parameters for the excitatory mass
@@ -278,6 +286,7 @@ class ReducedWongWangNode(Node):
 
     default_network_coupling = {"network_S": 0.0}
     default_output = "S"
+    output_vars = ["S", "q_mean"]
 
     def __init__(self, params=None, seed=None):
         """
@@ -305,6 +314,7 @@ class WongWangNetwork(Network):
     sync_variables = ["network_exc_exc", "network_inh_exc"]
     # define default coupling in Wong-Wang network
     default_coupling = {"network_exc_exc": "additive", "network_inh_exc": "additive"}
+    output_vars = [f"S_{EXC}", f"q_mean_{EXC}", f"S_{INH}", f"q_mean_{INH}"]
 
     def __init__(
         self,
@@ -366,7 +376,9 @@ class WongWangNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+            nodes=nodes,
+            connectivity_matrix=connectivity_matrix,
+            delay_matrix=delay_matrix,
         )
         # assert we have two sync variables
         assert len(self.sync_variables) == 2
@@ -384,6 +396,7 @@ class ReducedWongWangNetwork(Network):
     sync_variables = ["network_S"]
     # define default coupling in Reduced Wong-Wang network
     default_coupling = {"network_S": "additive"}
+    output_vars = ["S", "q_mean"]
 
     def __init__(self, connectivity_matrix, delay_matrix, mass_params=None, seed=None):
         """
@@ -412,7 +425,9 @@ class ReducedWongWangNetwork(Network):
             nodes.append(node)
 
         super().__init__(
-            nodes=nodes, connectivity_matrix=connectivity_matrix, delay_matrix=delay_matrix,
+            nodes=nodes,
+            connectivity_matrix=connectivity_matrix,
+            delay_matrix=delay_matrix,
         )
         # get all coupling variables
         all_couplings = [mass.coupling_variables for node in self.nodes for mass in node.masses]
