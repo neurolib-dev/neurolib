@@ -6,6 +6,7 @@ import unittest
 
 import symengine as se
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
+from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 
 class MassTest(NeuralMass):
@@ -14,6 +15,7 @@ class MassTest(NeuralMass):
     num_noise_variables = 2
     helper_variables = ["helper_test"]
     python_callbacks = ["test_callback"]
+    noise_input = [ZeroInput(), ZeroInput()]
 
 
 class TestNeuralMass(unittest.TestCase):
@@ -24,6 +26,7 @@ class TestNeuralMass(unittest.TestCase):
         mass = MassTest(self.PARAMS)
         self.assertTrue(isinstance(mass, NeuralMass))
         self.assertTrue(isinstance(mass.__str__(), str))
+        self.assertEqual(mass.__str__(), mass.__repr__())
         self.assertTrue(isinstance(mass.describe(), dict))
         mass._initialize_state_vector()
         self.assertEqual(len(mass.initial_state), mass.num_state_variables)

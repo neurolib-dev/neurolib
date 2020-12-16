@@ -10,6 +10,7 @@ import symengine as se
 from neurolib.models.multimodel.builder.base.constants import EXC, INH
 from neurolib.models.multimodel.builder.base.network import Network, Node, SingleCouplingExcitatoryInhibitoryNode
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
+from neurolib.models.multimodel.builder.model_input import ZeroInput
 
 PARAMS = {"a": 1.2, "b": 11.9}
 
@@ -22,6 +23,7 @@ class ExcMassTest(NeuralMass):
     num_state_variables = 1
     num_noise_variables = 2
     mass_type = EXC
+    noise_input = [ZeroInput(), ZeroInput()]
 
 
 class InhMassTest(NeuralMass):
@@ -32,6 +34,7 @@ class InhMassTest(NeuralMass):
     num_state_variables = 1
     num_noise_variables = 2
     mass_type = INH
+    noise_input = [ZeroInput(), ZeroInput()]
 
 
 class NodeTest(Node):
@@ -59,6 +62,7 @@ class TestNode(unittest.TestCase):
         self.assertEqual(node.num_state_variables, 2)
         self.assertEqual(node.num_noise_variables, 4)
         self.assertTrue(isinstance(node.__str__(), str))
+        self.assertEqual(node.__str__(), node.__repr__())
         self.assertTrue(isinstance(node.describe(), dict))
         self.assertEqual(node.max_delay, 0.0)
         self.assertTrue(hasattr(node, "_derivatives"))
@@ -90,6 +94,20 @@ class TestNode(unittest.TestCase):
         all_couplings = node.all_couplings()
         self.assertDictEqual(all_couplings, ALL_COUPLING)
 
+    def test_initial_state(self):
+        node = self._create_node()
+        node.index = 0
+        node.init_node(start_idx_for_noise=0)
+        np.testing.assert_equal(np.zeros((node.num_state_variables)), node.initial_state)
+        # 1D case
+        new_init_state = np.random.rand(node.num_state_variables)
+        node.initial_state = new_init_state
+        np.testing.assert_equal(node.initial_state, new_init_state)
+        # 2D case
+        new_init_state = np.random.normal(size=(node.num_state_variables, 5))
+        node.initial_state = new_init_state
+        np.testing.assert_equal(node.initial_state, new_init_state)
+
     def test_init_node(self):
         node = self._create_node()
         node.index = 0
@@ -112,7 +130,9 @@ class TestSingleCouplingExcitatoryInhibitoryNode(unittest.TestCase):
         mass2 = InhMassTest(PARAMS)
         mass2.index = 1
         node = SingleCouplingNodeTest(
-            [mass1, mass2], local_connectivity=np.random.rand(2, 2), local_delays=np.array([[1.0, 2.0], [3.0, 4.0]]),
+            [mass1, mass2],
+            local_connectivity=np.random.rand(2, 2),
+            local_delays=np.array([[1.0, 2.0], [3.0, 4.0]]),
         )
         return node
 
@@ -168,14 +188,20 @@ class TestNetwork(unittest.TestCase):
         mass2 = InhMassTest(PARAMS)
         mass2.index = 1
         node1 = SingleCouplingNodeTest(
-            [mass1, mass2], local_connectivity=np.random.rand(2, 2), local_delays=np.array([[1.0, 2.0], [3.0, 4.0]]),
+            [mass1, mass2],
+            local_connectivity=np.random.rand(2, 2),
+            local_delays=np.array([[1.0, 2.0], [3.0, 4.0]]),
         )
         node1.index = 0
         node1.idx_state_var = 0
         node2 = deepcopy(node1)
         node2.index = 1
         node2.idx_state_var = node1.num_state_variables
-        net = Network([node1, node2], np.random.rand(2, 2), None,)
+        net = Network(
+            [node1, node2],
+            np.random.rand(2, 2),
+            None,
+        )
         net.sync_variables = ["test"]
         net.init_network()
         # define subs for testing values
@@ -189,6 +215,7 @@ class TestNetwork(unittest.TestCase):
         self.assertTrue(isinstance(net, Network))
         self.assertEqual(len(net), net.num_nodes)
         self.assertTrue(isinstance(net.__str__(), str))
+        self.assertEqual(net.__str__(), net.__repr__())
         self.assertTrue(isinstance(net.describe(), dict))
         self.assertTrue(isinstance(net.get_nested_params(), dict))
         self.assertTrue(hasattr(net, "_callbacks"))
@@ -208,6 +235,18 @@ class TestNetwork(unittest.TestCase):
         np.testing.assert_equal(net.connectivity, UPDATE_CONNECTIVITY)
         np.testing.assert_equal(net.delays, UPDATE_DELAYS)
         self.assertEqual(net[0][0].params["a"], UPDATE_WITH["a"])
+
+    def test_initial_state(self):
+        net, _ = self._create_network()
+        np.testing.assert_equal(np.zeros((net.num_state_variables)), net.initial_state)
+        # 1D case
+        new_init_state = np.random.rand(net.num_state_variables)
+        net.initial_state = new_init_state
+        np.testing.assert_equal(net.initial_state, new_init_state)
+        # 2D case
+        new_init_state = np.random.normal(size=(net.num_state_variables, 5))
+        net.initial_state = new_init_state
+        np.testing.assert_equal(net.initial_state, new_init_state)
 
     def test_prepare_mass_params(self):
         net, _ = self._create_network()
@@ -277,7 +316,8 @@ class TestNetwork(unittest.TestCase):
             self.assertTrue(isinstance(coupling[1], se.Add))
             evaluated = se.sympify(coupling[1]).subs(subs)
             np.testing.assert_allclose(
-                float(evaluated), MULTIPLIER * net.connectivity.sum(axis=1)[i],
+                float(evaluated),
+                MULTIPLIER * net.connectivity.sum(axis=1)[i],
             )
 
     def test_sync(self):

@@ -6,7 +6,7 @@ import os
 import pickle
 import unittest
 from shutil import rmtree
-
+import numba
 import numpy as np
 import pytest
 import symengine as se
@@ -46,6 +46,7 @@ class TestJitcddeBackend(unittest.TestCase):
         self.assertTrue(isinstance(backend, BaseBackend))
         self.assertTrue(hasattr(backend, "_init_and_compile_C"))
         self.assertTrue(hasattr(backend, "_set_constant_past"))
+        self.assertTrue(hasattr(backend, "_set_past_from_vector"))
         self.assertTrue(hasattr(backend, "_integrate_blindly"))
         self.assertTrue(hasattr(backend, "_check"))
 
@@ -63,21 +64,21 @@ class TestNumbaBackend(unittest.TestCase):
     def test_replace_current_ys(self):
         backend = NumbaBackend()
         STRING_IN = "0.4*(1.0*(1.0 - current_y(0))"
-        EXPECTED = "0.4*(1.0*(1.0 - y[max_delay + i - 1, 0])"
+        EXPECTED = "0.4*(1.0*(1.0 - y[0, max_delay + i - 1])"
         result = backend._replace_current_ys(STRING_IN)
         self.assertEqual(result, EXPECTED)
 
     def test_replace_past_ys(self):
         backend = NumbaBackend()
-        STRING_IN = "0.06*past_y(-3.21 + t, 2, anchors(-3.21 + t)) + 0.23*" "past_y(-0.5 + t, 0, anchors(-0.5 + t))"
-        EXPECTED = "0.06*y[max_delay + i - 1 - 32, 2] + 0.23*y[max_delay + i" " - 1 - 5, 0]"
+        STRING_IN = "0.06*past_y(-3.21 + t, 2, anchors(-3.21 + t)) + 0.23*past_y(-0.5 + t, 0, anchors(-0.5 + t))"
+        EXPECTED = "0.06*y[2, max_delay + i - 1 - 32] + 0.23*y[0, max_delay + i - 1 - 5]"
         result = backend._replace_past_ys(STRING_IN, dt=0.1)
         self.assertEqual(result, EXPECTED)
 
     def test_replace_inputs(self):
         backend = NumbaBackend()
         STRING_IN = "12.4*past_y(-external_input + t, 3 + input_base_n, " "anchors(-external_input + t))"
-        EXPECTED = "12.4*input_y[i, 3]"
+        EXPECTED = "12.4*input_y[3, i]"
         result = backend._replace_inputs(STRING_IN)
         self.assertEqual(result, EXPECTED)
 
@@ -90,10 +91,6 @@ class TestNumbaBackend(unittest.TestCase):
         DERIVATIVES = [-b * a + y, y ** 2]
         result = backend._substitute_helpers(DERIVATIVES, HELPERS)
         self.assertListEqual(result, [-b * se.exp(-12 * y) + y, y ** 2])
-
-    @pytest.mark.skip("currently does nothing")
-    def test_prepare_callbacks(self):
-        pass
 
 
 class BackendTestingHelper(BackendIntegrator):
@@ -171,31 +168,55 @@ class TestBackendIntegrator(unittest.TestCase):
     def test_run_jitcdde(self):
         system = BackendTestingHelper()
         results = system.run(
-            self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), backend="jitcdde",
+            self.DURATION,
+            self.DT,
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
+            backend="jitcdde",
         )
         results.attrs = self.EXTRA_ATTRS
         # assert type, length and shape of results
         self.assertTrue(isinstance(results, xr.Dataset))
         self.assertEqual(len(results), 1)
         self.assertTupleEqual(
-            results[system.state_variable_names[0][0]].shape, (int(self.DURATION / self.DT), 1),
+            results[system.state_variable_names[0][0]].shape,
+            (int(self.DURATION / self.DT), 1),
         )
         self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
 
+    def test_run_jitcdde_vector_past(self):
+        system = BackendTestingHelper()
+        system.initial_state = np.random.rand(1, 4)
+        results = system.run(
+            self.DURATION,
+            self.DT,
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
+            backend="jitcdde",
+        )
+        self.assertTrue(isinstance(results, xr.Dataset))
+        self.assertEqual(len(results), 1)
+        self.assertTupleEqual(
+            results[system.state_variable_names[0][0]].shape,
+            (int(self.DURATION / self.DT), 1),
+        )
+        self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
+
     def test_jitcdde_other_features(self):
         system = BackendTestingHelper()
-        _ = system.run(self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), backend="jitcdde")
+        _ = system.run(self.DURATION, self.DT, ZeroInput().as_cubic_splines(self.DURATION, self.DT), backend="jitcdde")
         system.backend_instance._check()
         system.backend_instance.dde_system.reset_integrator()
         system.backend_instance._integrate_blindly(system.max_delay)
+        system.backend_instance.dde_system.purge_past()
+        # past state as nodes x time
+        system.backend_instance._set_past_from_vector(np.random.rand(1, 4), dt=self.DT)
         system.clean()
 
     def test_backend_value_error(self):
         system = BackendTestingHelper()
         with pytest.raises(ValueError):
             _ = system.run(
-                self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines(), backend="wrong"
+                self.DURATION, self.DT, ZeroInput().as_cubic_splines(self.DURATION, self.DT), backend="wrong"
             )
 
     def test_return_raw_and_xarray(self):
@@ -203,7 +224,7 @@ class TestBackendIntegrator(unittest.TestCase):
         results_xr = system.run(
             self.DURATION,
             self.DT,
-            ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
             backend="jitcdde",
             return_xarray=True,
         )
@@ -211,7 +232,7 @@ class TestBackendIntegrator(unittest.TestCase):
         times, results_raw = system.run(
             self.DURATION,
             self.DT,
-            ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
             backend="jitcdde",
             return_xarray=False,
         )
@@ -222,13 +243,19 @@ class TestBackendIntegrator(unittest.TestCase):
 
     def test_run_numba(self):
         system = BackendTestingHelper()
-        results = system.run(self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_array(), backend="numba",)
+        results = system.run(
+            self.DURATION,
+            self.DT,
+            ZeroInput().as_array(self.DURATION, self.DT),
+            backend="numba",
+        )
         results.attrs = self.EXTRA_ATTRS
         # assert type, length and shape of results
         self.assertTrue(isinstance(results, xr.Dataset))
         self.assertEqual(len(results), 1)
         self.assertTupleEqual(
-            results[system.state_variable_names[0][0]].shape, (int(self.DURATION / self.DT), 1),
+            results[system.state_variable_names[0][0]].shape,
+            (int(self.DURATION / self.DT), 1),
         )
         self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
@@ -238,7 +265,7 @@ class TestBackendIntegrator(unittest.TestCase):
         results = system.run(
             self.DURATION,
             self.DT,
-            ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
             save_compiled_to=self.TEST_DIR,
             backend="jitcdde",
         )
@@ -248,7 +275,7 @@ class TestBackendIntegrator(unittest.TestCase):
         results_from_loaded = system.run(
             self.DURATION,
             self.DT,
-            ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
             save_compiled_to=self.TEST_DIR,
             load_compiled=True,
         )
@@ -260,7 +287,8 @@ class TestBackendIntegrator(unittest.TestCase):
         ]
         for data_var in results:
             np.testing.assert_allclose(
-                results[data_var].values.astype(float), results_from_loaded[data_var].values.astype(float),
+                results[data_var].values.astype(float),
+                results_from_loaded[data_var].values.astype(float),
             )
 
     def test_run_openmp(self):
@@ -268,7 +296,7 @@ class TestBackendIntegrator(unittest.TestCase):
         results = system.run(
             self.DURATION,
             self.DT,
-            ZeroInput(self.DURATION, self.DT).as_cubic_splines(),
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
             chunksize=5,
             use_open_mp=True,
             backend="jitcdde",
@@ -278,7 +306,8 @@ class TestBackendIntegrator(unittest.TestCase):
         self.assertTrue(isinstance(results, xr.Dataset))
         self.assertEqual(len(results), 1)
         self.assertTupleEqual(
-            results[system.state_variable_names[0][0]].shape, (int(self.DURATION / self.DT), 1),
+            results[system.state_variable_names[0][0]].shape,
+            (int(self.DURATION / self.DT), 1),
         )
         self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
@@ -290,7 +319,7 @@ class TestBackendIntegrator(unittest.TestCase):
         """
         system = BackendTestingHelper()
         # add attributes to test saving them
-        results = system.run(self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines())
+        results = system.run(self.DURATION, self.DT, ZeroInput().as_cubic_splines(self.DURATION, self.DT))
         results.attrs = self.EXTRA_ATTRS
         # save to pickle
         pickle_name = os.path.join(self.TEST_DIR, "pickle_test")
@@ -309,7 +338,7 @@ class TestBackendIntegrator(unittest.TestCase):
         easy.
         """
         system = BackendTestingHelper()
-        results = system.run(self.DURATION, self.DT, ZeroInput(self.DURATION, self.DT).as_cubic_splines())
+        results = system.run(self.DURATION, self.DT, ZeroInput().as_cubic_splines(self.DURATION, self.DT))
         results.attrs = self.EXTRA_ATTRS
         # save to pickle
         nc_name = os.path.join(self.TEST_DIR, "netcdf_test")

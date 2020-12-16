@@ -83,26 +83,26 @@ class NumbaBackend(BaseBackend):
     DEFAULT_DT = 0.1  # in ms
 
     CURRENT_Y_REGEX = r"current_y\([0-9]*\)"
-    CURRENT_Y_NUMBA = "y[max_delay + i - 1, {idx}]"
+    CURRENT_Y_NUMBA = "y[{idx}, max_delay + i - 1]"
 
     PAST_Y_REGEX = r"past_y\([-+]?[0-9]*\.?[0-9]+ \+ t, [0-9]*, anchors\([-+]" r"?[0-9]*\.?[0-9]+ \+ t\)\)"
-    PAST_Y_NUMBA = "y[max_delay + i - 1 - {dt_ndt}, {idx}]"
+    PAST_Y_NUMBA = "y[{idx}, max_delay + i - 1 - {dt_ndt}]"
 
     SYSTEM_INPUT_REGEX = (
         r"past_y\(-external_input \+ t, ([0-9]* \+ )?input_base_n, anchors" r"\(-external_input \+ t\)\)"
     )
-    SYSTEM_INPUT_NUMBA = "input_y[i, {idx}]"
+    SYSTEM_INPUT_NUMBA = "input_y[{idx}, i]"
 
     NUMBA_EULER_TEMPLATE = """
 def integrate(dt, n, max_delay, t_max, y0, input_y):
-    y = np.empty((t_max + max_delay + 1, n))
+    y = np.empty((n, t_max + max_delay + 1))
     y[:] = np.nan
-    y[:max_delay + 1] = y0
+    y[:, :max_delay + 1] = y0
     for i in range(1, t_max + 1):
         dy = np.array({dy_eqs})
-        y[max_delay + i, :] = y[max_delay + i - 1, :] + dt*dy
+        y[:, max_delay + i] = y[:, max_delay + i - 1] + dt*dy
 
-    return y[max_delay + 1:, :]
+    return y[:, max_delay + 1:]
 """
 
     def _replace_current_ys(self, expression):
@@ -224,12 +224,16 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         # run the numba-jitted function
         times = np.arange(dt, duration + dt, dt)
         logging.info(f"Integrating for {times.shape[0]} time steps...")
+        max_delay_dt = np.around(self.max_delay / dt).astype(int)
+        init_state = self.initial_state
+        if init_state.ndim == 1:
+            init_state = np.tile(init_state[:, np.newaxis], reps=(1, max_delay_dt + 1))
         result = integrate(
             dt=dt,
             n=system_size,
-            max_delay=np.around(self.max_delay / dt).astype(int),
+            max_delay=max_delay_dt,
             t_max=np.around(duration / dt).astype(int),
-            y0=self.initial_state,
+            y0=init_state,
             input_y=noise_input,
         )
         return times, result
@@ -255,7 +259,13 @@ class JitcddeBackend(BaseBackend):
     dde_system = None
 
     def _init_load_compiled(
-        self, compiled_dir, derivatives, helpers=None, inputs=None, max_delay=0.0, callbacks=None,
+        self,
+        compiled_dir,
+        derivatives,
+        helpers=None,
+        inputs=None,
+        max_delay=0.0,
+        callbacks=None,
     ):
         """
         Initialise DDE system and load from compiled.
@@ -274,10 +284,17 @@ class JitcddeBackend(BaseBackend):
         )
 
     def _init_and_compile_C(
-        self, derivatives, helpers=None, inputs=None, max_delay=0.0, callbacks=None, chunksize=1, use_open_mp=False,
+        self,
+        derivatives,
+        helpers=None,
+        inputs=None,
+        max_delay=0.0,
+        callbacks=None,
+        chunksize=1,
+        use_open_mp=False,
     ):
         """
-        Initialise DDE system and compiled to C.
+        Initialise DDE system and compile to C.
         """
         logging.info("Setting up the DDE system...")
         if platform == "darwin":
@@ -320,13 +337,55 @@ class JitcddeBackend(BaseBackend):
         )
 
     def _set_constant_past(self, past_state):
+        """
+        Sets past of the delayed system with a constant vector. This usually
+        means that `past_state` is 1D vector of length `num_state_variables`.
+        `jitcdde` automatically determines how long into the past it need to
+        extrapolate based on `max_delay`.
+
+        :param past_state: vector of past states of length `num_state_variables`
+        :type past_state: np.ndarray
+        """
         self.dde_system.constant_past(past_state)
         self.dde_system.adjust_diff()
 
+    def _set_past_from_vector(self, past_state, dt):
+        """
+        Sets past of the delayed system with temporal dependance. This means
+        that `past_state` is 2D array as (`num_state_variables` x `time`) and
+        each time vector is added as so-called `Anchor`. `jitcdde` then
+        automatically interpolate in between `dt`s when needed.
+
+        :param past_state: vector of past states as (`num_state_variables` x
+            `time`)
+        :type past_state: np.ndarray
+        :param dt: dt of the system, to infer how much in to the past the vector
+            is (in `jitcdde` this is actually sampling dt)
+        :type dt: float
+        """
+        derivatives = np.hstack([np.zeros((past_state.shape[0], 1)), np.diff(past_state, axis=1)])
+        assert derivatives.shape == past_state.shape
+        for t in range(past_state.shape[1]):
+            self.dde_system.add_past_point(-t * dt, past_state[:, -t], derivatives[:, -t])
+        self.dde_system.adjust_diff()
+
     def _integrate_blindly(self, max_delay):
+        """
+        Deals with initial discontinuities using `integrate_blindly` method,
+        where the adaptive integrator just integrates until 1.5 * `max_delay`
+        which smooths the initial and past discontinuities. Currently not used,
+        but something is telling me this would be necessary for autochunk
+        feature to work with `jitcdde` with adaptive time step.
+
+        :param max_delay: maximum delay in the system, in ms
+        :type max_delay: float
+        """
         self.dde_system.integrate_blindly(max_delay * 1.5)
 
     def _check(self):
+        """
+        Check the delay system.
+        """
         if self.dde_system is not None:
             self.dde_system.check()
 
@@ -369,19 +428,21 @@ class JitcddeBackend(BaseBackend):
                 use_open_mp=use_open_mp,
             )
         assert self.dde_system is not None
+        self.dde_system.purge_past()
         self.dde_system.reset_integrator()
         logging.info("Setting past of the state vector...")
-        self._set_constant_past(self.initial_state)
+        if self.initial_state.ndim == 1:
+            self._set_constant_past(self.initial_state)
+        else:
+            self._set_past_from_vector(self.initial_state, dt)
         # integrate
         times = np.arange(dt, duration + dt, dt)
         logging.info(f"Integrating for {times.shape[0]} time steps...")
-        result = np.vstack([self.dde_system.integrate(time) for time in tqdm(times)])
+        result = np.vstack([self.dde_system.integrate(time) for time in tqdm(times)]).T
         if save_compiled_to is not None and not load_compiled:
             os.makedirs(save_compiled_to, exist_ok=True)
             logging.info(f"Saving compiled C code to {save_compiled_to}")
-            self.dde_system.save_compiled(
-                os.path.join(save_compiled_to, f"{self.label}.so"), overwrite=True,
-            )
+            self.dde_system.save_compiled(os.path.join(save_compiled_to, f"{self.label}.so"), overwrite=True)
         return times, result
 
     def clean(self):
@@ -427,9 +488,7 @@ class BackendIntegrator:
             setattr(self.backend_instance, attr, getattr(self, attr))
 
     @timer
-    def run(
-        self, duration, dt, noise_input, backend=DEFAULT_BACKEND, return_xarray=True, **kwargs,
-    ):
+    def run(self, duration, dt, noise_input, backend=DEFAULT_BACKEND, return_xarray=True, **kwargs):
         """
         Run the integration.
 
@@ -456,13 +515,13 @@ class BackendIntegrator:
         assert isinstance(self.backend_instance, BaseBackend)
         times, result = self.backend_instance.run(duration=duration, dt=dt, noise_input=noise_input, **kwargs)
         logging.info("Integration done.")
-        assert times.shape[0] == result.shape[0]
-        assert result.shape[1] == self.num_state_variables
+        assert times.shape[0] == result.shape[1]
+        assert result.shape[0] == self.num_state_variables
         if return_xarray:
-            return self._init_xarray(times=times, results=result)
+            return self._init_xarray(times=times, results=result.T)
         else:
             # return result as nodes x time for compatibility with neurolib
-            return times, result.T
+            return times, result
 
     def _init_xarray(self, times, results):
         """

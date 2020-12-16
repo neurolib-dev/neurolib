@@ -18,15 +18,15 @@ NEUROLIB_VARIABLES_TO_TEST = ["x", "y"]
 
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
-    "jitcdde": lambda x: x.as_cubic_splines(),
-    "numba": lambda x: x.as_array(),
+    "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
+    "numba": lambda x, d, dt: x.as_array(d, dt).T,
 }
 
 
 class MassTestCase(unittest.TestCase):
     def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(duration, dt, independent_realisations=node.num_noise_variables).as_cubic_splines()
+        noise = ZeroInput(num_iid=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()
@@ -81,7 +81,7 @@ class TestHopfNode(unittest.TestCase):
             result = hopf.run(
                 DURATION,
                 DT,
-                noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)),
+                noise_func(ZeroInput(hopf.num_noise_variables), DURATION, DT),
                 backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
@@ -104,7 +104,7 @@ class TestHopfNode(unittest.TestCase):
         """
         # run this model
         hopf_multi = self._create_node()
-        multi_result = hopf_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        multi_result = hopf_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
         # run neurolib's model
         hopf_neurolib = HopfModel(seed=SEED)
         hopf_neurolib.params["duration"] = DURATION
@@ -133,7 +133,7 @@ class TestHopfNetwork(unittest.TestCase):
             result = hopf.run(
                 DURATION,
                 DT,
-                noise_func(ZeroInput(DURATION, DT, hopf.num_noise_variables)),
+                noise_func(ZeroInput(hopf.num_noise_variables), DURATION, DT),
                 backend=backend,
             )
             self.assertTrue(isinstance(result, xr.Dataset))
@@ -153,7 +153,7 @@ class TestHopfNetwork(unittest.TestCase):
         """
         # run this model - default is diffusive coupling
         hopf_multi = HopfNetwork(self.SC, self.DELAYS, seed=SEED)
-        multi_result = hopf_multi.run(DURATION, DT, ZeroInput(DURATION, DT).as_array(), backend="numba")
+        multi_result = hopf_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
         # run neurolib's model
         hopf_neurolib = HopfModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         hopf_neurolib.params["duration"] = DURATION
