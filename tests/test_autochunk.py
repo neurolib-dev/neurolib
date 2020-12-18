@@ -1,5 +1,4 @@
 import copy
-import logging
 import unittest
 
 import numpy as np
@@ -11,56 +10,61 @@ from neurolib.models.wc import WCModel
 from neurolib.utils.loadData import Dataset
 
 
-class TestAutochunk(unittest.TestCase):
+class AutochunkTests(unittest.TestCase):
     """
-    Tests the one-dt (one-step) integration and compares it to normal integration.
+    Base class for autochunk tests.
     """
 
-    def test_check_chunkwise(self):
-        """Full test of chunkwise integration over all models"""
+    durations = [0.1, 0.5, 10.5, 22.3]
+    chunksizes = [1, 5, 7, 33, 55, 123]
+    signalVs = [0, 1, 10, 10000]
+
+    def single_node_test(self, model):
+        for duration in self.durations:
+            for chunksize in self.chunksizes:
+                for signalV in self.signalVs:
+                    # full run
+                    m1 = model()
+                    m1.params.signalV = signalV
+                    m1.params["duration"] = duration
+                    pars_bak = copy.deepcopy(m1.params)
+                    m1.run()
+                    # chunkwise run
+                    m2 = model()
+                    m2.params = pars_bak.copy()
+                    m2.run(chunkwise=True, chunksize=chunksize, append=True)
+                    # check
+                    self.assertTupleEqual(m1.output.shape, m2.output.shape)
+                    difference = np.sum(np.abs(m1.output - m2.output))
+                    self.assertAlmostEqual(difference, 0.0)
+
+    def network_test(self, model):
         ds = Dataset("hcp")
-        Models = [ALNModel, FHNModel, HopfModel, WCModel, ThalamicMassModel]
-        durations = [0.1, 0.5, 10.5, 22.3]
-        chunksizes = [1, 5, 7, 33, 55, 123]
-        modes = ["single", "network"]
-        signalVs = [0, 1, 10, 10000]
+        for duration in self.durations:
+            for chunksize in self.chunksizes:
+                for signalV in self.signalVs:
+                    # full run
+                    m1 = model(Cmat=ds.Cmat, Dmat=ds.Dmat)
+                    m1.params.signalV = signalV
+                    m1.params["duration"] = duration
+                    pars_bak = copy.deepcopy(m1.params)
+                    m1.run()
+                    # chunkwise run
+                    m2 = model(Cmat=ds.Cmat, Dmat=ds.Dmat)
+                    m2.params = pars_bak.copy()
+                    m2.run(chunkwise=True, chunksize=chunksize, append=True)
+                    # check
+                    self.assertTupleEqual(m1.output.shape, m2.output.shape)
+                    difference = np.sum(np.abs(m1.output - m2.output))
+                    self.assertAlmostEqual(difference, 0.0)
 
-        for mode in modes:
-            for Model in Models:
-                for duration in durations:
-                    for chunksize in chunksizes:
-                        for signalV in signalVs:
-                            if Model == ThalamicMassModel and mode == "network":
-                                continue
-                            if mode == "network":
-                                m1 = Model(Cmat=ds.Cmat, Dmat=ds.Dmat)
-                            else:
-                                m1 = Model()
-                            m1.params.signalV = signalV
-                            m1.params["duration"] = duration
-                            pars_bak = copy.deepcopy(m1.params)
 
-                            m1.run()
+class TestALNAutochunk(AutochunkTests):
+    def test_single(self):
+        self.single_node_test(ALNModel)
 
-                            if mode == "network":
-                                m2 = Model(Cmat=ds.Cmat, Dmat=ds.Dmat)
-                            else:
-                                m2 = Model()
-                            m2.params = pars_bak.copy()
-                            m2.run(chunkwise=True, chunksize=chunksize, append=True)
-
-                            assert (
-                                m1.output.shape == m2.output.shape
-                            ), "Shape of chunkwise output does not match normal output!"
-                            difference = np.sum(abs(m1.output - m2.output))
-                            # self.assertAlmostEqual(difference, 0.0, places=4)
-                            assert (
-                                difference == 0
-                            ), f"difference: {difference} > Model: {Model.name}, Mode: {mode}, signalV: {signalV}, Chunksize: {chunksize}, Duration: {duration}"
-                            if difference > 0:
-                                logging.info(
-                                    f"difference: {difference} > Model: {Model.name}, Mode: {mode}, signalV: {signalV}, Chunksize: {chunksize}, Duration: {duration}"
-                                )
+    def test_network(self):
+        self.network_test(ALNModel)
 
     def test_onstep_input_autochunk(self):
         """Tests passing an input array to a model."""
@@ -80,6 +84,35 @@ class TestAutochunk(unittest.TestCase):
         for i in range(duration_dt):
             inputs = [inp_x[:, i], inp_y[:, i]]
             model.autochunk(inputs=inputs, append_outputs=True)
+
+
+class TestFHNAutochunk(AutochunkTests):
+    def test_single(self):
+        self.single_node_test(FHNModel)
+
+    def test_network(self):
+        self.network_test(FHNModel)
+
+
+class TestHopfAutochunk(AutochunkTests):
+    def test_single(self):
+        self.single_node_test(HopfModel)
+
+    def test_network(self):
+        self.network_test(HopfModel)
+
+
+class TestWCAutochunk(AutochunkTests):
+    def test_single(self):
+        self.single_node_test(WCModel)
+
+    def test_network(self):
+        self.network_test(WCModel)
+
+
+class TestThalamusAutochunk(AutochunkTests):
+    def test_single(self):
+        self.single_node_test(ThalamicMassModel)
 
 
 if __name__ == "__main__":
