@@ -258,31 +258,6 @@ class JitcddeBackend(BaseBackend):
     extra_compile_args = []
     dde_system = None
 
-    def _init_load_compiled(
-        self,
-        compiled_dir,
-        derivatives,
-        helpers=None,
-        inputs=None,
-        max_delay=0.0,
-        callbacks=None,
-    ):
-        """
-        Initialise DDE system and load from compiled.
-        """
-        logging.info("Setting up the DDE system...")
-        compiled_filename = os.path.join(compiled_dir, f"{self.label}.so")
-        assert os.path.exists(compiled_filename)
-        self.dde_system = jitcdde_input(
-            f_sym=derivatives,
-            input=inputs,
-            helpers=helpers,
-            n=len(derivatives),
-            max_delay=max_delay,
-            callback_functions=callbacks,
-            module_location=compiled_filename,
-        )
-
     def _init_and_compile_C(
         self,
         derivatives,
@@ -291,7 +266,6 @@ class JitcddeBackend(BaseBackend):
         max_delay=0.0,
         callbacks=None,
         chunksize=1,
-        use_open_mp=False,
     ):
         """
         Initialise DDE system and compile to C.
@@ -309,29 +283,13 @@ class JitcddeBackend(BaseBackend):
             max_delay=max_delay,
             callback_functions=callbacks,
         )
-        if use_open_mp:
-            logging.info("Using OpenMP parallelisation...")
-            compiler_args = ["-fopenmp"]
-            if platform == "darwin":
-                logging.warning(
-                    "MacOS detected. For openMP parallelisation the llvm and "
-                    "libomp must be installed. If not, install them please "
-                    "with `brew install llvm libomp` and follow steps for "
-                    "prepending system path with llvm path."
-                )
-                linker_args = ["-lomp", "-L/usr/local/opt/llvm/lib"]
-            else:
-                linker_args = ["-lgomp"]
-            omp_flags = (compiler_args, linker_args)
-        else:
-            omp_flags = False
 
         logging.info("Compiling to C...")
         self.dde_system.compile_C(
             simplify=False,
             do_cse=False,
             extra_compile_args=self.extra_compile_args,
-            omp=omp_flags,
+            omp=False,
             chunk_size=chunksize,
             verbose=False,
         )
@@ -392,41 +350,17 @@ class JitcddeBackend(BaseBackend):
     def run(self, duration, dt, noise_input, **kwargs):
         """
         Run integration.
-
-        :kwargs:
-            - use_open_mp: OpenMP parallelization - significant overhead, only
-                useful (probably) for very large systems
-            - save_compiled_to: path to which save compiled C code -
-                derivatives and helpers; for large networks this saves the
-                compilation time given multiple runs
-            - load_compiled: whether to try load compiled C code, i.e. do not
-            compile before the run
         """
-        chunksize = kwargs.pop("chunksize", 1)
-        use_open_mp = kwargs.pop("use_open_mp", False)
-        save_compiled_to = kwargs.pop("save_compiled_to", None)
-        load_compiled = kwargs.pop("load_compiled", False)
         assert isinstance(noise_input, CubicHermiteSpline)
-
-        if load_compiled:
-            self._init_load_compiled(
-                compiled_dir=save_compiled_to,
-                derivatives=self._derivatives(),
-                helpers=self._sync(),
-                inputs=noise_input,
-                max_delay=self.max_delay,
-                callbacks=self._callbacks(),
-            )
-        else:
-            self._init_and_compile_C(
-                derivatives=self._derivatives(),
-                helpers=self._sync(),
-                inputs=noise_input,
-                max_delay=self.max_delay,
-                callbacks=self._callbacks(),
-                chunksize=chunksize,
-                use_open_mp=use_open_mp,
-            )
+        # compile model in C
+        self._init_and_compile_C(
+            derivatives=self._derivatives(),
+            helpers=self._sync(),
+            inputs=noise_input,
+            max_delay=self.max_delay,
+            callbacks=self._callbacks(),
+            chunksize=kwargs.pop("chunksize", 1),
+        )
         assert self.dde_system is not None
         self.dde_system.purge_past()
         self.dde_system.reset_integrator()
@@ -439,10 +373,6 @@ class JitcddeBackend(BaseBackend):
         times = np.arange(dt, duration + dt, dt)
         logging.info(f"Integrating for {times.shape[0]} time steps...")
         result = np.vstack([self.dde_system.integrate(time) for time in tqdm(times)]).T
-        if save_compiled_to is not None and not load_compiled:
-            os.makedirs(save_compiled_to, exist_ok=True)
-            logging.info(f"Saving compiled C code to {save_compiled_to}")
-            self.dde_system.save_compiled(os.path.join(save_compiled_to, f"{self.label}.so"), overwrite=True)
         return times, result
 
     def clean(self):
