@@ -260,58 +260,6 @@ class TestBackendIntegrator(unittest.TestCase):
         self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
 
-    def test_run_save_compiled(self):
-        system = BackendTestingHelper()
-        results = system.run(
-            self.DURATION,
-            self.DT,
-            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
-            save_compiled_to=self.TEST_DIR,
-            backend="jitcdde",
-        )
-        # check the so file exists
-        self.assertTrue(os.path.exists(os.path.join(self.TEST_DIR, f"{system.label}.so")))
-        # run again but load from compiled
-        results_from_loaded = system.run(
-            self.DURATION,
-            self.DT,
-            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
-            save_compiled_to=self.TEST_DIR,
-            load_compiled=True,
-        )
-        # check results are the same
-        self.assertEqual(results.dims, results_from_loaded.dims)
-        [
-            np.testing.assert_equal(coord1.values, coord2.values)
-            for coord1, coord2 in zip(results.coords.values(), results_from_loaded.coords.values())
-        ]
-        for data_var in results:
-            np.testing.assert_allclose(
-                results[data_var].values.astype(float),
-                results_from_loaded[data_var].values.astype(float),
-            )
-
-    def test_run_openmp(self):
-        system = BackendTestingHelper()
-        results = system.run(
-            self.DURATION,
-            self.DT,
-            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
-            chunksize=5,
-            use_open_mp=True,
-            backend="jitcdde",
-        )
-        results.attrs = self.EXTRA_ATTRS
-        # assert type, length and shape of results
-        self.assertTrue(isinstance(results, xr.Dataset))
-        self.assertEqual(len(results), 1)
-        self.assertTupleEqual(
-            results[system.state_variable_names[0][0]].shape,
-            (int(self.DURATION / self.DT), 1),
-        )
-        self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
-        self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
-
     def test_save_pickle(self):
         """
         Testing for saver done here since we have a model to integrate so it's
