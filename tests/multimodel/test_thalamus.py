@@ -21,8 +21,8 @@ DURATION = 100.0
 DT = 0.01
 CORR_THRESHOLD = 0.95
 NEUROLIB_VARIABLES_TO_TEST = [
-    ("q_mean_EXC", "Q_t"),
-    ("q_mean_INH", "Q_r"),
+    ("r_mean_EXC", "Q_t"),
+    ("r_mean_INH", "Q_r"),
     ("V_EXC", "V_t"),
     ("V_INH", "V_r"),
 ]
