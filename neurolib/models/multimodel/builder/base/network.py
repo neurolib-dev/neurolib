@@ -709,10 +709,14 @@ class Network(BackendIntegrator):
             # iterate over indices as `to`, hence rows
             for to_node in range(self.num_nodes):
                 # input at `to` x `from`
-                inputs[to_node, from_node] = state_vector(
-                    var_idx + node_var_idx,
-                    time=time_vector - self.delays[to_node, from_node],
-                )
+                # if None - no input
+                if node_var_idx is None:
+                    inputs[to_node, from_node] = 0.0
+                else:
+                    inputs[to_node, from_node] = state_vector(
+                        var_idx + node_var_idx,
+                        time=time_vector - self.delays[to_node, from_node],
+                    )
             var_idx += node.num_state_variables
 
         return inputs

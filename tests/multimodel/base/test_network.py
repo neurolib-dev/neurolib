@@ -269,6 +269,15 @@ class TestNetwork(unittest.TestCase):
         self.assertTupleEqual(input_mat.shape, (net.num_nodes, net.num_nodes))
         self.assertTrue(all(isinstance(coupling, se.Function) for coupling in input_mat.flatten()))
 
+    def test_input_mat_with_None(self):
+        net, _ = self._create_network()
+        input_mat = net._construct_input_matrix([0, None])
+        self.assertTupleEqual(input_mat.shape, (net.num_nodes, net.num_nodes))
+        # assert from first node it's not 0, it's a Function
+        self.assertTrue(all(isinstance(coupling, se.Function) for coupling in input_mat[:, 0]))
+        # assert from second node it's 0
+        self.assertTrue(all(coupling == 0.0 for coupling in input_mat[:, 1]))
+
     def test_no_coupling(self):
         net, _ = self._create_network()
         no_coupling = net._no_coupling(net.sync_variables[0])
