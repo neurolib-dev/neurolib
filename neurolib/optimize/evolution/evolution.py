@@ -22,8 +22,8 @@ from . import deapUtils as du
 
 
 class Evolution:
-    """Evolutionary parameter optimization. This class helps you to optimize any function or model using an evlutionary algorithm. 
-    It uses the package `deap` and supports its builtin mating and selection functions as well as custom ones. 
+    """Evolutionary parameter optimization. This class helps you to optimize any function or model using an evlutionary algorithm.
+    It uses the package `deap` and supports its builtin mating and selection functions as well as custom ones.
     """
 
     def __init__(
@@ -90,8 +90,11 @@ class Evolution:
         :param PARENT_SELECT_P: Parent selection operator keyword arguments (for the default operator selRank, this defaults to `s` = 1.5 in Eiben&Smith p.81)
         :type PARENT_SELECT_P: dict, optional
 
-        :param individualGenerator: Function to generate initial individuals, defaults to du.randomParametersAdaptive     
+        :param individualGenerator: Function to generate initial individuals, defaults to du.randomParametersAdaptive
         """
+
+        if parameterSpace.star:
+            raise NotImplementedError("Evolution with star parameter notation not supported right now.")
 
         if weightList is None:
             logging.info("weightList not set, assuming single fitness value to be maximized.")
@@ -225,7 +228,11 @@ class Evolution:
 
         # set up pypet trajectory
         self.initPypetTrajectory(
-            self.traj, self.paramInterval, self.POP_SIZE, self.NGEN, self.model,
+            self.traj,
+            self.paramInterval,
+            self.POP_SIZE,
+            self.NGEN,
+            self.model,
         )
 
         # population history: dict of all valid individuals per generation
@@ -238,7 +245,7 @@ class Evolution:
     def run(self, verbose=False):
         """Run the evolution or continue previous evolution. If evolution was not initialized first
         using `runInitial()`, this will be done.
-        
+
         :param verbose: Print and plot state of evolution during run, defaults to False
         :type verbose: bool, optional
         """
@@ -251,7 +258,7 @@ class Evolution:
 
     def getIndividualFromTraj(self, traj):
         """Get individual from pypet trajectory
-        
+
         :param traj: Pypet trajectory
         :type traj: `pypet.trajectory.Trajectory`
         :return: Individual (`DEAP` type)
@@ -273,7 +280,7 @@ class Evolution:
         :params traj: Pypet trajectory with individual (traj.individual) or directly a deap.Individual
 
         :returns model: Model with the parameters of this individual.
-        
+
         :param traj: Pypet trajectory with individual (traj.individual) or directly a deap.Individual
         :type traj: `pypet.trajectory.Trajectory`
         :return: Model with the parameters of this individual.
@@ -300,7 +307,7 @@ class Evolution:
 
     def individualToDict(self, individual):
         """Convert an individual to a parameter dictionary.
-        
+
         :param individual: Individual (`DEAP` type)
         :type individual: `deap.creator.Individual`
         :return: Parameter dictionary of this individual
@@ -310,7 +317,7 @@ class Evolution:
 
     def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, NGEN, model):
         """Initializes pypet trajectory and store all simulation parameters for later analysis.
-        
+
         :param traj: Pypet trajectory (must be already initialized!)
         :type traj: `pypet.trajectory.Trajectory`
         :param paramInterval: Parameter space, from ParameterSpace class
@@ -351,7 +358,9 @@ class Evolution:
         traj.f_add_parameter("id", 0, comment="Index of individual")
         traj.f_add_parameter("ind_len", 20, comment="Length of individual")
         traj.f_add_derived_parameter(
-            "individual", [0 for x in range(traj.ind_len)], "An indivudal of the population",
+            "individual",
+            [0 for x in range(traj.ind_len)],
+            "An indivudal of the population",
         )
 
     def initDEAP(
@@ -368,7 +377,7 @@ class Evolution:
         individualGenerator,
     ):
         """Initializes DEAP and registers all methods to the deap.toolbox
-        
+
         :param toolbox: Deap toolbox
         :type toolbox: deap.base.Toolbox
         :param pypetEnvironment: Pypet environment (must be initialized first!)
@@ -393,7 +402,10 @@ class Evolution:
         # need to create a lambda funciton because du.generateRandomParams wants an argument but
         # toolbox.register cannot pass an argument to it.
         toolbox.register(
-            "individual", deap.tools.initIterate, deap.creator.Individual, lambda: individualGenerator(paramInterval),
+            "individual",
+            deap.tools.initIterate,
+            deap.creator.Individual,
+            lambda: individualGenerator(paramInterval),
         )
         logging.info(f"Evolution: Individual generation: {individualGenerator}")
 
@@ -566,8 +578,7 @@ class Evolution:
         self._t_end_initial_population = datetime.datetime.now()
 
     def runEvolution(self):
-        """Run the evolutionary optimization process for `NGEN` generations.
-        """
+        """Run the evolutionary optimization process for `NGEN` generations."""
         # Start evolution
         logging.info("Start of evolution")
         self._t_start_evolution = datetime.datetime.now()
@@ -584,7 +595,10 @@ class Evolution:
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
             offspring = list(
-                map(self.toolbox.clone, self.toolbox.selectParents(self.pop, self.POP_SIZE, **self.PARENT_SELECT_P),)
+                map(
+                    self.toolbox.clone,
+                    self.toolbox.selectParents(self.pop, self.POP_SIZE, **self.PARENT_SELECT_P),
+                )
             )
 
             ##### cross-over ####
@@ -678,7 +692,7 @@ class Evolution:
 
     def info(self, plot=True, bestN=5, info=True, reverse=False):
         """Print and plot information about the evolution and the current population
-        
+
         :param plot: plot a plot using `matplotlib`, defaults to True
         :type plot: bool, optional
         :param bestN: Print summary of `bestN` best individuals, defaults to 5
@@ -708,12 +722,14 @@ class Evolution:
             except:
                 logging.warning("Could not plot progress, is this a previously saved simulation?")
             eu.plotPopulation(
-                self, plotScattermatrix=True, save_plots=self.trajectoryName, color=self.plotColor,
+                self,
+                plotScattermatrix=True,
+                save_plots=self.trajectoryName,
+                color=self.plotColor,
             )
 
     def plotProgress(self, reverse=False):
-        """Plots progress of fitnesses of current evolution run
-        """
+        """Plots progress of fitnesses of current evolution run"""
         eu.plotProgress(self, reverse=reverse)
 
     def saveEvolution(self, fname=None):
@@ -729,9 +745,9 @@ class Evolution:
         logging.info(f"Saving evolution to {fname}")
 
     def loadEvolution(self, fname):
-        """Load evolution from previously saved simulatoins. 
-        
-        Example usage: 
+        """Load evolution from previously saved simulatoins.
+
+        Example usage:
         ```
         evaluateSimulation = lambda x: x # the funciton can be ommited, that's why we define a lambda here
         pars = ParameterSpace(['a', 'b'], # should be same as previously saved evolution
@@ -751,7 +767,10 @@ class Evolution:
         # parameter space is not saved correctly in dill, don't know why
         # that is why we recreate it using the values of
         # the parameter space in the dill
-        pars = ParameterSpace(evolution.parameterSpace.parameterNames, evolution.parameterSpace.parameterValues,)
+        pars = ParameterSpace(
+            evolution.parameterSpace.parameterNames,
+            evolution.parameterSpace.parameterValues,
+        )
 
         evolution.parameterSpace = pars
         evolution.paramInterval = evolution.parameterSpace.named_tuple
@@ -812,7 +831,7 @@ class Evolution:
         return df
 
     def dfPop(self, outputs=False):
-        """Returns a `pandas` DataFrame of the current generation's population parameters. 
+        """Returns a `pandas` DataFrame of the current generation's population parameters.
         This object can be further used to easily analyse the population.
         :return: Pandas DataFrame with all individuals and their parameters
         :rtype: `pandas.core.frame.DataFrame`
@@ -885,7 +904,7 @@ class Evolution:
     def loadResults(self, filename=None, trajectoryName=None):
         """Load results from a hdf file of a previous evolution and store the
         pypet trajectory in `self.traj`
-        
+
         :param filename: hdf filename of the previous run, defaults to None
         :type filename: str, optional
         :param trajectoryName: Name of the trajectory in the hdf file to load. If not given, the last one will be loaded, defaults to None
@@ -896,14 +915,13 @@ class Evolution:
         self.traj = pu.loadPypetTrajectory(filename, trajectoryName)
 
     def getScores(self):
-        """Returns the scores of the current valid population
-        """
+        """Returns the scores of the current valid population"""
         validPop = self.getValidPopulation(self.pop)
         return np.array([pop.fitness.score for pop in validPop])
 
     def getScoresDuringEvolution(self, traj=None, drop_first=True, reverse=False):
         """Get the scores of each generation's population.
-        
+
         :param traj: Pypet trajectory. If not given, the current trajectory is used, defaults to None
         :type traj: `pypet.trajectory.Trajectory`, optional
         :param drop_first: Drop the first (initial) generation. This can be usefull because it can have a different size (`POP_INIT_SIZE`) than the succeeding populations (`POP_SIZE`) which can make data handling tricky, defaults to True

@@ -6,13 +6,13 @@ from neurolib.utils.parameterSpace import ParameterSpace
 class TestParameterSpace(unittest.TestCase):
     def test_parameterspace_init(self):
         # init from list
-        par = ParameterSpace(["a", "b"], [[3], [3]])
+        _ = ParameterSpace(["a", "b"], [[3], [3]])
 
         # init from dict
-        par = ParameterSpace({"a": [1, 2], "b": [1, 2]})
+        _ = ParameterSpace({"a": [1, 2], "b": [1, 2]})
 
         # init from dict with numpy arrays
-        par = ParameterSpace({"a": np.zeros((3)), "b": np.ones((33)),})
+        _ = ParameterSpace({"a": np.zeros((3)), "b": np.ones((33))})
 
     def test_parameterspace_kind(self):
         # 'point'

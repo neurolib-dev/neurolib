@@ -56,6 +56,7 @@ class MultiModel(Model):
         self.initializeRun()
 
         self.boldInitialized = False
+        self.params["sampling_dt"] = self.params["sampling_dt"] or self.params["dt"]
 
         logging.info(f"{self.name}: Model initialized.")
 
