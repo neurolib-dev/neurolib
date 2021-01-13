@@ -120,7 +120,7 @@ class ThalamocorticalMass(ThalamicMass):
 
     num_state_variables = 10
     num_noise_variables = 1
-    coupling_variables = {9: f"q_mean_{EXC}"}
+    coupling_variables = {9: f"r_mean_{EXC}"}
     required_couplings = ["node_exc_exc", "node_exc_inh", "network_exc_exc"]
     state_variable_names = [
         "V",
@@ -132,7 +132,7 @@ class ThalamocorticalMass(ThalamicMass):
         "s_i",
         "ds_e",
         "ds_i",
-        "q_mean",
+        "r_mean",
     ]
     required_params = [
         "tau",
@@ -299,7 +299,7 @@ class ThalamicReticularMass(ThalamicMass):
 
     num_state_variables = 7
     num_noise_variables = 1
-    coupling_variables = {6: f"q_mean_{INH}"}
+    coupling_variables = {6: f"r_mean_{INH}"}
     required_couplings = ["node_inh_exc", "node_inh_inh", "network_inh_exc"]
     state_variable_names = [
         "V",
@@ -308,7 +308,7 @@ class ThalamicReticularMass(ThalamicMass):
         "s_i",
         "ds_e",
         "ds_i",
-        "q_mean",
+        "r_mean",
     ]
     required_params = [
         "tau",
@@ -424,8 +424,8 @@ class ThalamicNode(SingleCouplingExcitatoryInhibitoryNode):
     label = "THLMnode"
 
     default_network_coupling = {"network_exc_exc": 0.0, "network_inh_exc": 0.0}
-    default_output = f"q_mean_{EXC}"
-    output_vars = [f"q_mean_{EXC}", f"q_mean_{INH}", f"V_{EXC}", f"V_{INH}"]
+    default_output = f"r_mean_{EXC}"
+    output_vars = [f"r_mean_{EXC}", f"r_mean_{INH}", f"V_{EXC}", f"V_{INH}"]
 
     def __init__(
         self,
