@@ -306,7 +306,7 @@ class TestNetwork(unittest.TestCase):
     def test_additive_coupling_multiplier(self):
         MULTIPLIER = 2.4
         net, subs = self._create_network()
-        add_coupling = net._additive_coupling(0, net.sync_variables[0], connectivity_multiplier=MULTIPLIER)
+        add_coupling = net._additive_coupling(0, net.sync_variables[0], connectivity=MULTIPLIER * net.connectivity)
 
         self.assertEqual(len(add_coupling), net.num_nodes)
         for i, coupling in enumerate(add_coupling):
