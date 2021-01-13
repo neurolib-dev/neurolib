@@ -4,7 +4,7 @@ Test for network class.
 
 import unittest
 from copy import deepcopy
-
+import numba
 import numpy as np
 import symengine as se
 from neurolib.models.multimodel.builder.base.constants import EXC, INH
@@ -43,6 +43,7 @@ class NodeTest(Node):
 
 
 class SingleCouplingNodeTest(SingleCouplingExcitatoryInhibitoryNode):
+    label = "test_node"
     default_output = f"q_{EXC}"
 
 
@@ -80,9 +81,11 @@ class TestNode(unittest.TestCase):
         UPDATE_WITH = {"a": 2.4}
 
         node = self._create_node()
-        node.update_params({"mass_0": UPDATE_WITH, "mass_1": UPDATE_WITH})
-        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[0].params)
-        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[1].params)
+        self.assertEqual(node[0].params["a"], PARAMS["a"])
+        self.assertEqual(node[1].params["a"], PARAMS["a"])
+        node.update_params({f"{EXC}_0": UPDATE_WITH, f"{INH}_1": UPDATE_WITH})
+        self.assertEqual(node[0].params["a"], UPDATE_WITH["a"])
+        self.assertEqual(node[1].params["a"], UPDATE_WITH["a"])
 
     def test_strip_index(self):
         node = self._create_node()
@@ -151,16 +154,18 @@ class TestSingleCouplingExcitatoryInhibitoryNode(unittest.TestCase):
         UPDATE_CONNECTIVITY = np.random.rand(2, 2)
         UPDATE_DELAYS = np.abs(np.random.rand(2, 2))
         node = self._create_node()
+        self.assertEqual(node[0].params["a"], PARAMS["a"])
+        self.assertEqual(node[1].params["a"], PARAMS["a"])
         node.update_params(
             {
-                "mass_0": UPDATE_WITH,
-                "mass_1": UPDATE_WITH,
+                f"{EXC}_0": UPDATE_WITH,
+                f"{INH}_1": UPDATE_WITH,
                 "local_connectivity": UPDATE_CONNECTIVITY,
                 "local_delays": UPDATE_DELAYS,
             }
         )
-        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[0].params)
-        self.assertDictEqual({**PARAMS, **UPDATE_WITH}, node[1].params)
+        self.assertEqual(node[0].params["a"], UPDATE_WITH["a"])
+        self.assertEqual(node[1].params["a"], UPDATE_WITH["a"])
         np.testing.assert_equal(UPDATE_CONNECTIVITY, node.connectivity)
         np.testing.assert_equal(UPDATE_DELAYS, node.delays)
 
@@ -202,6 +207,7 @@ class TestNetwork(unittest.TestCase):
             np.random.rand(2, 2),
             None,
         )
+        net.label = "test_net"
         net.sync_variables = ["test"]
         net.init_network()
         # define subs for testing values
@@ -230,8 +236,9 @@ class TestNetwork(unittest.TestCase):
         UPDATE_WITH = {"a": 2.4}
         net, _ = self._create_network()
         net.update_params(
-            {"connectivity": UPDATE_CONNECTIVITY, "delays": UPDATE_DELAYS, "node_0": {"mass_0": UPDATE_WITH}}
+            {"connectivity": UPDATE_CONNECTIVITY, "delays": UPDATE_DELAYS, "test_node_0": {f"{EXC}_0": UPDATE_WITH}}
         )
+        print(net.get_nested_params())
         np.testing.assert_equal(net.connectivity, UPDATE_CONNECTIVITY)
         np.testing.assert_equal(net.delays, UPDATE_DELAYS)
         self.assertEqual(net[0][0].params["a"], UPDATE_WITH["a"])

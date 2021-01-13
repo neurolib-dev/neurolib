@@ -7,16 +7,7 @@ from jitcdde import t as time_vector
 from jitcdde import y as state_vector
 
 from .backend import BackendIntegrator
-from .constants import (
-    EXC,
-    MASS_NAME_STR,
-    NETWORK_CONNECTIVITY,
-    NETWORK_DELAYS,
-    NETWORK_NAME_STR,
-    NODE_CONNECTIVITY,
-    NODE_DELAYS,
-    NODE_NAME_STR,
-)
+from .constants import EXC, NETWORK_CONNECTIVITY, NETWORK_DELAYS, NODE_CONNECTIVITY, NODE_DELAYS
 from .neural_mass import NeuralMass
 
 
@@ -127,10 +118,10 @@ class Node(BackendIntegrator):
         :rtype: dict
         """
         assert self.initialised
-        node_key = f"{NODE_NAME_STR}_{self.index}"
+        node_key = f"{self.label}_{self.index}"
         nested_dict = {node_key: {}}
         for mass in self:
-            mass_key = f"{MASS_NAME_STR}_{mass.index}"
+            mass_key = f"{mass.label}_{mass.index}"
             nested_dict[node_key][mass_key] = mass.params
         return nested_dict
 
@@ -152,12 +143,11 @@ class Node(BackendIntegrator):
         self._initial_state = np.array(sum([mass.initial_state for mass in self], []))
         self.initialised = True
 
-    @staticmethod
-    def _sanitize_update_params(params_dict):
+    def _sanitize_update_params(self, params_dict):
         """
         If dictionary with parameters for update have one title level, trim this.
         """
-        if len(params_dict) == 1 and NODE_NAME_STR in next(iter(params_dict)):
+        if len(params_dict) == 1 and self.label in next(iter(params_dict)):
             params_dict = next(iter(params_dict.values()))
         return params_dict
 
@@ -169,9 +159,10 @@ class Node(BackendIntegrator):
             `get_nested_params`, i.e. nested dict
         :type params_dict: dict
         """
+        mass_labels = [mass.label for mass in self.masses]
         params_dict = self._sanitize_update_params(params_dict)
         for mass_key, mass_params in params_dict.items():
-            if MASS_NAME_STR in mass_key:
+            if any(mass_label in mass_key for mass_label in mass_labels):
                 mass_index = self._get_index(mass_key)
                 assert mass_index == self.masses[mass_index].index
                 self.masses[mass_index].update_params(mass_params)
@@ -364,7 +355,7 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         :rtype: dict
         """
         nested_params = super().get_nested_params()
-        node_key = f"{NODE_NAME_STR}_{self.index}"
+        node_key = f"{self.label}_{self.index}"
         nested_params[node_key][NODE_CONNECTIVITY] = self.connectivity
         nested_params[node_key][NODE_DELAYS] = self.delays
 
@@ -608,9 +599,9 @@ class Network(BackendIntegrator):
         :rtype: dict
         """
         assert self.initialised
-        nested_dict = {NETWORK_NAME_STR: {}}
+        nested_dict = {self.label: {}}
         for node in self:
-            nested_dict[NETWORK_NAME_STR].update(node.get_nested_params())
+            nested_dict[self.label].update(node.get_nested_params())
         nested_dict[NETWORK_CONNECTIVITY] = self.connectivity
         nested_dict[NETWORK_DELAYS] = self.delays
         return nested_dict
@@ -641,10 +632,11 @@ class Network(BackendIntegrator):
         :param params_dict: new parameters for the network
         :type params_dict: dict
         """
-        if len(params_dict) == 1 and NETWORK_NAME_STR in next(iter(params_dict)):
+        node_labels = [node.label for node in self.nodes]
+        if len(params_dict) == 1 and self.label in next(iter(params_dict)):
             params_dict = next(iter(params_dict.values()))
         for node_key, node_params in params_dict.items():
-            if NODE_NAME_STR in node_key:
+            if any(node_label in node_key for node_label in node_labels):
                 node_index = int(node_key.split("_")[-1])
                 assert node_index == self.nodes[node_index].index
                 self.nodes[node_index].update_params(node_params)
