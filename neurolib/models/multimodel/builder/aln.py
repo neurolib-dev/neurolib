@@ -1029,8 +1029,8 @@ class ALNNetwork(Network):
             + self._additive_coupling(
                 within_node_idx=coupling_var_idx,
                 symbol="network_exc_exc_sq",
-                # multiplier is connectivity again, then they'll be squared
-                connectivity_multiplier=self.connectivity,
+                # use squared connectivity
+                connectivity=self.connectivity * self.connectivity,
             )
             + super()._sync()
         )

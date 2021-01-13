@@ -726,7 +726,7 @@ class Network(BackendIntegrator):
         """
         return [(self.sync_symbols[f"{symbol}_{node_idx}"], 0.0) for node_idx in range(self.num_nodes)]
 
-    def _diffusive_coupling(self, within_node_idx, symbol, connectivity_multiplier=1.0):
+    def _diffusive_coupling(self, within_node_idx, symbol, connectivity=None):
         """
         Perform diffusive coupling on the network with given symbol, i.e.
             network_inp = SUM_idx(Cmat[to, idx] * (X[idx](t - Dmat) - X[to](t)))
@@ -736,16 +736,17 @@ class Network(BackendIntegrator):
         :type within_node_idx: list[int]|int
         :param symbol: which symbol to fill with the data
         :type symbol: str
-        :param connectivity_multiplier: multiplier for connectivity, either
-            scalar, or array broadcastable to connectivity
-        :type connectivity_multiplier: float|np.ndarray
+        :param connectivity: connectivity matrix - if None will use the network
+            connectivity from init
+        :type connectivity: np.ndarray
         """
         assert symbol in self.sync_variables
         if isinstance(within_node_idx, int):
             within_node_idx = [within_node_idx] * self.num_nodes
         assert self.num_nodes == len(within_node_idx)
         inputs = self._construct_input_matrix(within_node_idx)
-        connectivity = self.connectivity * connectivity_multiplier
+        connectivity = self.connectivity if connectivity is None else connectivity
+        assert connectivity.shape == (self.num_nodes, self.num_nodes)
         var_idx = 0
         helpers = []
         for node_idx, node_var_idx in zip(range(self.num_nodes), within_node_idx):
@@ -764,7 +765,7 @@ class Network(BackendIntegrator):
             var_idx += self.nodes[node_idx].num_state_variables
         return helpers
 
-    def _additive_coupling(self, within_node_idx, symbol, connectivity_multiplier=1.0):
+    def _additive_coupling(self, within_node_idx, symbol, connectivity=None):
         """
         Perform additive coupling on the network within given symbol, i.e.
             network_inp = SUM_idx(Cmat[to, idx] * X[idx](t - Dmat))
@@ -774,12 +775,14 @@ class Network(BackendIntegrator):
         :type within_node_idx: list[int]|int
         :param symbol: which symbol to fill with the data
         :type symbol: str
-        :param connectivity_multiplier: multiplier for connectivity, either
-            scalar, or array broadcastable to connectivity
-        :type connectivity_multiplier: float|np.ndarray
+        :param connectivity: connectivity matrix - if None will use the network
+            connectivity from init
+        :type connectivity: np.ndarray
         """
         assert symbol in self.sync_variables
-        connectivity = self.connectivity * connectivity_multiplier * self._construct_input_matrix(within_node_idx)
+        connectivity = self.connectivity if connectivity is None else connectivity
+        assert connectivity.shape == (self.num_nodes, self.num_nodes)
+        connectivity = connectivity * self._construct_input_matrix(within_node_idx)
         return [
             (
                 self.sync_symbols[f"{symbol}_{node_idx}"],
