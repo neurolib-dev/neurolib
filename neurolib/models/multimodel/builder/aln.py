@@ -204,7 +204,7 @@ class ALNMass(NeuralMass):
     """
 
     name = "ALN neural mass model"
-    label = "ALN"
+    label = "ALNMass"
     # define python callback function name for table lookup (linear-nonlinear
     # approximation of Fokker-Planck equation)
     python_callbacks = ["firing_rate_lookup", "voltage_lookup", "tau_lookup"]
@@ -380,7 +380,7 @@ class ExcitatoryALNMass(ALNMass):
     """
 
     name = "ALN excitatory neural mass"
-    label = f"ALN{EXC}"
+    label = f"ALNMass{EXC}"
     num_state_variables = 7
     coupling_variables = {6: f"r_mean_{EXC}"}
     mass_type = EXC
@@ -584,7 +584,7 @@ class InhibitoryALNMass(ALNMass):
     """
 
     name = "ALN inhibitory neural mass"
-    label = f"ALN{INH}"
+    label = f"ALNMass{INH}"
     num_state_variables = 6
     coupling_variables = {5: f"r_mean_{INH}"}
     mass_type = INH
