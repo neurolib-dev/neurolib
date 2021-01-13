@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 import symengine as se
 from jitcdde import y as state_vector
@@ -83,7 +85,7 @@ class NeuralMass:
         :type seed: int|None
         """
         assert isinstance(params, dict)
-        self.params = params
+        self.params = deepcopy(params)
         self.seed = seed
         # used in determining portion of the full system's state vector
         self.idx_state_var = None
@@ -158,9 +160,12 @@ class NeuralMass:
             self.noise_input_idx = [start_idx_for_noise + i for i in range(self.num_noise_variables)]
         assert len(self.noise_input) == self.num_noise_variables
         assert all(isinstance(noise_process, ModelInput) for noise_process in self.noise_input), self.noise_input
+        self._get_params_from_noise()
+        self.initialised = True
+
+    def _get_params_from_noise(self):
         for i, noise_process in enumerate(self.noise_input):
             self.params[f"noise_{i}"] = noise_process.get_params()
-        self.initialised = True
 
     def update_params(self, params_dict):
         """
@@ -170,9 +175,13 @@ class NeuralMass:
         :type params_dict: dict
         """
         assert isinstance(params_dict, dict)
-        self.params.update(params_dict)
+        self.params.update({k: v for k, v in params_dict.items() if "noise" not in k})
         # validate again
         self._validate_params()
+        for i, noise_process in enumerate(self.noise_input):
+            noise_process.update_params(params_dict.get(f"noise_{i}", {}))
+        # update noise params
+        self._get_params_from_noise()
 
     def _callbacks(self):
         """
