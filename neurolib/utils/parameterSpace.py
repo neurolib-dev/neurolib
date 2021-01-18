@@ -49,9 +49,12 @@ class ParameterSpace:
 
         # let's create a named tuple of the parameters
         # Note: evolution.py implementation relies on named tuples
-        if not self.star:
-            self.named_tuple_constructor = namedtuple("ParameterSpace", parameters)
-            self.named_tuple = self.named_tuple_constructor(*self.parameterValues)
+        # namedtuple names must be identifiers, so swap "*" for string "STAR"
+        def _unstar_dict(dct):
+            return {k.replace("*", "STAR"): v for k, v in dct.items()}
+
+        self.named_tuple_constructor = namedtuple("ParameterSpace", _unstar_dict(parameters))
+        self.named_tuple = self.named_tuple_constructor(*self.parameterValues)
 
         # set attributes of this class to make it accessible
         for i, p in enumerate(self.parameters):
