@@ -6,13 +6,14 @@ from shutil import rmtree
 import neurolib.utils.functions as func
 import numpy as np
 from neurolib.models.aln import ALNModel
+from neurolib.models.multimodel import MultiModel
+from neurolib.models.multimodel.builder.fitzhugh_nagumo import FitzHughNagumoNode
 from neurolib.optimize.evolution import Evolution
 from neurolib.utils.parameterSpace import ParameterSpace
 
 
 class TestVanillaEvolution(unittest.TestCase):
-    """Test of the evolutionary optimization without a neural model
-    """
+    """Test of the evolutionary optimization without a neural model"""
 
     def test_circle_optimization(self):
         logging.info("\t > Evolution: Testing vanilla optimization of a circle ...")
@@ -42,8 +43,7 @@ class TestVanillaEvolution(unittest.TestCase):
 
 
 class TestALNEvolution(unittest.TestCase):
-    """Evolution with ALN model
-    """
+    """Evolution with ALN model"""
 
     def test_adaptive(self):
         logging.info("\t > Evolution: Testing ALN single node ...")
@@ -64,7 +64,8 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
+                model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -144,7 +145,8 @@ class TestALNEvolution(unittest.TestCase):
 
             # example: get dominant frequency of activity
             frs, powers = func.getPowerSpectrum(
-                model.rates_exc[:, -int(1000 / model.params["dt"]) :], model.params["dt"],
+                model.rates_exc[:, -int(1000 / model.params["dt"]) :],
+                model.params["dt"],
             )
             domfr = frs[np.argmax(powers)]
 
@@ -183,6 +185,58 @@ class TestALNEvolution(unittest.TestCase):
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+class TestMultiModelEvolution(unittest.TestCase):
+    """
+    MultiModel evolution test - uses FHN single node.
+    """
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Clear after tests
+        """
+        rmtree("data")
+
+    def test_multimodel_evolve(self):
+        fhn_node = MultiModel.init_node(FitzHughNagumoNode())
+        pars = ParameterSpace({"*noise*sigma": [0.0, 0.5], "*epsilon*": [0.2, 0.8]}, allow_star_notation=True)
+
+        def evaluateSimulation(traj):
+            model = evolution.getModelFromTraj(traj)
+            model.run()
+
+            # compute power spectrum
+            frs, powers = func.getPowerSpectrum(model.x[:, -int(1000 / model.params["dt"]) :], dt=model.params["dt"])
+            # find the peak frequency
+            domfr = frs[np.argmax(powers)]
+            # fitness evaluation: let's try to find a 25 Hz oscillation
+            fitness = abs(domfr - 25)
+            # deap needs a fitness *tuple*!
+            fitness_tuple = ()
+            # more fitness values could be added
+            fitness_tuple += (fitness,)
+            # we need to return the fitness tuple and the outputs of the model
+            return fitness_tuple, model.outputs
+
+        evolution = Evolution(
+            evalFunction=evaluateSimulation,
+            parameterSpace=pars,
+            model=fhn_node,
+            weightList=[-1.0],
+            POP_INIT_SIZE=4,
+            POP_SIZE=4,
+            NGEN=2,
+            filename="test_multimodel.hdf",
+        )
+
+        evolution.run(verbose=False)
+        evolution.info(plot=False)
+        evolution.loadResults()
+        _ = evolution.getScoresDuringEvolution()
+        evolution.dfPop
+        evolution.dfEvolution
 
 
 if __name__ == "__main__":

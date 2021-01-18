@@ -1,24 +1,19 @@
 import datetime
-import os
 import logging
 import multiprocessing
-import sys
+import os
 
 import deap
-from deap import base
-from deap import creator
-from deap import tools
-
 import numpy as np
-import pypet as pp
 import pandas as pd
+import pypet as pp
+from deap import base, creator, tools
 
 from ...utils import paths as paths
 from ...utils import pypetUtils as pu
 from ...utils.parameterSpace import ParameterSpace
-
-from . import evolutionaryUtils as eu
 from . import deapUtils as du
+from . import evolutionaryUtils as eu
 
 
 class Evolution:
@@ -92,9 +87,6 @@ class Evolution:
 
         :param individualGenerator: Function to generate initial individuals, defaults to du.randomParametersAdaptive
         """
-
-        if parameterSpace.star:
-            raise NotImplementedError("Evolution with star parameter notation not supported right now.")
 
         if weightList is None:
             logging.info("weightList not set, assuming single fitness value to be maximized.")
@@ -287,7 +279,16 @@ class Evolution:
         :rtype: `neurolib.models.model.Model`
         """
         model = self.model
-        model.params.update(self.individualToDict(self.getIndividualFromTraj(traj)))
+        # resolve star notation - MultiModel
+        individual_params = self.individualToDict(self.getIndividualFromTraj(traj))
+        if self.parameterSpace.star:
+            individual_params = {
+                key_u: v
+                for k, v in individual_params.items()
+                for key_u in list(self.model.params[k.replace("STAR", "*")].keys())
+            }
+
+        model.params.update(individual_params)
         return model
 
     def getIndividualFromHistory(self, id):
