@@ -49,12 +49,15 @@ class TestNeuralMass(unittest.TestCase):
         self.assertDictEqual(self.PARAMS, mass.params)
 
     def test_update_params(self):
-        UPDATE_WITH = {"a": 2.4}
+        UPDATE_WITH = {"a": 2.4, "noise_0": {"seed": 12}}
 
         mass = MassTest(self.PARAMS)
-        self.assertDictEqual(self.PARAMS, mass.params)
+        mass.index = 0
+        mass.init_mass(start_idx_for_noise=0)
+        self.assertEqual(mass.params["a"], self.PARAMS["a"])
         mass.update_params(UPDATE_WITH)
-        self.assertDictEqual({**self.PARAMS, **UPDATE_WITH}, mass.params)
+        self.assertEqual(mass.params["a"], UPDATE_WITH["a"])
+        self.assertEqual(mass.params["noise_0"]["seed"], UPDATE_WITH["noise_0"]["seed"])
 
     def test_init_mass(self):
         mass = MassTest(self.PARAMS)
@@ -66,14 +69,13 @@ class TestNeuralMass(unittest.TestCase):
         self.assertListEqual(mass.noise_input_idx, [6, 7])
 
     def test_unwrap_state_vector(self):
-        for sde_only in [True, False]:
-            mass = MassTest(self.PARAMS)
-            mass.idx_state_var = 0
-            self.assertTrue(hasattr(mass, "_unwrap_state_vector"))
-            state_vec = mass._unwrap_state_vector()
-            self.assertTrue(isinstance(state_vec, list))
-            self.assertEqual(len(state_vec), mass.num_state_variables)
-            self.assertTrue(all(isinstance(vec, se.Function) for vec in state_vec))
+        mass = MassTest(self.PARAMS)
+        mass.idx_state_var = 0
+        self.assertTrue(hasattr(mass, "_unwrap_state_vector"))
+        state_vec = mass._unwrap_state_vector()
+        self.assertTrue(isinstance(state_vec, list))
+        self.assertEqual(len(state_vec), mass.num_state_variables)
+        self.assertTrue(all(isinstance(vec, se.Function) for vec in state_vec))
 
 
 if __name__ == "__main__":

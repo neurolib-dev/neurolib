@@ -10,6 +10,8 @@ import neurolib.utils.pypetUtils as pu
 import numpy as np
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
+from neurolib.models.multimodel import MultiModel
+from neurolib.models.multimodel.builder.fitzhugh_nagumo import FitzHughNagumoNetwork
 from neurolib.optimize.exploration import BoxSearch
 from neurolib.utils.loadData import Dataset
 from neurolib.utils.parameterSpace import ParameterSpace
@@ -130,8 +132,7 @@ class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
 
 
 class TestCustomParameterExploration(unittest.TestCase):
-    """Exploration with custom function
-    """
+    """Exploration with custom function"""
 
     def test_circle_exploration(self):
         def explore_me(traj):
@@ -150,6 +151,26 @@ class TestCustomParameterExploration(unittest.TestCase):
             search.dfResults.loc[i, "distance"] = search.results[i]["distance"]
 
         search.dfResults
+
+
+class TestExplorationMultiModel(unittest.TestCase):
+    """
+    MultiModel exploration test - uses FHN network.
+    """
+
+    def test_multimodel_explore(self):
+        start = time.time()
+
+        DELAY = 13.0
+        fhn_net = FitzHughNagumoNetwork(np.random.rand(2, 2), np.array([[0.0, DELAY], [DELAY, 0.0]]))
+        model = MultiModel(fhn_net)
+        parameters = ParameterSpace({"*noise*sigma": [0.0, 0.05], "*epsilon*": [0.5, 0.6]}, allow_star_notation=True)
+        search = BoxSearch(model, parameters, filename="test_multimodel.hdf")
+        search.run()
+        search.loadResults()
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
 
 
 if __name__ == "__main__":

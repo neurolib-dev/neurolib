@@ -2,29 +2,33 @@
 Class for representing a parameter space for exploration or optimization.
 """
 
-import collections
+from collections import namedtuple
 import numpy as np
-import logging
 
 
 class ParameterSpace:
-    """Paremter space
+    """
+    Parameter space
     """
 
-    def __init__(self, parameters, parameterValues=None, kind=None):
-        """Initialize parameter space. Parameter space can be initialized in two ways:
-        Either a `parameters` is a dictionary of the form `{"parName1" : [0, 1, 2], "parName2" : [3, 4]}`, 
+    def __init__(self, parameters, parameterValues=None, kind=None, allow_star_notation=False):
+        """
+        Initialize parameter space. Parameter space can be initialized in two ways:
+        Either a `parameters` is a dictionary of the form `{"parName1" : [0, 1, 2], "parName2" : [3, 4]}`,
         or `parameters` is a list of names and `parameterValues` are values of each parameter.
-        
+
         :param parameters: parameter dictionary or list of names of parameters e.g. `['x', 'y']`
         :type parameters: `dict, list[str, str]`
         :param parameterValues: list of parameter values (must be floats) e.g. `[[x_min, x_max], [y_min, y_max], ...]`
         :type parameterValues: `list[list[float, float]]`
         :param kind: string describing the kind of parameter space. Supports "point", "bound", "grid"
         :type kind: str
+        :param allow_star_notation: whether to allow star notation in parameter names - MultiModel
+        :type allow_star_notation: bool
         """
         self.kind = kind
         self.parameters = parameters
+        self.star = allow_star_notation
         # in case a parameter dictionary was given
         if parameterValues is None:
             assert isinstance(
@@ -33,7 +37,7 @@ class ParameterSpace:
             processedParameters = self._processParameterDict(parameters)
         else:
             # check if all names are strings
-            assert np.all([isinstance(pn, str) for pn in parameters]), f"Parameter names must all be strings."
+            assert np.all([isinstance(pn, str) for pn in parameters]), "Parameter names must all be strings."
             # check if all parameter values are lists
             assert np.all([isinstance(pv, (list, tuple)) for pv in parameterValues]), "Parameter values must be a list."
             parameters = self._parameterListsToDict(parameters, parameterValues)
@@ -45,16 +49,16 @@ class ParameterSpace:
 
         # let's create a named tuple of the parameters
         # Note: evolution.py implementation relies on named tuples
-        self.named_tuple_constructor = collections.namedtuple("ParameterSpace", parameters)
-        self.named_tuple = self.named_tuple_constructor(*self.parameterValues)
+        if not self.star:
+            self.named_tuple_constructor = namedtuple("ParameterSpace", parameters)
+            self.named_tuple = self.named_tuple_constructor(*self.parameterValues)
 
         # set attributes of this class to make it accessible
         for i, p in enumerate(self.parameters):
             setattr(self, p, self.parameterValues[i])
 
     def __str__(self):
-        """Print the named_tuple object
-        """
+        """Print the named_tuple object"""
         return str(self.parameters)
 
     def __getitem__(self, key):
@@ -72,12 +76,12 @@ class ParameterSpace:
 
     def getRandom(self, safe=False):
         """This function returns a random single parameter from the whole space
-        in the form of { "par1" : 1, "par2" : 2}. 
-        
+        in the form of { "par1" : 1, "par2" : 2}.
+
         This function is used by neurolib/optimize/exploarion.py
         to add parameters of the space to pypet (for initialization)
 
-        :param safe: Return a "safe" parameter or the original. Safe refers to 
+        :param safe: Return a "safe" parameter or the original. Safe refers to
         returning python floats, not, for example numpy.float64 (necessary for pypet).
         ;type safe: bool
         """
@@ -97,20 +101,17 @@ class ParameterSpace:
 
     @property
     def lowerBound(self):
-        """Returns lower bound of all parameters as a list
-        """
+        """Returns lower bound of all parameters as a list"""
         return [np.min(p) for p in self.parameterValues]
 
     @property
     def upperBound(self):
-        """Returns upper bound of all parameters as a list
-        """
+        """Returns upper bound of all parameters as a list"""
         return [np.max(p) for p in self.parameterValues]
 
     @property
     def ndims(self):
-        """Number of dimensions (parameters)
-        """
+        """Number of dimensions (parameters)"""
         return len(self.parameters)
 
     @staticmethod
@@ -146,7 +147,7 @@ class ParameterSpace:
         """Processes all parameters and do checks. Determine the kind of the parameter space.
         :param parameters: parameter dictionary
         :type param: dict
-        
+
         :retun: processed parameter dictionary
         :rtype: dict
         """
