@@ -487,6 +487,7 @@ class BoxSearch:
         dataarrays = []
         orig_search_coords = pypet.cartesian_product(self.exploreParameters)
         for runId, run_result in self.results.items():
+            # take exploration coordinates for this run
             expl_coords = {k: v[runId] for k, v in orig_search_coords.items()}
             outputs = []
             run_result = self._filt_dict_bold(run_result, bold=bold)
@@ -494,20 +495,28 @@ class BoxSearch:
                 if key == timeDictKey:
                     continue
                 outputs.append(value)
+            # create DataArray for run only - we need to add exploration coordinates
             data_temp = xr.DataArray(
                 np.stack(outputs), dims=["output", "space", "time"], coords=run_coords, name="exploration"
             )
             expand_coords = {}
+            # iterate exploration coordinates
             for k, v in expl_coords.items():
+                # if single values, just assing
                 if isinstance(v, (str, float, int)):
                     expand_coords[k] = [v]
+                # if arrays, check whether they can be sqeezed into one value
                 elif isinstance(v, np.ndarray):
                     if np.unique(v).size == 1:
+                        # if yes, just assing that one value
                         expand_coords[k] = [float(np.unique(v))]
                     else:
+                        # if no, sorry - coordinates cannot be array
                         raise ValueError("Cannot squeeze coordinates")
+            # assing exploration coordinates to the DataArray
             dataarrays.append(data_temp.expand_dims(expand_coords))
 
+        # finally, combine all arrays into one
         combined = xr.combine_by_coords(dataarrays)["exploration"]
         if self.parameterSpace.star:
             combined.attrs = {k: list(self.model.params[k].keys()) for k in orig_search_coords.keys()}
