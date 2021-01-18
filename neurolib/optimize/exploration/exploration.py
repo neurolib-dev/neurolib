@@ -1,21 +1,19 @@
-import multiprocessing
-import datetime
-import os
-import logging
-import pathlib
 import copy
-import psutil
+import datetime
+import logging
+import multiprocessing
+import os
+import pathlib
 
 import numpy as np
 import pandas as pd
-import h5py
+import psutil
 import pypet
 import tqdm
 
 from ...utils import paths
 from ...utils import pypetUtils as pu
-
-from ...utils.collections import dotdict
+from ...utils.collections import dotdict, flat_dict_to_nested, flatten_nested_dict
 
 
 class BoxSearch:
@@ -23,18 +21,17 @@ class BoxSearch:
     Paremter box search for a given model and a range of parameters.
     """
 
-    def __init__(
-        self, model=None, parameterSpace=None, evalFunction=None, filename=None, saveAllModelOutputs=False,
-    ):
+    def __init__(self, model=None, parameterSpace=None, evalFunction=None, filename=None, saveAllModelOutputs=False):
         """Either a model has to be passed, or an evalFunction. If an evalFunction
-        is passed, then the evalFunction will be called and the model is accessible to the 
-        evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current 
+        is passed, then the evalFunction will be called and the model is accessible to the
+        evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current
         run are accible via `self.getParametersFromTraj(traj)`.
 
         If no evaluation function is passed, then the model is simulated using `Model.run()`
         for every parameter.
 
-        :param model: Model to run for each parameter (or model to pass to the evaluation funciton if an evaluation function is used), defaults to None
+        :param model: Model to run for each parameter (or model to pass to the evaluation funciton if an evaluation
+            function is used), defaults to None
         :type model: `neurolib.models.model.Model`, optional
         :param parameterSpace: Parameter space to explore, defaults to None
         :type parameterSpace: `neurolib.utils.parameterSpace.ParameterSpace`, optional
@@ -42,7 +39,9 @@ class BoxSearch:
         :type evalFunction: function, optional
         :param filename: HDF5 storage file name, if left empty, defaults to ``exploration.hdf``
         :type filename: str
-        :param saveAllModelOutputs: If True, save all outputs of model, else only default output of the model will be saved. Note: if saveAllModelOutputs==False and the model's parameter model.params['bold']==True, then BOLD output will be saved as well, defaults to False
+        :param saveAllModelOutputs: If True, save all outputs of model, else only default output of the model will be
+            saved. Note: if saveAllModelOutputs==False and the model's parameter model.params['bold']==True, then BOLD
+            output will be saved as well, defaults to False
         :type saveAllModelOutputs: bool
         """
         self.model = model
@@ -60,7 +59,8 @@ class BoxSearch:
         self.parameterSpace = parameterSpace
         self.exploreParameters = parameterSpace.dict()
 
-        # todo: use random ICs for every explored point or rather reuse the ones that are generated at model initialization
+        # TODO: use random ICs for every explored point or rather reuse the ones that are generated at model
+        # initialization
         self.useRandomICs = False
 
         filename = filename or "exploration.hdf"
@@ -74,7 +74,7 @@ class BoxSearch:
 
     def initializeExploration(self, filename="exploration.hdf"):
         """Initialize the pypet environment
-        
+
         :param filename: hdf filename to store the results in , defaults to "exploration.hdf"
         :type filename: str, optional
         """
@@ -116,6 +116,13 @@ class BoxSearch:
 
         # Tell pypet which parameters to explore
         self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
+        # explicitely add all parameters within star notation, hence unwrap star notation into actual params names
+        if self.parameterSpace.star:
+            assert self.model is not None, "With star notation, model cannot be None"
+            # for each `k` that possibly contain stars get all key_u (unwrapped keys) from the star_dotdict
+            self.pypetParametrization = {
+                key_u: v for k, v in self.pypetParametrization.items() for key_u in list(self.model.params[k].keys())
+            }
         self.nRuns = len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
         logging.info(f"Number of parameter configurations: {self.nRuns}")
 
@@ -128,7 +135,7 @@ class BoxSearch:
     def addParametersToPypet(self, traj, params):
         """This function registers the parameters of the model to Pypet.
         Parameters can be nested dictionaries. They are unpacked and stored recursively.
-        
+
         :param traj: Pypet trajectory to store the parameters in
         :type traj: `pypet.trajectory.Trajectory`
         :param params: Parameter dictionary
@@ -158,7 +165,7 @@ class BoxSearch:
     def saveToPypet(self, outputs, traj):
         """This function takes simulation results in the form of a nested dictionary
         and stores all data into the pypet hdf file.
-        
+
         :param outputs: Simulation outputs as a dictionary.
         :type outputs: dict
         :param traj: Pypet trajectory
@@ -185,7 +192,7 @@ class BoxSearch:
     def runModel(self, traj):
         """If not evaluation function is given, we assume that a model will be simulated.
         This function will be called by pypet directly and therefore wants a pypet trajectory as an argument
-        
+
         :param traj: Pypet trajectory
         :type traj: `pypet.trajectory.Trajectory`
         """
@@ -193,6 +200,8 @@ class BoxSearch:
             logging.warn("Random initial conditions not implemented yet")
         # get parameters of this run from pypet trajectory
         runParams = self.getParametersFromTraj(traj)
+        if self.parameterSpace.star:
+            runParams = flatten_nested_dict(flat_dict_to_nested(runParams)["parameters"])
 
         # set the parameters for the model
         self.model.params.update(runParams)
@@ -214,7 +223,11 @@ class BoxSearch:
         else:
             # save only the default output
             self.saveToPypet(
-                {self.model.default_output: self.model.output, "t": self.model.outputs["t"],}, traj,
+                {
+                    self.model.default_output: self.model.output,
+                    "t": self.model.outputs["t"],
+                },
+                traj,
             )
             # save BOLD output
             # if "bold" in self.model.params:
@@ -224,7 +237,7 @@ class BoxSearch:
                 self.saveToPypet(self.model.outputs["BOLD"], traj)
 
     def validatePypetParameters(self, runParams):
-        """Helper to handle None's in pypet parameters 
+        """Helper to handle None's in pypet parameters
         (used for random number generator seed)
 
         :param runParams: parameters as returned by traj.parameters.f_to_dict()
@@ -239,13 +252,14 @@ class BoxSearch:
 
     def getParametersFromTraj(self, traj):
         """Returns the parameters of the current run as a (dot.able) dictionary
-        
+
         :param traj: Pypet trajectory
         :type traj: `pypet.trajectory.Trajectory`
         :return: Parameter set of the current run
         :rtype: dict
         """
-        runParams = self.traj.parameters.f_to_dict(short_names=True, fast_access=True)
+        # DO NOT use short names for star notation dicts
+        runParams = self.traj.parameters.f_to_dict(short_names=not self.parameterSpace.star, fast_access=True)
         runParams = self.validatePypetParameters(runParams)
         return dotdict(runParams)
 
@@ -273,16 +287,21 @@ class BoxSearch:
 
     def loadResults(self, all=True, filename=None, trajectoryName=None, pypetShortNames=True, memory_cap=95.0):
         """Load results from a hdf file of a previous simulation.
-        
-        :param all: Load all simulated results into memory, which will be available as the `.results` attribute. Can use a lot of RAM if your simulation is large, please use this with caution. , defaults to True
+
+        :param all: Load all simulated results into memory, which will be available as the `.results` attribute. Can
+            use a lot of RAM if your simulation is large, please use this with caution. , defaults to True
         :type all: bool, optional
         :param filename: hdf file name in which results are stored, defaults to None
         :type filename: str, optional
-        :param trajectoryName: Name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
+        :param trajectoryName: Name of the trajectory inside the hdf file, newest will be used if left empty, defaults
+            to None
         :type trajectoryName: str, optional
-        :param pypetShortNames: Use pypet short names as keys for the results dictionary. Use if you are experiencing errors due to natural naming collisions.
+        :param pypetShortNames: Use pypet short names as keys for the results dictionary. Use if you are experiencing
+            errors due to natural naming collisions.
         :type pypetShortNames: bool
-        :param memory_cap: Percentage memory cap between 0 and 100. If `all=True` is used, a memory cap can be set to avoid filling up the available RAM. Example: use `memory_cap = 95` to avoid loading more data if memory is at 95% use, defaults to 95
+        :param memory_cap: Percentage memory cap between 0 and 100. If `all=True` is used, a memory cap can be set to
+            avoid filling up the available RAM. Example: use `memory_cap = 95` to avoid loading more data if memory is
+            at 95% use, defaults to 95
         :type memory_cap: float, int, optional
         """
 
@@ -329,9 +348,11 @@ class BoxSearch:
     def aggregateResultsToDfResults(self, arrays=True, fillna=False):
         """Aggregate all results in to dfResults dataframe.
 
-        :param arrays: Load array results (like timeseries) if True. If False, only load scalar results, defaults to True
+        :param arrays: Load array results (like timeseries) if True. If False, only load scalar results, defaults to
+            True
         :type arrays: bool, optional
-        :param fillna: Fill nan results (for example if they're not returned in a subset of runs) with zeros, default to False
+        :param fillna: Fill nan results (for example if they're not returned in a subset of runs) with zeros, default
+            to False
         :type fillna: bool, optional
         """
         nan_value = np.nan
@@ -355,7 +376,7 @@ class BoxSearch:
                 # only save floats, ints and arrays
                 if isinstance(value, (float, int, np.ndarray)):
                     # save 1-dim arrays
-                    if isinstance(value, np.ndarray) and arrays == True:
+                    if isinstance(value, np.ndarray) and arrays:
                         # to save a numpy array, convert column to object type
                         if key not in self.dfResults:
                             self.dfResults[key] = None
@@ -374,10 +395,11 @@ class BoxSearch:
 
     def loadDfResults(self, filename=None, trajectoryName=None):
         """Load results from a previous simulation.
-        
+
         :param filename: hdf file name in which results are stored, defaults to None
         :type filename: str, optional
-        :param trajectoryName: Name of the trajectory inside the hdf file, newest will be used if left empty, defaults to None
+        :param trajectoryName: Name of the trajectory inside the hdf file, newest will be used if left empty, defaults
+            to None
         :type trajectoryName: str, optional
         """
         # chose HDF file to load
@@ -389,7 +411,9 @@ class BoxSearch:
 
         # create pandas dataframe of all runs with parameters as keys
         logging.info("Creating `dfResults` dataframe ...")
-        niceParKeys = [p.split(".")[-1] for p in exploredParameters.keys()]
+        niceParKeys = [p[11:] for p in exploredParameters.keys()]
+        if not self.parameterSpace:
+            niceParKeys = [p.split(".")[-1] for p in niceParKeys]
         self.dfResults = pd.DataFrame(columns=niceParKeys, dtype=object)
         for nicep, p in zip(niceParKeys, exploredParameters.keys()):
             self.dfResults[nicep] = exploredParameters[p].f_get_range()
@@ -401,7 +425,7 @@ class BoxSearch:
         :type runId: int
 
         :return: Dictionary with simulated data and parameters of the run.
-        :type return: dict        
+        :type return: dict
         """
         # chose HDF file to load
         filename = self.HDF_FILE or filename
@@ -442,8 +466,7 @@ class BoxSearch:
         return self.results[runId] if hasattr(self, "results") else self.getRun(runId)
 
     def info(self):
-        """Print info about the current search.
-        """
+        """Print info about the current search."""
         now = datetime.datetime.now().strftime("%Y-%m-%d-%HH-%MM-%SS")
         print(f"Exploration info ({now})")
         print(f"HDF name: {self.HDF_FILE}")

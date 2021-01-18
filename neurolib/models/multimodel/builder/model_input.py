@@ -41,6 +41,17 @@ class ModelInput:
         params = {name: getattr(self, name) for name in self.param_names}
         return {"type": self.__class__.__name__, **params}
 
+    def update_params(self, params_dict):
+        """
+        Update model input parameters.
+
+        :param params_dict: new parameters for this model input
+        :type params_dict: dict
+        """
+        for param, value in params_dict.items():
+            if hasattr(self, param):
+                setattr(self, param, value)
+
     def _get_times(self, duration, dt):
         """
         Generate time vector.

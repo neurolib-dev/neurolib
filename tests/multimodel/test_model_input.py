@@ -48,11 +48,19 @@ class TestZeroInput(unittest.TestCase):
         self.assertTupleEqual(nn.shape, SHAPE)
         np.testing.assert_allclose(nn, np.zeros(SHAPE))
 
-    def test_params(self):
+    def test_get_params(self):
         nn = ZeroInput(num_iid=2, seed=42)
         params = nn.get_params()
         params.pop("type")
         self.assertDictEqual(params, {"num_iid": 2, "seed": 42})
+
+    def test_set_params(self):
+        nn = ZeroInput(num_iid=2, seed=42)
+        UPDATE = {"seed": 635}
+        nn.update_params(UPDATE)
+        params = nn.get_params()
+        params.pop("type")
+        self.assertDictEqual(params, {"num_iid": 2, "seed": 42, **UPDATE})
 
 
 class TestWienerProcess(unittest.TestCase):
@@ -61,11 +69,19 @@ class TestWienerProcess(unittest.TestCase):
         self.assertTrue(isinstance(dW, np.ndarray))
         self.assertTupleEqual(dW.shape, SHAPE)
 
-    def test_params(self):
+    def test_get_params(self):
         dW = WienerProcess(num_iid=2, seed=42)
         params = dW.get_params()
         params.pop("type")
         self.assertDictEqual(params, {"num_iid": 2, "seed": 42})
+
+    def test_set_params(self):
+        dW = WienerProcess(num_iid=2, seed=42)
+        UPDATE = {"seed": 6152, "num_iid": 5}
+        dW.update_params(UPDATE)
+        params = dW.get_params()
+        params.pop("type")
+        self.assertDictEqual(params, {"num_iid": 2, "seed": 42, **UPDATE})
 
 
 class TestOrnsteinUhlenbeckProcess(unittest.TestCase):
@@ -80,7 +96,7 @@ class TestOrnsteinUhlenbeckProcess(unittest.TestCase):
         self.assertTrue(isinstance(ou, np.ndarray))
         self.assertTupleEqual(ou.shape, SHAPE)
 
-    def test_params(self):
+    def test_get_params(self):
         ou = OrnsteinUhlenbeckProcess(
             mu=3.0,
             sigma=0.1,
@@ -91,6 +107,20 @@ class TestOrnsteinUhlenbeckProcess(unittest.TestCase):
         params = ou.get_params()
         params.pop("type")
         self.assertDictEqual(params, {"num_iid": 2, "seed": 42, "mu": 3.0, "sigma": 0.1, "tau": 2 * DT})
+
+    def test_set_params(self):
+        ou = OrnsteinUhlenbeckProcess(
+            mu=3.0,
+            sigma=0.1,
+            tau=2 * DT,
+            num_iid=2,
+            seed=42,
+        )
+        UPDATE = {"mu": 2.3, "seed": 12}
+        ou.update_params(UPDATE)
+        params = ou.get_params()
+        params.pop("type")
+        self.assertDictEqual(params, {"num_iid": 2, "seed": 42, "mu": 3.0, "sigma": 0.1, "tau": 2 * DT, **UPDATE})
 
 
 class TestStepInput(unittest.TestCase):
@@ -145,7 +175,7 @@ class TestSinusoidalInput(unittest.TestCase):
         np.testing.assert_allclose(sin[: int(STIM_START / DT) - 1, :], 0.0)
         np.testing.assert_allclose(sin[int(STIM_END / DT) :, :], 0.0)
 
-    def test_params(self):
+    def test_get_params(self):
         sin = SinusoidalInput(
             stim_start=STIM_START,
             stim_end=STIM_END,
@@ -166,6 +196,33 @@ class TestSinusoidalInput(unittest.TestCase):
                 "stim_start": STIM_START,
                 "nonnegative": True,
                 "stim_end": STIM_END,
+            },
+        )
+
+    def test_set_params(self):
+        sin = SinusoidalInput(
+            stim_start=STIM_START,
+            stim_end=STIM_END,
+            amplitude=self.AMPLITUDE,
+            period=self.PERIOD,
+            num_iid=2,
+            seed=42,
+        )
+        UPDATE = {"amplitude": 43.0, "seed": 12}
+        sin.update_params(UPDATE)
+        params = sin.get_params()
+        params.pop("type")
+        self.assertDictEqual(
+            params,
+            {
+                "num_iid": 2,
+                "seed": 42,
+                "period": self.PERIOD,
+                "amplitude": self.AMPLITUDE,
+                "stim_start": STIM_START,
+                "nonnegative": True,
+                "stim_end": STIM_END,
+                **UPDATE,
             },
         )
 
@@ -198,7 +255,7 @@ class TestSquareInput(unittest.TestCase):
         np.testing.assert_allclose(sq[: int(STIM_START / DT) - 1, :], 0.0)
         np.testing.assert_allclose(sq[int(STIM_END / DT) :, :], 0.0)
 
-    def test_params(self):
+    def test_get_params(self):
         sq = SquareInput(
             stim_start=STIM_START,
             stim_end=STIM_END,
@@ -219,6 +276,33 @@ class TestSquareInput(unittest.TestCase):
                 "stim_start": STIM_START,
                 "stim_end": STIM_END,
                 "nonnegative": True,
+            },
+        )
+
+    def test_set_params(self):
+        sq = SquareInput(
+            stim_start=STIM_START,
+            stim_end=STIM_END,
+            amplitude=self.AMPLITUDE,
+            period=self.PERIOD,
+            num_iid=2,
+            seed=42,
+        )
+        UPDATE = {"amplitude": 43.0, "seed": 12}
+        sq.update_params(UPDATE)
+        params = sq.get_params()
+        params.pop("type")
+        self.assertDictEqual(
+            params,
+            {
+                "num_iid": 2,
+                "seed": 42,
+                "period": self.PERIOD,
+                "amplitude": self.AMPLITUDE,
+                "stim_start": STIM_START,
+                "stim_end": STIM_END,
+                "nonnegative": True,
+                **UPDATE,
             },
         )
 
@@ -252,7 +336,7 @@ class TestLinearRampInput(unittest.TestCase):
         np.testing.assert_allclose(ramp[: int(STIM_START / DT) - 1, :], 0.0)
         np.testing.assert_allclose(ramp[int(STIM_END / DT) :, :], 0.0)
 
-    def test_params(self):
+    def test_get_params(self):
         ramp = LinearRampInput(
             stim_start=STIM_START,
             stim_end=STIM_END,
@@ -272,6 +356,32 @@ class TestLinearRampInput(unittest.TestCase):
                 "ramp_length": self.RAMP_LENGTH,
                 "stim_start": STIM_START,
                 "stim_end": STIM_END,
+            },
+        )
+
+    def test_set_params(self):
+        ramp = LinearRampInput(
+            stim_start=STIM_START,
+            stim_end=STIM_END,
+            inp_max=self.INP_MAX,
+            ramp_length=self.RAMP_LENGTH,
+            num_iid=2,
+            seed=42,
+        )
+        UPDATE = {"inp_max": 41.0, "seed": 12}
+        ramp.update_params(UPDATE)
+        params = ramp.get_params()
+        params.pop("type")
+        self.assertDictEqual(
+            params,
+            {
+                "num_iid": 2,
+                "seed": 42,
+                "inp_max": self.INP_MAX,
+                "ramp_length": self.RAMP_LENGTH,
+                "stim_start": STIM_START,
+                "stim_end": STIM_END,
+                **UPDATE,
             },
         )
 

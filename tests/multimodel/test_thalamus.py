@@ -21,8 +21,8 @@ DURATION = 100.0
 DT = 0.01
 CORR_THRESHOLD = 0.95
 NEUROLIB_VARIABLES_TO_TEST = [
-    ("q_mean_EXC", "Q_t"),
-    ("q_mean_INH", "Q_r"),
+    ("r_mean_EXC", "Q_t"),
+    ("r_mean_INH", "Q_r"),
     ("V_EXC", "V_t"),
     ("V_INH", "V_r"),
 ]
@@ -65,8 +65,8 @@ class TestThalamicMass(MassTestCase):
         trn = self._create_trn_mass()
         self.assertTrue(isinstance(tcr, ThalamocorticalMass))
         self.assertTrue(isinstance(trn, ThalamicReticularMass))
-        self.assertDictEqual(tcr.params, TCR_DEFAULT_PARAMS)
-        self.assertDictEqual(trn.params, TRN_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in tcr.params.items() if "noise" not in k}, TCR_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in trn.params.items() if "noise" not in k}, TRN_DEFAULT_PARAMS)
         for thlm in [tcr, trn]:
             coupling_variables = {k: 0.0 for k in thlm.required_couplings}
             self.assertEqual(
@@ -97,8 +97,8 @@ class TestThalamicNode(unittest.TestCase):
         thlm = self._create_node()
         self.assertTrue(isinstance(thlm, ThalamicNode))
         self.assertEqual(len(thlm), 2)
-        self.assertDictEqual(thlm[0].params, TCR_DEFAULT_PARAMS)
-        self.assertDictEqual(thlm[1].params, TRN_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in thlm[0].params.items() if "noise" not in k}, TCR_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in thlm[1].params.items() if "noise" not in k}, TRN_DEFAULT_PARAMS)
         self.assertEqual(len(thlm.default_network_coupling), 2)
         np.testing.assert_equal(
             np.array(sum([thlmm.initial_state for thlmm in thlm], [])),

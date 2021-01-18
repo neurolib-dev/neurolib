@@ -64,8 +64,8 @@ class TestWongWangMass(MassTestCase):
         ww_inh = self._create_inh_mass()
         self.assertTrue(isinstance(ww_exc, ExcitatoryWongWangMass))
         self.assertTrue(isinstance(ww_inh, InhibitoryWongWangMass))
-        self.assertDictEqual(ww_exc.params, WW_EXC_DEFAULT_PARAMS)
-        self.assertDictEqual(ww_inh.params, WW_INH_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in ww_exc.params.items() if "noise" not in k}, WW_EXC_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in ww_inh.params.items() if "noise" not in k}, WW_INH_DEFAULT_PARAMS)
         for ww in [ww_exc, ww_inh]:
             coupling_variables = {k: 0.0 for k in ww.required_couplings}
             self.assertEqual(len(ww._derivatives(coupling_variables)), ww.num_state_variables)
@@ -92,7 +92,7 @@ class TestReducedWongWangMass(MassTestCase):
     def test_init(self):
         rww = self._create_mass()
         self.assertTrue(isinstance(rww, ReducedWongWangMass))
-        self.assertDictEqual(rww.params, WW_REDUCED_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in rww.params.items() if "noise" not in k}, WW_REDUCED_DEFAULT_PARAMS)
         coupling_variables = {k: 0.0 for k in rww.required_couplings}
         self.assertEqual(len(rww._derivatives(coupling_variables)), rww.num_state_variables)
         self.assertEqual(len(rww.initial_state), rww.num_state_variables)
@@ -117,8 +117,8 @@ class TestWongWangNode(unittest.TestCase):
         ww = self._create_node()
         self.assertTrue(isinstance(ww, WongWangNode))
         self.assertEqual(len(ww), 2)
-        self.assertDictEqual(ww[0].params, WW_EXC_DEFAULT_PARAMS)
-        self.assertDictEqual(ww[1].params, WW_INH_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in ww[0].params.items() if "noise" not in k}, WW_EXC_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in ww[1].params.items() if "noise" not in k}, WW_INH_DEFAULT_PARAMS)
         self.assertEqual(len(ww.default_network_coupling), 2)
         np.testing.assert_equal(
             np.array(sum([wwm.initial_state for wwm in ww], [])),
@@ -162,7 +162,7 @@ class TestReducedWongWangNode(unittest.TestCase):
         rww = self._create_node()
         self.assertTrue(isinstance(rww, ReducedWongWangNode))
         self.assertEqual(len(rww), 1)
-        self.assertDictEqual(rww[0].params, WW_REDUCED_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in rww[0].params.items() if "noise" not in k}, WW_REDUCED_DEFAULT_PARAMS)
         self.assertEqual(len(rww.default_network_coupling), 1)
         np.testing.assert_equal(np.array(rww[0].initial_state), rww.initial_state)
 
