@@ -8,6 +8,7 @@ import unittest
 import neurolib.utils.paths as paths
 import neurolib.utils.pypetUtils as pu
 import numpy as np
+import xarray as xr
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.multimodel import MultiModel
@@ -36,6 +37,9 @@ class TestExplorationSingleNode(unittest.TestCase):
         search = BoxSearch(model, parameters, filename="test_single_nodes.hdf")
         search.run()
         search.loadResults()
+        dataarray = search.xr()
+        self.assertTrue(isinstance(dataarray, xr.DataArray))
+        self.assertFalse(dataarray.attrs)
 
         for i in search.dfResults.index:
             search.dfResults.loc[i, "max_r"] = np.max(
@@ -74,6 +78,14 @@ class TestExplorationBrainNetwork(unittest.TestCase):
         search.getRun(0, pypetShortNames=True)
         search.getRun(0, pypetShortNames=False)
         search.loadResults()
+        # firing rate xr
+        dataarray = search.xr()
+        self.assertTrue(isinstance(dataarray, xr.DataArray))
+        self.assertFalse(dataarray.attrs)
+        # bold xr
+        dataarray = search.xr(bold=True)
+        self.assertTrue(isinstance(dataarray, xr.DataArray))
+        self.assertFalse(dataarray.attrs)
         search.info()
 
 
@@ -168,6 +180,10 @@ class TestExplorationMultiModel(unittest.TestCase):
         search = BoxSearch(model, parameters, filename="test_multimodel.hdf")
         search.run()
         search.loadResults()
+        dataarray = search.xr()
+        self.assertTrue(isinstance(dataarray, xr.DataArray))
+        self.assertTrue(isinstance(dataarray.attrs, dict))
+        self.assertListEqual(list(dataarray.attrs.keys()), list(parameters.dict().keys()))
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
