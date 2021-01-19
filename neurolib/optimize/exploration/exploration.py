@@ -10,10 +10,11 @@ import pandas as pd
 import psutil
 import pypet
 import tqdm
+import xarray as xr
 
 from ...utils import paths
 from ...utils import pypetUtils as pu
-from ...utils.collections import dotdict, flat_dict_to_nested, flatten_nested_dict
+from ...utils.collections import dotdict, flat_dict_to_nested, flatten_nested_dict, unwrap_star_dotdict
 
 
 class BoxSearch:
@@ -72,6 +73,8 @@ class BoxSearch:
         self.initialized = False
         self.initializeExploration(self.filename)
 
+        self.results = None
+
     def initializeExploration(self, filename="exploration.hdf"):
         """Initialize the pypet environment
 
@@ -119,10 +122,7 @@ class BoxSearch:
         # explicitely add all parameters within star notation, hence unwrap star notation into actual params names
         if self.parameterSpace.star:
             assert self.model is not None, "With star notation, model cannot be None"
-            # for each `k` that possibly contain stars get all key_u (unwrapped keys) from the star_dotdict
-            self.pypetParametrization = {
-                key_u: v for k, v in self.pypetParametrization.items() for key_u in list(self.model.params[k].keys())
-            }
+            self.pypetParametrization = unwrap_star_dotdict(self.pypetParametrization, self.model)
         self.nRuns = len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
         logging.info(f"Number of parameter configurations: {self.nRuns}")
 
@@ -417,6 +417,108 @@ class BoxSearch:
         self.dfResults = pd.DataFrame(columns=niceParKeys, dtype=object)
         for nicep, p in zip(niceParKeys, exploredParameters.keys()):
             self.dfResults[nicep] = exploredParameters[p].f_get_range()
+
+    @staticmethod
+    def _filt_dict_bold(filt_dict, bold):
+        """
+        Filters result dictionary: either keeps ONLY BOLD results, or remove
+        BOLD results.
+
+        :param filt_dict: dictionary to filter for BOLD keys
+        :type filt_dict: dict
+        :param bold: whether to remove BOLD keys (bold=False) or keep only BOLD
+            keys (bold=True)
+        :return: filtered dict, without or only BOLD keys
+        :rtype: dict
+        """
+        filt_dict = copy.deepcopy(filt_dict)
+        if bold:
+            return {k: v for k, v in filt_dict.items() if "BOLD" in k}
+        else:
+            return {k: v for k, v in filt_dict.items() if "BOLD" not in k}
+
+    def _get_coords_from_run(self, run_dict, bold=False):
+        """
+        Find coordinates of a single run - time, output and space dimensions.
+
+        :param run_dict: dictionary with run results
+        :type run_dict: dict
+        :param bold: whether to do only BOLD or without BOLD results
+        :type bold: bool
+        :return: dictionary of coordinates for xarray
+        :rtype: dict
+        """
+        run_dict = copy.deepcopy(run_dict)
+        run_dict = self._filt_dict_bold(run_dict, bold=bold)
+        timeDictKey = ""
+        if "t" in run_dict:
+            timeDictKey = "t"
+        else:
+            for k in run_dict:
+                if k.startswith("t"):
+                    timeDictKey = k
+                    logging.info(f"Assuming {k} to be the time axis.")
+                    break
+        assert len(timeDictKey) > 0, "No time array found (starting with t) in model output."
+        t = run_dict[timeDictKey].copy()
+        del run_dict[timeDictKey]
+        return timeDictKey, {
+            "output": list(run_dict.keys()),
+            "space": list(range(next(iter(run_dict.values())).shape[0])),
+            "time": t,
+        }
+
+    def xr(self, bold=False):
+        """
+        Return xr.Dataset from the exploration. The coordinates are in the star
+        notation if applicable. The whole list of affected model parameters by
+        star notated exploration is listed in attributes.
+
+        :param bold: if True, will load and return only BOLD output
+        :type bold: bool
+        """
+        assert self.results is not None, "Run `loadResults()` first to populate the results"
+        assert len(self.results) == len(self.dfResults)
+        # create intrisinsic dims for one run
+        timeDictKey, run_coords = self._get_coords_from_run(self.results[0], bold=bold)
+        dataarrays = []
+        orig_search_coords = pypet.cartesian_product(self.exploreParameters)
+        for runId, run_result in self.results.items():
+            # take exploration coordinates for this run
+            expl_coords = {k: v[runId] for k, v in orig_search_coords.items()}
+            outputs = []
+            run_result = self._filt_dict_bold(run_result, bold=bold)
+            for key, value in run_result.items():
+                if key == timeDictKey:
+                    continue
+                outputs.append(value)
+            # create DataArray for run only - we need to add exploration coordinates
+            data_temp = xr.DataArray(
+                np.stack(outputs), dims=["output", "space", "time"], coords=run_coords, name="exploration"
+            )
+            expand_coords = {}
+            # iterate exploration coordinates
+            for k, v in expl_coords.items():
+                # if single values, just assing
+                if isinstance(v, (str, float, int)):
+                    expand_coords[k] = [v]
+                # if arrays, check whether they can be sqeezed into one value
+                elif isinstance(v, np.ndarray):
+                    if np.unique(v).size == 1:
+                        # if yes, just assing that one value
+                        expand_coords[k] = [float(np.unique(v))]
+                    else:
+                        # if no, sorry - coordinates cannot be array
+                        raise ValueError("Cannot squeeze coordinates")
+            # assing exploration coordinates to the DataArray
+            dataarrays.append(data_temp.expand_dims(expand_coords))
+
+        # finally, combine all arrays into one
+        combined = xr.combine_by_coords(dataarrays)["exploration"]
+        if self.parameterSpace.star:
+            combined.attrs = {k: list(self.model.params[k].keys()) for k in orig_search_coords.keys()}
+
+        return combined
 
     def getRun(self, runId, filename=None, trajectoryName=None, pypetShortNames=True):
         """Load the simulated data of a run and its parameters from a pypetTrajectory.
