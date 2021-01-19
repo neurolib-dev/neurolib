@@ -12,14 +12,13 @@ from .collections import dotdict
 
 
 class Dataset:
-    """Dataset class.
-    """
+    """Dataset class."""
 
-    def __init__(self, datasetName=None, normalizeCmats="max", fcd=False):
+    def __init__(self, datasetName=None, normalizeCmats="max", fcd=False, subcortical=False):
         """
-        Load the empirical data sets that are provided with `neurolib`. 
-        
-        Right now, datasets work on a per-subject base. A dataset must be located 
+        Load the empirical data sets that are provided with `neurolib`.
+
+        Right now, datasets work on a per-subject base. A dataset must be located
         in the `neurolib/data/datasets/` directory. Each subject's dataset
         must be in the `subjects` subdirectory of that folder. In each subject
         folder there is a directory called `functional` for time series data
@@ -29,20 +28,20 @@ class Dataset:
         being loaded.
 
         The structural connectivity data (accessible using the attribute
-        loadData.Cmat), can be normalized using the `normalizeCmats` flag. 
+        loadData.Cmat), can be normalized using the `normalizeCmats` flag.
         This defaults to "max" which normalizes the Cmat by its maxmimum.
-        Other options are `waytotal` or `nvoxel`, which normalizes the 
+        Other options are `waytotal` or `nvoxel`, which normalizes the
         Cmat by dividing every row of the matrix by the waytotal or
-        nvoxel files that are provided in the datasets. 
+        nvoxel files that are provided in the datasets.
 
         Info: the waytotal.txt and the nvoxel.txt are files extracted from
-        the tractography of DTI data using `probtrackX` from the `fsl` pipeline. 
+        the tractography of DTI data using `probtrackX` from the `fsl` pipeline.
 
         Individual subject data is provided with the class attributes:
         self.BOLDs: BOLD timeseries of each individual
         self.FCs: Functional connectivity of BOLD timeseries
 
-        Mean data is provided with the class attributes: 
+        Mean data is provided with the class attributes:
         self.Cmat: Structural connectivity matrix (for coupling strenghts between areas)
         self.Dmat: Fiber length matrix (for delays)
         self.BOLDs: BOLD timeseries of each area
@@ -54,15 +53,17 @@ class Dataset:
         :type normalizeCmats: str
         :param fcd: Compute FCD matrices of BOLD data, defaults to False
         :type fcd: bool
+        :param subcortical: Include subcortical areas from the atlas or not, defaults to False
+        :type subcortical: bool
 
         """
         self.has_subjects = None
         if datasetName:
-            self.loadDataset(datasetName, normalizeCmats=normalizeCmats, fcd=fcd)
+            self.loadDataset(datasetName, normalizeCmats=normalizeCmats, fcd=fcd, subcortical=subcortical)
 
-    def loadDataset(self, datasetName, normalizeCmats="max", fcd=False):
+    def loadDataset(self, datasetName, normalizeCmats="max", fcd=False, subcortical=False):
         """Load data into accessible class attributes.
-        
+
         :param datasetName: Name of the dataset (must be in `datasets` directory)
         :type datasetName: str
         :param normalizeCmats: Normalization method for Cmats, defaults to "max"
@@ -77,7 +78,7 @@ class Dataset:
 
         # load all available subject data from disk to memory
         logging.info(f"Loading dataset {datasetName} from {self.dsBaseDirectory}.")
-        self._loadSubjectFiles(self.dsBaseDirectory, filterSubcorticalAAL2=True)
+        self._loadSubjectFiles(self.dsBaseDirectory, subcortical=subcortical)
         assert len(self.data) > 0, "No data loaded."
         assert self.has_subjects
 
@@ -88,7 +89,10 @@ class Dataset:
         self.Cmat = np.mean(self.Cmats, axis=0)
 
         self.Dmat = self.getDataPerSubject(
-            "len", apply="all", apply_function=np.mean, apply_function_kwargs={"axis": 0},
+            "len",
+            apply="all",
+            apply_function=np.mean,
+            apply_function_kwargs={"axis": 0},
         )
         self.BOLDs = self.getDataPerSubject("bold")
         self.FCs = self.getDataPerSubject("bold", apply_function=func.fc)
@@ -103,10 +107,15 @@ class Dataset:
         self.FCDs = self.getDataPerSubject("bold", apply_function=func.fcd, apply_function_kwargs={"stepsize": 10})
 
     def getDataPerSubject(
-        self, name, apply="single", apply_function=None, apply_function_kwargs={}, normalizeCmats="max",
+        self,
+        name,
+        apply="single",
+        apply_function=None,
+        apply_function_kwargs={},
+        normalizeCmats="max",
     ):
         """Load data of a certain kind for all users of the current dataset
-        
+
         :param name: Name of data type, i.e. "bold" or "cm"
         :type name: str
         :param apply: Apply function per subject ("single") or on all subjects ("all"), defaults to "single"
@@ -147,19 +156,19 @@ class Dataset:
             Cmats = [cm / (nv[:, 0] * FSL_SAMPLES_PER_VOXEL) for cm, nv in zip(Cmats, self.nvoxel)]
         return Cmats
 
-    def _loadSubjectFiles(self, dsBaseDirectory, filterSubcorticalAAL2=False):
-        """Dirty subject-wise file loader. Depends on the exact naming of all 
+    def _loadSubjectFiles(self, dsBaseDirectory, subcortical=False):
+        """Dirty subject-wise file loader. Depends on the exact naming of all
         files as provided in the `neurolib/data/datasets` directory. Uses `glob.glob()`
-        to find all files based on hardcoded file name matching. 
+        to find all files based on hardcoded file name matching.
 
         Can filter out subcortical regions from the AAL2 atlas.
-        
+
         Info: Dirty implementation that assumes a lot of things about the dataset and filenames.
-        
+
         :param dsBaseDirectory: Base directory of the dataset
         :type dsBaseDirectory: str
-        :param filterSubcorticalAAL2: Filter subcortical regions from files defined by the AAL2 atlas, defaults to False
-        :type filterSubcorticalAAL2: bool, optional
+        :param subcortical: Filter subcortical regions from files defined by the AAL2 atlas, defaults to False
+        :type subcortical: bool, optional
         """
         # check if there are subject files in the dataset
         if os.path.exists(os.path.join(dsBaseDirectory, "subjects")):
@@ -207,18 +216,18 @@ class Dataset:
                                 key = "len"
                             # load the data
                             data = self.loadMatrix(f, key=key)
-                            if filterSubcorticalAAL2:
+                            if not subcortical:
                                 data = filterSubcortical(data, axis=filter_subcotrical_axis)
                             self.data["subjects"][subject][_name] = data
                         # waytotal and nvoxel files are .txt files
                         elif _name in ["waytotal", "nvoxel"]:
                             data = np.loadtxt(f)
-                            if filterSubcorticalAAL2:
+                            if not subcortical:
                                 data = filterSubcortical(data, axis=0)
                             self.data["subjects"][subject][_name] = data
 
     def loadMatrix(self, matFileName, key="", verbose=False):
-        """Function to furiously load .mat files with scipy.io.loadmat. 
+        """Function to furiously load .mat files with scipy.io.loadmat.
         Info: More formats are supported but commented out in the code.
 
         :param matFileName: Filename of matrix to load
