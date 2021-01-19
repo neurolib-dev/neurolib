@@ -207,8 +207,11 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         logging.info("Compiling python code using numba's njit...")
         numba_func = self.NUMBA_EULER_TEMPLATE.format(dy_eqs=derivatives_str)
         # compile numba function and load into namespace
+        print(numba_func)
         numba_code = compile(numba_func, "<string>", "exec")
-        integrate = numba.njit(
+        integrate = numba.jit(
+            "float64[:,:](float64,int32,int32,int32,float64[:,:],float64[:,:])", nopython=True, fastmath=True
+        )(
             FunctionType(
                 numba_code.co_consts[-3],
                 {
