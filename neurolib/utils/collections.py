@@ -6,6 +6,9 @@ from collections import MutableMapping
 
 DEFAULT_STAR_SEPARATOR = "."
 
+FORWARD_REPLACE = {"*": "STAR"}
+BACKWARD_REPLACE = {"STAR": "*"}
+
 
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""
@@ -49,6 +52,34 @@ class star_dotdict(dotdict):
         # otherwise -> just __delitem__
         else:
             dict.__delitem__(self, attr)
+
+
+def _sanitize_keys(key, replace_dict):
+    for k, v in replace_dict.items():
+        key = key.replace(k, v)
+    return key
+
+
+def sanitize_dot_dict(dct, replace_dict=FORWARD_REPLACE):
+    """
+    Make all keys identifiers - replace "*" string for a word.
+    """
+    return {_sanitize_keys(k, replace_dict): v for k, v in dct.items()}
+
+
+def unwrap_star_dotdict(dct, model, replaced_dict=False):
+    """
+    Unwrap star notation of parameters into full list of parameeters for a given
+    model.
+    E.g. params["*tau"] = 2.3 => params["mass1.tau"] = 2.3 and params["mass2.tau] = 2.3
+    """
+    # for each `k` that possibly contain stars get all key_u (unwrapped keys) from the star_dotdict
+    if replaced_dict:
+        return {
+            key_u: v for k, v in dct.items() for key_u in list(model.params[_sanitize_keys(k, replaced_dict)].keys())
+        }
+    else:
+        return {key_u: v for k, v in dct.items() for key_u in list(model.params[k].keys())}
 
 
 def flatten_nested_dict(nested_dict, parent_key="", sep=DEFAULT_STAR_SEPARATOR):
