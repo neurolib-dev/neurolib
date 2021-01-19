@@ -12,6 +12,7 @@ from deap import base, creator, tools
 from ...utils import paths as paths
 from ...utils import pypetUtils as pu
 from ...utils.parameterSpace import ParameterSpace
+from ...utils.collections import unwrap_star_dotdict, BACKWARD_REPLACE
 from . import deapUtils as du
 from . import evolutionaryUtils as eu
 
@@ -282,12 +283,7 @@ class Evolution:
         # resolve star notation - MultiModel
         individual_params = self.individualToDict(self.getIndividualFromTraj(traj))
         if self.parameterSpace.star:
-            individual_params = {
-                key_u: v
-                for k, v in individual_params.items()
-                for key_u in list(self.model.params[k.replace("STAR", "*")].keys())
-            }
-
+            individual_params = unwrap_star_dotdict(individual_params, self.model, replaced_dict=BACKWARD_REPLACE)
         model.params.update(individual_params)
         return model
 

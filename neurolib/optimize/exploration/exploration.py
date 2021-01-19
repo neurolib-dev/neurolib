@@ -14,7 +14,7 @@ import xarray as xr
 
 from ...utils import paths
 from ...utils import pypetUtils as pu
-from ...utils.collections import dotdict, flat_dict_to_nested, flatten_nested_dict
+from ...utils.collections import dotdict, flat_dict_to_nested, flatten_nested_dict, unwrap_star_dotdict
 
 
 class BoxSearch:
@@ -122,10 +122,7 @@ class BoxSearch:
         # explicitely add all parameters within star notation, hence unwrap star notation into actual params names
         if self.parameterSpace.star:
             assert self.model is not None, "With star notation, model cannot be None"
-            # for each `k` that possibly contain stars get all key_u (unwrapped keys) from the star_dotdict
-            self.pypetParametrization = {
-                key_u: v for k, v in self.pypetParametrization.items() for key_u in list(self.model.params[k].keys())
-            }
+            self.pypetParametrization = unwrap_star_dotdict(self.pypetParametrization, self.model)
         self.nRuns = len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
         logging.info(f"Number of parameter configurations: {self.nRuns}")
 
