@@ -34,7 +34,7 @@
 
 Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and some background information on the science behind whole-brain simulations.
 
-`neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `aln`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `aln` model can be found in our [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+`neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `ALNModel`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `ALNModel` model can be found in our [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
 `neurolib` provides a simulation and optimization framework which allows you to easily implement your own neural mass model, simulate fMRI BOLD activity, analyse the results and fit your model to empirical data.
 
@@ -105,17 +105,17 @@ To create a single `aln` model with the default parameters, simply run
 ```python
 from neurolib.models.aln import ALNModel
 
-aln = ALNModel()
-aln.params['sigma_ou'] = 0.1 # add some noise
+model = ALNModel()
+model.params['sigma_ou'] = 0.1 # add some noise
 
-aln.run()
+model.run()
 ```
 
 The results from this small simulation can be plotted easily:
 
 ```python
 import matplotlib.pyplot as plt
-plt.plot(aln.t, aln.rates_exc.T)
+plt.plot(model.t, model.output.T)
 
 ```
 <p align="left">
@@ -142,10 +142,10 @@ The dataset that we just loaded, looks like this:
 We initialize a model with the dataset and run it:
 
 ```python
-aln = ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat)
-aln.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
+model = ALNModel(Cmat = ds.Cmat, Dmat = ds.Dmat)
+model.params['duration'] = 5*60*1000 # in ms, simulates for 5 minutes
 
-aln.run(bold=True)
+model.run(bold=True)
 ```
 This can take several minutes to compute, since we are simulating 80 brain regions for 5 minutes realtime. Note that we specified `bold=True` which simulates the BOLD model in parallel to the neuronal model. The resulting firing rates and BOLD functional connectivity looks like this:
 <p align="center">
@@ -157,7 +157,7 @@ The quality of the fit of this simulation can be computed by correlating the sim
 We can compute the quality of the fit of the simulated data using `func.fc()` which calculates a functional connectivity matrix of `N` (`N` = number of brain regions) time series. We use `func.matrix_correlation()` to compare this matrix to empirical data.
 
 ```python
-scores = [func.matrix_correlation(func.fc(aln.BOLD.BOLD[:, 5:]), fcemp) for fcemp in ds.FCs]
+scores = [func.matrix_correlation(func.fc(model.BOLD.BOLD[:, 5:]), fcemp) for fcemp in ds.FCs]
 
 print("Correlation per subject:", [f"{s:.2}" for s in scores])
 print(f"Mean FC/FC correlation: {np.mean(scores):.2}")
@@ -173,13 +173,13 @@ Whenever you work with a model, it is of great importance to know what kind of d
 
 ```python
 # create model
-aln = ALNModel()
+model = ALNModel()
 # define the parameter space to explore
 parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 21),  # input to E
 		"mui_ext_mean": np.linspace(0, 3, 21)}) # input to I
 
 # define exploration              
-search = BoxSearch(aln, parameters)
+search = BoxSearch(model, parameters)
 
 search.run()                
 ```
@@ -190,7 +190,7 @@ search.loadResults()
 
 # calculate maximum firing rate for each parameter
 for i in search.dfResults.index:
-    search.dfResults.loc[i, 'max_r'] = np.max(search.results[i]['rates_exc'][:, -int(1000/aln.params['dt']):])
+    search.dfResults.loc[i, 'max_r'] = np.max(search.results[i]['rates_exc'][:, -int(1000/model.params['dt']):])
 ```
 We can plot the results to get something close to a bifurcation diagram!
 
