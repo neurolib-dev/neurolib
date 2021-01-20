@@ -18,8 +18,14 @@ from neurolib.models.multimodel import MultiModel
 class TestCollections(unittest.TestCase):
     NESTED_DICT = {"a": {"b": "c", "d": "e"}}
     FLAT_DICT_DOT = {"a.b": "c", "a.d": "e"}
-    PARAM_DICT = {"mass0": {"a": 0.4, "b": 1.2, "c": "float"}, "mass1": {"a": 0.4, "b": 1.2, "c": "int"}}
+    PARAM_DICT = {
+        "mass0": {"a": 0.4, "b": 1.2, "c": "float", "noise": {"b": 12.0}},
+        "mass1": {"a": 0.4, "b": 1.2, "c": "int"},
+    }
     PARAMS_ALL_A = {"mass0.a": 0.4, "mass1.a": 0.4}
+    PARAMS_ALL_B = {"mass0.b": 1.2, "mass0.noise.b": 12.0, "mass1.b": 1.2}
+    PARAMS_ALL_B_MINUS = {"mass0.b": 1.2, "mass1.b": 1.2}
+    PARAMS_ALL_B_MINUS_CHANGED = {"mass0.b": 2.7, "mass1.b": 2.7}
     PARAMS_ALL_A_CHANGED = {"mass0.a": 0.7, "mass1.a": 0.7}
 
     def test_flatten_nested_dict(self):
@@ -41,12 +47,28 @@ class TestCollections(unittest.TestCase):
         self.assertDictEqual(params["*a"], self.PARAMS_ALL_A_CHANGED)
         # delete params
         del params["*a"]
-        self.assertFalse("a" in params)
+        self.assertFalse(params["*a"])
+
+    def test_star_dotdict_minus(self):
+        params = star_dotdict(flatten_nested_dict(self.PARAM_DICT), sep=".")
+        self.assertTrue(isinstance(params, star_dotdict))
+        # get params by star
+        self.assertDictEqual(params["*b"], self.PARAMS_ALL_B)
+        # get params by star and minus
+        self.assertDictEqual(params["*b|noise"], self.PARAMS_ALL_B_MINUS)
+        # change params by star and minus
+        params["*b|noise"] = 2.7
+        self.assertDictEqual(params["*b|noise"], self.PARAMS_ALL_B_MINUS_CHANGED)
+        # delete params by star and minus
+        del params["*b|noise"]
+        self.assertFalse(params["*b|noise"])
+        # check whether the `b` with noise stayed
+        self.assertEqual(len(params["*b"]), 1)
 
     def test_sanitize_keys(self):
-        k = "mass1.tau*"
+        k = "mass1.tau*|noise"
         k_san = _sanitize_keys(k, FORWARD_REPLACE)
-        self.assertEqual(k_san, k.replace("*", "STAR"))
+        self.assertEqual(k_san, k.replace("*", "STAR").replace("|", "MINUS"))
         k_back = _sanitize_keys(k_san, BACKWARD_REPLACE)
         self.assertEqual(k, k_back)
 
