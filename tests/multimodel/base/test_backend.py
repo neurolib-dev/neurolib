@@ -89,7 +89,7 @@ class TestNumbaBackend(unittest.TestCase):
         self.assertTrue(hasattr(backend, "_replace_inputs"))
         self.assertTrue(hasattr(backend, "_substitute_helpers"))
 
-    def float_parameters_to_symbolic(self):
+    def test_float_parameters_to_symbolic(self):
         backend = NumbaBackend()
         DICT_IN = {"a": 40.0, "b": 15, "conn": np.random.rand(4, 4)}
         result = backend.float_parameters_to_symbolic(DICT_IN)
