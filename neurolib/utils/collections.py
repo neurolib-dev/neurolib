@@ -9,8 +9,8 @@ from dpath.util import delete, search
 
 DEFAULT_STAR_SEPARATOR = "."
 
-FORWARD_REPLACE = {"*": "STAR"}
-BACKWARD_REPLACE = {"STAR": "*"}
+FORWARD_REPLACE = {"*": "STAR", "|": "MINUS"}
+BACKWARD_REPLACE = {v: k for k, v in FORWARD_REPLACE.items()}
 
 
 class dotdict(dict):
