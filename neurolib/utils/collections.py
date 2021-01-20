@@ -32,6 +32,29 @@ class star_dotdict(dotdict):
     """
     Supports star notation in dotdict. Nested dicts are now treated as glob.
     Also supports minus as a pipe ("|") for filtering out strings after |.
+    Example:
+        Wilson-Cowan node has in total four parameters named tau (time constants
+        for both excitatory and inhibitory populations, and Ornstein-Uhlenbeck
+        time constants for both populations), hence:
+
+        > model.params["*tau"]
+        # returns
+        {'WCnode_0.WCmassEXC_0.tau': 2.5,
+        'WCnode_0.WCmassEXC_0.noise_0.tau': 5.0,
+        'WCnode_0.WCmassINH_1.tau': 3.75,
+        'WCnode_0.WCmassINH_1.noise_0.tau': 5.0}
+
+        Now imagine you want to make exploration over population time constants,
+        but keep O-U as is, you can:
+
+        > model.params["*tau|noise"]
+        # returns
+        {'WCnode_0.WCmassEXC_0.tau': 2.5, 'WCnode_0.WCmassINH_1.tau': 3.75}
+
+        In other words, the string after "|" is filtered out from all the keys.
+        This works with setting, getting, and deleting an item and also
+        parameters defined with minus can be used in `Evolution` and
+        `Exploration` classes
     """
 
     def __getitem__(self, attr):
