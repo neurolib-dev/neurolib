@@ -11,6 +11,7 @@ import numba
 import numpy as np
 import pytest
 import symengine as se
+import sympy as sp
 import xarray as xr
 from jitcdde import t as time_vector
 from jitcdde import y as state_vector
@@ -87,6 +88,15 @@ class TestNumbaBackend(unittest.TestCase):
         self.assertTrue(hasattr(backend, "_replace_past_ys"))
         self.assertTrue(hasattr(backend, "_replace_inputs"))
         self.assertTrue(hasattr(backend, "_substitute_helpers"))
+
+    def float_parameters_to_symbolic(self):
+        backend = NumbaBackend()
+        DICT_IN = {"a": 40.0, "b": 15, "conn": np.random.rand(4, 4)}
+        result = backend.float_parameters_to_symbolic(DICT_IN)
+        for k, v in result.items():
+            self.assertTrue(isinstance(v, (sp.Symbol, sp.MatrixSymbol)))
+            if isinstance(v, sp.MatrixSymbol):
+                self.assertTupleEqual(v.shape, DICT_IN[k].shape)
 
     def test_replace_current_ys(self):
         backend = NumbaBackend()
