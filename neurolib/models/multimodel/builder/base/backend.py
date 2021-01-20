@@ -104,6 +104,8 @@ class BaseBackend:
     state_variable_names = None
     label = None
 
+    backend_name = ""
+
     def run(self):
         raise NotImplementedError
 
@@ -116,6 +118,8 @@ class NumbaBackend(BaseBackend):
     Numba integration backend using Euler scheme with delays. The symbolic code for
     derivatives is rendered into a prepared string template using numba's njit.
     """
+
+    backend_name = "numba"
 
     DEFAULT_DT = 0.1  # in ms
 
@@ -343,6 +347,7 @@ class JitcddeBackend(BaseBackend):
         Numerical Mathematics, 37(4), 441-458.
     """
 
+    backend_name = "jitcdde"
     extra_compile_args = []
     dde_system = None
 
@@ -528,7 +533,7 @@ class BackendIntegrator:
         assert self.initialised, "Model must be initialised"
         assert isinstance(noise_input, (CubicHermiteSpline, np.ndarray))
 
-        if self.backend_instance is None:
+        if (self.backend_instance is None) or (self.backend_instance.backend_name != backend):
             logging.info(f"Initialising {backend} backend...")
             self._init_backend(backend)
         assert isinstance(self.backend_instance, BaseBackend)
