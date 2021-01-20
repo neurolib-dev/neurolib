@@ -4,6 +4,7 @@ Class for representing a parameter space for exploration or optimization.
 
 from collections import namedtuple
 import numpy as np
+from ..utils.collections import sanitize_dot_dict
 
 
 class ParameterSpace:
@@ -49,9 +50,8 @@ class ParameterSpace:
 
         # let's create a named tuple of the parameters
         # Note: evolution.py implementation relies on named tuples
-        if not self.star:
-            self.named_tuple_constructor = namedtuple("ParameterSpace", parameters)
-            self.named_tuple = self.named_tuple_constructor(*self.parameterValues)
+        self.named_tuple_constructor = namedtuple("ParameterSpace", sanitize_dot_dict(parameters))
+        self.named_tuple = self.named_tuple_constructor(*self.parameterValues)
 
         # set attributes of this class to make it accessible
         for i, p in enumerate(self.parameters):
