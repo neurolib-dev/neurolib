@@ -14,9 +14,35 @@ import symengine as se
 import xarray as xr
 from jitcdde import t as time_vector
 from jitcdde import y as state_vector
-from neurolib.models.multimodel.builder.base.backend import BackendIntegrator, BaseBackend, JitcddeBackend, NumbaBackend
+from neurolib.models.multimodel.builder.base.backend import (
+    BackendIntegrator,
+    BaseBackend,
+    JitcddeBackend,
+    NumbaBackend,
+    NumbaFunctionCache,
+)
 from neurolib.utils.saver import save_to_netcdf, save_to_pickle
 from neurolib.utils.stimulus import ZeroInput
+
+
+class TestNumbaFunctionCache(unittest.TestCase):
+
+    cache = NumbaFunctionCache()
+
+    @staticmethod
+    def foo(a, b):
+        return a + b
+
+    def test_hashing(self):
+        self.cache.hash = (1, 2, 3, 4)
+        self.assertEqual(self.cache.hash, hash((1, 2, 3, 4)))
+        self.assertTrue(self.cache((1, 2, 3, 4)))
+        self.assertFalse(self.cache((1, 2, 3)))
+
+    def test_caching(self):
+        self.assertTrue(self.cache.cache is None)
+        self.cache.cache = self.foo
+        self.assertEqual(self.cache.cache.__code__.co_code, self.foo.__code__.co_code)
 
 
 class TestBaseBackend(unittest.TestCase):
