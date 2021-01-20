@@ -152,20 +152,23 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         dot as a separator. Does not translate noise parameters.
 
         :param param_dict: dictionary with parameters and their values
-        :typoe param_dict: dict
+        :type param_dict: dict
+        :return: dictionary with parameters and symbols
+        :rtype: dict
         """
-        param_dict = deepcopy(param_dict)
+        # param_dict = deepcopy(param_dict)
+        symbol_dict = {}
         for k, v in param_dict.items():
             splitted_key = k.split(".")
             if any("noise" in sp for sp in splitted_key):
                 continue
             if isinstance(v, (float, int)):
-                param_dict[k] = sp.Symbol(k.replace(".", "DOT"))
+                symbol_dict[k] = sp.Symbol(k.replace(".", "DOT"))
             elif isinstance(v, np.ndarray):
-                param_dict[k] = sp.MatrixSymbol(k.replace(".", "DOT"), *v.shape)
+                symbol_dict[k] = sp.MatrixSymbol(k.replace(".", "DOT"), *v.shape)
             else:
                 raise ValueError(f"Cannot handle {type(v)} type of {k}")
-        return param_dict
+        return symbol_dict
 
     def _replace_current_ys(self, expression):
         """
