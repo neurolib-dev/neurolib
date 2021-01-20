@@ -92,7 +92,7 @@ def plotScoresDistribution(scores, gIdx, save_plots=None, color="C0"):
     plt.show()
 
 
-def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0"):
+def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0", line_kws={}, scatter_kws={}):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
@@ -105,12 +105,18 @@ def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0"):
         dfPop = evolution.dfPop()
 
     fig = plt.figure()
+
+    _line_kws = {"color": color}
+    _line_kws.update(line_kws)
+    _scatter_kws = {"alpha": 0.5, "color": color}
+    _scatter_kws.update(scatter_kws)
+
     sm = sns.pairplot(
         dfPop,
         vars=vars,
         diag_kind="kde",
         kind="reg",
-        plot_kws={"line_kws": {"color": color}, "scatter_kws": {"alpha": 0.5, "color": color},},
+        plot_kws={"line_kws": _line_kws, "scatter_kws": _scatter_kws,},
         diag_kws={"color": color},
     )
 
@@ -191,10 +197,10 @@ def plotProgress(evolution, reverse=True):
 
     gens, all_scores = evolution.getScoresDuringEvolution(reverse=reverse)
 
-    fig, axs = plt.subplots(2, 1, figsize=(3.5, 3), dpi=150, sharex=True, gridspec_kw={"height_ratios": [2, 1]},)
+    fig, axs = plt.subplots(2, 1, figsize=(3.5, 3), sharex=True, gridspec_kw={"height_ratios": [2, 1]},)
     im = axs[0].imshow(all_scores.T, aspect="auto", origin="lower")
     axs[0].set_ylabel("Individuals")
-    cbar_ax = fig.add_axes([0.93, 0.42, 0.02, 0.3])
+    cbar_ax = fig.add_axes([1.0, 0.55, 0.02, 0.3])
     fig.colorbar(im, cax=cbar_ax, label="Score")
 
     axs[1].plot(gens, np.nanmean(all_scores, axis=1), label="Average")
@@ -203,6 +209,7 @@ def plotProgress(evolution, reverse=True):
     )
     axs[1].set_xlabel("Generation")
     axs[1].set_ylabel("Score")
+    plt.tight_layout()
     plt.show()
 
 
