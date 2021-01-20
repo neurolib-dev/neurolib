@@ -409,7 +409,7 @@ class Model:
 
         if Dmat is not None:
             # divide Dmat by signalV
-            signalV = self.params.get("signalV") or 1
+            signalV = self.params.get("signalV") or 0
             if signalV > 0:
                 Dmat = Dmat / signalV
             else:
