@@ -413,6 +413,7 @@ class Model:
             if signalV > 0:
                 Dmat = Dmat / signalV
             else:
+                # if signalV is 0, eliminate delays
                 Dmat = Dmat * 0.0
 
         # only if Dmat and dt exist, a global max delay can be computed
