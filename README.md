@@ -1,32 +1,22 @@
 <p align="center">
-  <a href="https://travis-ci.org/neurolib-dev/neurolib">
-  	<img alt="Header image of neurolib - A Python simulation framework foreasy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neurolib/raw/master/resources/readme_header.png" ></a>
+  	<img alt="Header image of neurolib - A Python simulation framework foreasy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neurolib/raw/master/resources/readme_header.png" >
 </p> 
 <p align="center">
   <a href="https://github.com/neurolib-dev/neurolib/actions">
   	<img alt="Build" src="https://img.shields.io/github/workflow/status/neurolib-dev/neurolib/ci"></a>
-  
   <a href="https://zenodo.org/badge/latestdoi/236208651">
   	<img alt="DOI" src="https://zenodo.org/badge/236208651.svg"></a>
-    
-   
   <a href="https://github.com/neurolib-dev/neurolib/releases">
   	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib"></a>
-  
   <br>
-  
   <a href="https://codecov.io/gh/neurolib-dev/neurolib">
   	<img alt="codecov" src="https://codecov.io/gh/neurolib-dev/neurolib/branch/master/graph/badge.svg"></a>
-  
   <a href="https://pepy.tech/project/neurolib">
   	<img alt="Downloads" src="https://pepy.tech/badge/neurolib"></a>
-  
   <a href="https://github.com/psf/black">
   	<img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
-
   <a href="https://mybinder.org/v2/gh/neurolib-dev/neurolib.git/master?filepath=examples">
   	<img alt="Launch in binder" src="https://mybinder.org/badge_logo.svg"></a>
-  	 
 </p>
 
 
