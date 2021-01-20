@@ -51,6 +51,7 @@ class TestBaseBackend(unittest.TestCase):
         base = BaseBackend()
         self.assertTrue(isinstance(base, BaseBackend))
         self.assertTrue(hasattr(base, "run"))
+        self.assertTrue(hasattr(base, "backend_name"))
         self.assertTrue(hasattr(base, "clean"))
         self.assertEqual(base._derivatives, None)
         self.assertEqual(base._sync, None)
@@ -70,6 +71,7 @@ class TestBaseBackend(unittest.TestCase):
 class TestJitcddeBackend(unittest.TestCase):
     def test_init(self):
         backend = JitcddeBackend()
+        self.assertEqual(backend.backend_name, "jitcdde")
         self.assertTrue(isinstance(backend, JitcddeBackend))
         self.assertTrue(isinstance(backend, BaseBackend))
         self.assertTrue(hasattr(backend, "_init_and_compile_C"))
@@ -82,6 +84,7 @@ class TestJitcddeBackend(unittest.TestCase):
 class TestNumbaBackend(unittest.TestCase):
     def test_init(self):
         backend = NumbaBackend()
+        self.assertEqual(backend.backend_name, "numba")
         self.assertTrue(isinstance(backend, NumbaBackend))
         self.assertTrue(isinstance(backend, BaseBackend))
         self.assertTrue(hasattr(backend, "_replace_current_ys"))
