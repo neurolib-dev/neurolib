@@ -14,6 +14,8 @@ class Model:
         if hasattr(self, "name"):
             if self.name is not None:
                 assert isinstance(self.name, str), f"Model name is not a string."
+        else:
+            self.name = "Noname"
 
         assert integration is not None, "Model integration function not given."
         self.integration = integration
@@ -32,6 +34,10 @@ class Model:
         ), f"Model {self.name} needs to define a default output variable in `default_output`."
 
         assert isinstance(self.default_output, str), "`default_output` must be a string."
+
+        # if no output_vars is set, it will be replaced by state_vars
+        if not hasattr(self, "output_vars"):
+            self.output_vars = self.state_vars
 
         # create output and state dictionary
         self.outputs = dotdict({})
@@ -301,7 +307,8 @@ class Model:
         self.state = dotdict({})
         self.outputs = dotdict({})
         # reinitialize bold model
-        self.initializeBold()
+        if self.params.get("bold"):
+            self.initializeBold()
 
     def storeOutputsAndStates(self, t, variables, append=False):
         """Takes the simulated variables of the integration and stores it to the appropriate model output and state object.
@@ -397,18 +404,24 @@ class Model:
         :return: maxmimum delay of the model in units of dt
         :rtype: int
         """
-        dt = self.params["dt"]
-        Dmat = self.params["lengthMat"]
+        dt = self.params.get("dt")
+        Dmat = self.params.get("lengthMat")
 
-        if "signalV" in self.params:
-            signalV = self.params["signalV"]
+        if Dmat is not None:
+            # divide Dmat by signalV
+            signalV = self.params.get("signalV") or 0
             if signalV > 0:
                 Dmat = Dmat / signalV
             else:
+                # if signalV is 0, eliminate delays
                 Dmat = Dmat * 0.0
 
-        Dmat_ndt = np.around(Dmat / dt)  # delay matrix in multiples of dt
-        max_global_delay = int(np.amax(Dmat_ndt))
+        # only if Dmat and dt exist, a global max delay can be computed
+        if Dmat is not None and dt is not None:
+            Dmat_ndt = np.around(Dmat / dt)  # delay matrix in multiples of dt
+            max_global_delay = int(np.amax(Dmat_ndt))
+        else:
+            max_global_delay = 0
         return max_global_delay
 
     def setStateVariables(self, name, data):
