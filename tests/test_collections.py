@@ -66,9 +66,9 @@ class TestCollections(unittest.TestCase):
         self.assertEqual(len(params["*b"]), 1)
 
     def test_sanitize_keys(self):
-        k = "mass1.tau*"
+        k = "mass1.tau*|noise"
         k_san = _sanitize_keys(k, FORWARD_REPLACE)
-        self.assertEqual(k_san, k.replace("*", "STAR"))
+        self.assertEqual(k_san, k.replace("*", "STAR").replace("|", "MINUS"))
         k_back = _sanitize_keys(k_san, BACKWARD_REPLACE)
         self.assertEqual(k, k_back)
 
