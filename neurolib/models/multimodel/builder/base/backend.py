@@ -53,6 +53,41 @@ def timer(method):
     return decorator
 
 
+class NumbaFunctionCache:
+    """
+    Simple cache object that caches compiled numba functions and checks whether
+    function changed.
+    """
+
+    _cached_function = None
+    _hash = None
+
+    @property
+    def cache(self):
+        return self._cached_function
+
+    @cache.setter
+    def cache(self, function):
+        assert callable(function)
+        self._cached_function = function
+
+    @property
+    def hash(self):
+        return self._hash
+
+    @hash.setter
+    def hash(self, to_hash):
+        assert isinstance(to_hash, tuple)
+        self._hash = hash(to_hash)
+
+    def __call__(self, to_check):
+        assert isinstance(to_check, tuple)
+        if self.hash is None:
+            return False
+        else:
+            return hash(to_check) == self.hash
+
+
 class BaseBackend:
     """
     Base class for backends.
@@ -92,6 +127,8 @@ class NumbaBackend(BaseBackend):
         r"past_y\(-external_input \+ t, ([0-9]* \+ )?input_base_n, anchors" r"\(-external_input \+ t\)\)"
     )
     SYSTEM_INPUT_NUMBA = "input_y[{idx}, i]"
+
+    function_cache = NumbaFunctionCache()
 
     NUMBA_EULER_TEMPLATE = """
 def integrate(dt, n, max_delay, t_max, y0, input_y):
@@ -184,15 +221,17 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         substitutions = {helper[0]: helper[1] for helper in sympified_helpers}
         return [derivative.subs(substitutions) for derivative in sympified_derivatives]
 
-    def run(self, duration, dt, noise_input, **kwargs):
+    def _compile_to_numba(self, dt, system_size):
         """
-        Run integration.
+        Compile system into numba jitted nopython function.
 
-        :kwargs: actually none - for compatiblity
+        :param dt: dt in ms
+        :type dt: float
+        :param system_size: number of equations in the system
+        :type system_size: int
+        :return: numba compiled function
+        :rtype: callable
         """
-        assert isinstance(noise_input, np.ndarray)
-        system_size = len(self._derivatives())
-
         # substitute helpers to symbolic derivatives
         logging.info("Substituting helpers...")
         substituted = self._substitute_helpers(derivatives=self._derivatives(), helpers=self._sync())
@@ -207,13 +246,10 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         logging.info("Compiling python code using numba's njit...")
         numba_func = self.NUMBA_EULER_TEMPLATE.format(dy_eqs=derivatives_str)
         # compile numba function and load into namespace
-        print(numba_func)
-        numba_code = compile(numba_func, "<string>", "exec")
-        integrate = numba.jit(
-            "float64[:,:](float64,int32,int32,int32,float64[:,:],float64[:,:])", nopython=True, fastmath=True
-        )(
+        compiled_code = compile(numba_func, "<string>", "exec")
+        return numba.njit(fastmath=True)(
             FunctionType(
-                numba_code.co_consts[-3],
+                compiled_code.co_consts[-3],
                 {
                     **globals(),
                     # add numba callbacks to the mix
@@ -223,6 +259,27 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
                 argdefs=(),
             )
         )
+
+    def run(self, duration, dt, noise_input, **kwargs):
+        """
+        Run integration.
+
+        :kwargs: actually none - for compatiblity
+        """
+        assert isinstance(noise_input, np.ndarray)
+
+        system_size = len(self._derivatives())
+        system_def_tuple = tuple(self._derivatives() + self._sync())
+        # check cache
+        if not self.function_cache(system_def_tuple):
+            logging.info("Compiling system's definition into numba...")
+            integrate = self._compile_to_numba(dt=dt, system_size=system_size)
+            self.function_cache.hash = system_def_tuple
+            self.function_cache.cache = integrate
+        else:
+            logging.info("Loading system from cache...")
+            integrate = self.function_cache.cache
+
         assert callable(integrate)
         # run the numba-jitted function
         times = np.arange(dt, duration + dt, dt)
@@ -443,8 +500,9 @@ class BackendIntegrator:
         assert self.initialised, "Model must be initialised"
         assert isinstance(noise_input, (CubicHermiteSpline, np.ndarray))
 
-        logging.info(f"Initialising {backend} backend...")
-        self._init_backend(backend)
+        if self.backend_instance is None:
+            logging.info(f"Initialising {backend} backend...")
+            self._init_backend(backend)
         assert isinstance(self.backend_instance, BaseBackend)
         times, result = self.backend_instance.run(duration=duration, dt=dt, noise_input=noise_input, **kwargs)
         logging.info("Integration done.")
