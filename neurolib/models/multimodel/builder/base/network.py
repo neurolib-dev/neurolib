@@ -3,6 +3,7 @@ from itertools import chain, islice
 
 import numpy as np
 import symengine as se
+import sympy as sp
 from jitcdde import t as time_vector
 from jitcdde import y as state_vector
 
@@ -404,10 +405,10 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         params_dict = self._sanitize_update_params(params_dict)
         local_connectivity = params_dict.pop(NODE_CONNECTIVITY, None)
         local_delays = params_dict.pop(NODE_DELAYS, None)
-        if local_connectivity is not None and isinstance(local_connectivity, np.ndarray):
+        if local_connectivity is not None and isinstance(local_connectivity, (np.ndarray, sp.MatrixSymbol)):
             assert local_connectivity.shape == self.connectivity.shape
             self.connectivity = local_connectivity.astype(np.floating)
-        if local_delays is not None and isinstance(local_delays, np.ndarray):
+        if local_delays is not None and isinstance(local_delays, (np.ndarray, sp.MatrixSymbol)):
             assert local_delays.shape == self.delays.shape
             self.delays = local_delays.astype(np.floating)
         super().update_params(params_dict)

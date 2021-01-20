@@ -22,6 +22,7 @@ import logging
 import os
 import re
 import time
+from copy import deepcopy
 from functools import wraps
 from sys import platform
 from types import FunctionType
@@ -29,6 +30,7 @@ from types import FunctionType
 import numba
 import numpy as np
 import symengine as se
+import sympy as sp
 import xarray as xr
 from chspy import CubicHermiteSpline
 from jitcdde import jitcdde_input
@@ -141,6 +143,29 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
 
     return y[:, max_delay + 1:]
 """
+
+    @staticmethod
+    def float_parameters_to_symbolic(param_dict):
+        """
+        Transforms float / array / int parameters to symbolic ones. Name of the
+        symbols are the same as name of the keys. Assumes flat dictionary with
+        dot as a separator. Does not translate noise parameters.
+
+        :param param_dict: dictionary with parameters and their values
+        :typoe param_dict: dict
+        """
+        param_dict = deepcopy(param_dict)
+        for k, v in param_dict.items():
+            splitted_key = k.split(".")
+            if any("noise" in sp for sp in splitted_key):
+                continue
+            if isinstance(v, (float, int)):
+                param_dict[k] = sp.Symbol(k.replace(".", "DOT"))
+            elif isinstance(v, np.ndarray):
+                param_dict[k] = sp.MatrixSymbol(k.replace(".", "DOT"), *v.shape)
+            else:
+                raise ValueError(f"Cannot handle {type(v)} type of {k}")
+        return param_dict
 
     def _replace_current_ys(self, expression):
         """
