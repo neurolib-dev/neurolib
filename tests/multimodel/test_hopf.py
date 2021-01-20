@@ -13,7 +13,7 @@ from neurolib.models.multimodel.builder.model_input import ZeroInput
 SEED = 42
 DURATION = 100.0
 DT = 0.1
-CORR_THRESHOLD = 0.99
+CORR_THRESHOLD = 0.95
 NEUROLIB_VARIABLES_TO_TEST = ["x", "y"]
 
 # dictionary as backend name: format in which the noise is passed
@@ -104,7 +104,9 @@ class TestHopfNode(unittest.TestCase):
         """
         # run this model
         hopf_multi = self._create_node()
-        multi_result = hopf_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
+        multi_result = hopf_multi.run(
+            DURATION, DT, ZeroInput(hopf_multi.num_noise_variables).as_array(DURATION, DT), backend="numba"
+        )
         # run neurolib's model
         hopf_neurolib = HopfModel(seed=SEED)
         hopf_neurolib.params["duration"] = DURATION
@@ -153,7 +155,9 @@ class TestHopfNetwork(unittest.TestCase):
         """
         # run this model - default is diffusive coupling
         hopf_multi = HopfNetwork(self.SC, self.DELAYS, seed=SEED)
-        multi_result = hopf_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
+        multi_result = hopf_multi.run(
+            DURATION, DT, ZeroInput(hopf_multi.num_noise_variables).as_array(DURATION, DT), backend="numba"
+        )
         # run neurolib's model
         hopf_neurolib = HopfModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         hopf_neurolib.params["duration"] = DURATION
