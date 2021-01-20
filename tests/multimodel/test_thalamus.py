@@ -19,7 +19,7 @@ from neurolib.models.thalamus import ThalamicMassModel
 
 DURATION = 100.0
 DT = 0.01
-CORR_THRESHOLD = 0.95
+CORR_THRESHOLD = 0.9
 NEUROLIB_VARIABLES_TO_TEST = [
     ("r_mean_EXC", "Q_t"),
     ("r_mean_INH", "Q_r"),
@@ -139,7 +139,9 @@ class TestThalamicNode(unittest.TestCase):
         """
         # run this model
         thalamus_multi = self._create_node()
-        multi_result = thalamus_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
+        multi_result = thalamus_multi.run(
+            DURATION, DT, ZeroInput(thalamus_multi.num_noise_variables).as_array(DURATION, DT), backend="numba"
+        )
         # run neurolib's model
         thlm_neurolib = ThalamicMassModel()
         thlm_neurolib.params["duration"] = DURATION

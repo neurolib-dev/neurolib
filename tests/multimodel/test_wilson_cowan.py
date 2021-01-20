@@ -22,7 +22,7 @@ from neurolib.models.wc import WCModel
 SEED = 42
 DURATION = 100.0
 DT = 0.01
-CORR_THRESHOLD = 0.93
+CORR_THRESHOLD = 0.9
 NEUROLIB_VARIABLES_TO_TEST = [("q_mean_EXC", "exc"), ("q_mean_INH", "inh")]
 
 # dictionary as backend name: format in which the noise is passed
@@ -130,7 +130,9 @@ class TestWilsonCowanNode(unittest.TestCase):
         """
         # run this model
         wc_multi = self._create_node()
-        multi_result = wc_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
+        multi_result = wc_multi.run(
+            DURATION, DT, ZeroInput(wc_multi.num_noise_variables).as_array(DURATION, DT), backend="numba"
+        )
         # run neurolib's model
         wc_neurolib = WCModel(seed=SEED)
         wc_neurolib.params["duration"] = DURATION
@@ -183,7 +185,9 @@ class TestWilsonCowanNetwork(unittest.TestCase):
         Compare with neurolib's native Wilson-Cowan model.
         """
         wc_multi = WilsonCowanNetwork(self.SC, self.DELAYS)
-        multi_result = wc_multi.run(DURATION, DT, ZeroInput().as_array(DURATION, DT), backend="numba")
+        multi_result = wc_multi.run(
+            DURATION, DT, ZeroInput(wc_multi.num_noise_variables).as_array(DURATION, DT), backend="numba"
+        )
         # run neurolib's model
         wc_neurolib = WCModel(Cmat=self.SC, Dmat=self.DELAYS, seed=SEED)
         wc_neurolib.params["duration"] = DURATION
