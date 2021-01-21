@@ -33,6 +33,17 @@ class ModelInput:
         self.param_names = inspect.getfullargspec(self.__init__).args
         self.param_names.remove("self")
 
+    def __add__(self, other):
+        """
+        Concatenate two processes.
+        """
+        assert isinstance(other, ModelInput)
+        assert self.num_iid == other.num_iid
+        if isinstance(other, ConcatenatedInput):
+            return ConcatenatedInput(noise_processes=[self] + other.noise_processes)
+        else:
+            return ConcatenatedInput(noise_processes=[self, other])
+
     def get_params(self):
         """
         Return model input parameters as dict.
@@ -126,9 +137,9 @@ class StimulusInput(ModelInput):
     def _get_times(self, duration, dt):
         super()._get_times(duration=duration, dt=dt)
         self.stim_start = self.stim_start or 0.0
-        self.stim_end = self.stim_end or duration
+        self.stim_end = self.stim_end or duration + dt
         assert self.stim_start < duration
-        assert self.stim_end <= duration
+        assert self.stim_end <= duration + dt
 
     def _trim_stim_input(self, stim_input):
         """
@@ -145,21 +156,65 @@ class StimulusInput(ModelInput):
         stim_input[self.times > self.stim_end] = 0.0
         return stim_input
 
+
+class ConcatenatedInput(StimulusInput):
+    """
+    Represents concatenation of inputs - typically for stimulus plus noise.
+    Supports concatenation of arbitrary many objects.
+    """
+
+    def __init__(self, noise_processes):
+        """
+        :param noise_processes: list of noise/stimulation processes to concatinate
+        :type noise_processes: list[`ModelInput`]
+        """
+        assert all(isinstance(process, ModelInput) for process in noise_processes)
+        self.noise_processes = noise_processes
+
+    @property
+    def num_iid(self):
+        num_iid = set([process.num_iid for process in self.noise_processes])
+        assert len(num_iid) == 1
+        return next(iter(num_iid))
+
+    def __add__(self, other):
+        assert isinstance(other, ModelInput)
+        assert self.num_iid == other.num_iid
+        if isinstance(other, ConcatenatedInput):
+            return ConcatenatedInput(noise_processes=self.noise_processes + other.noise_processes)
+        else:
+            return ConcatenatedInput(noise_processes=self.noise_processes + [other])
+
+    def get_params(self):
+        """
+        Get parameters recursively from all input processes.
+        """
+        return {
+            "type": self.__class__.__name__,
+            **{f"noise_{i}": process.get_params() for i, process in enumerate(self.noise_processes)},
+        }
+
+    def update_params(self, params_dict):
+        """
+        Update all parameters recursively.
+        """
+        for i, process in enumerate(self.noise_processes):
+            process.update_params(params_dict.get(f"noise_{i}", {}))
+
     def as_array(self, duration, dt):
         """
-        Return input as numpy array after checking stimulus bounds.
+        Return sum of all processes as numpy array.
         """
-        self._get_times(duration, dt)
-        stim_input = self._trim_stim_input(self.generate_input(duration, dt))
-        return stim_input
+        return np.sum(np.stack([process.as_array(duration, dt) for process in self.noise_processes]), axis=0)
 
     def as_cubic_splines(self, duration, dt):
         """
-        Return as cubic Hermite splines after checking stimulus bounds.
+        Return sum of all processes as cubic Hermite splines.
         """
-        self._get_times(duration, dt)
-        stim_input = self._trim_stim_input(self.generate_input(duration, dt))
-        return CubicHermiteSpline.from_data(self.times, stim_input)
+        result = self.noise_processes[0].as_cubic_splines(duration, dt)
+        for process in self.noise_processes[1:]:
+            result.plus(process.as_cubic_splines(duration, dt))
+        return result
 
 
 class ZeroInput(ModelInput):
@@ -256,7 +311,7 @@ class StepInput(StimulusInput):
 
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
-        return np.ones((self.times.shape[0], self.num_iid)) * self.step_size
+        return self._trim_stim_input(np.ones((self.times.shape[0], self.num_iid)) * self.step_size)
 
 
 class SinusoidalInput(StimulusInput):
@@ -298,7 +353,7 @@ class SinusoidalInput(StimulusInput):
         sinusoid = self.amplitude * np.sin(2 * np.pi * self.times * (1.0 / self.period))
         if self.nonnegative:
             sinusoid += self.amplitude
-        return np.vstack([sinusoid] * self.num_iid).T
+        return self._trim_stim_input(np.vstack([sinusoid] * self.num_iid).T)
 
 
 class SquareInput(StimulusInput):
@@ -340,7 +395,7 @@ class SquareInput(StimulusInput):
         square_inp = self.amplitude * square(2 * np.pi * self.times * (1.0 / self.period))
         if self.nonnegative:
             square_inp += self.amplitude
-        return np.vstack([square_inp] * self.num_iid).T
+        return self._trim_stim_input(np.vstack([square_inp] * self.num_iid).T)
 
 
 class LinearRampInput(StimulusInput):
@@ -379,4 +434,4 @@ class LinearRampInput(StimulusInput):
         linear_inp = (self.inp_max / self.ramp_length) * times * (times < self.ramp_length) + self.inp_max * (
             times >= self.ramp_length
         )
-        return np.vstack([linear_inp] * self.num_iid).T
+        return self._trim_stim_input(np.vstack([linear_inp] * self.num_iid).T)

@@ -6,8 +6,8 @@ import unittest
 
 import numpy as np
 from chspy import CubicHermiteSpline
-
 from neurolib.models.multimodel.builder.model_input import (
+    ConcatenatedInput,
     LinearRampInput,
     OrnsteinUhlenbeckProcess,
     SinusoidalInput,
@@ -384,6 +384,44 @@ class TestLinearRampInput(unittest.TestCase):
                 **UPDATE,
             },
         )
+
+
+class TestConcatenatedInput(unittest.TestCase):
+    def _create_input(self):
+        ou = OrnsteinUhlenbeckProcess(mu=0.1, sigma=0.02, tau=2.0, num_iid=2)
+        sq = SquareInput(amplitude=0.2, period=20.0, num_iid=2, stim_start=5)
+        sin = SinusoidalInput(amplitude=0.1, period=10.0, num_iid=2, stim_start=2)
+        step = StepInput(step_size=0.5, num_iid=2, stim_start=7)
+        return sq + sin + step + ou
+
+    def test_init(self):
+        conc = self._create_input()
+        self.assertTrue(isinstance(conc, ConcatenatedInput))
+        self.assertEqual(conc.num_iid, 2)
+        self.assertEqual(len(conc.noise_processes), 4)
+
+    def test_generate_input(self):
+        conc = self._create_input()
+        ts = conc.as_array(duration=DURATION, dt=DT)
+        self.assertTrue(isinstance(ts, np.ndarray))
+        self.assertTupleEqual(ts.shape, SHAPE)
+
+        ts = conc.as_cubic_splines(duration=DURATION, dt=DT)
+        self.assertTrue(isinstance(ts, CubicHermiteSpline))
+
+    def test_get_params(self):
+        conc = self._create_input()
+        params = conc.get_params()
+        self.assertTrue(isinstance(params, dict))
+        self.assertEqual(len(params), 1 + len(conc.noise_processes))
+        for i, process in enumerate(conc.noise_processes):
+            self.assertDictEqual(process.get_params(), params[f"noise_{i}"])
+
+    def test_update_params(self):
+        conc = self._create_input()
+        UPDATE_DICT = {f"noise_{i}": {"num_iid": 3} for i in range(len(conc.noise_processes))}
+        conc.update_params(UPDATE_DICT)
+        self.assertEqual(conc.num_iid, 3)
 
 
 if __name__ == "__main__":
