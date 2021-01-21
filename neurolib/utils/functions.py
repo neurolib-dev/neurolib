@@ -6,8 +6,8 @@ import scipy.signal
 def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
     """
     Computes the Kuramoto order parameter of a timeseries which is a measure for synchrony.
-    Can smooth timeseries if there is noise. 
-    Peaks are then detected using a peakfinder. From these peaks a phase is derived and then 
+    Can smooth timeseries if there is noise.
+    Peaks are then detected using a peakfinder. From these peaks a phase is derived and then
     the amount of phase synchrony (the Kuramoto order parameter) is computed.
 
     :param traces: Multidimensional timeseries array
@@ -18,8 +18,8 @@ def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
     :type smoothing: float, optional
     :param peakrange: Width range of peaks for peak detection with `scipy.signal.find_peaks_cwt`
     :type peakrange: list[float], length 2
-            
-    :return: Timeseries of Kuramoto order paramter 
+
+    :return: Timeseries of Kuramoto order paramter
     :rtype: numpy.ndarray
     """
     phases = []
@@ -63,7 +63,7 @@ def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
 def matrix_correlation(M1, M2):
     """Pearson correlation of the lower triagonal of two matrices.
     The triangular matrix is offset by k = 1 in order to ignore the diagonal line
-    
+
     :param M1: First matrix
     :type M1: numpy.ndarray
     :param M2: Second matrix
@@ -174,10 +174,10 @@ def matrix_kolmogorov(m1, m2):
 
 
 def ts_kolmogorov(ts1, ts2, **fcd_kwargs):
-    """Computes kolmogorov distance between two timeseries. 
+    """Computes kolmogorov distance between two timeseries.
     This is done by first computing two FCD matrices (one for each timeseries)
     and then measuring the Kolmogorov distance of the upper triangle of these matrices.
-    
+
     :param ts1: Timeseries 1
     :type ts1: np.ndarray
     :param ts2: Timeseries 2
@@ -272,7 +272,7 @@ def ts_kolmogorov(ts1, ts2, **fcd_kwargs):
 
 def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
     """Returns a power spectrum using Welch's method.
-    
+
     :param activity: One-dimensional timeseries
     :type activity: np.ndarray
     :param dt: Simulation time step
@@ -293,7 +293,11 @@ def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=
     assert len(activity.shape) == 1, "activity is not one-dimensional!"
 
     f, Pxx_spec = scipy.signal.welch(
-        activity, 1000 / dt, window="hanning", nperseg=int(spectrum_windowsize * 1000 / dt), scaling="spectrum",
+        activity,
+        1000 / dt,
+        window="hanning",
+        nperseg=int(spectrum_windowsize * 1000 / dt),
+        scaling="spectrum",
     )
     f = f[f < maxfr]
     Pxx_spec = Pxx_spec[0 : len(f)]
@@ -304,7 +308,7 @@ def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=
 
 def getMeanPowerSpectrum(activities, dt, maxfr=70, spectrum_windowsize=1.0, normalize=False):
     """Returns the mean power spectrum of multiple timeseries.
-    
+
     :param activities: N-dimensional timeseries
     :type activities: np.ndarray
     :param dt: Simulation time step
@@ -330,106 +334,3 @@ def getMeanPowerSpectrum(activities, dt, maxfr=70, spectrum_windowsize=1.0, norm
     if normalize:
         powers /= np.max(powers)
     return f, powers
-
-
-def construct_stimulus(
-    stim="dc",
-    duration=6000,
-    dt=0.1,
-    stim_amp=0.2,
-    stim_freq=1,
-    stim_bias=0,
-    n_periods=None,
-    nostim_before=0,
-    nostim_after=0,
-):
-    """Constructs a stimulus that can be applied to a model
-
-    :param stim: Stimulation type: 'ac':oscillatory stimulus, 'dc': stimple step current, 
-                'rect': step current in negative then positive direction with slowly
-                decaying amplitude, used for bistability detection, defaults to 'dc'
-    :type stim: str, optional
-    :param duration: Duration of stimulus in ms, defaults to 6000
-    :type duration: int, optional
-    :param dt: Integration time step in ms, defaults to 0.1
-    :type dt: float, optional
-    :param stim_amp: Amplitude of stimulus (for AdEx: in mV/ms, multiply by conductance C to get current in pA), defaults to 0.2
-    :type stim_amp: float, optional
-    :param stim_freq: Stimulation frequency, defaults to 1
-    :type stim_freq: int, optional
-    :param stim_bias: Stimulation offset (bias), defaults to 0
-    :type stim_bias: int, optional
-    :param n_periods: Numer of periods of stimulus, defaults to None
-    :type n_periods: [type], optional
-    :param nostim_before: Time before stimulation, defaults to 0
-    :type nostim_before: int, optional
-    :param nostim_after: Time after stimulation, defaults to 0
-    :type nostim_after: int, optional
-    :raises ValueError: Raises error if unsupported stimulus type is chosen.
-    :return: Stimulus timeseries
-    :rtype: numpy.ndarray
-    """
-    """Constructs a sitmulus that can be applied as input to a model
-
-    TODO: rewrite
-
-    stim:       Stimulus type: 'ac':oscillatory stimulus, 'dc': stimple step current, 
-                'rect': step current in negative then positive direction with slowly
-                decaying amplitude, used for bistability detection
-    stim_amp:   Amplitude of stimulus (for AdEx: in mV/ms, multiply by conductance C to get current in pA)
-    """
-
-    def sinus_stim(f=1, amplitude=0.2, positive=0, phase=0, cycles=1, t_pause=0):
-        x = np.linspace(np.pi, -np.pi, int(1000 / dt / f))
-        sinus_function = np.hstack(((np.sin(x + phase) + positive), np.tile(0, t_pause)))
-        sinus_function *= amplitude
-        return np.tile(sinus_function, cycles)
-
-    if stim == "ac":
-        """Oscillatory stimulus
-        """
-        n_periods = n_periods or int(stim_freq)
-
-        stimulus = np.hstack(
-            ([stim_bias] * int(nostim_before / dt), np.tile(sinus_stim(stim_freq, stim_amp) + stim_bias, n_periods),)
-        )
-        stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
-    elif stim == "dc":
-        """Simple DC input and return to baseline
-        """
-        stimulus = np.hstack(([stim_bias] * int(nostim_before / dt), [stim_bias + stim_amp] * int(1000 / dt)))
-        stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
-        stimulus[stimulus < 0] = 0
-    elif stim == "rect":
-        """Rectified step current with slow decay
-        """
-        # construct input
-        stimulus = np.zeros(int(duration / dt))
-        tot_len = int(duration / dt)
-        stim_epoch = tot_len / 6
-
-        stim_increase_counter = 0
-        stim_decrease_counter = 0
-        stim_step_increase = 5.0 / stim_epoch
-
-        for i, m in enumerate(stimulus):
-            if 0 * stim_epoch <= i < 0.5 * stim_epoch:
-                stimulus[i] -= stim_amp
-            elif 0.5 * stim_epoch <= i < 3.0 * stim_epoch:
-                stimulus[i] = -np.exp(-stim_increase_counter) * stim_amp
-                stim_increase_counter += stim_step_increase
-            elif 3.0 * stim_epoch <= i < 3.5 * stim_epoch:
-                stimulus[i] += stim_amp
-            elif 3.5 * stim_epoch <= i < 5 * stim_epoch:
-                stimulus[i] = np.exp(-stim_decrease_counter) * stim_amp
-                stim_decrease_counter += stim_step_increase
-    else:
-        raise ValueError(f'Stimulus {stim} not found. Use "ac", "dc" or "rect".')
-
-    # repeat stimulus until full length
-    steps = int(duration / dt)
-    stimlength = int(len(stimulus))
-    stimulus = np.tile(stimulus, int(steps / stimlength + 2))
-    stimulus = stimulus[:steps]
-
-    return stimulus
