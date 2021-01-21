@@ -7,7 +7,6 @@ import unittest
 import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
-from neurolib.models.multimodel.builder.model_input import ZeroInput
 from neurolib.models.multimodel.builder.thalamus import (
     TCR_DEFAULT_PARAMS,
     TRN_DEFAULT_PARAMS,
@@ -16,6 +15,7 @@ from neurolib.models.multimodel.builder.thalamus import (
     ThalamocorticalMass,
 )
 from neurolib.models.thalamus import ThalamicMassModel
+from neurolib.utils.stimulus import ZeroInput
 
 DURATION = 100.0
 DT = 0.01

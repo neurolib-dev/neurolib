@@ -2,10 +2,10 @@ import numpy as np
 from jitcdde import input as system_input
 from symengine import exp
 
+from ....utils.stimulus import OrnsteinUhlenbeckProcess
 from ..builder.base.constants import EXC, INH, LAMBDA_SPEED
 from ..builder.base.network import Network, Node, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
-from .model_input import OrnsteinUhlenbeckProcess
 
 WW_EXC_DEFAULT_PARAMS = {
     "a": 0.31,  # nC^-1

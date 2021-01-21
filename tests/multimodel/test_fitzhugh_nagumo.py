@@ -14,7 +14,7 @@ from neurolib.models.multimodel.builder.fitzhugh_nagumo import (
     FitzHughNagumoNetwork,
     FitzHughNagumoNode,
 )
-from neurolib.models.multimodel.builder.model_input import ZeroInput
+from neurolib.utils.stimulus import ZeroInput
 
 SEED = 42
 DURATION = 100.0
