@@ -35,7 +35,7 @@ class HopfMass(NeuralMass):
     state_variable_names = ["x", "y"]
     required_params = ["a", "w", "x_ext", "y_ext"]
     required_couplings = ["network_x", "network_y"]
-    noise_input = [
+    _noise_input = [
         OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0),
         OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0),
     ]

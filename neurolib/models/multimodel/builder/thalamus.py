@@ -167,7 +167,7 @@ class ThalamocorticalMass(ThalamicMass):
         "ext_current",
         "lambda",
     ]
-    noise_input = [OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0)]
+    _noise_input = [OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0)]
 
     def __init__(self, params=None):
         super().__init__(params=params or TCR_DEFAULT_PARAMS)
@@ -332,7 +332,7 @@ class ThalamicReticularMass(ThalamicMass):
         "ext_current",
         "lambda",
     ]
-    noise_input = [ZeroInput()]
+    _noise_input = [ZeroInput()]
 
     def __init__(self, params=None):
         super().__init__(params=params or TRN_DEFAULT_PARAMS)

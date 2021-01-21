@@ -78,7 +78,7 @@ class WongWangMass(NeuralMass):
     num_noise_variables = 1
     coupling_variables = {0: "S"}
     state_variable_names = ["S", "q_mean"]
-    noise_input = [OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0)]
+    _noise_input = [OrnsteinUhlenbeckProcess(mu=0.0, sigma=0.0, tau=5.0)]
 
     def _initialize_state_vector(self):
         """
