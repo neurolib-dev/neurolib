@@ -8,7 +8,7 @@ import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.hopf import HopfModel
 from neurolib.models.multimodel.builder.hopf import HOPF_DEFAULT_PARAMS, HopfMass, HopfNetwork, HopfNode
-from neurolib.models.multimodel.builder.model_input import ZeroInput
+from neurolib.utils.stimulus import ZeroInput
 
 SEED = 42
 DURATION = 100.0

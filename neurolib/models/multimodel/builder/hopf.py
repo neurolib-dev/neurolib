@@ -1,9 +1,9 @@
 import numpy as np
 from jitcdde import input as system_input
 
+from ....utils.stimulus import OrnsteinUhlenbeckProcess
 from ..builder.base.network import Network, Node
 from ..builder.base.neural_mass import NeuralMass
-from .model_input import OrnsteinUhlenbeckProcess
 
 HOPF_DEFAULT_PARAMS = {
     "a": 0.25,

@@ -6,7 +6,7 @@ import unittest
 
 import symengine as se
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
-from neurolib.models.multimodel.builder.model_input import OrnsteinUhlenbeckProcess, ZeroInput
+from neurolib.utils.stimulus import OrnsteinUhlenbeckProcess, ZeroInput
 
 
 class MassTest(NeuralMass):

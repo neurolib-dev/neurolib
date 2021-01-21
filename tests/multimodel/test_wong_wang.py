@@ -7,7 +7,6 @@ import numpy as np
 import xarray as xr
 from jitcdde import jitcdde_input
 from neurolib.models.multimodel.builder.base.constants import EXC
-from neurolib.models.multimodel.builder.model_input import ZeroInput
 from neurolib.models.multimodel.builder.wong_wang import (
     WW_EXC_DEFAULT_PARAMS,
     WW_INH_DEFAULT_PARAMS,
@@ -20,6 +19,7 @@ from neurolib.models.multimodel.builder.wong_wang import (
     WongWangNetwork,
     WongWangNode,
 )
+from neurolib.utils.stimulus import ZeroInput
 
 SEED = 42
 DURATION = 100.0

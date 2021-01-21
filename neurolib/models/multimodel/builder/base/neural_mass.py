@@ -4,7 +4,7 @@ import numpy as np
 import symengine as se
 from jitcdde import y as state_vector
 
-from ..model_input import ModelInput
+from .....utils.stimulus import ModelInput
 
 
 class NeuralMass:

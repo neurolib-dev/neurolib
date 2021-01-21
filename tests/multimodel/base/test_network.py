@@ -11,7 +11,7 @@ import symengine as se
 from neurolib.models.multimodel.builder.base.constants import EXC, INH
 from neurolib.models.multimodel.builder.base.network import Network, Node, SingleCouplingExcitatoryInhibitoryNode
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
-from neurolib.models.multimodel.builder.model_input import OrnsteinUhlenbeckProcess, ZeroInput
+from neurolib.utils.stimulus import OrnsteinUhlenbeckProcess, ZeroInput
 
 PARAMS = {"a": 1.2, "b": 11.9}
 

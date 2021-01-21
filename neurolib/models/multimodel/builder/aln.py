@@ -8,10 +8,10 @@ import symengine as se
 from h5py import File
 from jitcdde import input as system_input
 
+from ....utils.stimulus import OrnsteinUhlenbeckProcess
 from ..builder.base.constants import EXC, INH, LAMBDA_SPEED
 from ..builder.base.network import Network, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
-from .model_input import OrnsteinUhlenbeckProcess
 
 DEFAULT_QUANTITIES_CASCADE_FILENAME = "quantities_cascade.h5"
 
