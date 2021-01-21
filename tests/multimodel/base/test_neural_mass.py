@@ -6,7 +6,7 @@ import unittest
 
 import symengine as se
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
-from neurolib.models.multimodel.builder.model_input import ZeroInput
+from neurolib.models.multimodel.builder.model_input import OrnsteinUhlenbeckProcess, ZeroInput
 
 
 class MassTest(NeuralMass):
@@ -15,7 +15,7 @@ class MassTest(NeuralMass):
     num_noise_variables = 2
     helper_variables = ["helper_test"]
     python_callbacks = ["test_callback"]
-    noise_input = [ZeroInput(), ZeroInput()]
+    _noise_input = [ZeroInput(), ZeroInput()]
 
 
 class TestNeuralMass(unittest.TestCase):
@@ -67,6 +67,13 @@ class TestNeuralMass(unittest.TestCase):
         self.assertTrue(mass.initialised)
         self.assertListEqual(mass.initial_state, [0.0] * mass.num_state_variables)
         self.assertListEqual(mass.noise_input_idx, [6, 7])
+
+    def test_set_noise_input(self):
+        mass = MassTest(self.PARAMS)
+        self.assertTrue(all(isinstance(noise, ZeroInput) for noise in mass.noise_input))
+        mass.noise_input = [OrnsteinUhlenbeckProcess(0.0, 0.0, 1.0), ZeroInput()]
+        self.assertTrue(isinstance(mass.noise_input[0], OrnsteinUhlenbeckProcess))
+        self.assertTrue(isinstance(mass.noise_input[1], ZeroInput))
 
     def test_unwrap_state_vector(self):
         mass = MassTest(self.PARAMS)
