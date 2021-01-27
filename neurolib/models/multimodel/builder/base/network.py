@@ -1,5 +1,5 @@
 import logging
-from itertools import chain
+from itertools import chain, islice
 
 import numpy as np
 import symengine as se
@@ -47,7 +47,6 @@ class Node(BackendIntegrator):
         # for all masses
         self.num_state_variables = sum([mass.num_state_variables for mass in self])
         self.num_noise_variables = sum([mass.num_noise_variables for mass in self])
-        self.noise_input = sum([mass.noise_input for mass in self], [])
         assert len(self.noise_input) == self.num_noise_variables
         self.idx_state_var = None
         self.initialised = False
@@ -108,6 +107,19 @@ class Node(BackendIntegrator):
     @property
     def max_delay(self):
         return 0.0
+
+    @property
+    def noise_input(self):
+        return sum([mass.noise_input for mass in self], [])
+
+    @noise_input.setter
+    def noise_input(self, new_noise):
+        assert len(new_noise) == self.num_noise_variables
+        masses_noise_length = [mass.num_noise_variables for mass in self.masses]
+        new_noise = iter(new_noise)
+        for noise_chunk, mass in zip([list(islice(new_noise, 0, i)) for i in masses_noise_length], self.masses):
+            assert len(noise_chunk) == mass.num_noise_variables
+            mass.noise_input = noise_chunk
 
     def get_nested_params(self):
         """
@@ -466,7 +478,6 @@ class Network(BackendIntegrator):
         self.nodes = nodes
         self.num_state_variables = sum([node.num_state_variables for node in self])
         self.num_noise_variables = sum([node.num_noise_variables for node in self])
-        self.noise_input = sum([mass.noise_input for mass in self], [])
         assert len(self.noise_input) == self.num_noise_variables
         assert connectivity_matrix.shape[0] == self.num_nodes
         if delay_matrix is None:
@@ -555,6 +566,19 @@ class Network(BackendIntegrator):
         assert initial_state.ndim in [1, 2]
         assert initial_state.shape[0] == self.num_state_variables
         self._initial_state = initial_state
+
+    @property
+    def noise_input(self):
+        return sum([node.noise_input for node in self], [])
+
+    @noise_input.setter
+    def noise_input(self, new_noise):
+        assert len(new_noise) == self.num_noise_variables
+        nodes_noise_length = [node.num_noise_variables for node in self.nodes]
+        new_noise = iter(new_noise)
+        for noise_chunk, node in zip([list(islice(new_noise, 0, i)) for i in nodes_noise_length], self.nodes):
+            assert len(noise_chunk) == node.num_noise_variables
+            node.noise_input = noise_chunk
 
     @staticmethod
     def _strip_index(symbol_name):

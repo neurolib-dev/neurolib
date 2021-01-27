@@ -4,13 +4,14 @@ Test for network class.
 
 import unittest
 from copy import deepcopy
+
 import numba
 import numpy as np
 import symengine as se
 from neurolib.models.multimodel.builder.base.constants import EXC, INH
 from neurolib.models.multimodel.builder.base.network import Network, Node, SingleCouplingExcitatoryInhibitoryNode
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
-from neurolib.models.multimodel.builder.model_input import ZeroInput
+from neurolib.utils.stimulus import OrnsteinUhlenbeckProcess, ZeroInput
 
 PARAMS = {"a": 1.2, "b": 11.9}
 
@@ -23,7 +24,7 @@ class ExcMassTest(NeuralMass):
     num_state_variables = 1
     num_noise_variables = 2
     mass_type = EXC
-    noise_input = [ZeroInput(), ZeroInput()]
+    _noise_input = [ZeroInput(), ZeroInput()]
 
 
 class InhMassTest(NeuralMass):
@@ -34,7 +35,7 @@ class InhMassTest(NeuralMass):
     num_state_variables = 1
     num_noise_variables = 2
     mass_type = INH
-    noise_input = [ZeroInput(), ZeroInput()]
+    _noise_input = [ZeroInput(), ZeroInput()]
 
 
 class NodeTest(Node):
@@ -86,6 +87,20 @@ class TestNode(unittest.TestCase):
         node.update_params({f"{EXC}_0": UPDATE_WITH, f"{INH}_1": UPDATE_WITH})
         self.assertEqual(node[0].params["a"], UPDATE_WITH["a"])
         self.assertEqual(node[1].params["a"], UPDATE_WITH["a"])
+
+    def test_noise_input(self):
+        node = self._create_node()
+        self.assertTrue(all(isinstance(noise, ZeroInput) for noise in node.noise_input))
+        node.noise_input = [
+            OrnsteinUhlenbeckProcess(0.0, 0.0, 1.0),
+            ZeroInput(),
+            OrnsteinUhlenbeckProcess(0.0, 0.0, 1.0),
+            ZeroInput(),
+        ]
+        self.assertTrue(isinstance(node.noise_input[0], OrnsteinUhlenbeckProcess))
+        self.assertTrue(isinstance(node.noise_input[2], OrnsteinUhlenbeckProcess))
+        self.assertTrue(isinstance(node.noise_input[1], ZeroInput))
+        self.assertTrue(isinstance(node.noise_input[3], ZeroInput))
 
     def test_strip_index(self):
         node = self._create_node()
@@ -242,6 +257,12 @@ class TestNetwork(unittest.TestCase):
         np.testing.assert_equal(net.connectivity, UPDATE_CONNECTIVITY)
         np.testing.assert_equal(net.delays, UPDATE_DELAYS)
         self.assertEqual(net[0][0].params["a"], UPDATE_WITH["a"])
+
+    def test_set_noise_input(self):
+        net, _ = self._create_network()
+        self.assertTrue(all(isinstance(noise, ZeroInput) for noise in net.noise_input))
+        net.noise_input = [OrnsteinUhlenbeckProcess(0.0, 0.0, 1.0)] * net.num_noise_variables
+        self.assertTrue(all(isinstance(noise, OrnsteinUhlenbeckProcess) for noise in net.noise_input))
 
     def test_initial_state(self):
         net, _ = self._create_network()

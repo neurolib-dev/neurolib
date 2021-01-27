@@ -4,7 +4,7 @@ import numpy as np
 import symengine as se
 from jitcdde import y as state_vector
 
-from ..model_input import ModelInput
+from .....utils.stimulus import ModelInput
 
 
 class NeuralMass:
@@ -43,7 +43,7 @@ class NeuralMass:
     num_noise_variables = 0
 
     # inputs to the mass - usually noise
-    noise_input = []
+    _noise_input = []
 
     # names for the state variables to link them with results
     state_variable_names = []
@@ -146,6 +146,17 @@ class NeuralMass:
             for callback_from_list, callback_from_init in zip(callback_list, self.callback_functions.values())
         )
         assert all(callable(callback[1]) for callback in callback_list)
+
+    @property
+    def noise_input(self):
+        return self._noise_input
+
+    @noise_input.setter
+    def noise_input(self, new_noise):
+        assert len(new_noise) == self.num_noise_variables
+        self._noise_input = new_noise
+        # update noise parameters
+        self._get_params_from_noise()
 
     def init_mass(self, start_idx_for_noise=None):
         """
