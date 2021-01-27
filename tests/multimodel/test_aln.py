@@ -22,7 +22,7 @@ from neurolib.models.multimodel.builder.aln import (
     _table_lookup,
 )
 from neurolib.models.multimodel.builder.base.constants import EXC
-from neurolib.models.multimodel.builder.model_input import ZeroInput
+from neurolib.utils.stimulus import ZeroInput
 
 # these keys do not test since they are rescaled on the go
 PARAMS_NOT_TEST_KEYS = ["c_gl", "taum", "noise_0"]

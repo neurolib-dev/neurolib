@@ -8,10 +8,10 @@ import symengine as se
 from h5py import File
 from jitcdde import input as system_input
 
+from ....utils.stimulus import OrnsteinUhlenbeckProcess
 from ..builder.base.constants import EXC, INH, LAMBDA_SPEED
 from ..builder.base.network import Network, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
-from .model_input import OrnsteinUhlenbeckProcess
 
 DEFAULT_QUANTITIES_CASCADE_FILENAME = "quantities_cascade.h5"
 
@@ -422,7 +422,7 @@ class ExcitatoryALNMass(ALNMass):
         "lambda",
     ]
 
-    noise_input = [OrnsteinUhlenbeckProcess(mu=0.4, sigma=0.0, tau=5.0)]
+    _noise_input = [OrnsteinUhlenbeckProcess(mu=0.4, sigma=0.0, tau=5.0)]
 
     @staticmethod
     def _rescale_strengths(params):
@@ -619,7 +619,7 @@ class InhibitoryALNMass(ALNMass):
         "lambda",
     ]
 
-    noise_input = [OrnsteinUhlenbeckProcess(mu=0.3, sigma=0.0, tau=5.0)]
+    _noise_input = [OrnsteinUhlenbeckProcess(mu=0.3, sigma=0.0, tau=5.0)]
 
     @staticmethod
     def _rescale_strengths(params):
