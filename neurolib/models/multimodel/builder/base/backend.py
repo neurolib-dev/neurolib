@@ -22,7 +22,6 @@ import logging
 import os
 import re
 import time
-from copy import deepcopy
 from functools import wraps
 from sys import platform
 from types import FunctionType
@@ -148,32 +147,6 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
     return y[:, max_delay + 1:]
 """
 
-    @staticmethod
-    def float_parameters_to_symbolic(param_dict):
-        """
-        Transforms float / array / int parameters to symbolic ones. Name of the
-        symbols are the same as name of the keys. Assumes flat dictionary with
-        dot as a separator. Does not translate noise parameters.
-
-        :param param_dict: dictionary with parameters and their values
-        :type param_dict: dict
-        :return: dictionary with parameters and symbols
-        :rtype: dict
-        """
-        # param_dict = deepcopy(param_dict)
-        symbol_dict = {}
-        for k, v in param_dict.items():
-            splitted_key = k.split(".")
-            if any("noise" in sp for sp in splitted_key):
-                continue
-            if isinstance(v, (float, int)):
-                symbol_dict[k] = sp.Symbol(k.replace(".", "DOT"))
-            elif isinstance(v, np.ndarray):
-                symbol_dict[k] = sp.MatrixSymbol(k.replace(".", "DOT"), *v.shape)
-            else:
-                raise ValueError(f"Cannot handle {type(v)} type of {k}")
-        return symbol_dict
-
     def _replace_current_ys(self, expression):
         """
         Replace `current_y` symbolic representation of current state of the
@@ -248,6 +221,10 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
             helpers
         :type helpers: list[tuple]
         """
+        # NOTE sp.sympify works with MatrixSymbols [connectivity matrices], but
+        # raises errors for numba backend that past_y symbol cannot be found
+        # NOTE se.sympify works as usual, but cannot process symbolic parameters
+        # that have matrices - doesn't know MatrixSymbol
         sympified_helpers = [(se.sympify(helper[0]), se.sympify(helper[1])) for helper in helpers]
         sympified_derivatives = [se.sympify(derivative) for derivative in derivatives]
         substitutions = {helper[0]: helper[1] for helper in sympified_helpers}
