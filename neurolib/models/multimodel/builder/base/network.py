@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from itertools import chain, islice
 
 import numpy as np
@@ -7,9 +8,35 @@ import sympy as sp
 from jitcdde import t as time_vector
 from jitcdde import y as state_vector
 
+from .....utils.collections import flat_dict_to_nested, flatten_nested_dict
 from .backend import BackendIntegrator
 from .constants import EXC, NETWORK_CONNECTIVITY, NETWORK_DELAYS, NODE_CONNECTIVITY, NODE_DELAYS
 from .neural_mass import NeuralMass
+
+
+def float_parameters_to_symbolic(param_dict):
+    """
+    Transforms float / array / int parameters to symbolic ones. Name of the
+    symbols are the same as name of the keys. Assumes flat dictionary with
+    dot as a separator. Does not translate noise parameters.
+
+    :param param_dict: dictionary with parameters and their values
+    :type param_dict: dict
+    :return: dictionary with parameters and symbols
+    :rtype: dict
+    """
+    symbol_dict = {}
+    for k, v in param_dict.items():
+        splitted_key = k.split(".")
+        if any(["noise" in sp for sp in splitted_key]):
+            continue
+        if isinstance(v, (float, int)):
+            symbol_dict[k] = sp.Symbol(k.replace(".", "DOT"))
+        elif isinstance(v, np.ndarray):
+            symbol_dict[k] = sp.MatrixSymbol(k.replace(".", "DOT"), *v.shape)
+        else:
+            raise ValueError(f"Cannot handle {type(v)} type of {k}")
+    return symbol_dict
 
 
 class Node(BackendIntegrator):
@@ -57,6 +84,9 @@ class Node(BackendIntegrator):
         mass_types = [mass.mass_type for mass in self]
         assert len(set(mass_types)) == len(mass_types), f"Mass types needs to be different: {mass_types}"
         self._initial_state = None
+        # symbolic vs float params
+        self.float_params = None
+        self.are_params_floats = True
 
     def __str__(self):
         """
@@ -137,6 +167,28 @@ class Node(BackendIntegrator):
             mass_key = f"{mass.label}_{mass.index}"
             nested_dict[node_key][mass_key] = mass.params
         return nested_dict
+
+    def make_params_symbolic(self):
+        """
+        Make all node parameters symbolic, instead of concrete values. Useful
+        when caching compiled functions.
+        """
+        assert self.are_params_floats
+        # save copy of original numeric parameters
+        self.float_params = deepcopy(self.get_nested_params())
+        symbolic_params = float_parameters_to_symbolic(flatten_nested_dict(self.get_nested_params()))
+        # update self with symbolic params
+        self.update_params(flat_dict_to_nested(symbolic_params))
+        self.are_params_floats = False
+
+    def make_params_floats(self):
+        """
+        Make all node parameters floats again!
+        """
+        assert not self.are_params_floats
+        self.update_params(self.float_params)
+        self.are_params_floats = True
+        self.float_params = None
 
     def init_node(self, **kwargs):
         """
@@ -497,6 +549,10 @@ class Network(BackendIntegrator):
         assert all(var in chain.from_iterable(self.state_variable_names) for var in self.output_vars)
         assert all(self.default_output in node_state_vars for node_state_vars in self.state_variable_names)
 
+        # symbolic vs float params
+        self.float_params = None
+        self.are_params_floats = True
+
         self.init_network()
 
     def __str__(self):
@@ -630,6 +686,28 @@ class Network(BackendIntegrator):
         nested_dict[self.label][NETWORK_CONNECTIVITY] = self.connectivity
         nested_dict[self.label][NETWORK_DELAYS] = self.delays
         return nested_dict
+
+    def make_params_symbolic(self):
+        """
+        Make all node parameters symbolic, instead of concrete values. Useful
+        when caching compiled functions.
+        """
+        assert self.are_params_floats
+        # save copy of original numeric parameters
+        self.float_params = deepcopy(self.get_nested_params())
+        symbolic_params = float_parameters_to_symbolic(flatten_nested_dict(self.get_nested_params()))
+        # update self with symbolic params
+        self.update_params(flat_dict_to_nested(symbolic_params))
+        self.are_params_floats = False
+
+    def make_params_floats(self):
+        """
+        Make all node parameters floats again!
+        """
+        assert not self.are_params_floats
+        self.update_params(self.float_params)
+        self.are_params_floats = True
+        self.float_params = None
 
     def init_network(self, **kwargs):
         """
