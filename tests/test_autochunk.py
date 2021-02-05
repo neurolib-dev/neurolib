@@ -126,7 +126,7 @@ class TestWWAutochunk(AutochunkTests):
 
 
 class TestThalamusAutochunk(AutochunkTests):
-    # @pytest.mark.xfail
+    @pytest.mark.xfail
     def test_single(self):
         self.single_node_test(ThalamicMassModel)
 
