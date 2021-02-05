@@ -7,7 +7,7 @@ from ..builder.base.constants import EXC, INH
 from ..builder.base.network import Network, SingleCouplingExcitatoryInhibitoryNode
 from ..builder.base.neural_mass import NeuralMass
 
-WC_EXC_DEFAULT_PARAMS = {"a": 1.5, "mu": 3.0, "tau": 2.5, "ext_input": 1.0}
+WC_EXC_DEFAULT_PARAMS = {"a": 1.5, "mu": 3.0, "tau": 2.5, "ext_input": 0.0}
 WC_INH_DEFAULT_PARAMS = {"a": 1.5, "mu": 3.0, "tau": 3.75, "ext_input": 0.0}
 # matrix as [to, from], masses as (EXC, INH)
 WC_NODE_DEFAULT_CONNECTIVITY = np.array([[16.0, 12.0], [15.0, 3.0]])

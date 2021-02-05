@@ -1,5 +1,6 @@
 import copy
 import unittest
+import logging
 
 import numpy as np
 import pytest
@@ -8,6 +9,7 @@ from neurolib.models.fhn import FHNModel
 from neurolib.models.hopf import HopfModel
 from neurolib.models.thalamus import ThalamicMassModel
 from neurolib.models.wc import WCModel
+from neurolib.models.ww import WWModel
 from neurolib.utils.loadData import Dataset
 
 
@@ -23,21 +25,22 @@ class AutochunkTests(unittest.TestCase):
     def single_node_test(self, model):
         for duration in self.durations:
             for chunksize in self.chunksizes:
-                for signalV in self.signalVs:
-                    # full run
-                    m1 = model()
-                    m1.params.signalV = signalV
-                    m1.params["duration"] = duration
-                    pars_bak = copy.deepcopy(m1.params)
-                    m1.run()
-                    # chunkwise run
-                    m2 = model()
-                    m2.params = pars_bak.copy()
-                    m2.run(chunkwise=True, chunksize=chunksize, append=True)
-                    # check
-                    self.assertTupleEqual(m1.output.shape, m2.output.shape)
-                    difference = np.sum(np.abs(m1.output - m2.output))
-                    self.assertAlmostEqual(difference, 0.0)
+                # full run
+                m1 = model()
+                m1.params["duration"] = duration
+                pars_bak = copy.deepcopy(m1.params)
+                m1.run()
+                # chunkwise run
+                m2 = model()
+                m2.params = pars_bak.copy()
+                m2.run(chunkwise=True, chunksize=chunksize, append=True)
+                # check
+                self.assertTupleEqual(m1.output.shape, m2.output.shape)
+                difference = np.sum(np.abs(m1.output - m2.output))
+                print(
+                    f"single node model: {model.name}, duration: {duration}, chunksize: {chunksize}, difference: {difference}"
+                )
+                self.assertAlmostEqual(difference, 0.0)
 
     def network_test(self, model):
         ds = Dataset("hcp")
@@ -57,6 +60,9 @@ class AutochunkTests(unittest.TestCase):
                     # check
                     self.assertTupleEqual(m1.output.shape, m2.output.shape)
                     difference = np.sum(np.abs(m1.output - m2.output))
+                    print(
+                        f"network model: {model.name}, duration: {duration}, chunksize: {chunksize}, difference: {difference}"
+                    )
                     self.assertAlmostEqual(difference, 0.0)
 
 
@@ -111,8 +117,16 @@ class TestWCAutochunk(AutochunkTests):
         self.network_test(WCModel)
 
 
+class TestWWAutochunk(AutochunkTests):
+    def test_single(self):
+        self.single_node_test(WWModel)
+
+    def test_network(self):
+        self.network_test(WWModel)
+
+
 class TestThalamusAutochunk(AutochunkTests):
-    @pytest.mark.xfail
+    # @pytest.mark.xfail
     def test_single(self):
         self.single_node_test(ThalamicMassModel)
 
