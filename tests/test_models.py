@@ -13,6 +13,7 @@ from neurolib.models.multimodel import MultiModel
 from neurolib.models.multimodel.builder.fitzhugh_nagumo import FitzHughNagumoNetwork, FitzHughNagumoNode
 from neurolib.models.thalamus import ThalamicMassModel
 from neurolib.models.wc import WCModel
+from neurolib.models.ww import WWModel
 from neurolib.utils.collections import star_dotdict
 from neurolib.utils.loadData import Dataset
 
@@ -134,11 +135,11 @@ class TestWC(unittest.TestCase):
     def test_single_node(self):
         logging.info("\t > WC: Testing single node ...")
         start = time.time()
-        wc = WCModel()
-        wc.params["duration"] = 2.0 * 1000
-        wc.params["sigma_ou"] = 0.03
+        model = WCModel()
+        model.params["duration"] = 2.0 * 1000
+        model.params["sigma_ou"] = 0.03
 
-        wc.run()
+        model.run()
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
@@ -147,14 +148,48 @@ class TestWC(unittest.TestCase):
         logging.info("\t > WC: Testing brain network (chunkwise integration and BOLD simulation) ...")
         start = time.time()
         ds = Dataset("gw")
-        wc = WCModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
-        wc.params["signalV"] = 4.0
-        wc.params["duration"] = 10 * 1000
-        wc.params["sigma_ou"] = 0.1
-        wc.params["K_gl"] = 0.6
-        wc.params["x_ext_mean"] = 0.72
+        model = WCModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
+        model.params["signalV"] = 4.0
+        model.params["duration"] = 10 * 1000
+        model.params["sigma_ou"] = 0.1
+        model.params["K_gl"] = 0.6
 
-        wc.run(chunkwise=True, bold=True, append_outputs=True)
+        # local node input parameter
+        model.params["exc_ext"] = 0.72
+
+        model.run(chunkwise=True, bold=True, append_outputs=True)
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+class TestWW(unittest.TestCase):
+    """
+    Basic test for WW model.
+    """
+
+    def test_single_node(self):
+        logging.info("\t > WW: Testing single node ...")
+        start = time.time()
+        model = WWModel()
+        model.params["duration"] = 2.0 * 1000
+        model.params["sigma_ou"] = 0.03
+
+        model.run()
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+    def test_network(self):
+        logging.info("\t > WW: Testing brain network (chunkwise integration and BOLD simulation) ...")
+        start = time.time()
+        ds = Dataset("gw")
+        model = WWModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
+        model.params["signalV"] = 4.0
+        model.params["duration"] = 10 * 1000
+        model.params["sigma_ou"] = 0.1
+        model.params["K_gl"] = 0.6
+
+        model.run(chunkwise=True, bold=True, append_outputs=True)
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
