@@ -4,7 +4,7 @@ from ...utils.collections import dotdict
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
-    """Load default parameters for the Wilson-Cowan model
+    """Load default parameters for the Wong-Wang model
 
     :param Cmat: Structural connectivity matrix (adjacency matrix) of coupling strengths, will be normalized to 1. If not given, then a single node simulation will be assumed, defaults to None
     :type Cmat: numpy.ndarray, optional
@@ -29,7 +29,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # global whole-brain network parameters
     # ------------------------------------------------------------------------
 
-    # signal transmission speed between areas
+    # signal transmission speec between areas
     params.signalV = 20.0
     params.K_gl = 0.6  # global coupling strength
 
@@ -48,32 +48,40 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # local node parameters
     # ------------------------------------------------------------------------
 
-    # external input parameters:
+    # # the coupling parameter determines how nodes are coupled.
+    # # "original" for original wong-wang model, "reduced" for reduced wong-wang model
+    # params.version = "original"
+
+    # external noise parameters:
     params.tau_ou = 5.0  # ms Timescale of the Ornstein-Uhlenbeck noise process
-    params.sigma_ou = 0.0  # noise intensity
+    params.sigma_ou = 0.0  #  noise intensity
     params.exc_ou_mean = 0.0  # OU process mean
     params.inh_ou_mean = 0.0  # OU process mean
 
     # neural mass model parameters
-    params.tau_exc = 2.5  # excitatory time constant
-    params.tau_inh = 3.75  # inhibitory time constant
-    params.c_excexc = 16  # local E-E coupling
-    params.c_excinh = 15  # local E-I coupling
-    params.c_inhexc = 12  # local I-E coupling
-    params.c_inhinh = 3  # local I-I coupling
-    params.a_exc = 1.5  # excitatory gain
-    params.a_inh = 1.5  # inhibitory gain
-    params.mu_exc = 3.0  # excitatory firing threshold
-    params.mu_inh = 3.0  # inhibitory firing threshold
+    params.a_exc = 0.31  # nC^-1
+    params.b_exc = 0.125  # kHz
+    params.d_exc = 160.0  # ms
+    params.tau_exc = 100.0  # ms
+    params.gamma_exc = 0.641
+    params.w_exc = 1.0
+    params.exc_current = 0.382  # nA
 
-    # values of the external inputs
-    params.exc_ext = 0  # baseline external input to E
-    params.inh_ext = 0  # baseline external input to I
+    params.a_inh = 0.615  # nC^-1
+    params.b_inh = 0.177  # kHz
+    params.d_inh = 87.0  # ms
+    params.tau_inh = 10.0  # ms
+    params.w_inh = 0.7
+    params.inh_current = 0.382  # nA
+
+    params.J_NMDA = 0.15  # nA, excitatory synaptic coupling
+    params.J_I = 1.0  # nA, inhibitory synaptic coupling
+    params.w_ee = 1.4  # excitatory feedback coupling strength
 
     # ------------------------------------------------------------------------
 
-    params.exc_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
-    params.inh_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
+    params.ses_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
+    params.sis_init = 0.05 * np.random.uniform(0, 1, (params.N, 1))
 
     # Ornstein-Uhlenbeck noise state variables
     params.exc_ou = np.zeros((params.N,))
