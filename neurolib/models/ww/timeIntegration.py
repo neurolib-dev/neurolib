@@ -31,7 +31,6 @@ def timeIntegration(params):
     b_inh = params["b_inh"]
     d_inh = params["d_inh"]
     tau_inh = params["tau_exc"]
-    gamma_inh = params["gamma_inh"]
     w_inh = params["w_inh"]
     inh_current = params["inh_current"]
 
@@ -158,7 +157,6 @@ def timeIntegration(params):
         b_inh,
         d_inh,
         tau_inh,
-        gamma_inh,
         w_inh,
         inh_current,
         J_NMDA,
@@ -204,7 +202,6 @@ def timeIntegration_njit_elementwise(
     b_inh,
     d_inh,
     tau_inh,
-    gamma_inh,
     w_inh,
     inh_current,
     J_NMDA,

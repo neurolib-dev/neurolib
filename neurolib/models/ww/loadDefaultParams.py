@@ -71,7 +71,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.b_inh = 0.177  # kHz
     params.d_inh = 87.0  # ms
     params.tau_inh = 10.0  # ms
-    params.gamma_inh = 0.641
     params.w_inh = 0.7
     params.inh_current = 0.382  # nA
 
