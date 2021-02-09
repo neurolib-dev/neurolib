@@ -73,9 +73,11 @@ class MultiModel(Model):
         params["name"] = self.model_instance.label
         params["description"] = self.model_instance.name
         if isinstance(self.model_instance, Node):
-            params.update({"N": 1, "Cmat": np.zeros((1, 1))})
+            params.update({"N": 1, "Cmat": np.zeros((1.0, 1.0))})
         else:
-            params.update({"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity})
+            params.update(
+                {"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(np.floating)}
+            )
         return params
 
     def getMaxDelay(self):
