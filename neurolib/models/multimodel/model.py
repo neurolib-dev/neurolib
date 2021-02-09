@@ -5,6 +5,7 @@ from chspy import join
 
 from ...utils.collections import dotdict, flat_dict_to_nested, flatten_nested_dict, star_dotdict
 from ..model import Model
+from .builder.base.constants import NETWORK_CONNECTIVITY, NETWORK_DELAYS
 from .builder.base.network import Network, Node
 
 # default run parameters for MultiModels
@@ -73,7 +74,7 @@ class MultiModel(Model):
         params["name"] = self.model_instance.label
         params["description"] = self.model_instance.name
         if isinstance(self.model_instance, Node):
-            params.update({"N": 1, "Cmat": np.zeros((1.0, 1.0))})
+            params.update({"N": 1, "Cmat": np.zeros((1, 1))})
         else:
             params.update(
                 {"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(np.floating)}
