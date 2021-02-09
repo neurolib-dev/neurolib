@@ -406,10 +406,10 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         local_delays = params_dict.pop(NODE_DELAYS, None)
         if local_connectivity is not None and isinstance(local_connectivity, np.ndarray):
             assert local_connectivity.shape == self.connectivity.shape
-            self.connectivity = local_connectivity
+            self.connectivity = local_connectivity.astype(np.floating)
         if local_delays is not None and isinstance(local_delays, np.ndarray):
             assert local_delays.shape == self.delays.shape
-            self.delays = local_delays
+            self.delays = local_delays.astype(np.floating)
         super().update_params(params_dict)
 
     def _sync(self):
@@ -666,10 +666,10 @@ class Network(BackendIntegrator):
                 self.nodes[node_index].update_params(node_params)
             elif NETWORK_CONNECTIVITY == node_key:
                 assert node_params.shape == self.connectivity.shape
-                self.connectivity = node_params
+                self.connectivity = node_params.astype(np.floating)
             elif NETWORK_DELAYS == node_key:
                 assert node_params.shape == self.delays.shape
-                self.delays = node_params
+                self.delays = node_params.astype(np.floating)
             else:
                 logging.warning(f"Not sure what to do with {node_key}...")
 
