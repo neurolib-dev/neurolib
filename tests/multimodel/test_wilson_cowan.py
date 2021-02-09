@@ -22,7 +22,7 @@ from neurolib.utils.stimulus import ZeroInput
 SEED = 42
 DURATION = 100.0
 DT = 0.01
-CORR_THRESHOLD = 0.9
+CORR_THRESHOLD = 0.75
 NEUROLIB_VARIABLES_TO_TEST = [("q_mean_EXC", "exc"), ("q_mean_INH", "inh")]
 
 # dictionary as backend name: format in which the noise is passed
