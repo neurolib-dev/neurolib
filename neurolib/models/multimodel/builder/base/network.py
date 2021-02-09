@@ -626,8 +626,8 @@ class Network(BackendIntegrator):
         nested_dict = {self.label: {}}
         for node in self:
             nested_dict[self.label].update(node.get_nested_params())
-        nested_dict[NETWORK_CONNECTIVITY] = self.connectivity
-        nested_dict[NETWORK_DELAYS] = self.delays
+        nested_dict[self.label][NETWORK_CONNECTIVITY] = self.connectivity
+        nested_dict[self.label][NETWORK_DELAYS] = self.delays
         return nested_dict
 
     def init_network(self, **kwargs):
