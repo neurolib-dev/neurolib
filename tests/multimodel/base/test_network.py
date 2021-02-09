@@ -253,7 +253,6 @@ class TestNetwork(unittest.TestCase):
         net.update_params(
             {"connectivity": UPDATE_CONNECTIVITY, "delays": UPDATE_DELAYS, "test_node_0": {f"{EXC}_0": UPDATE_WITH}}
         )
-        print(net.get_nested_params())
         np.testing.assert_equal(net.connectivity, UPDATE_CONNECTIVITY)
         np.testing.assert_equal(net.delays, UPDATE_DELAYS)
         self.assertEqual(net[0][0].params["a"], UPDATE_WITH["a"])

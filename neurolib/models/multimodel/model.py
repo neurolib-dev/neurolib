@@ -65,6 +65,10 @@ class MultiModel(Model):
         Set all necessary model parameters.
         """
         params = star_dotdict(flatten_nested_dict(self.model_instance.get_nested_params()))
+        # all matrices to floats
+        for k, v in params.items():
+            if isinstance(v, np.ndarray):
+                params[k] = v.astype(np.floating)
         params.update(DEFAULT_RUN_PARAMS)
         params["name"] = self.model_instance.label
         params["description"] = self.model_instance.name
