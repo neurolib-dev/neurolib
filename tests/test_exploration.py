@@ -118,7 +118,7 @@ class TestExplorationBrainNetworkPostprocessing(unittest.TestCase):
 
             result_dict = {"outputs": model.outputs}
 
-            search.saveOutputsToPypet(result_dict, traj)
+            search.saveToPypet(result_dict, traj)
 
         # define and run exploration
         parameters = ParameterSpace({"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)})
@@ -152,7 +152,7 @@ class TestCustomParameterExploration(unittest.TestCase):
             # let's calculate the distance to a circle
             computation_result = abs((pars["x"] ** 2 + pars["y"] ** 2) - 1)
             result_dict = {"distance": computation_result}
-            search.saveOutputsToPypet(result_dict, traj)
+            search.saveToPypet(result_dict, traj)
 
         parameters = ParameterSpace({"x": np.linspace(-2, 2, 2), "y": np.linspace(-2, 2, 2)})
         search = BoxSearch(evalFunction=explore_me, parameterSpace=parameters, filename="test_circle_exploration.hdf")
