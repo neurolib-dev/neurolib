@@ -9,7 +9,6 @@ tqdm
 pypet
 deap
 dill
-symengine
 sympy
 jitcdde
 dpath
