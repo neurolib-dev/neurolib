@@ -146,13 +146,9 @@ def unwrap_star_dotdict(dct, model, replaced_dict=False):
         # if the key is not in the model params
         except AttributeError:
             logging.warning(f"Key `{k}` not in model parameters")
+            # add it "raw"
+            return_dct[k] = v
     return return_dct
-    # if replaced_dict:
-    #     return {
-    #         key_u: v for k, v in dct.items() for key_u in list(model.params[_sanitize_keys(k, replaced_dict)].keys())
-    #     }
-    # else:
-    #     return {key_u: v for k, v in dct.items() for key_u in list(model.params[k].keys())}
 
 
 def flatten_nested_dict(nested_dict, parent_key="", sep=DEFAULT_STAR_SEPARATOR):
