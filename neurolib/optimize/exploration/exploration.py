@@ -26,7 +26,7 @@ class BoxSearch:
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the
         evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current
-        run are accible via `self._getParametersFromTraj(traj)`.
+        run are accible via `self.getParametersFromTraj(traj)`.
 
         If no evaluation function is passed, then the model is simulated using `Model.run()`
         for every parameter.
@@ -195,7 +195,7 @@ class BoxSearch:
         if self.useRandomICs:
             logging.warn("Random initial conditions not implemented yet")
         # get parameters of this run from pypet trajectory
-        runParams = self._getParametersFromTraj(traj)
+        runParams = self.getParametersFromTraj(traj)
         if self.parameterSpace.star:
             runParams = flatten_nested_dict(flat_dict_to_nested(runParams)["parameters"])
 
@@ -246,7 +246,7 @@ class BoxSearch:
                 runParams["seed"] = None
         return runParams
 
-    def _getParametersFromTraj(self, traj):
+    def getParametersFromTraj(self, traj):
         """Returns the parameters of the current run as a (dot.able) dictionary
 
         :param traj: Pypet trajectory
@@ -266,7 +266,7 @@ class BoxSearch:
         :returns model: Model with the parameters of this run.
         """
         model = self.model
-        runParams = self._getParametersFromTraj(traj)
+        runParams = self.getParametersFromTraj(traj)
 
         model.params.update(runParams)
         return model
