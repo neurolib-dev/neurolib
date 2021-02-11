@@ -1,0 +1,24 @@
+site_name: Neurolib
+repo_url: https://github.com/neurolib-dev/neurolib
+
+theme:
+  name: "material"
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/neurolib-dev
+      name: neurolib on Twitter
+
+site_dir:
+  - "docs/site"
+
+plugins:
+- search
+- mkdocstrings:
+    handlers:
+      python:
+        selection:
+          docstring_style: restructured-text
+- mknotebooks

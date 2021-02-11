@@ -8,7 +8,14 @@ from ..utils.collections import dotdict
 
 
 class Model:
-    """The Model superclass runs simulations and manages inputs and outputs of all models."""
+    """
+    *****
+    The Model base class
+    *****
+
+    The Model base class runs models, manages their outputs, parameters and more.
+    This class should serve as the base class for all implemented models.
+    """
 
     def __init__(self, integration, params):
         if hasattr(self, "name"):
@@ -187,7 +194,9 @@ class Model:
         append_outputs=None,
         continue_run=False,
     ):
-        """Main interfacing function to run a model.
+        """
+        Main interfacing function to run a model.
+
         The model can be run in three different ways:
         1) `model.run()` starts a new run.
         2) `model.run(chunkwise=True)` runs the simulation in chunks of length `chunksize`.
@@ -533,7 +542,7 @@ class Model:
         return lastOutput
 
     def __getitem__(self, key):
-        """Index outputs with a dictionary-like key"""
+        """Index outputs with a dictionary-like key, e.g., `model['rates_exc']`."""
         return self.getOutput(key)
 
     def getOutputs(self, group=""):
@@ -571,7 +580,9 @@ class Model:
 
     @property
     def output(self):
-        """Returns value of default output."""
+        """Returns value of default output as defined by `self.default_output`.
+        Note that all outputs are saved in the attribute `self.outputs`.
+        """
         assert self.default_output is not None, "Default output has not been set yet. Use `setDefaultOutput()`."
         return self.getOutput(self.default_output)
 

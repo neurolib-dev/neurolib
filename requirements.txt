@@ -12,5 +12,4 @@ dill
 symengine
 sympy
 jitcdde
-chspy
 dpath
