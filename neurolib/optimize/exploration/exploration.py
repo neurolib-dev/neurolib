@@ -158,7 +158,7 @@ class BoxSearch:
 
         addParametersRecursively(traj, params, [])
 
-    def _saveToPypet(self, outputs, traj):
+    def saveToPypet(self, outputs, traj):
         """This function takes simulation results in the form of a nested dictionary
         and stores all data into the pypet hdf file.
 
@@ -215,10 +215,10 @@ class BoxSearch:
         # save all data to the pypet trajectory
         if self.saveAllModelOutputs:
             # save all results from exploration
-            self._saveToPypet(self.model.outputs, traj)
+            self.saveToPypet(self.model.outputs, traj)
         else:
             # save only the default output
-            self._saveToPypet(
+            self.saveToPypet(
                 {
                     self.model.default_output: self.model.output,
                     "t": self.model.outputs["t"],
@@ -228,9 +228,9 @@ class BoxSearch:
             # save BOLD output
             # if "bold" in self.model.params:
             #     if self.model.params["bold"] and "BOLD" in self.model.outputs:
-            #         self._saveToPypet(self.model.outputs["BOLD"], traj)
+            #         self.saveToPypet(self.model.outputs["BOLD"], traj)
             if "BOLD" in self.model.outputs:
-                self._saveToPypet(self.model.outputs["BOLD"], traj)
+                self.saveToPypet(self.model.outputs["BOLD"], traj)
 
     def _validatePypetParameters(self, runParams):
         """Helper to handle None's in pypet parameters
