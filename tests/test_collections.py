@@ -109,6 +109,7 @@ class TestCollections(unittest.TestCase):
             "WCnode_0.WCmassEXC_0.noise_0.tau": 2.5,
             "WCnode_0.WCmassINH_1.tau": 2.5,
             "WCnode_0.WCmassINH_1.noise_0.tau": 2.5,
+            "key_not_there": 12.0,
         }
         root_logger = logging.getLogger()
         with self.assertLogs(root_logger, level="WARNING") as cm:
