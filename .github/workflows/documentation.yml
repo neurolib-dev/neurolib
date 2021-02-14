@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Copy Repository Contents ↩
         uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }} 🚜
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
@@ -37,5 +37,5 @@ jobs:
         with:
             folder: site
             branch: master
-            repository-name: neurolib-dev.github.io
+            repository-name: neurolib-dev/neurolib-dev.github.io
 
