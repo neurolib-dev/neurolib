@@ -27,7 +27,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install mkdocs mkdocstrings mknotebooks Pygments
-		  mkdocs build
+          mkdocs build
 	  - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
