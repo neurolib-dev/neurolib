@@ -1,4 +1,5 @@
 site_name: Neurolib
+repo_name: 'neurolib-dev/neurolib'
 repo_url: https://github.com/neurolib-dev/neurolib
 
 theme:
@@ -11,14 +12,24 @@ extra:
       link: https://twitter.com/neurolib-dev
       name: neurolib on Twitter
 
-site_dir:
-  - "docs/site"
-
 plugins:
-- search
-- mkdocstrings:
-    handlers:
-      python:
-        selection:
-          docstring_style: restructured-text
-- mknotebooks
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          selection:
+            docstring_style: restructured-text
+  - mknotebooks:
+    # binder: true
+    # binder_service_name: gh
+    # binder_branch: master
+
+markdown_extensions:
+  - codehilite
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - js/config.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

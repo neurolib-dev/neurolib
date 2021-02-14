@@ -8,12 +8,7 @@ from ..utils.collections import dotdict
 
 
 class Model:
-    """
-    *****
-    The Model base class
-    *****
-
-    The Model base class runs models, manages their outputs, parameters and more.
+    """The Model base class runs models, manages their outputs, parameters and more.
     This class should serve as the base class for all implemented models.
     """
 
@@ -204,8 +199,6 @@ class Model:
 
         :param inputs: list of inputs to the model, must have the same order as model.input_vars. Note: no sanity check is performed for performance reasons. Take care of the inputs yourself.
         :type inputs: list[np.ndarray|]
-        :param continue_run: continue a simulation by using the initial values from a previous simulation
-        :type continue_run: bool
         :param chunkwise: simulate model chunkwise or in one single run, defaults to False
         :type chunkwise: bool, optional
         :param chunksize: size of the chunk to simulate in dt, defaults to 2s
@@ -214,6 +207,8 @@ class Model:
         :type bold: bool, optional
         :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
         :type append: bool, optional
+        :param continue_run: continue a simulation by using the initial values from a previous simulation
+        :type continue_run: bool
         """
         # TODO: legacy argument support
         if append_outputs is not None:
