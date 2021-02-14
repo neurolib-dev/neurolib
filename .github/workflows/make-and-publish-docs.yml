@@ -28,9 +28,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install mkdocs mkdocstrings mknotebooks Pygments
           mkdocs build
-	  - name: Deploy 🚀
+      - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
-			folder: site
-			branch: master
-			repository-name: neurolib-dev.github.io
+            folder: site
+            branch: master
+            repository-name: neurolib-dev.github.io
+
