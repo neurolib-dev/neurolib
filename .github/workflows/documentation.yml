@@ -36,6 +36,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
             folder: site
+            ssh-key: ${{ secrets.DEPLOY_KEY }}
             branch: master
             repository-name: neurolib-dev/neurolib-dev.github.io
 
