@@ -22,7 +22,7 @@
 
 # What is neurolib?
 
-Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and some background information on the science behind whole-brain simulations.
+Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and some background information on the science behind whole-brain simulations or read the [documentation](https://neurolib-dev.github.io/) for getting started.
 
 `neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `ALNModel`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `ALNModel` model can be found in our [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
