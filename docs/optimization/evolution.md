@@ -1,3 +1,3 @@
 # Evolution
 
-::: neurolib.optimize.evolution.Evolution
+::: neurolib.optimize.evolution.evolution.Evolution

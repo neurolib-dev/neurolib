@@ -1,3 +1,3 @@
 # BoxSearch
 
-::: neurolib.optimize.exploration.BoxSearch
+::: neurolib.optimize.exploration.exploration.BoxSearch
