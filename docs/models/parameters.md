@@ -2,7 +2,7 @@
 
 Model parameters in `neurolib` are stored as a dictionary-like object `params` as one of a model's attributes. Changing parameters is straightforward:
 
-```
+``` python
 from neurolib.models.aln import ALNModel # Import the model
 model = ALNModel() # Create an instance
 
@@ -18,7 +18,7 @@ The default parameters of a model are stored in the `loadDefaultParams.py` withi
 
 Below is an example function that prepares the structural connectivity matrices `Cmat` and `Dmat`, all parameters of the model, and its initial values.
 
-```
+``` python
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     """Load default parameters for a model
 

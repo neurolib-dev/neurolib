@@ -28,6 +28,8 @@ markdown_extensions:
   - codehilite
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.highlight
+  - pymdownx.superfences
 
 extra_javascript:
   - js/config.js
