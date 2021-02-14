@@ -250,7 +250,7 @@ This will gives us a summary of the last generation and plots a distribution of 
 
 ### Built With
 
-`neurolib` is built on other amazing open source projects:
+`neurolib` is built using other amazing open source projects:
 
 * [pypet](https://github.com/SmokinCaterpillar/pypet) - Python parameter exploration toolbox
 * [deap](https://github.com/DEAP/deap) - Distributed Evolutionary Algorithms in Python
