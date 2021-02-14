@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Copy Repository Contents ↩
         uses: actions/checkout@v2
+          with:
+            persist-credentials: false
       - name: Set up Python ${{ matrix.python-version }} 🚜
         uses: actions/setup-python@v2
         with:
