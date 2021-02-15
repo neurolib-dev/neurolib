@@ -47,7 +47,7 @@ class BoxSearch:
         """
         self.model = model
         if evalFunction is None and model is not None:
-            self.evalFunction = self.runModel
+            self.evalFunction = self._runModel
         elif evalFunction is not None:
             self.evalFunction = evalFunction
 
@@ -71,11 +71,11 @@ class BoxSearch:
 
         # bool to check whether pypet was initialized properly
         self.initialized = False
-        self.initializeExploration(self.filename)
+        self._initializeExploration(self.filename)
 
         self.results = None
 
-    def initializeExploration(self, filename="exploration.hdf"):
+    def _initializeExploration(self, filename="exploration.hdf"):
         """Initialize the pypet environment
 
         :param filename: hdf filename to store the results in , defaults to "exploration.hdf"
@@ -112,10 +112,10 @@ class BoxSearch:
         if self.model is not None:
             # if a model is specified, use the default parameter of the
             # model to initialize pypet
-            self.addParametersToPypet(self.traj, self.model.params)
+            self._addParametersToPypet(self.traj, self.model.params)
         else:
             # else, use a random parameter of the parameter space
-            self.addParametersToPypet(self.traj, self.parameterSpace.getRandom(safe=True))
+            self._addParametersToPypet(self.traj, self.parameterSpace.getRandom(safe=True))
 
         # Tell pypet which parameters to explore
         self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
@@ -132,7 +132,7 @@ class BoxSearch:
         logging.info("BoxSearch: Environment initialized.")
         self.initialized = True
 
-    def addParametersToPypet(self, traj, params):
+    def _addParametersToPypet(self, traj, params):
         """This function registers the parameters of the model to Pypet.
         Parameters can be nested dictionaries. They are unpacked and stored recursively.
 
@@ -157,10 +157,6 @@ class BoxSearch:
                     traj.f_add_parameter(param_address, value)
 
         addParametersRecursively(traj, params, [])
-
-    # TODO: remove legacy
-    def saveOutputsToPypet(self, outputs, traj):
-        return self.saveToPypet(outputs, traj)
 
     def saveToPypet(self, outputs, traj):
         """This function takes simulation results in the form of a nested dictionary
@@ -189,7 +185,7 @@ class BoxSearch:
         savestr = "results.$."
         makeSaveStringForPypet(value, savestr)
 
-    def runModel(self, traj):
+    def _runModel(self, traj):
         """If not evaluation function is given, we assume that a model will be simulated.
         This function will be called by pypet directly and therefore wants a pypet trajectory as an argument
 
@@ -213,9 +209,9 @@ class BoxSearch:
         # run it
         self.model.run(**runKwargs)
         # save outputs
-        self.saveModelOutputsToPypet(traj)
+        self._saveModelOutputsToPypet(traj)
 
-    def saveModelOutputsToPypet(self, traj):
+    def _saveModelOutputsToPypet(self, traj):
         # save all data to the pypet trajectory
         if self.saveAllModelOutputs:
             # save all results from exploration
@@ -236,7 +232,7 @@ class BoxSearch:
             if "BOLD" in self.model.outputs:
                 self.saveToPypet(self.model.outputs["BOLD"], traj)
 
-    def validatePypetParameters(self, runParams):
+    def _validatePypetParameters(self, runParams):
         """Helper to handle None's in pypet parameters
         (used for random number generator seed)
 
@@ -260,7 +256,7 @@ class BoxSearch:
         """
         # DO NOT use short names for star notation dicts
         runParams = self.traj.parameters.f_to_dict(short_names=not self.parameterSpace.star, fast_access=True)
-        runParams = self.validatePypetParameters(runParams)
+        runParams = self._validatePypetParameters(runParams)
         return dotdict(runParams)
 
     def getModelFromTraj(self, traj):
@@ -419,9 +415,8 @@ class BoxSearch:
             self.dfResults[nicep] = exploredParameters[p].f_get_range()
 
     @staticmethod
-    def _filt_dict_bold(filt_dict, bold):
-        """
-        Filters result dictionary: either keeps ONLY BOLD results, or remove
+    def _filterDictionaryBold(filt_dict, bold):
+        """Filters result dictionary: either keeps ONLY BOLD results, or remove
         BOLD results.
 
         :param filt_dict: dictionary to filter for BOLD keys
@@ -437,9 +432,8 @@ class BoxSearch:
         else:
             return {k: v for k, v in filt_dict.items() if "BOLD" not in k}
 
-    def _get_coords_from_run(self, run_dict, bold=False):
-        """
-        Find coordinates of a single run - time, output and space dimensions.
+    def _getCoordsFromRun(self, run_dict, bold=False):
+        """Find coordinates of a single run - time, output and space dimensions.
 
         :param run_dict: dictionary with run results
         :type run_dict: dict
@@ -449,7 +443,7 @@ class BoxSearch:
         :rtype: dict
         """
         run_dict = copy.deepcopy(run_dict)
-        run_dict = self._filt_dict_bold(run_dict, bold=bold)
+        run_dict = self._filterDictionaryBold(run_dict, bold=bold)
         timeDictKey = ""
         if "t" in run_dict:
             timeDictKey = "t"
@@ -470,9 +464,7 @@ class BoxSearch:
 
     def xr(self, bold=False):
         """
-        Return xr.Dataset from the exploration. The coordinates are in the star
-        notation if applicable. The whole list of affected model parameters by
-        star notated exploration is listed in attributes.
+        Return `xr.Dataset` from the exploration results.
 
         :param bold: if True, will load and return only BOLD output
         :type bold: bool
@@ -480,14 +472,14 @@ class BoxSearch:
         assert self.results is not None, "Run `loadResults()` first to populate the results"
         assert len(self.results) == len(self.dfResults)
         # create intrisinsic dims for one run
-        timeDictKey, run_coords = self._get_coords_from_run(self.results[0], bold=bold)
+        timeDictKey, run_coords = self._getCoordsFromRun(self.results[0], bold=bold)
         dataarrays = []
         orig_search_coords = pypet.cartesian_product(self.exploreParameters)
         for runId, run_result in self.results.items():
             # take exploration coordinates for this run
             expl_coords = {k: v[runId] for k, v in orig_search_coords.items()}
             outputs = []
-            run_result = self._filt_dict_bold(run_result, bold=bold)
+            run_result = self._filterDictionaryBold(run_result, bold=bold)
             for key, value in run_result.items():
                 if key == timeDictKey:
                     continue

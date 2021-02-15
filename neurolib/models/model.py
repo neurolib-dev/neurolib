@@ -8,7 +8,9 @@ from ..utils.collections import dotdict
 
 
 class Model:
-    """The Model superclass runs simulations and manages inputs and outputs of all models."""
+    """The Model base class runs models, manages their outputs, parameters and more.
+    This class should serve as the base class for all implemented models.
+    """
 
     def __init__(self, integration, params):
         if hasattr(self, "name"):
@@ -187,7 +189,9 @@ class Model:
         append_outputs=None,
         continue_run=False,
     ):
-        """Main interfacing function to run a model.
+        """
+        Main interfacing function to run a model.
+
         The model can be run in three different ways:
         1) `model.run()` starts a new run.
         2) `model.run(chunkwise=True)` runs the simulation in chunks of length `chunksize`.
@@ -195,8 +199,6 @@ class Model:
 
         :param inputs: list of inputs to the model, must have the same order as model.input_vars. Note: no sanity check is performed for performance reasons. Take care of the inputs yourself.
         :type inputs: list[np.ndarray|]
-        :param continue_run: continue a simulation by using the initial values from a previous simulation
-        :type continue_run: bool
         :param chunkwise: simulate model chunkwise or in one single run, defaults to False
         :type chunkwise: bool, optional
         :param chunksize: size of the chunk to simulate in dt, defaults to 2s
@@ -205,6 +207,8 @@ class Model:
         :type bold: bool, optional
         :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
         :type append: bool, optional
+        :param continue_run: continue a simulation by using the initial values from a previous simulation
+        :type continue_run: bool
         """
         # TODO: legacy argument support
         if append_outputs is not None:
@@ -533,7 +537,7 @@ class Model:
         return lastOutput
 
     def __getitem__(self, key):
-        """Index outputs with a dictionary-like key"""
+        """Index outputs with a dictionary-like key, e.g., `model['rates_exc']`."""
         return self.getOutput(key)
 
     def getOutputs(self, group=""):
@@ -571,7 +575,9 @@ class Model:
 
     @property
     def output(self):
-        """Returns value of default output."""
+        """Returns value of default output as defined by `self.default_output`.
+        Note that all outputs are saved in the attribute `self.outputs`.
+        """
         assert self.default_output is not None, "Default output has not been set yet. Use `setDefaultOutput()`."
         return self.getOutput(self.default_output)
 

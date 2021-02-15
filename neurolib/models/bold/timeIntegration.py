@@ -61,14 +61,13 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
     Tau = 0.98 * np.ones((N,))  # Transit time  (s)
 
     # initialize state variables
-    if X is None:
-        X = np.zeros((N,))  # Vasso dilatory signal
-    if F is None:
-        F = np.zeros((N,))  # Blood flow
-    if Q is None:
-        Q = np.zeros((N,))  # Deoxyhemoglobin
-    if V is None:
-        V = np.zeros((N,))  # Blood volume
+    # NOTE: We need to use np.copy() because these variables
+    # will be overwritten later and numba doesn't like to do that
+    # with anything that was defined outside the scope of the @njit'ed function
+    X = np.zeros((N,)) if X is None else np.copy(X)  # Vasso dilatory signal
+    F = np.zeros((N,)) if F is None else np.copy(F)  # Blood flow
+    Q = np.zeros((N,)) if Q is None else np.copy(Q)  # Deoxyhemoglobin
+    V = np.zeros((N,)) if V is None else np.copy(V)  # Blood volume
 
     BOLD = np.zeros(np.shape(Z))
     # return integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau)
@@ -79,19 +78,19 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
 @numba.njit
 def integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau):
     """Integrate the Balloon-Windkessel model.
-    
-    Reference: 
+
+    Reference:
 
     Friston et al. (2000), Nonlinear responses in fMRI: The balloon model, Volterra kernels, and other hemodynamics.
     Friston et al. (2003), Dynamic causal modeling
-    
+
     Variable names in Friston2000:
     X = x1, Q = x4, V = x3, F = x2
 
     Friston2003: see Equation (3)
 
     NOTE: A very small constant EPS is added to F to avoid F become too small / negative
-    and cause a floating point error in EQ. Q due to the exponent **(1 / F[j]) 
+    and cause a floating point error in EQ. Q due to the exponent **(1 / F[j])
 
     """
 
