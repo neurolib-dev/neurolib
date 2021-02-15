@@ -3,7 +3,7 @@ Collections of custom data structures and types.
 """
 import random
 import string
-from collections import MutableMapping
+from collections.abc import MutableMapping
 
 from dpath.util import delete, search
 
