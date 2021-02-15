@@ -20,9 +20,9 @@ plugins:
           selection:
             docstring_style: restructured-text
   - mknotebooks:
-    # binder: true
-    # binder_service_name: gh
-    # binder_branch: master
+      binder: true
+      binder_service_name: "gh"
+      binder_branch: "master"
 
 markdown_extensions:
   - codehilite
