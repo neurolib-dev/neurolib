@@ -71,9 +71,7 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
 
     BOLD = np.zeros(np.shape(Z))
     # return integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau)
-    BOLD, X, F, Q, V = integrateBOLD_numba(
-        BOLD, np.copy(X), Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau
-    )
+    BOLD, X, F, Q, V = integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, Gamma, K, Tau)
     return BOLD, X, F, Q, V
 
 
