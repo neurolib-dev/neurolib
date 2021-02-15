@@ -46,6 +46,7 @@ jobs:
             commit-message: 'PR predeployment'
             repository-name: neurolib-dev/neurolib-dev.github.io
       - name: Deploy 🚀
+        if: github.event_name == 'push'
         uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
             folder: site
