@@ -7,7 +7,7 @@ from copy import deepcopy
 
 import numba
 import numpy as np
-from numpy.lib.arraysetops import isin
+import pytest
 import symengine as se
 import sympy as sp
 from neurolib.models.multimodel.builder.base.constants import EXC, INH
@@ -15,7 +15,7 @@ from neurolib.models.multimodel.builder.base.network import (
     Network,
     Node,
     SingleCouplingExcitatoryInhibitoryNode,
-    float_parameters_to_symbolic,
+    _sanitize_matrix,
 )
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
 from neurolib.utils.stimulus import OrnsteinUhlenbeckProcess, ZeroInput
@@ -23,16 +23,23 @@ from neurolib.utils.stimulus import OrnsteinUhlenbeckProcess, ZeroInput
 PARAMS = {"a": 1.2, "b": 11.9}
 
 
-class TestSymbolicParams(unittest.TestCase):
-    def test_float_parameters_to_symbolic(self):
-        DICT_IN = {"a": 40.0, "b": 15, "conn": np.random.rand(4, 4)}
-        result = float_parameters_to_symbolic(DICT_IN)
-        self.assertEqual(len(result), len(DICT_IN))
-        self.assertEqual(result.keys(), DICT_IN.keys())
-        for k, v in result.items():
-            self.assertTrue(isinstance(v, (sp.Symbol, sp.MatrixSymbol)))
-            if isinstance(v, sp.MatrixSymbol):
-                self.assertTupleEqual(v.shape, DICT_IN[k].shape)
+class TestSanitizeMatrix(unittest.TestCase):
+    def test_sanitize_matrix_int(self):
+        mat = (np.random.rand(2, 2) * 100.0).astype(np.int)
+        result = _sanitize_matrix(mat, (2, 2))
+        self.assertTrue(result.dtype.kind == "f")
+        np.testing.assert_equal(mat.astype(np.float), result)
+
+    def test_sanitize_matrix_float(self):
+        mat = np.random.rand(2, 2)
+        result = _sanitize_matrix(mat, (2, 2))
+        self.assertTrue(result.dtype.kind == "f")
+        np.testing.assert_equal(mat, result)
+
+    def test_sanitize_matrix_wrong(self):
+        mat = (np.random.rand(2, 2) * 100.0).astype(np.int)
+        with pytest.raises(AssertionError):
+            result = _sanitize_matrix(mat, (3, 3))
 
 
 class ExcMassTest(NeuralMass):
@@ -118,7 +125,7 @@ class TestNode(unittest.TestCase):
         # save orig params
         orig_params = deepcopy(node.get_nested_params())
         self.assertTrue(node.are_params_floats)
-        node.make_params_symbolic()
+        node.make_params_symbolic(vector=False)
         self.assertFalse(node.are_params_floats)
         self.assertDictEqual(orig_params, node.float_params)
         for k, v in node[0].params.items():
@@ -240,7 +247,7 @@ class TestSingleCouplingExcitatoryInhibitoryNode(unittest.TestCase):
         # save orig params
         orig_params = deepcopy(node.get_nested_params())
         self.assertTrue(node.are_params_floats)
-        node.make_params_symbolic()
+        node.make_params_symbolic(vector=False)
         self.assertFalse(node.are_params_floats)
         for k, v in node[0].params.items():
             if "noise" in k:
@@ -252,8 +259,10 @@ class TestSingleCouplingExcitatoryInhibitoryNode(unittest.TestCase):
                 continue
             self.assertTrue(isinstance(v, sp.Symbol))
 
-        self.assertTrue(isinstance(node.connectivity, sp.MatrixSymbol))
-        self.assertTrue(isinstance(node.delays, sp.MatrixSymbol))
+        self.assertTrue(isinstance(node.connectivity, np.ndarray))
+        self.assertTrue(all(isinstance(element, sp.Symbol) for element in node.connectivity.flatten()))
+        self.assertTrue(isinstance(node.delays, np.ndarray))
+        self.assertTrue(all(isinstance(element, sp.Symbol) for element in node.delays.flatten()))
         node.make_params_floats()
         self.assertTrue(node.are_params_floats)
         self.assertTrue(node.float_params is None)

@@ -12,31 +12,26 @@ from .....utils.collections import flat_dict_to_nested, flatten_nested_dict
 from .backend import BackendIntegrator
 from .constants import EXC, NETWORK_CONNECTIVITY, NETWORK_DELAYS, NODE_CONNECTIVITY, NODE_DELAYS
 from .neural_mass import NeuralMass
+from .params import float_params_to_individual_symbolic, float_params_to_vector_symbolic
 
 
-def float_parameters_to_symbolic(param_dict):
+def _sanitize_matrix(matrix, target_shape):
     """
-    Transforms float / array / int parameters to symbolic ones. Name of the
-    symbols are the same as name of the keys. Assumes flat dictionary with
-    dot as a separator. Does not translate noise parameters.
+    Sanitize matrix before assigning to connectivity or delay - check shape
+    and cast to float if necessary.
 
-    :param param_dict: dictionary with parameters and their values
-    :type param_dict: dict
-    :return: dictionary with parameters and symbols
-    :rtype: dict
+    :param matrix: input matrix to sanitize
+    :type matrix: np.ndarray|sp.MatrixSymbol
+    :param target_shape: shape of the matrix
+    :type target_shape: tuple
+    :return: sanitized matrix
+    :rtype: np.ndarray|sp.MatrixSymbol
     """
-    symbol_dict = {}
-    for k, v in param_dict.items():
-        splitted_key = k.split(".")
-        if any(["noise" in sp for sp in splitted_key]):
-            continue
-        if isinstance(v, (float, int)):
-            symbol_dict[k] = sp.Symbol(k.replace(".", "DOT"))
-        elif isinstance(v, np.ndarray):
-            symbol_dict[k] = sp.MatrixSymbol(k.replace(".", "DOT"), *v.shape)
-        else:
-            raise ValueError(f"Cannot handle {type(v)} type of {k}")
-    return symbol_dict
+    assert matrix.shape == target_shape
+    if isinstance(matrix, np.ndarray) and matrix.dtype.kind == "i":
+        return matrix.astype(np.float)
+    else:
+        return matrix
 
 
 class Node(BackendIntegrator):
@@ -168,15 +163,21 @@ class Node(BackendIntegrator):
             nested_dict[node_key][mass_key] = mass.params
         return nested_dict
 
-    def make_params_symbolic(self):
+    def make_params_symbolic(self, vector=True):
         """
         Make all node parameters symbolic, instead of concrete values. Useful
         when caching compiled functions.
+
+        :param vector: create vectorised params
+        :type vector: bool
         """
         assert self.are_params_floats
         # save copy of original numeric parameters
         self.float_params = deepcopy(self.get_nested_params())
-        symbolic_params = float_parameters_to_symbolic(flatten_nested_dict(self.get_nested_params()))
+        if vector:
+            symbolic_params = float_params_to_vector_symbolic(flatten_nested_dict(self.get_nested_params()))
+        else:
+            symbolic_params = float_params_to_individual_symbolic(flatten_nested_dict(self.get_nested_params()))
         # update self with symbolic params
         self.update_params(flat_dict_to_nested(symbolic_params))
         self.are_params_floats = False
@@ -458,11 +459,9 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         local_connectivity = params_dict.pop(NODE_CONNECTIVITY, None)
         local_delays = params_dict.pop(NODE_DELAYS, None)
         if local_connectivity is not None and isinstance(local_connectivity, (np.ndarray, sp.MatrixSymbol)):
-            assert local_connectivity.shape == self.connectivity.shape
-            self.connectivity = local_connectivity.astype(np.floating)
+            self.connectivity = _sanitize_matrix(local_connectivity, self.connectivity.shape)
         if local_delays is not None and isinstance(local_delays, (np.ndarray, sp.MatrixSymbol)):
-            assert local_delays.shape == self.delays.shape
-            self.delays = local_delays.astype(np.floating)
+            self.delays = _sanitize_matrix(local_delays, self.delays.shape)
         super().update_params(params_dict)
 
     def _sync(self):
@@ -687,15 +686,21 @@ class Network(BackendIntegrator):
         nested_dict[self.label][NETWORK_DELAYS] = self.delays
         return nested_dict
 
-    def make_params_symbolic(self):
+    def make_params_symbolic(self, vector=True):
         """
         Make all node parameters symbolic, instead of concrete values. Useful
         when caching compiled functions.
+
+        :param vector: create vectorised params
+        :type vector: bool
         """
         assert self.are_params_floats
         # save copy of original numeric parameters
         self.float_params = deepcopy(self.get_nested_params())
-        symbolic_params = float_parameters_to_symbolic(flatten_nested_dict(self.get_nested_params()))
+        if vector:
+            symbolic_params = float_params_to_vector_symbolic(flatten_nested_dict(self.get_nested_params()))
+        else:
+            symbolic_params = float_params_to_individual_symbolic(flatten_nested_dict(self.get_nested_params()))
         # update self with symbolic params
         self.update_params(flat_dict_to_nested(symbolic_params))
         self.are_params_floats = False
@@ -744,11 +749,9 @@ class Network(BackendIntegrator):
                 assert node_index == self.nodes[node_index].index
                 self.nodes[node_index].update_params(node_params)
             elif NETWORK_CONNECTIVITY == node_key:
-                assert node_params.shape == self.connectivity.shape
-                self.connectivity = node_params.astype(np.floating)
+                self.connectivity = _sanitize_matrix(node_params, self.connectivity.shape)
             elif NETWORK_DELAYS == node_key:
-                assert node_params.shape == self.delays.shape
-                self.delays = node_params.astype(np.floating)
+                self.delays = _sanitize_matrix(node_params, self.delays.shape)
             else:
                 logging.warning(f"Not sure what to do with {node_key}...")
 
