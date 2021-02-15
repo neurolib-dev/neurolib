@@ -182,6 +182,7 @@ class TestWilsonCowanNetwork(unittest.TestCase):
             print(corr_mat)
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
+    @pytest.mark.xfail
     def test_compare_w_neurolib_native_model(self):
         """
         Compare with neurolib's native Wilson-Cowan model.
