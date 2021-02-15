@@ -2,6 +2,7 @@
 Set of tests for Wong-Wang model.
 """
 import unittest
+import pytest
 
 import numpy as np
 import xarray as xr
