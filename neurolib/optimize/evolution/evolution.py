@@ -206,7 +206,7 @@ class Evolution:
         self.MUTATE_P = self.MUTATE_P if hasattr(self, "MUTATE_P") else {}
         self.SELECT_P = self.SELECT_P if hasattr(self, "SELECT_P") else {}
 
-        self.initDEAP(
+        self._initDEAP(
             self.toolbox,
             self.env,
             self.paramInterval,
@@ -220,7 +220,7 @@ class Evolution:
         )
 
         # set up pypet trajectory
-        self.initPypetTrajectory(
+        self._initPypetTrajectory(
             self.traj,
             self.paramInterval,
             self.POP_SIZE,
@@ -312,7 +312,7 @@ class Evolution:
         """
         return self.ParametersInterval(*(individual[: len(self.paramInterval)]))._asdict().copy()
 
-    def initPypetTrajectory(self, traj, paramInterval, POP_SIZE, NGEN, model):
+    def _initPypetTrajectory(self, traj, paramInterval, POP_SIZE, NGEN, model):
         """Initializes pypet trajectory and store all simulation parameters for later analysis.
 
         :param traj: Pypet trajectory (must be already initialized!)
@@ -360,7 +360,7 @@ class Evolution:
             "An indivudal of the population",
         )
 
-    def initDEAP(
+    def _initDEAP(
         self,
         toolbox,
         pypetEnvironment,
@@ -425,7 +425,7 @@ class Evolution:
         toolbox.register("select", selectionOperator)
         logging.info(f"Evolution: Selection operator: {selectionOperator}")
 
-    def evalPopulationUsingPypet(self, traj, toolbox, pop, gIdx):
+    def _evalPopulationUsingPypet(self, traj, toolbox, pop, gIdx):
         """Evaluate the fitness of the popoulation of the current generation using pypet
         :param traj: Pypet trajectory
         :type traj: `pypet.trajectory.Trajectory`
@@ -519,7 +519,7 @@ class Evolution:
         pop = pop or self.pop
         return [p for p in pop if np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()]
 
-    def tagPopulation(self, pop):
+    def _tagPopulation(self, pop):
         """Take a fresh population and add id's and attributes such as parameters that we can use later
 
         :param pop: Fresh population
@@ -553,10 +553,10 @@ class Evolution:
         ### Evaluate the initial population
         logging.info("Evaluating initial population of size %i ..." % len(self.pop))
         self.gIdx = 0  # set generation index
-        self.pop = self.tagPopulation(self.pop)
+        self.pop = self._tagPopulation(self.pop)
 
         # evaluate
-        self.pop = self.evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, self.gIdx)
+        self.pop = self._evalPopulationUsingPypet(self.traj, self.toolbox, self.pop, self.gIdx)
 
         if self.verbose:
             eu.printParamDist(self.pop, self.paramInterval, self.gIdx)
@@ -587,7 +587,7 @@ class Evolution:
 
             logging.info("Replacing {} invalid individuals.".format(len(invalidpop)))
             newpop = self.toolbox.population(n=len(invalidpop))
-            newpop = self.tagPopulation(newpop)
+            newpop = self._tagPopulation(newpop)
 
             # ------- Create the next generation by crossover and mutation -------- #
             ### Select parents using rank selection and clone them ###
@@ -610,19 +610,19 @@ class Evolution:
                 offspring[i].parentIds = offspring[i - 1].id, offspring[i].id
 
                 # delete id originally set from parents, needs to be deleted here!
-                # will be set later in tagPopulation()
+                # will be set later in _tagPopulation()
                 del offspring[i - 1].id, offspring[i].id
 
             ##### Mutation ####
             # Apply mutation
             du.mutateUntilValid(offspring, self.paramInterval, self.toolbox, MUTATE_P=self.MUTATE_P)
 
-            offspring = self.tagPopulation(offspring)
+            offspring = self._tagPopulation(offspring)
 
             # ------- Evaluate next generation -------- #
 
             self.pop = offspring + newpop
-            self.evalPopulationUsingPypet(self.traj, self.toolbox, offspring + newpop, self.gIdx)
+            self._evalPopulationUsingPypet(self.traj, self.toolbox, offspring + newpop, self.gIdx)
 
             # log individuals
             self.history[self.gIdx] = validpop + offspring + newpop  # self.getValidPopulation(self.pop)
@@ -659,9 +659,9 @@ class Evolution:
         self.traj.f_store()  # We switched off automatic storing, so we need to store manually
         self._t_end_evolution = datetime.datetime.now()
 
-        self.buildEvolutionTree()
+        self._buildEvolutionTree()
 
-    def buildEvolutionTree(self):
+    def _buildEvolutionTree(self):
         """Builds a genealogy tree that is networkx compatible.
 
         Plot the tree using:

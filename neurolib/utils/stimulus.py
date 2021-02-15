@@ -1,5 +1,5 @@
 """
-Functions for creating stimulus and noise inputs for the models.
+Functions for creating stimuli and noise inputs for models.
 """
 
 import inspect
@@ -13,6 +13,8 @@ from scipy.signal import square
 class ModelInput:
     """
     Generates input to model.
+
+    Base class for other input types.
     """
 
     def __init__(self, num_iid=1, seed=None):
