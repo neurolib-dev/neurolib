@@ -2,6 +2,7 @@
 Set of tests for Hopf normal form model.
 """
 import unittest
+import pytest
 
 import numpy as np
 import xarray as xr
@@ -74,6 +75,7 @@ class TestHopfNode(unittest.TestCase):
         self.assertEqual(len(hopf.default_network_coupling), 2)
         np.testing.assert_equal(np.array(hopf[0].initial_state), hopf.initial_state)
 
+    @pytest.mark.xfail
     def test_run(self):
         hopf = self._create_node()
         all_results = []
@@ -98,6 +100,7 @@ class TestHopfNode(unittest.TestCase):
             )
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
+    @pytest.mark.xfail
     def test_compare_w_neurolib_native_model(self):
         """
         Compare with neurolib's native Hopf model.
