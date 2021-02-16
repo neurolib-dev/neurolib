@@ -5,6 +5,7 @@ import json
 import os
 import pickle
 import unittest
+from copy import deepcopy
 from shutil import rmtree
 
 import numba
@@ -15,35 +16,10 @@ import sympy as sp
 import xarray as xr
 from jitcdde import t as time_vector
 from jitcdde import y as state_vector
-from neurolib.models.multimodel.builder.base.backend import (
-    BackendIntegrator,
-    BaseBackend,
-    JitcddeBackend,
-    NumbaBackend,
-    NumbaFunctionCache,
-)
+from neurolib.models.multimodel.builder.base.backend import BackendIntegrator, BaseBackend, JitcddeBackend, NumbaBackend
+from neurolib.models.multimodel.builder.base.params import float_params_to_individual_symbolic
 from neurolib.utils.saver import save_to_netcdf, save_to_pickle
 from neurolib.utils.stimulus import ZeroInput
-
-
-class TestNumbaFunctionCache(unittest.TestCase):
-
-    cache = NumbaFunctionCache()
-
-    @staticmethod
-    def foo(a, b):
-        return a + b
-
-    def test_hashing(self):
-        self.cache.hash = (1, 2, 3, 4)
-        self.assertEqual(self.cache.hash, hash((1, 2, 3, 4)))
-        self.assertTrue(self.cache((1, 2, 3, 4)))
-        self.assertFalse(self.cache((1, 2, 3)))
-
-    def test_caching(self):
-        self.assertTrue(self.cache.cache is None)
-        self.cache.cache = self.foo
-        self.assertEqual(self.cache.cache.__code__.co_code, self.foo.__code__.co_code)
 
 
 class TestBaseBackend(unittest.TestCase):
@@ -123,6 +99,33 @@ class TestNumbaBackend(unittest.TestCase):
         result = backend._substitute_helpers(DERIVATIVES, HELPERS)
         self.assertListEqual(result, [-b * se.exp(-12 * y) + y, y ** 2])
 
+    def test_get_numba_function_params(self):
+        backend = NumbaBackend()
+        symbol_params = {
+            "node1.mass1.a": sp.Symbol("a"),
+            "node1.mass1.noise.a": sp.Symbol("noise_a"),
+            "node1.connectivity": np.array([[sp.Symbol("conn11"), sp.Symbol("conn12")]]),
+        }
+        should_be = [sp.Symbol("a"), sp.Symbol("conn11"), sp.Symbol("conn12")]
+        result = backend._get_numba_function_params(symbol_params)
+        self.assertListEqual(result, should_be)
+
+    def test_create_symbol_to_float_dict(self):
+        backend = NumbaBackend()
+        symbol_params = {
+            "node1.mass1.a": sp.Symbol("a"),
+            "node1.mass1.noise.a": sp.Symbol("noise_a"),
+            "node1.connectivity": np.array([[sp.Symbol("conn11"), sp.Symbol("conn12")]]),
+        }
+        float_params = {
+            "node1.mass1.a": 12.0,
+            "node1.mass1.noise.a": 19 / 7.0,
+            "node1.connectivity": np.array([[4.3, 3.4]]),
+        }
+        should_be = {"a": 12.0, "conn11": 4.3, "conn12": 3.4}
+        result = backend._create_symbol_to_float_dict(symbol_params, float_params)
+        self.assertDictEqual(result, should_be)
+
 
 class BackendTestingHelper(BackendIntegrator):
     """
@@ -138,6 +141,7 @@ class BackendTestingHelper(BackendIntegrator):
     state_variable_names = [["y"]]
     # override initialisation
     initialised = True
+    are_params_floats = True
 
     def _derivatives(self):
         """
@@ -149,6 +153,19 @@ class BackendTestingHelper(BackendIntegrator):
             / (1.0 + state_vector(0, time_vector - self.params["tau"]) ** self.params["n"])
             - self.params["gamma"] * state_vector(0)
         ]
+
+    def get_nested_params(self):
+        return self.params
+
+    def make_params_symbolic(self, vector=False):
+        self.float_params = deepcopy(self.params)
+        self.params = float_params_to_individual_symbolic(self.params)
+        self.are_params_floats = False
+
+    def make_params_floats(self):
+        self.params = self.float_params
+        self.are_params_floats = True
+        self.float_params = None
 
     def _sync(self):
         """
