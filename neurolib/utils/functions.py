@@ -2,6 +2,9 @@ import logging
 import numpy as np
 import scipy.signal
 
+"""Collection of useful functions for data processing.
+"""
+
 
 def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
     """
