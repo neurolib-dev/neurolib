@@ -1,14 +1,20 @@
 # Contributing to neurolib
 
-Thanks for your interest in contributing to neurolib. We welcome bug reports through the issues tab and pull requests for fixes or improvements. You are warlmy invited to join our development efforts and make brain network modeling easier and more useful for all researchers.
+Thank you for your interest in contributing to `neurolib`. We welcome bug reports through the issues tab and pull requests for fixes or improvements. You are warlmy invited to join our development efforts and make brain network modeling easier and more useful for all researchers.
 
 ## Pull requests
 
-To propose a change to neurolib's code, you should first clone the repository to your own github account. 
+To propose a change to `neurolib`'s code, you should first clone the repository to your own Github account. 
 Then, create a branch and make some changes. You can then send a pull request to neurolib's own repository 
 and we will review and discuss your proposed changes. 
-More information can be found in the 
+
+
+More information on how to make pull requests can be found in the 
 [Github help](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request) pages.
+
+### Maintaining code
+
+Please be aware that we have a conservative policy for implementing new functionality. All new features need to be maintained, sometimes forever. We are a small team of developers and can only maintain a limited amount of code. Therefore, ideally, you should also feel responsible for the changes you have proposed and maintain it after it becomes part of `neurolib`. 
 
 ## Code style
 
@@ -17,9 +23,13 @@ It's called the "uncompromising formatter" because it is completely deterministi
 We like that! We recommend using black directly in your IDE, 
 for example in [VSCode](https://marcobelo.medium.com/setting-up-python-black-on-visual-studio-code-5318eba4cd00).
 
+### Commenting Code
+
+We are using the [sphinx format](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html) for commenting code. Comments are incredibly important to us since `neurolib` is supposed to be a library of user-facing code. It's encouraged to read the code, change it and build something on top of it. Our users are coders. Please write as many comments as you can, including a description of each function and method and its arguments but also single-line comments for the code itself. 
+
 ## Implementing a neural mass model
 
-You are very welcome to implement your favorite neural mass model and contribute it to neurolib. 
+You are very welcome to implement your favorite neural mass model and contribute it to `neurolib`. 
 
 * The easiest way of implementing a model is to copy a model directory and adapt the relevant parts of it to your own model. Please have a look of how other models are implemented. We recommend having a look at the `HopfModel` which is a fairly simple model.
 * All models inherit from the `Model` base class which can be found in `neurolib/models/model.py`.
