@@ -135,17 +135,21 @@ def unwrap_star_dotdict(dct, model, replaced_dict=False):
     """
     Unwrap star notation of parameters into full list of parameeters for a given
     model.
-    E.g. params["*tau"] = 2.3 => params["mass1.tau"] = 2.3 and params["mass2.tau] = 2.3
+    E.g. params["*tau"] = 2.3 => params["mass1.tau"] = 2.3 and params["mass2.tau"] = 2.3
     """
-    # for each `k` that possibly contain stars get all key_u (unwrapped keys) from the star_dotdict
     return_dct = {}
     for k, v in dct.items():
         try:
-            for key_u in list(model.params[_sanitize_keys(k, replaced_dict)].keys()):
+            # for each `k` that possibly contain stars get all key_u (unwrapped keys) from the star_dotdict
+            star_keys = list(model.params[_sanitize_keys(k, replaced_dict)].keys())
+            for key_u in star_keys:
                 return_dct[key_u] = v
-        # if the key is not in the model params
+            # if there is a star in key but not in model params -> add it "raw"
+            if len(star_keys) == 0:
+                logging.info(f"Key `{k}` cannot be resolved.")
+                return_dct[k] = v
+        # if the non-star key is not in the model params it throws an AttributeError, but that's ok
         except AttributeError:
-            logging.warning(f"Key `{k}` not in model parameters")
             # add it "raw"
             return_dct[k] = v
     return return_dct

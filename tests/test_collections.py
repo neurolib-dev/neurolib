@@ -103,20 +103,20 @@ class TestCollections(unittest.TestCase):
         self.assertDictEqual(unwrapped, should_be)
 
         # test exception with logging message
-        dct = {"STARtau": 2.5, "key_not_there": 12.0}
+        dct = {"STARtau": 2.5, "*key_not_there": 12.0}
         should_be = {
             "WCnode_0.WCmassEXC_0.tau": 2.5,
             "WCnode_0.WCmassEXC_0.noise_0.tau": 2.5,
             "WCnode_0.WCmassINH_1.tau": 2.5,
             "WCnode_0.WCmassINH_1.noise_0.tau": 2.5,
-            "key_not_there": 12.0,
+            "*key_not_there": 12.0,
         }
         root_logger = logging.getLogger()
-        with self.assertLogs(root_logger, level="WARNING") as cm:
+        with self.assertLogs(root_logger, level="INFO") as cm:
             unwrapped = unwrap_star_dotdict(dct, wc, replaced_dict=BACKWARD_REPLACE)
         self.assertDictEqual(unwrapped, should_be)
         print(cm.output)
-        self.assertTrue("WARNING:root:Key `key_not_there` not in model parameters" in cm.output[0])
+        self.assertTrue("INFO:root:Key `*key_not_there` cannot be resolved." in cm.output[0])
 
 
 if __name__ == "__main__":
