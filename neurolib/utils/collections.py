@@ -1,6 +1,7 @@
 """
 Collections of custom data structures and types.
 """
+import logging
 import random
 import string
 from collections.abc import MutableMapping
@@ -117,8 +118,9 @@ class star_dotdict(dotdict):
 
 
 def _sanitize_keys(key, replace_dict):
-    for k, v in replace_dict.items():
-        key = key.replace(k, v)
+    if replace_dict:
+        for k, v in replace_dict.items():
+            key = key.replace(k, v)
     return key
 
 
@@ -133,15 +135,24 @@ def unwrap_star_dotdict(dct, model, replaced_dict=False):
     """
     Unwrap star notation of parameters into full list of parameeters for a given
     model.
-    E.g. params["*tau"] = 2.3 => params["mass1.tau"] = 2.3 and params["mass2.tau] = 2.3
+    E.g. params["*tau"] = 2.3 => params["mass1.tau"] = 2.3 and params["mass2.tau"] = 2.3
     """
-    # for each `k` that possibly contain stars get all key_u (unwrapped keys) from the star_dotdict
-    if replaced_dict:
-        return {
-            key_u: v for k, v in dct.items() for key_u in list(model.params[_sanitize_keys(k, replaced_dict)].keys())
-        }
-    else:
-        return {key_u: v for k, v in dct.items() for key_u in list(model.params[k].keys())}
+    return_dct = {}
+    for k, v in dct.items():
+        try:
+            # for each `k` that possibly contain stars get all key_u (unwrapped keys) from the star_dotdict
+            star_keys = list(model.params[_sanitize_keys(k, replaced_dict)].keys())
+            for key_u in star_keys:
+                return_dct[key_u] = v
+            # if there is a star in key but not in model params -> add it "raw"
+            if len(star_keys) == 0:
+                logging.info(f"Key `{k}` cannot be resolved.")
+                return_dct[k] = v
+        # if the non-star key is not in the model params it throws an AttributeError, but that's ok
+        except AttributeError:
+            # add it "raw"
+            return_dct[k] = v
+    return return_dct
 
 
 def flatten_nested_dict(nested_dict, parent_key="", sep=DEFAULT_STAR_SEPARATOR):
