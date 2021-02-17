@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies 🛠
         run: |
           python -m pip install --upgrade pip
-          pip install mkdocs mkdocs-material mkdocstrings mknotebooks Pygments
+          pip install mkdocs mkdocs-material mkdocstrings mknotebooks Pygments mkdocs-include-markdown-plugin
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install .
       - name: Build documentation 👷‍♀️
