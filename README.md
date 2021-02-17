@@ -20,7 +20,9 @@
 </p>
 
 
-# What is neurolib?
+<!--include-in-documentation-->
+
+## What is neurolib?
 
 Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and some background information on the science behind whole-brain simulations or read the [documentation](https://neurolib-dev.github.io/) for getting started.
 
@@ -61,7 +63,7 @@ Below is an animation of the neuronal activity of a whole-brain model plotted on
   <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/brain_slow_waves_small.gif">
 </p>
 
-# Installation
+## Installation
 The easiest way to get going is to install the pypi package using `pip`:
 
 ```
@@ -76,7 +78,36 @@ pip install -r requirements.txt
 pip install .
 ```
 
-# Examples
+## Project layout
+
+
+    neurolib/					# Main module
+    	models/					# Neural mass models
+    		model.py			# Base model class
+    		/.../				# Implemented neural models
+    	optimize/				# Optimization submodule
+    		evolution/			# Evolutionary optimization
+    			evolution.py
+    			...
+    		exploration/		# Parameter exploration
+    			exploration.py
+    			...
+    	data/					# Empirical datasets (structural, functional)
+    		...
+    	utils/					# Utility belt
+    		atlases.py			# Atlases (Region names, coordinates)
+    		collections.py		# Custom data types
+    		functions.py		# Useful functions
+    		loadData.py			# Dataset loader
+    		parameterSpace.py	# Parameter space
+			saver.py			# Save simulation outputs
+			signal.py			# Signal processing functions
+			stimulus.py			# Stimulus construction
+    examples/					# Example Jupyter notebooks
+    docs/						# Documentation 
+
+## Examples
+
 Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory, don't forget to check them out! You can run the examples in your browser using Binder by clicking [here](https://mybinder.org/v2/gh/neurolib-dev/neurolib.git/master?filepath=examples) or one of the following links:
 
 - [Example 0.0](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-0-aln-minimal.ipynb) - Basic use of the `aln` model
@@ -87,7 +118,7 @@ Example [IPython Notebooks](examples/) on how to use the library can be found in
 
 A basic overview of the functionality of `neurolib` is also given in the following. 
 
-## Single node
+### Single node
 
 This example is available in detail as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
@@ -113,7 +144,7 @@ plt.plot(model.t, model.output.T)
   <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/single_timeseries.png">
 </p>
 
-## Whole-brain network
+### Whole-brain network
 
 A detailed example is available as a [IPython Notebook](examples/example-0-aln-minimal.ipynb). 
 
@@ -157,7 +188,7 @@ print(f"Mean FC/FC correlation: {np.mean(scores):.2}")
 Correlation per subject: ['0.34', '0.61', '0.54', '0.7', '0.54', '0.64', '0.69', '0.47', '0.59', '0.72', '0.58']
 Mean FC/FC correlation: 0.58
 ```
-## Parameter exploration
+### Parameter exploration
 A detailed example of a single-node exploration is available as a [IPython Notebook](examples/example-1-aln-parameter-exploration.ipynb). For an example of a brain network exploration, see [this Notebook](examples/example-1.2-brain-network-exploration.ipynb).
 
 Whenever you work with a model, it is of great importance to know what kind of dynamics it exhibits given a certain set of parameters. It is often useful to get an overview of the state space of a given model of interest. For example in the case of `aln`, the dynamics depends a lot on the mean inputs to the excitatory and the inhibitory population. `neurolib` makes it very easy to quickly explore parameter spaces of a given model:
@@ -189,7 +220,7 @@ We can plot the results to get something close to a bifurcation diagram!
   <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/exploration_aln.png">
 </p>
 
-## Evolutionary optimization
+### Evolutionary optimization
 
 A detailed example is available as a [IPython Notebook](examples/example-2-evolutionary-optimization-minimal.ipynb). 
 
@@ -198,13 +229,13 @@ A detailed example is available as a [IPython Notebook](examples/example-2-evolu
 An example genealogy tree is shown below. You can see the evolution starting at the top and individuals reproducing generation by generation. The color indicates the fitness.
 
 <p align="center">
-  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolution_tree.png", width="600">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolution_tree.png", width="400">
 </p>
 
 `neurolib` makes it very easy to set up your own evolutionary optimization and everything else is handled under the hood. You can chose between two implemented evolutionary algorithms: `adaptive` is a gaussian mutation and rank selection algorithm with adaptive step size that ensures convergence (a schematic is shown in the image below). `nsga2` is an implementation of the popular multi-objective optimization algorithm by Deb et al. 2002. 
 
 <p align="center">
-  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolutionary-algorithm.png", width="600">
+  <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolutionary-algorithm.png", width="400">
 </p>
 
 Of course, if you like, you can dig deeper, define your own selection, mutation and mating operators. In the following demonstration, we will simply evaluate the fitness of each individual as the distance to the unit circle. After a couple of generations of mating, mutating and selecting, only individuals who are close to the circle should survive:
@@ -266,3 +297,5 @@ Bernstein Center for Computational Neuroscience Berlin, Germany
 
 ### Acknowledgments
 This work was supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) with the project number 327654276 (SFB 1315) and the Research Training Group GRK1589/2.
+
+<!--end-include-in-documentation-->
