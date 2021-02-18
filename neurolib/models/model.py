@@ -201,7 +201,7 @@ class Model:
         :type inputs: list[np.ndarray|]
         :param chunkwise: simulate model chunkwise or in one single run, defaults to False
         :type chunkwise: bool, optional
-        :param chunksize: size of the chunk to simulate in dt, defaults to 2s
+        :param chunksize: size of the chunk to simulate in dt, if set will imply chunkwise=True, defaults to 2s
         :type chunksize: int, optional
         :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
         :type bold: bool, optional
