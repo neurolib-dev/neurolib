@@ -16,6 +16,11 @@ from neurolib.utils.loadData import Dataset
 class AutochunkTests(unittest.TestCase):
     """
     Base class for autochunk tests.
+
+    Cycles through all models and runs autochunk on them and compares the
+    results to a normal run. Expect the outputs to be equal.
+
+    All individual model runs are blow this base class.
     """
 
     durations = [0.1, 0.5, 10.5, 22.3]
@@ -129,6 +134,19 @@ class TestThalamusAutochunk(AutochunkTests):
     @pytest.mark.xfail
     def test_single(self):
         self.single_node_test(ThalamicMassModel)
+
+
+class ChunkziseImpliesChunksize(unittest.TestCase):
+    """
+    Simply test whether the model runs as expected when
+    model.run(chunksize=1000) is used without chunkwise=True
+    """
+
+    def test_chunksize(self):
+        model = HopfModel()
+        chunksize = 100
+        model.run(chunksize=chunksize)
+        self.assertEqual(model.output.shape[1], chunksize)
 
 
 if __name__ == "__main__":
