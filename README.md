@@ -64,6 +64,7 @@ Below is an animation of the neuronal activity of a whole-brain model plotted on
 </p>
 
 ## Installation
+
 The easiest way to get going is to install the pypi package using `pip`:
 
 ```
@@ -77,34 +78,32 @@ cd neurolib/
 pip install -r requirements.txt
 pip install .
 ```
+It is recommended to clone or fork the entire repository since it will also include all examples and tests.
 
 ## Project layout
 
-
-    neurolib/					# Main module
-    	models/					# Neural mass models
-    		model.py			# Base model class
-    		/.../				# Implemented neural models
-    	optimize/				# Optimization submodule
-    		evolution/			# Evolutionary optimization
-    			evolution.py
-    			...
-    		exploration/		# Parameter exploration
-    			exploration.py
-    			...
-    	data/					# Empirical datasets (structural, functional)
-    		...
-    	utils/					# Utility belt
-    		atlases.py			# Atlases (Region names, coordinates)
-    		collections.py		# Custom data types
-    		functions.py		# Useful functions
-    		loadData.py			# Dataset loader
-    		parameterSpace.py	# Parameter space
-			saver.py			# Save simulation outputs
-			signal.py			# Signal processing functions
-			stimulus.py			# Stimulus construction
-    examples/					# Example Jupyter notebooks
-    docs/						# Documentation 
+```
+neurolib/	 						# Main module
+├── models/ 						# Neural mass models
+	├──model.py 					# Base model class
+	└── /.../ 					# Implemented neural models
+├── optimize/ 					# Optimization submodule
+	├── evolution/ 				# Evolutionary optimization
+	└── exploration/ 			# Parameter exploration
+├── data/ 						# Empirical datasets (structural, functional)
+├── utils/						# Utility belt
+	├── atlases.py				# Atlases (Region names, coordinates)
+	├── collections.py			# Custom data types
+	├── functions.py 			# Useful functions
+	├── loadData.py				# Dataset loader
+	├── parameterSpace.py		# Parameter space
+	├── saver.py 					# Save simulation outputs
+	├── signal.py					# Signal processing functions
+	└── stimulus.py 				# Stimulus construction
+├── examples/						# Example Jupyter notebooks
+├── docs/							# Documentation 
+└── tests/						# Automated tests
+```
 
 ## Examples
 
