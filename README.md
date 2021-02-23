@@ -83,9 +83,9 @@ It is recommended to clone or fork the entire repository since it will also incl
 ## Project layout
 
 ```
-neurolib/	 						# Main module
-├── models/ 						# Neural mass models
-	├──model.py 					# Base model class
+neurolib/	 					# Main module
+├── models/ 					# Neural mass models
+	├──model.py 				# Base model class
 	└── /.../ 					# Implemented neural models
 ├── optimize/ 					# Optimization submodule
 	├── evolution/ 				# Evolutionary optimization
@@ -97,12 +97,13 @@ neurolib/	 						# Main module
 	├── functions.py 			# Useful functions
 	├── loadData.py				# Dataset loader
 	├── parameterSpace.py		# Parameter space
-	├── saver.py 					# Save simulation outputs
-	├── signal.py					# Signal processing functions
-	└── stimulus.py 				# Stimulus construction
-├── examples/						# Example Jupyter notebooks
-├── docs/							# Documentation 
+	├── saver.py 				# Save simulation outputs
+	├── signal.py				# Signal processing functions
+	└── stimulus.py 			# Stimulus construction
+├── examples/					# Example Jupyter notebooks
+├── docs/						# Documentation 
 └── tests/						# Automated tests
+
 ```
 
 ## Examples
