@@ -96,7 +96,7 @@ neurolib/	 				# Main module
 	├── collections.py			# Custom data types
 	├── functions.py 			# Useful functions
 	├── loadData.py				# Dataset loader
-	├── parameterSpace.py		# Parameter space
+	├── parameterSpace.py			# Parameter space
 	├── saver.py 				# Save simulation outputs
 	├── signal.py				# Signal processing functions
 	└── stimulus.py 			# Stimulus construction
