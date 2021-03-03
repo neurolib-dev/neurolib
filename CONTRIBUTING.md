@@ -40,6 +40,16 @@ You are very welcome to implement your favorite neural mass model and contribute
   * The `loadDefaultParams.py` file contains a function (`loadDefaultParams()`) which has the arguments `Cmat` for the structural connectivity matrix, `Dmat` for the delay matrix and `seed` for the seed of the random number generator. This function returns a dictionary (or `dotdict`, see `neurolib/utils/collections.py`) with all parrameters inside.
   * The `timeIntegration.py` file which contains a `timeIntegration()` function which has the argument `params` coming from the previous step. Here, we need to prepare the numerical integration. We load all relevant parameters from the `params` dictionary and pass it to the main integration loop. The integration loop is written such that it can be accelerated by `numba` ([numba's page](https://numba.pydata.org/)) which speeds up the integration by a factor of around 1000. 
 
+## Contributing examples 
+
+We very much welcome example contributions since they help new users to learn how to make use of `neurolib`. They can include basic usage examples or tutorials of `neurolib`'s features, or a demonstration of how to solve a specific scientific task using neural mass models or whole-brain networks.
+
+* Examples are provided as Jupyter Notebooks in the `/examples/` directory of the project repository.
+* Notebooks should have a brief description of what they are trying to accomplish at the beginning.
+* It is recommended to change the working directory to the root directory at the very beginning of the notebook (`os.chdir('..')`).
+* Notebooks should be structured with different subheadings (Markdown style). Please also describe in words what you are doing in code. 
+
+
 ## Contributing brain data
 
 We have a few small datasets already in neurolib so everyone can start simulating right away. If you'd like to contribute more data to the project, please feel invited to do so. We're looking for more structural connectivity matrices and fiber length matrices in the MATLAB matrix `.mat` format (which can be loaded by `scipy.loadmat`). We also appreciate BOLD data, EEG data, or MEG data. Other modalities could be useful as well. Please be aware that the data has to be in a parcellated form, i.e., the brain areas need to be organized according to an atlas like the AAL2 atlas (or others).
