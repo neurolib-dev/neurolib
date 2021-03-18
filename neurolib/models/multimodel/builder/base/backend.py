@@ -93,8 +93,9 @@ class NumbaBackend(BaseBackend):
     CURRENT_Y_REGEX = r"current_y\([0-9]*\)"
     CURRENT_Y_NUMBA = "y[{idx}, max_delay + i - 1]"
 
-    PAST_Y_REGEX = r"past_y\([-+]?\w*\.?\w+ \+ t, [0-9]*, anchors\([-+]?\w*\.?\w+ \+ t\)\)"
+    PAST_Y_REGEX = r"past_y\((.*?)\)"
     PAST_Y_NUMBA = "y[{idx}, max_delay + i - 1 - {dt_ndt}]"
+    _convert_to_dt = []
 
     SYSTEM_INPUT_REGEX = r"past_y\(-external_input \+ t, ([0-9]* \+ )?input_base_n, anchors\(-external_input \+ t\)\)"
     SYSTEM_INPUT_NUMBA = "input_y[{idx}, i]"
@@ -142,16 +143,26 @@ def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
         :return: expression with replaced symbolic values to numpy array
         :rtype: str
         """
-        # TODO when delays are floats this works
-        # TODO when delays are params it doesn't - fix !!
         matches = re.findall(self.PAST_Y_REGEX, expression)
         for match in matches:
             time_past, idx, _ = match.split(",")
             idx = int(idx)
-            t_past = float(time_past.split("+")[0].strip()[7:])
-            t_past_ndx = np.around(t_past / dt).astype(int)
-            replace_with = self.PAST_Y_NUMBA.format(dt_ndt=np.abs(t_past_ndx), idx=idx)
-            expression = expression.replace(match, replace_with)
+            if time_past[0] == "t":
+                assert time_past[2] == "-"
+                t_past = time_past[4:]
+            else:
+                assert time_past[-4:] == " + t"
+                t_past = time_past[:-3]
+            # if the delay is float, convert to ndt right now
+            try:
+                t_past_ndx = np.around(np.abs(float(t_past)) / dt).astype(int)
+            # if it is not, just write Symbol and append to list - will be converted upon run
+            except ValueError:
+                t_past_ndx = t_past.strip()
+                t_past_ndx = t_past_ndx[1:] if t_past_ndx[0] == "-" else t_past_ndx
+                self._convert_to_dt.append(t_past_ndx)
+            replace_with = self.PAST_Y_NUMBA.format(dt_ndt=t_past_ndx, idx=idx)
+            expression = expression.replace(f"past_y({match}))", replace_with)
         return expression
 
     def _replace_inputs(self, expression):
@@ -205,15 +216,17 @@ def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
         :return: list of all parameters as symbols
         :rtype: list[sp.Symbol]
         """
-        all_params = []
+        all_params = set()
         for k, v in symbol_params.items():
             if "noise" in k:
                 continue
             if isinstance(v, sp.Symbol):
-                all_params.append(v)
+                # extract symbols from sympy expressions
+                all_params |= v.free_symbols
             elif isinstance(v, np.ndarray):
-                all_params += v.flatten().tolist()
-        return all_params
+                # extract symbols from sympy expressions and do the union of all sets
+                all_params |= set().union(*[item.free_symbols for item in v.flatten().tolist()])
+        return list(all_params)
 
     @staticmethod
     def _create_symbol_to_float_dict(symbol_params, float_params):
@@ -262,9 +275,8 @@ def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
         logging.info("Replacing symbolic expressions with arrays...")
         derivatives_str = self._replace_inputs(str(substituted))
         derivatives_str = self._replace_current_ys(derivatives_str)
-        print(derivatives_str)
+        self._convert_to_dt = []
         derivatives_str = self._replace_past_ys(derivatives_str, dt=dt)
-        print(derivatives_str)
         assert isinstance(derivatives_str, str)
         logging.info("Compiling python code using numba's njit...")
         function_params = self._get_numba_function_params(flatten_nested_dict(symbol_params))
@@ -310,6 +322,9 @@ def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
         model_params = self._create_symbol_to_float_dict(
             flatten_nested_dict(symbol_params), flatten_nested_dict(float_params)
         )
+        for delay_param in set(self._convert_to_dt):
+            assert delay_param in model_params, delay_param
+            model_params[delay_param] = np.around(float(model_params[delay_param]) / dt).astype(int)
         result = integrate(
             dt=dt,
             system_size=system_size,
@@ -492,26 +507,23 @@ class BackendIntegrator:
         "initialised",
     ]
 
-    def _init_backend(self, backend, dt=None):
-        if backend == "jitcdde":
-            self.backend_instance = JitcddeBackend()
-        elif backend == "numba":
-            self.backend_instance = NumbaBackend()
-        else:
-            raise ValueError(f"Unknown backend: {backend}")
-        # copy necessary attributes (i.e. symbolic derivatives, helpers, etc) to
-        # backend instance
+    def _init_jitcdde_backend(self):
+        self.backend_instance = JitcddeBackend()
         for attr in self.NEEDED_ATTRIBUTES:
             setattr(self.backend_instance, attr, getattr(self, attr))
-        if backend == "numba":
-            # compile
-            self.make_params_symbolic(vector=False)
-            assert not self.are_params_floats
-            self.symbol_params = deepcopy(self.get_nested_params())
-            self.backend_instance.compile_to_numba(
-                symbol_params=self.symbol_params, dt=dt, system_size=len(self._derivatives())
-            )
-            self.make_params_floats()
+
+    def _init_numba_backend(self, dt):
+        self.backend_instance = NumbaBackend()
+        for attr in self.NEEDED_ATTRIBUTES:
+            setattr(self.backend_instance, attr, getattr(self, attr))
+        # compile
+        self.make_params_symbolic(vector=False)
+        assert not self.are_params_floats
+        self.symbol_params = deepcopy(self.get_nested_params())
+        self.backend_instance.compile_to_numba(
+            symbol_params=self.symbol_params, dt=dt, system_size=len(self._derivatives())
+        )
+        self.make_params_floats()
 
     @timer
     def run(self, duration, dt, noise_input, backend=DEFAULT_BACKEND, return_xarray=True, **kwargs):
@@ -538,7 +550,12 @@ class BackendIntegrator:
 
         if (self.backend_instance is None) or (self.backend_instance.backend_name != backend):
             logging.info(f"Initialising {backend} backend...")
-            self._init_backend(backend, dt=dt)
+            if backend == "jitcdde":
+                self._init_jitcdde_backend()
+            elif backend == "numba":
+                self._init_numba_backend(dt=dt)
+            else:
+                raise ValueError(f"Unknown backend {backend}")
         assert isinstance(self.backend_instance, BaseBackend)
         if isinstance(self.backend_instance, NumbaBackend):
             assert self.are_params_floats

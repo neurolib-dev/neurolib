@@ -106,9 +106,9 @@ class TestNumbaBackend(unittest.TestCase):
             "node1.mass1.noise.a": sp.Symbol("noise_a"),
             "node1.connectivity": np.array([[sp.Symbol("conn11"), sp.Symbol("conn12")]]),
         }
-        should_be = [sp.Symbol("a"), sp.Symbol("conn11"), sp.Symbol("conn12")]
+        should_be = set([sp.Symbol("conn11"), sp.Symbol("conn12"), sp.Symbol("a")])
         result = backend._get_numba_function_params(symbol_params)
-        self.assertListEqual(result, should_be)
+        self.assertSetEqual(set(result), should_be)
 
     def test_create_symbol_to_float_dict(self):
         backend = NumbaBackend()
@@ -210,7 +210,8 @@ class TestBackendIntegrator(unittest.TestCase):
     def test_init_system(self):
         system = BackendTestingHelper()
         self.assertTrue(hasattr(system, "_init_xarray"))
-        self.assertTrue(hasattr(system, "_init_backend"))
+        self.assertTrue(hasattr(system, "_init_jitcdde_backend"))
+        self.assertTrue(hasattr(system, "_init_numba_backend"))
         self.assertTrue(hasattr(system, "run"))
 
     def test_run_jitcdde(self):
