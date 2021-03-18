@@ -1,6 +1,5 @@
 import logging
 import os
-from copy import deepcopy
 
 import numba
 import numpy as np
@@ -220,7 +219,6 @@ class ALNMass(NeuralMass):
         :param seed: seed for random number generator
         :type seed: int|None
         """
-        params = self._rescale_strengths(params)
         super().__init__(params=params, seed=seed)
         # use the same file as neurolib's native
         lin_nonlin_transfer_function_filename = lin_nonlin_transfer_function_filename or os.path.join(
@@ -373,6 +371,35 @@ class ALNMass(NeuralMass):
             self.tau_transfer_function,
         )
 
+    def _get_current_sigma(self, I_syn_sigma_exc, I_syn_sigma_inh, exc_inp, inh_inp, J_exc_max, J_inh_max, ext_sigma):
+        """
+        Compute membrane current standard deviation sigma.
+        """
+        return se.sqrt(
+            2
+            * J_exc_max ** 2
+            * I_syn_sigma_exc
+            * self.params["tau_se"]
+            * (self.params["C"] / self.params["gL"])
+            / ((1.0 + exc_inp) * (self.params["C"] / self.params["gL"]) + self.params["tau_se"])
+            + 2
+            * J_inh_max ** 2
+            * I_syn_sigma_inh
+            * self.params["tau_si"]
+            * (self.params["C"] / self.params["gL"])
+            / ((1.0 + inh_inp) * (self.params["C"] / self.params["gL"]) + self.params["tau_si"])
+            + ext_sigma ** 2
+        )
+
+    def _get_synaptic_current_mu(self, I_syn_mu, inp, tau):
+        """
+        Compute synaptic current mean mu. Used for both excitatory and inhibitory cuurent.
+        """
+        return ((1.0 - I_syn_mu) * inp - I_syn_mu) / tau
+
+    def _get_synaptic_current_sigma(self, I_syn_mu, I_syn_sigma, inp, inp_sq, tau):
+        return ((1.0 - I_syn_mu) ** 2 * inp_sq + (inp_sq - 2.0 * tau * (inp + 1.0)) * I_syn_sigma) / (tau ** 2)
+
 
 class ExcitatoryALNMass(ALNMass):
     """
@@ -411,7 +438,6 @@ class ExcitatoryALNMass(ALNMass):
         "sigmae_ext",
         "Jee_max",
         "Jei_max",
-        "taum",
         "C",
         "ext_exc_current",
         "ext_exc_rate",
@@ -424,49 +450,12 @@ class ExcitatoryALNMass(ALNMass):
 
     _noise_input = [OrnsteinUhlenbeckProcess(mu=0.4, sigma=0.0, tau=5.0)]
 
-    @staticmethod
-    def _rescale_strengths(params):
-        """
-        Rescale connection strengths.
-        """
-        params = deepcopy(params)
-        assert isinstance(params, dict)
-        params["c_gl"] = params["c_gl"] * params["tau_se"] / params["Jee_max"]
-
-        params["taum"] = params["C"] / params["gL"]
-        return params
-
     def __init__(self, params=None, lin_nonlin_transfer_function_filename=None, seed=None):
         super().__init__(
             params=params or ALN_EXC_DEFAULT_PARAMS,
             lin_nonlin_transfer_function_filename=lin_nonlin_transfer_function_filename,
             seed=seed,
         )
-
-    def update_params(self, params_dict):
-        """
-        Update parameters as in the base class but also rescale.
-        """
-        # if we are changing C_m or g_L, update tau_m as well
-        if any(k in params_dict for k in ("C", "gL")):
-            C_m = params_dict["C"] if "C" in params_dict else self.params["C"]
-            g_L = params_dict["gL"] if "gL" in params_dict else self.params["gL"]
-            params_dict["taum"] = C_m / g_L
-
-        # if we are changing any of the J_exc_max, tau_syn_exc or c_global, rescale c_global
-        if any(k in params_dict for k in ("c_gl", "Jee_max", "tau_se")):
-            # get original c_global
-            c_global = (
-                params_dict["c_gl"]
-                if "c_gl" in params_dict
-                else self.params["c_gl"] * (self.params["Jee_max"] / self.params["tau_se"])
-            )
-            tau_syn_exc = params_dict["tau_se"] if "tau_se" in params_dict else self.params["tau_se"]
-            J_exc_max = params_dict["Jee_max"] if "Jee_max" in params_dict else self.params["Jee_max"]
-            params_dict["c_gl"] = c_global * tau_syn_exc / J_exc_max
-
-        # update all parameters finally
-        super().update_params(params_dict)
 
     def _initialize_state_vector(self):
         """
@@ -477,20 +466,38 @@ class ExcitatoryALNMass(ALNMass):
             np.random.uniform(0, 1, self.num_state_variables) * np.array([3.0, 200.0, 0.5, 0.5, 0.001, 0.001, 0.01])
         ).tolist()
 
+    def _get_adaptation_current(self, I_adaptation, firing_rate, voltage):
+        """
+        Compute adaptation current as a sum of subthreshold adaptation and spike-triggered adaptation.
+        """
+        return (
+            self.params["a"] * (voltage - self.params["EA"])
+            - I_adaptation
+            + self.params["tauA"] * self.params["b"] * firing_rate
+        ) / self.params["tauA"]
+
     def _compute_couplings(self, coupling_variables):
         """
         Helper that computes coupling from other nodes and network.
         """
         exc_coupling = (
             self.params["Ke"] * coupling_variables["node_exc_exc"]
-            + self.params["c_gl"] * self.params["Ke_gl"] * coupling_variables["network_exc_exc"]
-            + self.params["c_gl"] * self.params["Ke_gl"] * self.params["ext_exc_rate"]
+            + (self.params["c_gl"] * self.params["tau_se"] / self.params["Jee_max"])
+            * self.params["Ke_gl"]
+            * coupling_variables["network_exc_exc"]
+            + (self.params["c_gl"] * self.params["tau_se"] / self.params["Jee_max"])
+            * self.params["Ke_gl"]
+            * self.params["ext_exc_rate"]
         )
         inh_coupling = self.params["Ki"] * coupling_variables["node_exc_inh"]
         exc_coupling_squared = (
             self.params["Ke"] * coupling_variables["node_exc_exc_sq"]
-            + self.params["c_gl"] ** 2 * self.params["Ke_gl"] * coupling_variables["network_exc_exc_sq"]
-            + self.params["c_gl"] ** 2 * self.params["Ke_gl"] * self.params["ext_exc_rate"]
+            + (self.params["c_gl"] * self.params["tau_se"] / self.params["Jee_max"]) ** 2
+            * self.params["Ke_gl"]
+            * coupling_variables["network_exc_exc_sq"]
+            + (self.params["c_gl"] * self.params["tau_se"] / self.params["Jee_max"]) ** 2
+            * self.params["Ke_gl"]
+            * self.params["ext_exc_rate"]
         )
         inh_coupling_squared = self.params["Ki"] * coupling_variables["node_exc_inh_sq"]
 
@@ -514,20 +521,14 @@ class ExcitatoryALNMass(ALNMass):
 
         exc_inp, inh_inp, exc_inp_sq, inh_inp_sq = self._compute_couplings(coupling_variables)
 
-        I_sigma = se.sqrt(
-            2
-            * self.params["Jee_max"] ** 2
-            * I_syn_sigma_exc
-            * self.params["tau_se"]
-            * self.params["taum"]
-            / ((1.0 + exc_inp) * self.params["taum"] + self.params["tau_se"])
-            + 2
-            * self.params["Jei_max"] ** 2
-            * I_syn_sigma_inh
-            * self.params["tau_si"]
-            * self.params["taum"]
-            / ((1.0 + inh_inp) * self.params["taum"] + self.params["tau_si"])
-            + self.params["sigmae_ext"] ** 2
+        I_sigma = self._get_current_sigma(
+            I_syn_sigma_exc,
+            I_syn_sigma_inh,
+            exc_inp,
+            inh_inp,
+            self.params["Jee_max"],
+            self.params["Jei_max"],
+            self.params["sigmae_ext"],
         )
 
         # get values from linear-nonlinear lookup table
@@ -543,27 +544,18 @@ class ExcitatoryALNMass(ALNMass):
             - I_mu
         ) / tau
 
-        d_I_adaptation = (
-            self.params["a"] * (voltage - self.params["EA"])
-            - I_adaptation
-            + self.params["tauA"] * self.params["b"] * firing_rate_now
-        ) / self.params["tauA"]
+        d_I_adaptation = self._get_adaptation_current(I_adaptation, firing_rate_now, voltage)
 
-        d_I_syn_mu_exc = ((1.0 - I_syn_mu_exc) * exc_inp - I_syn_mu_exc) / self.params["tau_se"]
+        d_I_syn_mu_exc = self._get_synaptic_current_mu(I_syn_mu_exc, exc_inp, self.params["tau_se"])
+        d_I_syn_mu_inh = self._get_synaptic_current_mu(I_syn_mu_inh, inh_inp, self.params["tau_si"])
 
-        d_I_syn_mu_inh = ((1.0 - I_syn_mu_inh) * inh_inp - I_syn_mu_inh) / self.params["tau_si"]
-
-        d_I_syn_sigma_exc = (
-            (1.0 - I_syn_mu_exc) ** 2 * exc_inp_sq
-            + (exc_inp_sq - 2.0 * self.params["tau_se"] * (exc_inp + 1.0)) * I_syn_sigma_exc
-        ) / (self.params["tau_se"] ** 2)
-
-        d_I_syn_sigma_inh = (
-            (1.0 - I_syn_mu_inh) ** 2 * inh_inp_sq
-            + (inh_inp_sq - 2.0 * self.params["tau_si"] * (inh_inp + 1.0)) * I_syn_sigma_inh
-        ) / (self.params["tau_si"] ** 2)
-        # firing rate as dummy dynamical variable with infinitely fast
-        # fixed-point dynamics
+        d_I_syn_sigma_exc = self._get_synaptic_current_sigma(
+            I_syn_mu_exc, I_syn_sigma_exc, exc_inp, exc_inp_sq, self.params["tau_se"]
+        )
+        d_I_syn_sigma_inh = self._get_synaptic_current_sigma(
+            I_syn_mu_inh, I_syn_sigma_inh, inh_inp, inh_inp_sq, self.params["tau_si"]
+        )
+        # firing rate as dummy dynamical variable with infinitely fast fixed-point dynamics
         d_firing_rate = -self.params["lambda"] * (firing_rate - firing_rate_now)
 
         return [
@@ -612,7 +604,6 @@ class InhibitoryALNMass(ALNMass):
         "sigmai_ext",
         "Jie_max",
         "Jii_max",
-        "taum",
         "C",
         "ext_inh_current",
         "ext_inh_rate",
@@ -621,49 +612,12 @@ class InhibitoryALNMass(ALNMass):
 
     _noise_input = [OrnsteinUhlenbeckProcess(mu=0.3, sigma=0.0, tau=5.0)]
 
-    @staticmethod
-    def _rescale_strengths(params):
-        """
-        Rescale connection strengths.
-        """
-        params = deepcopy(params)
-        assert isinstance(params, dict)
-        params["c_gl"] = params["c_gl"] * params["tau_se"] / params["Jie_max"]
-
-        params["taum"] = params["C"] / params["gL"]
-        return params
-
     def __init__(self, params=None, lin_nonlin_transfer_function_filename=None, seed=None):
         super().__init__(
             params=params or ALN_INH_DEFAULT_PARAMS,
             lin_nonlin_transfer_function_filename=lin_nonlin_transfer_function_filename,
             seed=seed,
         )
-
-    def update_params(self, params_dict):
-        """
-        Update parameters as in the base class but also rescale.
-        """
-        # if we are changing C_m or g_L, update tau_m as well
-        if any(k in params_dict for k in ("C", "gL")):
-            C_m = params_dict["C"] if "C" in params_dict else self.params["C"]
-            g_L = params_dict["gL"] if "gL" in params_dict else self.params["gL"]
-            params_dict["taum"] = C_m / g_L
-
-        # if we are changing any of the J_exc_max, tau_syn_exc or c_global, rescale c_global
-        if any(k in params_dict for k in ("c_gl", "Jie_max", "tau_se")):
-            # get original c_global
-            c_global = (
-                params_dict["c_gl"]
-                if "c_gl" in params_dict
-                else self.params["c_gl"] * (self.params["Jie_max"] / self.params["tau_se"])
-            )
-            tau_syn_exc = params_dict["tau_se"] if "tau_se" in params_dict else self.params["tau_se"]
-            J_exc_max = params_dict["Jie_max"] if "Jie_max" in params_dict else self.params["Jie_max"]
-            params_dict["c_gl"] = c_global * tau_syn_exc / J_exc_max
-
-        # update all parameters finally
-        super().update_params(params_dict)
 
     def _initialize_state_vector(self):
         """
@@ -680,12 +634,16 @@ class InhibitoryALNMass(ALNMass):
         """
         exc_coupling = (
             self.params["Ke"] * coupling_variables["node_inh_exc"]
-            + self.params["c_gl"] * self.params["Ke_gl"] * self.params["ext_inh_rate"]
+            + (self.params["c_gl"] * self.params["tau_se"] / self.params["Jie_max"])
+            * self.params["Ke_gl"]
+            * self.params["ext_inh_rate"]
         )
         inh_coupling = self.params["Ki"] * coupling_variables["node_inh_inh"]
         exc_coupling_squared = (
             self.params["Ke"] * coupling_variables["node_inh_exc_sq"]
-            + self.params["c_gl"] ** 2 * self.params["Ke_gl"] * self.params["ext_inh_rate"]
+            + (self.params["c_gl"] * self.params["tau_se"] / self.params["Jie_max"]) ** 2
+            * self.params["Ke_gl"]
+            * self.params["ext_inh_rate"]
         )
         inh_coupling_squared = self.params["Ki"] * coupling_variables["node_inh_inh_sq"]
 
@@ -708,20 +666,14 @@ class InhibitoryALNMass(ALNMass):
 
         exc_inp, inh_inp, exc_inp_sq, inh_inp_sq = self._compute_couplings(coupling_variables)
 
-        I_sigma = se.sqrt(
-            2
-            * self.params["Jie_max"] ** 2
-            * I_syn_sigma_exc
-            * self.params["tau_se"]
-            * self.params["taum"]
-            / ((1.0 + exc_inp) * self.params["taum"] + self.params["tau_se"])
-            + 2
-            * self.params["Jii_max"] ** 2
-            * I_syn_sigma_inh
-            * self.params["tau_si"]
-            * self.params["taum"]
-            / ((1.0 + inh_inp) * self.params["taum"] + self.params["tau_si"])
-            + self.params["sigmai_ext"] ** 2
+        I_sigma = self._get_current_sigma(
+            I_syn_sigma_exc,
+            I_syn_sigma_inh,
+            exc_inp,
+            inh_inp,
+            self.params["Jie_max"],
+            self.params["Jii_max"],
+            self.params["sigmai_ext"],
         )
 
         # get values from linear-nonlinear lookup table
@@ -736,21 +688,16 @@ class InhibitoryALNMass(ALNMass):
             - I_mu
         ) / tau
 
-        d_I_syn_mu_exc = ((1.0 - I_syn_mu_exc) * exc_inp - I_syn_mu_exc) / self.params["tau_se"]
+        d_I_syn_mu_exc = self._get_synaptic_current_mu(I_syn_mu_exc, exc_inp, self.params["tau_se"])
+        d_I_syn_mu_inh = self._get_synaptic_current_mu(I_syn_mu_inh, inh_inp, self.params["tau_si"])
 
-        d_I_syn_mu_inh = ((1.0 - I_syn_mu_inh) * inh_inp - I_syn_mu_inh) / self.params["tau_si"]
-
-        d_I_syn_sigma_exc = (
-            (1.0 - I_syn_mu_exc) ** 2 * exc_inp_sq
-            + (exc_inp_sq - 2.0 * self.params["tau_se"] * (exc_inp + 1.0)) * I_syn_sigma_exc
-        ) / (self.params["tau_se"] ** 2)
-
-        d_I_syn_sigma_inh = (
-            (1.0 - I_syn_mu_inh) ** 2 * inh_inp_sq
-            + (inh_inp_sq - 2.0 * self.params["tau_si"] * (inh_inp + 1.0)) * I_syn_sigma_inh
-        ) / (self.params["tau_si"] ** 2)
-        # firing rate as dummy dynamical variable with infinitely fast
-        # fixed-point dynamics
+        d_I_syn_sigma_exc = self._get_synaptic_current_sigma(
+            I_syn_mu_exc, I_syn_sigma_exc, exc_inp, exc_inp_sq, self.params["tau_se"]
+        )
+        d_I_syn_sigma_inh = self._get_synaptic_current_sigma(
+            I_syn_mu_inh, I_syn_sigma_inh, inh_inp, inh_inp_sq, self.params["tau_si"]
+        )
+        # firing rate as dummy dynamical variable with infinitely fast fixed-point dynamics
         d_firing_rate = -self.params["lambda"] * (firing_rate - firing_rate_now)
 
         return [
