@@ -814,13 +814,13 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
         )
         self._rescale_connectivity()
 
-    def update_params(self, params_dict):
+    def update_params(self, params_dict, rescale=True):
         """
         Rescale connectivity after params update if connectivity was updated.
         """
         rescale_flag = "local_connectivity" in params_dict
         super().update_params(params_dict)
-        if rescale_flag:
+        if rescale_flag and rescale:
             self._rescale_connectivity()
 
     def _sync(self):
