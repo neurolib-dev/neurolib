@@ -179,16 +179,16 @@ class Node(BackendIntegrator):
         else:
             symbolic_params = float_params_to_individual_symbolic(flatten_nested_dict(self.get_nested_params()))
         # update self with symbolic params
-        self.update_params(flat_dict_to_nested(symbolic_params))
         self.are_params_floats = False
+        self.update_params(flat_dict_to_nested(symbolic_params), rescale=False)
 
     def make_params_floats(self):
         """
         Make all node parameters floats again!
         """
         assert not self.are_params_floats
-        self.update_params(self.float_params)
         self.are_params_floats = True
+        self.update_params(self.float_params, rescale=False)
         self.float_params = None
 
     def init_node(self, **kwargs):
@@ -217,7 +217,7 @@ class Node(BackendIntegrator):
             params_dict = next(iter(params_dict.values()))
         return params_dict
 
-    def update_params(self, params_dict):
+    def update_params(self, params_dict, **kwargs):
         """
         Update parameters of the node, i.e. recursively update all parameters of masses within this node.
 
@@ -231,7 +231,7 @@ class Node(BackendIntegrator):
             if any(mass_label in mass_key for mass_label in mass_labels):
                 mass_index = self._get_index(mass_key)
                 assert mass_index == self.masses[mass_index].index
-                self.masses[mass_index].update_params(mass_params)
+                self.masses[mass_index].update_params(mass_params, **kwargs)
             else:
                 logging.warning(f"Not sure what to do with {mass_key}...")
 
@@ -450,7 +450,7 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
                 )
             var_idx += mass.num_state_variables
 
-    def update_params(self, params_dict):
+    def update_params(self, params_dict, **kwargs):
         """
         Update params - also update local connectivity and local delays,
         then pass to base class.
@@ -462,7 +462,7 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
             self.connectivity = _sanitize_matrix(local_connectivity, self.connectivity.shape)
         if local_delays is not None and isinstance(local_delays, (np.ndarray, sp.MatrixSymbol)):
             self.delays = _sanitize_matrix(local_delays, self.delays.shape)
-        super().update_params(params_dict)
+        super().update_params(params_dict, **kwargs)
 
     def _sync(self):
         # connectivity as [to, from]
@@ -701,17 +701,17 @@ class Network(BackendIntegrator):
             symbolic_params = float_params_to_vector_symbolic(flatten_nested_dict(self.get_nested_params()))
         else:
             symbolic_params = float_params_to_individual_symbolic(flatten_nested_dict(self.get_nested_params()))
-        # update self with symbolic params
-        self.update_params(flat_dict_to_nested(symbolic_params))
         self.are_params_floats = False
+        # update self with symbolic params
+        self.update_params(flat_dict_to_nested(symbolic_params), rescale=False)
 
     def make_params_floats(self):
         """
         Make all node parameters floats again!
         """
         assert not self.are_params_floats
-        self.update_params(self.float_params)
         self.are_params_floats = True
+        self.update_params(self.float_params, rescale=False)
         self.float_params = None
 
     def init_network(self, **kwargs):
@@ -727,12 +727,12 @@ class Network(BackendIntegrator):
             for node_idx in range(self.num_nodes)
         }
         for node_idx, node in enumerate(self.nodes):
-            node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables)
+            node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables, **kwargs)
         assert all(node.initialised for node in self)
         self._initial_state = np.concatenate([node.initial_state for node in self], axis=0)
         self.initialised = True
 
-    def update_params(self, params_dict):
+    def update_params(self, params_dict, **kwargs):
         """
         Update parameters of this network, i.e. recursively for all nodes and
         all masses.
@@ -747,7 +747,7 @@ class Network(BackendIntegrator):
             if any(node_label in node_key for node_label in node_labels):
                 node_index = int(node_key.split("_")[-1])
                 assert node_index == self.nodes[node_index].index
-                self.nodes[node_index].update_params(node_params)
+                self.nodes[node_index].update_params(node_params, **kwargs)
             elif NETWORK_CONNECTIVITY == node_key:
                 self.connectivity = _sanitize_matrix(node_params, self.connectivity.shape)
             elif NETWORK_DELAYS == node_key:

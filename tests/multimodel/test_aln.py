@@ -286,7 +286,7 @@ class TestALNNetwork(unittest.TestCase):
             if np.isnan(all_ts).any():
                 continue
             corr_mat = np.corrcoef(all_ts)
-            print(corr_mat)
+            print(state_var, corr_mat, np.var(all_ts))
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
     @pytest.mark.xfail
