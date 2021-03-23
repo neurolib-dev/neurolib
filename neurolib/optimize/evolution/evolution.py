@@ -785,6 +785,11 @@ class Evolution:
         :return: Dataframe with outputs
         :rtype: pandas.core.frame.DataFrame
         """
+        # defines which variable types will be saved in the results dataframe
+        SUPPORTED_TYPES = (float, int, np.ndarray, list)
+        SCALAR_TYPES = (float, int)
+        ARRAY_TYPES = (np.ndarray, list)
+
         assert len(pop) == len(df), "Dataframe and population do not have same length."
         nan_value = np.nan
         # load outputs into dataframe
@@ -792,15 +797,15 @@ class Evolution:
             if hasattr(p, "outputs"):
                 for key, value in p.outputs.items():
                     # only save floats, ints and arrays
-                    if isinstance(value, (float, int, np.ndarray)):
+                    if isinstance(value, SUPPORTED_TYPES):
                         # save 1-dim arrays
-                        if isinstance(value, np.ndarray):
+                        if isinstance(value, ARRAY_TYPES):
                             # to save a numpy array, convert column to object type
                             if key not in df:
                                 df[key] = None
                             df[key] = df[key].astype(object)
                             df.at[i, key] = value
-                        elif isinstance(value, (float, int)):
+                        elif isinstance(value, SCALAR_TYPES):
                             # save numbers
                             df.loc[i, key] = value
                     else:
