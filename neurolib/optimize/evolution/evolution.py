@@ -147,6 +147,7 @@ class Evolution:
 
         # -------- settings
         self.verbose = False
+        self.verbose_plotting = True
         self.plotColor = "C0"
 
         # -------- simulation
@@ -235,7 +236,7 @@ class Evolution:
         self.evaluationCounter = 0
         self.last_id = 0
 
-    def run(self, verbose=False):
+    def run(self, verbose=False, verbose_plotting=True):
         """Run the evolution or continue previous evolution. If evolution was not initialized first
         using `runInitial()`, this will be done.
 
@@ -244,6 +245,7 @@ class Evolution:
         """
 
         self.verbose = verbose
+        self.verbose_plotting = verbose_plotting
         if not self._initialPopulationSimulated:
             self.runInitial()
 
@@ -650,7 +652,7 @@ class Evolution:
 
             # verbose output
             if self.verbose:
-                self.info(plot=True, info=True)
+                self.info(plot=self.verbose_plotting, info=True)
 
         logging.info("--- End of evolution ---")
         logging.info("Best individual is %s, %s" % (self.best_ind, self.best_ind.fitness.values))
@@ -710,7 +712,7 @@ class Evolution:
         print(f"Best {bestN} individuals:")
         eu.printIndividuals(self.toolbox.selBest(self.pop, bestN), self.paramInterval)
         print("--------------------")
-        # Plotting
+        # Plotting evolutionary progress
         if plot:
             # hack: during the evolution we need to use reverse=True
             # after the evolution (with evolution.info()), we need False
