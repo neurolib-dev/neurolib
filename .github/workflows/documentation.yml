@@ -43,7 +43,7 @@ jobs:
             target-folder: 'predeploy'
             token: ${{ secrets.DOC_ACCESS_TOKEN }}
             branch: master
-            commit-message: 'PR predeployment'
+            commit-message: 'PR predeploy'
             repository-name: neurolib-dev/neurolib-dev.github.io
       - name: Deploy 🚀
         if: github.event_name == 'push'
