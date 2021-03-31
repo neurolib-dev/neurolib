@@ -9,6 +9,7 @@ import neurolib.utils.paths as paths
 import neurolib.utils.pypetUtils as pu
 import numpy as np
 import xarray as xr
+
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.multimodel import MultiModel
@@ -151,7 +152,7 @@ class TestCustomParameterExploration(unittest.TestCase):
             pars = search.getParametersFromTraj(traj)
             # let's calculate the distance to a circle
             computation_result = abs((pars["x"] ** 2 + pars["y"] ** 2) - 1)
-            result_dict = {"distance": computation_result}
+            result_dict = {"scalar_result": computation_result, "list_result": [1, 2, 3, 4], "array_result": np.ones(3)}
             search.saveToPypet(result_dict, traj)
 
         parameters = ParameterSpace({"x": np.linspace(-2, 2, 2), "y": np.linspace(-2, 2, 2)})
@@ -159,10 +160,14 @@ class TestCustomParameterExploration(unittest.TestCase):
         search.run()
         search.loadResults(pypetShortNames=False)
 
-        for i in search.dfResults.index:
-            search.dfResults.loc[i, "distance"] = search.results[i]["distance"]
-
+        # call the result dataframe
         search.dfResults
+
+        # test integrity of dataframe
+        for i in search.dfResults.index:
+            self.assertEqual(search.dfResults.loc[i, "scalar_result"], search.results[i]["scalar_result"])
+            self.assertListEqual(search.dfResults.loc[i, "list_result"], search.results[i]["list_result"])
+            np.testing.assert_array_equal(search.dfResults.loc[i, "array_result"], search.results[i]["array_result"])
 
 
 class TestExplorationMultiModel(unittest.TestCase):

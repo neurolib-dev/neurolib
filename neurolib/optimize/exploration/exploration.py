@@ -352,9 +352,12 @@ class BoxSearch:
         :type fillna: bool, optional
         """
         nan_value = np.nan
-        logging.info("Aggregating results to `dfResults` ...")
-        # for i, result in tqdm.tqdm(self.results.items()):
+        # defines which variable types will be saved in the results dataframe
+        SUPPORTED_TYPES = (float, int, np.ndarray, list)
+        SCALAR_TYPES = (float, int)
+        ARRAY_TYPES = (np.ndarray, list)
 
+        logging.info("Aggregating results to `dfResults` ...")
         for runId, parameters in tqdm.tqdm(self.dfResults.iterrows(), total=len(self.dfResults)):
             # if the results were previously loaded into memory, use them
             if hasattr(self, "results"):
@@ -370,16 +373,16 @@ class BoxSearch:
 
             for key, value in result.items():
                 # only save floats, ints and arrays
-                if isinstance(value, (float, int, np.ndarray)):
+                if isinstance(value, SUPPORTED_TYPES):
                     # save 1-dim arrays
-                    if isinstance(value, np.ndarray) and arrays:
+                    if isinstance(value, ARRAY_TYPES) and arrays:
                         # to save a numpy array, convert column to object type
                         if key not in self.dfResults:
                             self.dfResults[key] = None
                         self.dfResults[key] = self.dfResults[key].astype(object)
                         self.dfResults.at[runId, key] = value
-                    elif isinstance(value, (float, int)):
-                        # save numbers
+                    elif isinstance(value, SCALAR_TYPES):
+                        # save scalars
                         self.dfResults.loc[runId, key] = value
                 else:
                     self.dfResults.loc[runId, key] = nan_value
