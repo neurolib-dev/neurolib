@@ -252,6 +252,8 @@ class Signal:
             yield from stacked.groupby("all")
         elif return_as == "signal":
             for name_coords, column in stacked.groupby("all"):
+                if not isinstance(name_coords, (list, tuple)):
+                    name_coords = [name_coords]
                 name_dict = {k: v for k, v in zip(self.dims_not_time, name_coords)}
                 yield name_dict, self.__constructor__(column).__finalize__(self, [f"select {column.name}"])
         else:
