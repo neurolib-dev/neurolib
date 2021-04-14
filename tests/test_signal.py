@@ -66,13 +66,22 @@ class TestSignal(unittest.TestCase):
         self.assertTupleEqual(rates_exc.shape, self.signal.shape[1:])
 
     def test_iterate(self):
+        # 1D case
+        sig = RatesSignal(xr.DataArray(np.random.rand(100), dims=["time"], coords={"time": np.arange(100)}))
+        for name, it in sig.iterate(return_as="signal"):
+            self.assertTrue(isinstance(it, RatesSignal))
+            self.assertTrue(isinstance(name, dict))
+            self.assertTupleEqual(it.shape, (sig.shape[-1],))
+        # multiD case
         for name, it in self.signal.iterate(return_as="signal"):
             self.assertTrue(isinstance(it, RatesSignal))
+            self.assertTrue(isinstance(name, dict))
             # test it is one-dim with only time axis
             self.assertTupleEqual(it.shape, (1, self.signal.shape[-1]))
 
         for name, it in self.signal.iterate(return_as="xr"):
             self.assertTrue(isinstance(it, xr.DataArray))
+            self.assertTrue(isinstance(name, tuple))
             # test it is one-dim with only time axis
             self.assertTupleEqual(it.shape, (self.signal.shape[-1], 1))
 
