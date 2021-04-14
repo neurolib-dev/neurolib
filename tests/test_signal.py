@@ -132,13 +132,24 @@ class TestSignal(unittest.TestCase):
             end_time += window_step
 
     def test_rolling(self):
-        rol_mean = self.signal.rolling(0.1, function=np.mean, inplace=False)
+        # dropnans
+        rol_mean = self.signal.rolling(0.1, function=np.mean, dropnans=True, inplace=False)
         # just check whether it runs
         self.assertTrue(isinstance(rol_mean, RatesSignal))
         self.assertTupleEqual(rol_mean.shape[:-1], self.signal.shape[:-1])
         # test inplace
         sig = deepcopy(self.signal)
-        sig.rolling(0.1, np.mean, inplace=True)
+        sig.rolling(0.1, np.mean, dropnans=True, inplace=True)
+        self.assertEqual(sig, rol_mean)
+
+        # don't drop
+        rol_mean = self.signal.rolling(0.1, function=np.mean, dropnans=False, inplace=False)
+        # just check whether it runs
+        self.assertTrue(isinstance(rol_mean, RatesSignal))
+        self.assertTupleEqual(rol_mean.shape, self.signal.shape)
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.rolling(0.1, np.mean, dropnans=False, inplace=True)
         self.assertEqual(sig, rol_mean)
 
     def test_pad(self):
