@@ -33,11 +33,6 @@ class TestSignal(unittest.TestCase):
         aln.run()
         # init RatesSignal
         cls.signal = RatesSignal.from_model_output(aln)
-        # os.makedirs(cls.TEST_FOLDER)
-
-    # @classmethod
-    # def tearDownClass(cls):
-    #     rmtree(cls.TEST_FOLDER)
 
     def test_load_save(self):
         # create temp folder
@@ -65,8 +60,7 @@ class TestSignal(unittest.TestCase):
         for name, it in self.signal.iterate(return_as="signal"):
             self.assertTrue(isinstance(it, RatesSignal))
             # test it is one-dim with only time axis
-            print(name, it.shape)
-            self.assertTupleEqual(it.shape, (self.signal.shape[-1], 1))
+            self.assertTupleEqual(it.shape, (1, self.signal.shape[-1]))
 
         for name, it in self.signal.iterate(return_as="xr"):
             self.assertTrue(isinstance(it, xr.DataArray))
@@ -118,6 +112,16 @@ class TestSignal(unittest.TestCase):
             # advance testing times by window step
             start_time += window_step
             end_time += window_step
+
+    def test_rolling(self):
+        rol_mean = self.signal.rolling(0.1, function=np.mean, inplace=False)
+        # just check whether it runs
+        self.assertTrue(isinstance(rol_mean, RatesSignal))
+        self.assertTupleEqual(rol_mean.shape[:-1], self.signal.shape[:-1])
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.rolling(0.1, np.mean, inplace=True)
+        self.assertEqual(sig, rol_mean)
 
     def test_pad(self):
         # pad both sides with 2.3 constant value for 2 seconds
