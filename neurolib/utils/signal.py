@@ -98,7 +98,7 @@ class Signal:
         xarray = xr.load_dataarray(filename)
         # init class
         signal = cls(xarray)
-        # if nc file has atrributes, copy them to signal class
+        # if nc file has attributes, copy them to signal class
         if xarray.attrs:
             process_steps = []
             for k, v in xarray.attrs.items():
@@ -176,14 +176,14 @@ class Signal:
 
     def __getitem__(self, pos):
         """
-        Get item selectes in output dimension.
+        Get item selects in output dimension.
         """
         add_steps = [f"select `{pos}` output"]
         return self.__constructor__(self.data.sel(output=pos)).__finalize__(self, add_steps)
 
     def __finalize__(self, other, add_steps=None):
         """
-        Copy attrbutes from other to self. Used when constructing class
+        Copy attributes from other to self. Used when constructing class
         instance with different data, but same metadata.
 
         :param other: other instance of `Signal`
@@ -211,7 +211,7 @@ class Signal:
         """
         Copy attributes to xarray before saving.
         """
-        # write attritubes to xarray
+        # write attributes to xarray
         for attr in self._copy_attributes:
             value = getattr(self, attr)
             # if list need to unwrap
@@ -567,7 +567,7 @@ class Signal:
         Linearly detrend signal. If segments are given, detrending will be
         performed in each part.
 
-        :param segments: segments for detrening, if None will detrend whole
+        :param segments: segments for detrending, if None will detrend whole
             signal, given as indices of the time array
         :type segments: list|None
         :param inplace: whether to do the operation in place or return

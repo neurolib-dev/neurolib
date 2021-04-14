@@ -44,8 +44,12 @@ class TestSignal(unittest.TestCase):
         # test basic properties
         repr(self.signal)
         str(self.signal)
+        self.signal.shape
+        self.signal.dims_not_time
+        self.signal.coords_not_time
         self.signal.start_time
         self.signal.end_time
+        self.signal.time
         self.signal.preprocessing_steps
         # now save
         self.signal.save(filename)
@@ -55,6 +59,11 @@ class TestSignal(unittest.TestCase):
         rmtree(self.TEST_FOLDER)
         # compare they are equal
         self.assertEqual(self.signal, loaded)
+
+    def test_get_item(self):
+        rates_exc = self.signal["rates_exc"]
+        self.assertTrue(isinstance(rates_exc, RatesSignal))
+        self.assertTupleEqual(rates_exc.shape, self.signal.shape[1:])
 
     def test_iterate(self):
         for name, it in self.signal.iterate(return_as="signal"):
