@@ -98,19 +98,19 @@ class Signal:
         xarray = xr.load_dataarray(filename)
         # init class
         signal = cls(xarray)
-        # if nc file has atrributes, copy them to signal class
-        process_steps = []
+        # if nc file has attributes, copy them to signal class
         if xarray.attrs:
+            process_steps = []
             for k, v in xarray.attrs.items():
                 if cls.PROCESS_STEPS_KEY in k:
                     idx = int(k[len(cls.PROCESS_STEPS_KEY) + 1 :])
                     process_steps.insert(idx, v)
                 else:
                     setattr(signal, k, v)
-        if len(process_steps) > 0:
-            setattr(signal, cls.PROCESS_STEPS_KEY, process_steps)
         else:
             logging.warning("No metadata found, setting empty...")
+            process_steps = [f"raw {signal.signal_type} signal: {signal.start_time}--" f"{signal.end_time}s"]
+        setattr(signal, cls.PROCESS_STEPS_KEY, process_steps)
         return signal
 
     def __init__(self, data, time_in_ms=False):
@@ -127,10 +127,12 @@ class Signal:
             data["time"] = data["time"] / 1000.0
         data["time"] = np.around(data["time"], 6)
         self.data = data
+        # assert time dimension is last
+        self.data = self.data.transpose(*(self.dims_not_time + ["time"]))
         # compute dt and sampling frequency
         self.dt = np.around(np.diff(data.time).mean(), 6)
         self.sampling_frequency = 1.0 / self.dt
-        self.process_steps = list()
+        self.process_steps = [f"raw {self.signal_type} signal: {self.start_time}--{self.end_time}s"]
 
     def __str__(self):
         """
@@ -138,8 +140,10 @@ class Signal:
         """
         return (
             f"{self.name} representing {self.signal_type} signal with unit of "
-            f"{self.unit} with user-provided description: `{self.description}`. "
-            f"Shape of the signal is {self.shape} with dimensions {self.data.dims}."
+            f"{self.unit} with user-provided description: `{self.description}`"
+            f". Shape of the signal is {self.shape} with dimensions "
+            f"{self.data.dims}. Signal starts at {self.start_time} and ends at "
+            f"{self.end_time}."
         )
 
     def __repr__(self):
@@ -172,14 +176,14 @@ class Signal:
 
     def __getitem__(self, pos):
         """
-        Get item selectes in output dimension.
+        Get item selects in output dimension.
         """
         add_steps = [f"select `{pos}` output"]
         return self.__constructor__(self.data.sel(output=pos)).__finalize__(self, add_steps)
 
     def __finalize__(self, other, add_steps=None):
         """
-        Copy attrbutes from other to self. Used when constructing class
+        Copy attributes from other to self. Used when constructing class
         instance with different data, but same metadata.
 
         :param other: other instance of `Signal`
@@ -207,7 +211,7 @@ class Signal:
         """
         Copy attributes to xarray before saving.
         """
-        # write attritubes to xarray
+        # write attributes to xarray
         for attr in self._copy_attributes:
             value = getattr(self, attr)
             # if list need to unwrap
@@ -238,20 +242,29 @@ class Signal:
             instance of NeuroSignal with the same attributes as the mother signal
         :type return_as: str
         """
+        try:
+            stacked = self.data.stack({"all": self.dims_not_time})
+        except ValueError:
+            logging.warning("No dimensions along which to stack...")
+            stacked = self.data.expand_dims("all")
+
         if return_as == "xr":
-            yield from self.data.stack({"all": self.dims_not_time}).groupby("all")
+            yield from stacked.groupby("all")
         elif return_as == "signal":
-            for name, column in self.data.stack({"all": self.dims_not_time}).groupby("all"):
-                yield name, self.__constructor__(column).__finalize__(self, [f"select {column.name}"])
+            for name_coords, column in stacked.groupby("all"):
+                if not isinstance(name_coords, (list, tuple)):
+                    name_coords = [name_coords]
+                name_dict = {k: v for k, v in zip(self.dims_not_time, name_coords)}
+                yield name_dict, self.__constructor__(column).__finalize__(self, [f"select {column.name}"])
         else:
             raise ValueError(f"Data type not understood: {return_as}")
 
     def sel(self, sel_args, inplace=True):
         """
-        Subselect part of signal using pandas' `sel`, i.e. selecting by actual
+        Subselect part of signal using xarray's `sel`, i.e. selecting by actual
         physical index, hence time in seconds.
 
-        :param sel_args: arguments you'd give to df.sel[], i.e. slice of times
+        :param sel_args: arguments you'd give to xr.sel(), i.e. slice of times
             you want to select, in seconds as a len=2 list or tuple
         :type sel_args: tuple|list
         :param inplace: whether to do the operation in place or return
@@ -268,10 +281,10 @@ class Signal:
 
     def isel(self, isel_args, inplace=True):
         """
-        Subselect part of signal using pandas' `isel`, i.e. selecting by index,
+        Subselect part of signal using xarray's `isel`, i.e. selecting by index,
         hence integers.
 
-        :param loc_args: arguments you'd give to df.lioc[], i.e. slice of
+        :param loc_args: arguments you'd give to xr.isel(), i.e. slice of
             indices you want to select, in seconds as a len=2 list or tuple
         :type loc_args: tuple|list
         :param inplace: whether to do the operation in place or return
@@ -287,6 +300,33 @@ class Signal:
             self.process_steps += add_steps
         else:
             return self.__constructor__(selected).__finalize__(self, add_steps)
+
+    def rolling(self, roll_over, function=np.mean, dropnans=True, inplace=True):
+        """
+        Return rolling reduction over signal's time dimension. The window is
+        centered around the midpoint.
+
+        :param roll_over: window to use, in seconds
+        :type roll_over: float
+        :param function: function to use for reduction
+        :type function: callable
+        :param dropnans: whether to drop NaNs - will shorten time dimension, or
+            not
+        :type dropnans: bool
+        :param inplace: whether to do the operation in place or return
+        :type inplace: bool
+        """
+        assert callable(function)
+        rolling = self.data.rolling(time=int(roll_over * self.sampling_frequency), center=True).reduce(function)
+        add_steps = [f"rolling {function.__name__} over {roll_over}s"]
+        if dropnans:
+            rolling = rolling.dropna("time")
+            add_steps[0] += "; drop NaNs"
+        if inplace:
+            self.data = rolling
+            self.process_steps += add_steps
+        else:
+            return self.__constructor__(rolling).__finalize__(self, add_steps)
 
     def sliding_window(self, length, step=1, window_function="boxcar", lengths_in_seconds=False):
         """
@@ -362,15 +402,20 @@ class Signal:
         return self.data.time.values[-1]
 
     @property
+    def time(self):
+        """
+        Return time vector.
+        """
+        return self.data.time.values
+
+    @property
     def preprocessing_steps(self):
         """
         Return preprocessing steps done on the data.
         """
         return " -> ".join(self.process_steps)
 
-    def pad(
-        self, how_much, in_seconds=False, padding_type="constant", side="both", inplace=True, **kwargs,
-    ):
+    def pad(self, how_much, in_seconds=False, padding_type="constant", side="both", inplace=True, **kwargs):
         """
         Pad signal by `how_much` on given side of given type.
 
@@ -524,7 +569,7 @@ class Signal:
         Linearly detrend signal. If segments are given, detrending will be
         performed in each part.
 
-        :param segments: segments for detrening, if None will detrend whole
+        :param segments: segments for detrending, if None will detrend whole
             signal, given as indices of the time array
         :type segments: list|None
         :param inplace: whether to do the operation in place or return
@@ -541,9 +586,7 @@ class Signal:
         else:
             return self.__constructor__(detrended).__finalize__(self, add_steps)
 
-    def filter(
-        self, low_freq, high_freq, l_trans_bandwidth="auto", h_trans_bandwidth="auto", inplace=True, **kwargs,
-    ):
+    def filter(self, low_freq, high_freq, l_trans_bandwidth="auto", h_trans_bandwidth="auto", inplace=True, **kwargs):
         """
         Filter data. Can be:
             low-pass (low_freq is None, high_freq is not None),
@@ -620,7 +663,9 @@ class Signal:
             )
         if self.data.ndim == 2:
             return xr.DataArray(
-                fc_function(self.data.values), dims=["space", "space"], coords={"space": self.data.coords["space"]},
+                fc_function(self.data.values),
+                dims=["space", "space"],
+                coords={"space": self.data.coords["space"]},
             )
 
     def apply(self, func, inplace=True):

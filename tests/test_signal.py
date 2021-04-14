@@ -33,11 +33,6 @@ class TestSignal(unittest.TestCase):
         aln.run()
         # init RatesSignal
         cls.signal = RatesSignal.from_model_output(aln)
-        # os.makedirs(cls.TEST_FOLDER)
-
-    # @classmethod
-    # def tearDownClass(cls):
-    #     rmtree(cls.TEST_FOLDER)
 
     def test_load_save(self):
         # create temp folder
@@ -49,8 +44,12 @@ class TestSignal(unittest.TestCase):
         # test basic properties
         repr(self.signal)
         str(self.signal)
+        self.signal.shape
+        self.signal.dims_not_time
+        self.signal.coords_not_time
         self.signal.start_time
         self.signal.end_time
+        self.signal.time
         self.signal.preprocessing_steps
         # now save
         self.signal.save(filename)
@@ -61,15 +60,28 @@ class TestSignal(unittest.TestCase):
         # compare they are equal
         self.assertEqual(self.signal, loaded)
 
+    def test_get_item(self):
+        rates_exc = self.signal["rates_exc"]
+        self.assertTrue(isinstance(rates_exc, RatesSignal))
+        self.assertTupleEqual(rates_exc.shape, self.signal.shape[1:])
+
     def test_iterate(self):
+        # 1D case
+        sig = RatesSignal(xr.DataArray(np.random.rand(100), dims=["time"], coords={"time": np.arange(100)}))
+        for name, it in sig.iterate(return_as="signal"):
+            self.assertTrue(isinstance(it, RatesSignal))
+            self.assertTrue(isinstance(name, dict))
+            self.assertTupleEqual(it.shape, (sig.shape[-1],))
+        # multiD case
         for name, it in self.signal.iterate(return_as="signal"):
             self.assertTrue(isinstance(it, RatesSignal))
+            self.assertTrue(isinstance(name, dict))
             # test it is one-dim with only time axis
-            print(name, it.shape)
-            self.assertTupleEqual(it.shape, (self.signal.shape[-1], 1))
+            self.assertTupleEqual(it.shape, (1, self.signal.shape[-1]))
 
         for name, it in self.signal.iterate(return_as="xr"):
             self.assertTrue(isinstance(it, xr.DataArray))
+            self.assertTrue(isinstance(name, tuple))
             # test it is one-dim with only time axis
             self.assertTupleEqual(it.shape, (self.signal.shape[-1], 1))
 
@@ -118,6 +130,27 @@ class TestSignal(unittest.TestCase):
             # advance testing times by window step
             start_time += window_step
             end_time += window_step
+
+    def test_rolling(self):
+        # dropnans
+        rol_mean = self.signal.rolling(0.1, function=np.mean, dropnans=True, inplace=False)
+        # just check whether it runs
+        self.assertTrue(isinstance(rol_mean, RatesSignal))
+        self.assertTupleEqual(rol_mean.shape[:-1], self.signal.shape[:-1])
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.rolling(0.1, np.mean, dropnans=True, inplace=True)
+        self.assertEqual(sig, rol_mean)
+
+        # don't drop
+        rol_mean = self.signal.rolling(0.1, function=np.mean, dropnans=False, inplace=False)
+        # just check whether it runs
+        self.assertTrue(isinstance(rol_mean, RatesSignal))
+        self.assertTupleEqual(rol_mean.shape, self.signal.shape)
+        # test inplace
+        sig = deepcopy(self.signal)
+        sig.rolling(0.1, np.mean, dropnans=False, inplace=True)
+        self.assertEqual(sig, rol_mean)
 
     def test_pad(self):
         # pad both sides with 2.3 constant value for 2 seconds
