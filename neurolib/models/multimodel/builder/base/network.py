@@ -1,14 +1,37 @@
 import logging
+from copy import deepcopy
 from itertools import chain, islice
 
 import numpy as np
 import symengine as se
+import sympy as sp
 from jitcdde import t as time_vector
 from jitcdde import y as state_vector
 
+from .....utils.collections import flat_dict_to_nested, flatten_nested_dict
 from .backend import BackendIntegrator
 from .constants import EXC, NETWORK_CONNECTIVITY, NETWORK_DELAYS, NODE_CONNECTIVITY, NODE_DELAYS
 from .neural_mass import NeuralMass
+from .params import float_params_to_individual_symbolic, float_params_to_vector_symbolic
+
+
+def _sanitize_matrix(matrix, target_shape):
+    """
+    Sanitize matrix before assigning to connectivity or delay - check shape
+    and cast to float if necessary.
+
+    :param matrix: input matrix to sanitize
+    :type matrix: np.ndarray|sp.MatrixSymbol
+    :param target_shape: shape of the matrix
+    :type target_shape: tuple
+    :return: sanitized matrix
+    :rtype: np.ndarray|sp.MatrixSymbol
+    """
+    assert matrix.shape == target_shape
+    if isinstance(matrix, np.ndarray) and matrix.dtype.kind == "i":
+        return matrix.astype(np.float)
+    else:
+        return matrix
 
 
 class Node(BackendIntegrator):
@@ -56,6 +79,9 @@ class Node(BackendIntegrator):
         mass_types = [mass.mass_type for mass in self]
         assert len(set(mass_types)) == len(mass_types), f"Mass types needs to be different: {mass_types}"
         self._initial_state = None
+        # symbolic vs float params
+        self.float_params = None
+        self.are_params_floats = True
 
     def __str__(self):
         """
@@ -137,6 +163,34 @@ class Node(BackendIntegrator):
             nested_dict[node_key][mass_key] = mass.params
         return nested_dict
 
+    def make_params_symbolic(self, vector=True):
+        """
+        Make all node parameters symbolic, instead of concrete values. Useful
+        when caching compiled functions.
+
+        :param vector: create vectorised params
+        :type vector: bool
+        """
+        assert self.are_params_floats
+        # save copy of original numeric parameters
+        self.float_params = deepcopy(self.get_nested_params())
+        if vector:
+            symbolic_params = float_params_to_vector_symbolic(flatten_nested_dict(self.get_nested_params()))
+        else:
+            symbolic_params = float_params_to_individual_symbolic(flatten_nested_dict(self.get_nested_params()))
+        # update self with symbolic params
+        self.are_params_floats = False
+        self.update_params(flat_dict_to_nested(symbolic_params), rescale=False)
+
+    def make_params_floats(self):
+        """
+        Make all node parameters floats again!
+        """
+        assert not self.are_params_floats
+        self.are_params_floats = True
+        self.update_params(self.float_params, rescale=False)
+        self.float_params = None
+
     def init_node(self, **kwargs):
         """
         Initialise node and all the masses within.
@@ -163,7 +217,7 @@ class Node(BackendIntegrator):
             params_dict = next(iter(params_dict.values()))
         return params_dict
 
-    def update_params(self, params_dict):
+    def update_params(self, params_dict, **kwargs):
         """
         Update parameters of the node, i.e. recursively update all parameters of masses within this node.
 
@@ -177,7 +231,7 @@ class Node(BackendIntegrator):
             if any(mass_label in mass_key for mass_label in mass_labels):
                 mass_index = self._get_index(mass_key)
                 assert mass_index == self.masses[mass_index].index
-                self.masses[mass_index].update_params(mass_params)
+                self.masses[mass_index].update_params(mass_params, **kwargs)
             else:
                 logging.warning(f"Not sure what to do with {mass_key}...")
 
@@ -396,7 +450,7 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
                 )
             var_idx += mass.num_state_variables
 
-    def update_params(self, params_dict):
+    def update_params(self, params_dict, **kwargs):
         """
         Update params - also update local connectivity and local delays,
         then pass to base class.
@@ -404,13 +458,11 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         params_dict = self._sanitize_update_params(params_dict)
         local_connectivity = params_dict.pop(NODE_CONNECTIVITY, None)
         local_delays = params_dict.pop(NODE_DELAYS, None)
-        if local_connectivity is not None and isinstance(local_connectivity, np.ndarray):
-            assert local_connectivity.shape == self.connectivity.shape
-            self.connectivity = local_connectivity.astype(np.floating)
-        if local_delays is not None and isinstance(local_delays, np.ndarray):
-            assert local_delays.shape == self.delays.shape
-            self.delays = local_delays.astype(np.floating)
-        super().update_params(params_dict)
+        if local_connectivity is not None and isinstance(local_connectivity, (np.ndarray, sp.MatrixSymbol)):
+            self.connectivity = _sanitize_matrix(local_connectivity, self.connectivity.shape)
+        if local_delays is not None and isinstance(local_delays, (np.ndarray, sp.MatrixSymbol)):
+            self.delays = _sanitize_matrix(local_delays, self.delays.shape)
+        super().update_params(params_dict, **kwargs)
 
     def _sync(self):
         # connectivity as [to, from]
@@ -495,6 +547,10 @@ class Network(BackendIntegrator):
 
         assert all(var in chain.from_iterable(self.state_variable_names) for var in self.output_vars)
         assert all(self.default_output in node_state_vars for node_state_vars in self.state_variable_names)
+
+        # symbolic vs float params
+        self.float_params = None
+        self.are_params_floats = True
 
         self.init_network()
 
@@ -630,6 +686,34 @@ class Network(BackendIntegrator):
         nested_dict[self.label][NETWORK_DELAYS] = self.delays
         return nested_dict
 
+    def make_params_symbolic(self, vector=True):
+        """
+        Make all node parameters symbolic, instead of concrete values. Useful
+        when caching compiled functions.
+
+        :param vector: create vectorised params
+        :type vector: bool
+        """
+        assert self.are_params_floats
+        # save copy of original numeric parameters
+        self.float_params = deepcopy(self.get_nested_params())
+        if vector:
+            symbolic_params = float_params_to_vector_symbolic(flatten_nested_dict(self.get_nested_params()))
+        else:
+            symbolic_params = float_params_to_individual_symbolic(flatten_nested_dict(self.get_nested_params()))
+        self.are_params_floats = False
+        # update self with symbolic params
+        self.update_params(flat_dict_to_nested(symbolic_params), rescale=False)
+
+    def make_params_floats(self):
+        """
+        Make all node parameters floats again!
+        """
+        assert not self.are_params_floats
+        self.are_params_floats = True
+        self.update_params(self.float_params, rescale=False)
+        self.float_params = None
+
     def init_network(self, **kwargs):
         """
         Initialise network and the nodes within.
@@ -643,12 +727,12 @@ class Network(BackendIntegrator):
             for node_idx in range(self.num_nodes)
         }
         for node_idx, node in enumerate(self.nodes):
-            node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables)
+            node.init_node(start_idx_for_noise=node_idx * node.num_noise_variables, **kwargs)
         assert all(node.initialised for node in self)
         self._initial_state = np.concatenate([node.initial_state for node in self], axis=0)
         self.initialised = True
 
-    def update_params(self, params_dict):
+    def update_params(self, params_dict, **kwargs):
         """
         Update parameters of this network, i.e. recursively for all nodes and
         all masses.
@@ -663,13 +747,11 @@ class Network(BackendIntegrator):
             if any(node_label in node_key for node_label in node_labels):
                 node_index = int(node_key.split("_")[-1])
                 assert node_index == self.nodes[node_index].index
-                self.nodes[node_index].update_params(node_params)
+                self.nodes[node_index].update_params(node_params, **kwargs)
             elif NETWORK_CONNECTIVITY == node_key:
-                assert node_params.shape == self.connectivity.shape
-                self.connectivity = node_params.astype(np.floating)
+                self.connectivity = _sanitize_matrix(node_params, self.connectivity.shape)
             elif NETWORK_DELAYS == node_key:
-                assert node_params.shape == self.delays.shape
-                self.delays = node_params.astype(np.floating)
+                self.delays = _sanitize_matrix(node_params, self.delays.shape)
             else:
                 logging.warning(f"Not sure what to do with {node_key}...")
 

@@ -22,6 +22,7 @@ import logging
 import os
 import re
 import time
+from copy import deepcopy
 from functools import wraps
 from sys import platform
 from types import FunctionType
@@ -29,11 +30,14 @@ from types import FunctionType
 import numba
 import numpy as np
 import symengine as se
+import sympy as sp
 import xarray as xr
 from chspy import CubicHermiteSpline
 from jitcdde import jitcdde_input
 from numpy import *  # noqa: F403,F401
 from tqdm import tqdm
+
+from .....utils.collections import flatten_nested_dict
 
 DEFAULT_BACKEND = "jitcdde"
 
@@ -67,6 +71,8 @@ class BaseBackend:
     state_variable_names = None
     label = None
 
+    backend_name = ""
+
     def run(self):
         raise NotImplementedError
 
@@ -80,22 +86,25 @@ class NumbaBackend(BaseBackend):
     derivatives is rendered into a prepared string template using numba's njit.
     """
 
+    backend_name = "numba"
+
     DEFAULT_DT = 0.1  # in ms
 
     CURRENT_Y_REGEX = r"current_y\([0-9]*\)"
     CURRENT_Y_NUMBA = "y[{idx}, max_delay + i - 1]"
 
-    PAST_Y_REGEX = r"past_y\([-+]?[0-9]*\.?[0-9]+ \+ t, [0-9]*, anchors\([-+]" r"?[0-9]*\.?[0-9]+ \+ t\)\)"
+    PAST_Y_REGEX = r"past_y\((.*?)\)"
     PAST_Y_NUMBA = "y[{idx}, max_delay + i - 1 - {dt_ndt}]"
+    _convert_to_dt = []
 
-    SYSTEM_INPUT_REGEX = (
-        r"past_y\(-external_input \+ t, ([0-9]* \+ )?input_base_n, anchors" r"\(-external_input \+ t\)\)"
-    )
+    SYSTEM_INPUT_REGEX = r"past_y\(-external_input \+ t, ([0-9]* \+ )?input_base_n, anchors\(-external_input \+ t\)\)"
     SYSTEM_INPUT_NUMBA = "input_y[{idx}, i]"
 
+    compiled_function = None
+
     NUMBA_EULER_TEMPLATE = """
-def integrate(dt, n, max_delay, t_max, y0, input_y):
-    y = np.empty((n, t_max + max_delay + 1))
+def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
+    y = np.empty((system_size, t_max + max_delay + 1))
     y[:] = np.nan
     y[:, :max_delay + 1] = y0
     for i in range(1, t_max + 1):
@@ -138,10 +147,22 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         for match in matches:
             time_past, idx, _ = match.split(",")
             idx = int(idx)
-            t_past = float(time_past.split("+")[0].strip()[7:])
-            t_past_ndx = np.around(t_past / dt).astype(int)
-            replace_with = self.PAST_Y_NUMBA.format(dt_ndt=np.abs(t_past_ndx), idx=idx)
-            expression = expression.replace(match, replace_with)
+            if time_past[0] == "t":
+                assert time_past[2] == "-"
+                t_past = time_past[4:]
+            else:
+                assert time_past[-4:] == " + t"
+                t_past = time_past[:-3]
+            # if the delay is float, convert to ndt right now
+            try:
+                t_past_ndx = np.around(np.abs(float(t_past)) / dt).astype(int)
+            # if it is not, just write Symbol and append to list - will be converted upon run
+            except ValueError:
+                t_past_ndx = t_past.strip()
+                t_past_ndx = t_past_ndx[1:] if t_past_ndx[0] == "-" else t_past_ndx
+                self._convert_to_dt.append(t_past_ndx)
+            replace_with = self.PAST_Y_NUMBA.format(dt_ndt=t_past_ndx, idx=idx)
+            expression = expression.replace(f"past_y({match}))", replace_with)
         return expression
 
     def _replace_inputs(self, expression):
@@ -169,7 +190,8 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
                 return_string.append(split)
         return "".join(return_string)
 
-    def _substitute_helpers(self, derivatives, helpers):
+    @staticmethod
+    def _substitute_helpers(derivatives, helpers):
         """
         Substitute helpers (usually used for coupling) to derivatives.
 
@@ -184,16 +206,67 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         substitutions = {helper[0]: helper[1] for helper in sympified_helpers}
         return [derivative.subs(substitutions) for derivative in sympified_derivatives]
 
-    def run(self, duration, dt, noise_input, **kwargs):
+    @staticmethod
+    def _get_numba_function_params(symbol_params):
         """
-        Run integration.
+        Get all symbolic parameters as a list for numba function string template.
 
-        :kwargs: actually none - for compatiblity
+        :param symbol_params: symbolic parameters as a flat dict
+        :type symbol_params: dict
+        :return: list of all parameters as symbols
+        :rtype: list[sp.Symbol]
         """
-        assert isinstance(noise_input, np.ndarray)
-        system_size = len(self._derivatives())
+        all_params = set()
+        for k, v in symbol_params.items():
+            if "noise" in k:
+                continue
+            if isinstance(v, sp.Symbol):
+                # extract symbols from sympy expressions
+                all_params |= v.free_symbols
+            elif isinstance(v, np.ndarray):
+                # extract symbols from sympy expressions and do the union of all sets
+                all_params |= set().union(*[item.free_symbols for item in v.flatten().tolist()])
+        return list(all_params)
 
+    @staticmethod
+    def _create_symbol_to_float_dict(symbol_params, float_params):
+        """
+        Create parameters dictionary as {param_symbol: float value}.
+
+        :param symbol_params: symbolic parameters as a flat dict
+        :type symbol_params: dict
+        :param float_params: float parameters as a flat dict
+        :type float_params: dict
+        :return: symbol: float parameters as an input to compiled numba function
+        :rtype: dict
+        """
+        dct = {}
+        for (k_sym, v_sym), (k_fl, v_fl) in zip(symbol_params.items(), float_params.items()):
+            assert k_sym == k_fl
+            if "noise" in k_sym:
+                continue
+            if isinstance(v_sym, sp.Symbol):
+                dct[str(v_sym)] = v_fl
+            elif isinstance(v_sym, np.ndarray):
+                for v_mat_sym, v_mat_fl in zip(v_sym.flatten(), v_fl.flatten()):
+                    dct[str(v_mat_sym)] = v_mat_fl
+        return dct
+
+    def compile_to_numba(self, symbol_params, dt, system_size):
+        """
+        Compile system into numba jitted nopython function.
+
+        :param symbol_params: symbolic parameters as a flat dict
+        :type symbol_params: dict
+        :param dt: dt in ms
+        :type dt: float
+        :param system_size: number of equations in the system
+        :type system_size: int
+        :return: numba compiled function
+        :rtype: callable
+        """
         # substitute helpers to symbolic derivatives
+        logging.info("Compiling model definition to numba function...")
         logging.info("Substituting helpers...")
         substituted = self._substitute_helpers(derivatives=self._derivatives(), helpers=self._sync())
         assert len(substituted) == system_size
@@ -202,15 +275,19 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         logging.info("Replacing symbolic expressions with arrays...")
         derivatives_str = self._replace_inputs(str(substituted))
         derivatives_str = self._replace_current_ys(derivatives_str)
+        self._convert_to_dt = []
         derivatives_str = self._replace_past_ys(derivatives_str, dt=dt)
         assert isinstance(derivatives_str, str)
         logging.info("Compiling python code using numba's njit...")
-        numba_func = self.NUMBA_EULER_TEMPLATE.format(dy_eqs=derivatives_str)
+        function_params = self._get_numba_function_params(flatten_nested_dict(symbol_params))
+        numba_func = self.NUMBA_EULER_TEMPLATE.format(
+            dy_eqs=derivatives_str, params=", ".join([str(param) for param in function_params])
+        )
         # compile numba function and load into namespace
-        numba_code = compile(numba_func, "<string>", "exec")
-        integrate = numba.njit(
+        compiled_code = compile(numba_func, "<string>", "exec")
+        integrate = numba.njit(fastmath=True)(
             FunctionType(
-                numba_code.co_consts[-3],
+                compiled_code.co_consts[-3],
                 {
                     **globals(),
                     # add numba callbacks to the mix
@@ -220,6 +297,20 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
                 argdefs=(),
             )
         )
+        self.compiled_function = integrate
+
+    def run(self, duration, dt, noise_input, symbol_params, float_params, **kwargs):
+        """
+        Run integration.
+
+        :kwargs: actually none - for compatiblity
+        """
+        assert isinstance(noise_input, np.ndarray)
+
+        system_size = len(self._derivatives())
+        logging.info("Loading system from cache...")
+        integrate = self.compiled_function
+
         assert callable(integrate)
         # run the numba-jitted function
         times = np.arange(dt, duration + dt, dt)
@@ -228,13 +319,20 @@ def integrate(dt, n, max_delay, t_max, y0, input_y):
         init_state = self.initial_state
         if init_state.ndim == 1:
             init_state = np.tile(init_state[:, np.newaxis], reps=(1, max_delay_dt + 1))
+        model_params = self._create_symbol_to_float_dict(
+            flatten_nested_dict(symbol_params), flatten_nested_dict(float_params)
+        )
+        for delay_param in set(self._convert_to_dt):
+            assert delay_param in model_params, delay_param
+            model_params[delay_param] = np.around(float(model_params[delay_param]) / dt).astype(int)
         result = integrate(
             dt=dt,
-            n=system_size,
+            system_size=system_size,
             max_delay=max_delay_dt,
             t_max=np.around(duration / dt).astype(int),
             y0=init_state,
             input_y=noise_input,
+            **model_params,
         )
         return times, result
 
@@ -255,6 +353,7 @@ class JitcddeBackend(BaseBackend):
         Numerical Mathematics, 37(4), 441-458.
     """
 
+    backend_name = "jitcdde"
     extra_compile_args = []
     dde_system = None
 
@@ -390,6 +489,9 @@ class BackendIntegrator:
     """
 
     backend_instance = None
+    # parameters handling for numba
+    symbol_params = None
+    float_params = None
 
     # these attributes are need for successful integrator run
     NEEDED_ATTRIBUTES = [
@@ -405,17 +507,23 @@ class BackendIntegrator:
         "initialised",
     ]
 
-    def _init_backend(self, backend):
-        if backend == "jitcdde":
-            self.backend_instance = JitcddeBackend()
-        elif backend == "numba":
-            self.backend_instance = NumbaBackend()
-        else:
-            raise ValueError(f"Unknown backend: {backend}")
-        # copy necessary attributes (i.e. symbolic derivatives, helpers, etc) to
-        # backend instance
+    def _init_jitcdde_backend(self):
+        self.backend_instance = JitcddeBackend()
         for attr in self.NEEDED_ATTRIBUTES:
             setattr(self.backend_instance, attr, getattr(self, attr))
+
+    def _init_numba_backend(self, dt):
+        self.backend_instance = NumbaBackend()
+        for attr in self.NEEDED_ATTRIBUTES:
+            setattr(self.backend_instance, attr, getattr(self, attr))
+        # compile
+        self.make_params_symbolic(vector=False)
+        assert not self.are_params_floats
+        self.symbol_params = deepcopy(self.get_nested_params())
+        self.backend_instance.compile_to_numba(
+            symbol_params=self.symbol_params, dt=dt, system_size=len(self._derivatives())
+        )
+        self.make_params_floats()
 
     @timer
     def run(self, duration, dt, noise_input, backend=DEFAULT_BACKEND, return_xarray=True, **kwargs):
@@ -440,10 +548,26 @@ class BackendIntegrator:
         assert self.initialised, "Model must be initialised"
         assert isinstance(noise_input, (CubicHermiteSpline, np.ndarray))
 
-        logging.info(f"Initialising {backend} backend...")
-        self._init_backend(backend)
+        if (self.backend_instance is None) or (self.backend_instance.backend_name != backend):
+            logging.info(f"Initialising {backend} backend...")
+            if backend == "jitcdde":
+                self._init_jitcdde_backend()
+            elif backend == "numba":
+                self._init_numba_backend(dt=dt)
+            else:
+                raise ValueError(f"Unknown backend {backend}")
         assert isinstance(self.backend_instance, BaseBackend)
-        times, result = self.backend_instance.run(duration=duration, dt=dt, noise_input=noise_input, **kwargs)
+        if isinstance(self.backend_instance, NumbaBackend):
+            assert self.are_params_floats
+            self.float_params = deepcopy(self.get_nested_params())
+        times, result = self.backend_instance.run(
+            duration=duration,
+            dt=dt,
+            noise_input=noise_input,
+            symbol_params=self.symbol_params,
+            float_params=self.float_params,
+            **kwargs,
+        )
         logging.info("Integration done.")
         assert times.shape[0] == result.shape[1]
         assert result.shape[0] == self.num_state_variables
