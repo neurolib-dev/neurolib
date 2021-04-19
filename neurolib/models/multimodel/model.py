@@ -164,7 +164,6 @@ class MultiModel(Model):
             self.sample_every = 1
         else:
             dt = self.params["dt"]
-        # noise_input = noise_input or self._init_noise_inputs(self.params["backend"])
         if noise_input is None:
             noise_input = self._init_noise_inputs(self.params["backend"])
         result = self.model_instance.run(
