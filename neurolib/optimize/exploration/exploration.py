@@ -22,7 +22,15 @@ class BoxSearch:
     Paremter box search for a given model and a range of parameters.
     """
 
-    def __init__(self, model=None, parameterSpace=None, evalFunction=None, filename=None, saveAllModelOutputs=False):
+    def __init__(
+        self,
+        model=None,
+        parameterSpace=None,
+        evalFunction=None,
+        filename=None,
+        saveAllModelOutputs=False,
+        ncores=None,
+    ):
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the
         evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current
@@ -44,6 +52,9 @@ class BoxSearch:
             saved. Note: if saveAllModelOutputs==False and the model's parameter model.params['bold']==True, then BOLD
             output will be saved as well, defaults to False
         :type saveAllModelOutputs: bool
+
+        :param ncores: Number of cores to simulate on (max cores default), defaults to None
+        :type ncores: int, optional
         """
         self.model = model
         if evalFunction is None and model is not None:
@@ -69,6 +80,12 @@ class BoxSearch:
 
         self.saveAllModelOutputs = saveAllModelOutputs
 
+        # number of cores
+        if ncores is None:
+            ncores = multiprocessing.cpu_count()
+        self.ncores = ncores
+        logging.info("Number of processes: {}".format(self.ncores))
+
         # bool to check whether pypet was initialized properly
         self.initialized = False
         self._initializeExploration(self.filename)
@@ -91,15 +108,12 @@ class BoxSearch:
         trajectoryName = "results" + datetime.datetime.now().strftime("-%Y-%m-%d-%HH-%MM-%SS")
         trajectoryfilename = self.HDF_FILE
 
-        nprocesses = multiprocessing.cpu_count()
-        logging.info("Number of processes: {}".format(nprocesses))
-
         # set up the pypet environment
         env = pypet.Environment(
             trajectory=trajectoryName,
             filename=trajectoryfilename,
             multiproc=True,
-            ncores=nprocesses,
+            ncores=self.ncores,
             complevel=9,
             log_config=paths.PYPET_LOGGING_CONFIG,
         )
