@@ -174,14 +174,6 @@ class TestALNMass(ALNMassTestCase):
             self.assertEqual(len(aln.initial_state), aln.num_state_variables)
             self.assertEqual(len(aln.noise_input_idx), aln.num_noise_variables)
 
-    def test_update_rescale_params(self):
-        # update params that have to do something with rescaling
-        UPDATE_PARAMS = {"C": 150.0, "Jee_max": 3.0}
-        aln = self._create_exc_mass()
-        aln.update_params(UPDATE_PARAMS)
-        self.assertEqual(aln.params["taum"], 15.0)
-        self.assertEqual(aln.params["c_gl"], 0.4 * aln.params["tau_se"] / 3.0)
-
     def test_run(self):
         aln_exc = self._create_exc_mass()
         aln_inh = self._create_inh_mass()
@@ -294,7 +286,7 @@ class TestALNNetwork(unittest.TestCase):
             if np.isnan(all_ts).any():
                 continue
             corr_mat = np.corrcoef(all_ts)
-            print(corr_mat)
+            print(state_var, corr_mat, np.var(all_ts))
             self.assertTrue(np.greater(corr_mat, CORR_THRESHOLD).all())
 
     @pytest.mark.xfail

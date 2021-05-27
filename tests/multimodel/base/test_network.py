@@ -7,13 +7,39 @@ from copy import deepcopy
 
 import numba
 import numpy as np
+import pytest
 import symengine as se
+import sympy as sp
 from neurolib.models.multimodel.builder.base.constants import EXC, INH
-from neurolib.models.multimodel.builder.base.network import Network, Node, SingleCouplingExcitatoryInhibitoryNode
+from neurolib.models.multimodel.builder.base.network import (
+    Network,
+    Node,
+    SingleCouplingExcitatoryInhibitoryNode,
+    _sanitize_matrix,
+)
 from neurolib.models.multimodel.builder.base.neural_mass import NeuralMass
 from neurolib.utils.stimulus import OrnsteinUhlenbeckProcess, ZeroInput
 
 PARAMS = {"a": 1.2, "b": 11.9}
+
+
+class TestSanitizeMatrix(unittest.TestCase):
+    def test_sanitize_matrix_int(self):
+        mat = (np.random.rand(2, 2) * 100.0).astype(np.int)
+        result = _sanitize_matrix(mat, (2, 2))
+        self.assertTrue(result.dtype.kind == "f")
+        np.testing.assert_equal(mat.astype(np.float), result)
+
+    def test_sanitize_matrix_float(self):
+        mat = np.random.rand(2, 2)
+        result = _sanitize_matrix(mat, (2, 2))
+        self.assertTrue(result.dtype.kind == "f")
+        np.testing.assert_equal(mat, result)
+
+    def test_sanitize_matrix_wrong(self):
+        mat = (np.random.rand(2, 2) * 100.0).astype(np.int)
+        with pytest.raises(AssertionError):
+            result = _sanitize_matrix(mat, (3, 3))
 
 
 class ExcMassTest(NeuralMass):
@@ -39,6 +65,7 @@ class InhMassTest(NeuralMass):
 
 
 class NodeTest(Node):
+    label = "TestNode"
     default_output = f"q_{EXC}"
     sync_variables = ["sync_test"]
 
@@ -73,6 +100,8 @@ class TestNode(unittest.TestCase):
         self.assertTrue(hasattr(node, "default_output"))
         self.assertTrue(isinstance(node.default_network_coupling, dict))
         self.assertTrue(isinstance(node.sync_variables, list))
+        self.assertTrue(node.are_params_floats)
+        self.assertTrue(node.float_params is None)
 
     def test_sync(self):
         node = self._create_node()
@@ -87,6 +116,32 @@ class TestNode(unittest.TestCase):
         node.update_params({f"{EXC}_0": UPDATE_WITH, f"{INH}_1": UPDATE_WITH})
         self.assertEqual(node[0].params["a"], UPDATE_WITH["a"])
         self.assertEqual(node[1].params["a"], UPDATE_WITH["a"])
+
+    def test_make_params_symbolic(self):
+        node = self._create_node()
+        node.index = 0
+        node.idx_state_var = 0
+        node.init_node(start_idx_for_noise=6)
+        # save orig params
+        orig_params = deepcopy(node.get_nested_params())
+        self.assertTrue(node.are_params_floats)
+        node.make_params_symbolic(vector=False)
+        self.assertFalse(node.are_params_floats)
+        self.assertDictEqual(orig_params, node.float_params)
+        for k, v in node[0].params.items():
+            if "noise" in k:
+                continue
+            self.assertTrue(isinstance(v, sp.Symbol))
+
+        for k, v in node[1].params.items():
+            if "noise" in k:
+                continue
+            self.assertTrue(isinstance(v, sp.Symbol))
+
+        node.make_params_floats()
+        self.assertTrue(node.are_params_floats)
+        self.assertDictEqual(orig_params, node.get_nested_params())
+        self.assertTrue(node.float_params is None)
 
     def test_noise_input(self):
         node = self._create_node()
@@ -184,6 +239,34 @@ class TestSingleCouplingExcitatoryInhibitoryNode(unittest.TestCase):
         np.testing.assert_equal(UPDATE_CONNECTIVITY, node.connectivity)
         np.testing.assert_equal(UPDATE_DELAYS, node.delays)
 
+    def test_make_params_symbolic(self):
+        node = self._create_node()
+        node.index = 0
+        node.idx_state_var = 0
+        node.init_node(start_idx_for_noise=6)
+        # save orig params
+        orig_params = deepcopy(node.get_nested_params())
+        self.assertTrue(node.are_params_floats)
+        node.make_params_symbolic(vector=False)
+        self.assertFalse(node.are_params_floats)
+        for k, v in node[0].params.items():
+            if "noise" in k:
+                continue
+            self.assertTrue(isinstance(v, sp.Symbol))
+
+        for k, v in node[1].params.items():
+            if "noise" in k:
+                continue
+            self.assertTrue(isinstance(v, sp.Symbol))
+
+        self.assertTrue(isinstance(node.connectivity, np.ndarray))
+        self.assertTrue(all(isinstance(element, sp.Symbol) for element in node.connectivity.flatten()))
+        self.assertTrue(isinstance(node.delays, np.ndarray))
+        self.assertTrue(all(isinstance(element, sp.Symbol) for element in node.delays.flatten()))
+        node.make_params_floats()
+        self.assertTrue(node.are_params_floats)
+        self.assertTrue(node.float_params is None)
+
     def test_init_node(self):
         node = self._create_node()
         node.index = 0
@@ -244,6 +327,8 @@ class TestNetwork(unittest.TestCase):
         self.assertEqual(len(net.sync_symbols), len(net.sync_variables) * net.num_nodes)
         self.assertEqual(net.default_output, net[0].default_output)
         self.assertEqual(net.default_output, net[1].default_output)
+        self.assertTrue(net.are_params_floats)
+        self.assertTrue(net.float_params is None)
 
     def test_update_params(self):
         UPDATE_CONNECTIVITY = np.random.rand(2, 2)
