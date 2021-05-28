@@ -1,12 +1,13 @@
 import logging
 import numpy as np
 import scipy.signal
+from numba import jit
 
 """Collection of useful functions for data processing.
 """
 
 
-def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
+def kuramoto(traces, smoothing=0.0, distance=10, prominence=5):
     """
     Computes the Kuramoto order parameter of a timeseries which is a measure for synchrony.
     Can smooth timeseries if there is noise.
@@ -15,51 +16,63 @@ def kuramoto(traces, dt=0.1, smoothing=0.0, peakrange=[0.1, 0.2]):
 
     :param traces: Multidimensional timeseries array
     :type traces: numpy.ndarray
-    :param dt: Integration time step
-    :type dt: float
     :param smoothing: Gaussian smoothing strength
     :type smoothing: float, optional
-    :param peakrange: Width range of peaks for peak detection with `scipy.signal.find_peaks_cwt`
-    :type peakrange: list[float], length 2
+    :param distance: minimum distance between peaks in samples
+    :type distance: int, optional
+    :param prominence: vertical distance between the peak and its lowest contour line
+    :type prominence: int, optional
 
     :return: Timeseries of Kuramoto order paramter
     :rtype: numpy.ndarray
     """
-    phases = []
-    nTraces = len(traces)
+    nTraces, nTimes = traces.shape
+    phases = np.empty_like(traces)
     for n in range(nTraces):
-        tList = np.dot(range(len(traces[n])), dt / 1000)
         a = traces[n]
-
         # find peaks
         if smoothing > 0:
-            a = scipy.ndimage.filters.gaussian_filter(traces[n], smoothing)  # smooth data
-        maximalist = scipy.signal.find_peaks_cwt(a, np.arange(peakrange[0], peakrange[1]))
-        maximalist = np.append(maximalist, len(traces[n]) - 1).astype(int)
+            # smooth data
+            a = scipy.ndimage.filters.gaussian_filter(traces[n], smoothing)
+        maximalist = scipy.signal.find_peaks(a, distance=distance,
+                                             prominence=prominence)[0]
+        maximalist = np.append(maximalist, len(traces[n])-1).astype(int)
 
         if len(maximalist) > 1:
-            phases.append([])
-            lastMax = 0
-            for m in maximalist:
-                for t in range(lastMax, m):
-                    # compute instantaneous phase
-                    phi = 2 * np.pi * float(t - lastMax) / float(m - lastMax)
-                    phases[n].append(phi)
-                lastMax = m
-            phases[n].append(2 * np.pi)
+            phases[n, :] = _estimate_phase(maximalist, nTimes)
         else:
             logging.warning("Kuramoto: No peaks found, returning 0.")
             return 0
-
     # determine kuramoto order paramter
-    kuramoto = []
-    for t in range(len(tList)):
-        R = 1j * 0
-        for n in range(nTraces):
-            R += np.exp(1j * phases[n][t])
-        R /= nTraces
-        kuramoto.append(np.absolute(R))
+    kuramoto = _estimate_r(nTraces, nTimes, phases)
+    return kuramoto
 
+
+@jit(nopython=True)
+def _estimate_phase(maximalist, n_times):
+    lastMax = 0
+    phases = np.empty((n_times), dtype=np.float64)
+    n = 0
+    for m in maximalist:
+        for t in range(lastMax, m):
+            # compute instantaneous phase
+            phi = 2 * np.pi * float(t - lastMax) / float(m - lastMax)
+            phases[n] = phi
+            n += 1
+        lastMax = m
+    phases[-1] = 2 * np.pi
+    return phases
+
+
+@jit(nopython=True)
+def _estimate_r(ntraces, times, phases):
+    kuramoto = np.empty((times), dtype=np.float64)
+    for t in range(times):
+        R = 1j*0
+        for n in range(ntraces):
+            R += np.exp(1j * phases[n, t])
+        R /= ntraces
+        kuramoto[t] = np.absolute(R)
     return kuramoto
 
 
