@@ -31,7 +31,7 @@ class TestFunctions(unittest.TestCase):
         cls.single_node = ALNModel()
 
     def test_kuramoto(self):
-        kuramoto = func.kuramoto(self.model.rates_exc[:, ::10], dt=self.model.params["dt"], smoothing=1.0)
+        kuramoto = func.kuramoto(self.model.rates_exc[:, ::10], smoothing=1.0)
 
     def test_fc(self):
         FC = func.fc(self.model.BOLD.BOLD)
