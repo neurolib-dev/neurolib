@@ -26,7 +26,7 @@ def kuramoto(traces, smoothing=0.0, distance=10, prominence=5):
     :return: Timeseries of Kuramoto order paramter
     :rtype: numpy.ndarray
     """
-    @numba.njit(nopython=True)
+    @numba.njit
     def _estimate_phase(maximalist, n_times):
         lastMax = 0
         phases = np.empty((n_times), dtype=np.float64)
@@ -41,7 +41,7 @@ def kuramoto(traces, smoothing=0.0, distance=10, prominence=5):
         phases[-1] = 2 * np.pi
         return phases
 
-    @numba.njit(nopython=True)
+    @numba.njit
     def _estimate_r(ntraces, times, phases):
         kuramoto = np.empty((times), dtype=np.float64)
         for t in range(times):
