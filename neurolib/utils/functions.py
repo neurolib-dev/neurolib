@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import scipy.signal
-from numba import jit
+import numba
 
 """Collection of useful functions for data processing.
 """
@@ -26,6 +26,32 @@ def kuramoto(traces, smoothing=0.0, distance=10, prominence=5):
     :return: Timeseries of Kuramoto order paramter
     :rtype: numpy.ndarray
     """
+    @numba.njit(nopython=True)
+    def _estimate_phase(maximalist, n_times):
+        lastMax = 0
+        phases = np.empty((n_times), dtype=np.float64)
+        n = 0
+        for m in maximalist:
+            for t in range(lastMax, m):
+                # compute instantaneous phase
+                phi = 2 * np.pi * float(t - lastMax) / float(m - lastMax)
+                phases[n] = phi
+                n += 1
+            lastMax = m
+        phases[-1] = 2 * np.pi
+        return phases
+
+    @numba.njit(nopython=True)
+    def _estimate_r(ntraces, times, phases):
+        kuramoto = np.empty((times), dtype=np.float64)
+        for t in range(times):
+            R = 1j*0
+            for n in range(ntraces):
+                R += np.exp(1j * phases[n, t])
+            R /= ntraces
+            kuramoto[t] = np.absolute(R)
+        return kuramoto
+
     nTraces, nTimes = traces.shape
     phases = np.empty_like(traces)
     for n in range(nTraces):
@@ -45,34 +71,6 @@ def kuramoto(traces, smoothing=0.0, distance=10, prominence=5):
             return 0
     # determine kuramoto order paramter
     kuramoto = _estimate_r(nTraces, nTimes, phases)
-    return kuramoto
-
-
-@jit(nopython=True)
-def _estimate_phase(maximalist, n_times):
-    lastMax = 0
-    phases = np.empty((n_times), dtype=np.float64)
-    n = 0
-    for m in maximalist:
-        for t in range(lastMax, m):
-            # compute instantaneous phase
-            phi = 2 * np.pi * float(t - lastMax) / float(m - lastMax)
-            phases[n] = phi
-            n += 1
-        lastMax = m
-    phases[-1] = 2 * np.pi
-    return phases
-
-
-@jit(nopython=True)
-def _estimate_r(ntraces, times, phases):
-    kuramoto = np.empty((times), dtype=np.float64)
-    for t in range(times):
-        R = 1j*0
-        for n in range(ntraces):
-            R += np.exp(1j * phases[n, t])
-        R /= ntraces
-        kuramoto[t] = np.absolute(R)
     return kuramoto
 
 
