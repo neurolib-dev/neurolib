@@ -8,13 +8,13 @@ import numpy as np
 from chspy import CubicHermiteSpline
 from neurolib.models.aln import ALNModel
 from neurolib.utils.stimulus import (
-    ConcatenatedInput,
     ExponentialInput,
     LinearRampInput,
     OrnsteinUhlenbeckProcess,
     SinusoidalInput,
     SquareInput,
     StepInput,
+    SummedInput,
     WienerProcess,
     ZeroInput,
     construct_stimulus,
@@ -478,7 +478,7 @@ class TestExponentialInput(unittest.TestCase):
         )
 
 
-class TestConcatenatedInput(unittest.TestCase):
+class TestSummedInput(unittest.TestCase):
     def _create_input(self):
         ou = OrnsteinUhlenbeckProcess(mu=0.1, sigma=0.02, tau=2.0, num_iid=2)
         sq = SquareInput(amplitude=0.2, period=20.0, num_iid=2, stim_start=5)
@@ -488,7 +488,7 @@ class TestConcatenatedInput(unittest.TestCase):
 
     def test_init(self):
         conc = self._create_input()
-        self.assertTrue(isinstance(conc, ConcatenatedInput))
+        self.assertTrue(isinstance(conc, SummedInput))
         self.assertEqual(conc.num_iid, 2)
         self.assertEqual(len(conc.noise_processes), 4)
 

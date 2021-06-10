@@ -36,14 +36,14 @@ class ModelInput:
 
     def __add__(self, other):
         """
-        Concatenate two processes.
+        Sum two processes.
         """
         assert isinstance(other, ModelInput)
         assert self.num_iid == other.num_iid
-        if isinstance(other, ConcatenatedInput):
-            return ConcatenatedInput(noise_processes=[self] + other.noise_processes)
+        if isinstance(other, SummedInput):
+            return SummedInput(noise_processes=[self] + other.noise_processes)
         else:
-            return ConcatenatedInput(noise_processes=[self, other])
+            return SummedInput(noise_processes=[self, other])
 
     def get_params(self):
         """
@@ -68,9 +68,9 @@ class ModelInput:
         """
         Generate time vector.
 
-        :param duration: duration of the input, in miliseconds
+        :param duration: duration of the input, in milliseconds
         :type duration: float
-        :param dt: dt of input, in miliseconds
+        :param dt: dt of input, in milliseconds
         :type dt: float
         """
         self.times = np.arange(dt, duration + dt, dt)
@@ -79,9 +79,9 @@ class ModelInput:
         """
         Function to generate input.
 
-        :param duration: duration of the input, in miliseconds
+        :param duration: duration of the input, in milliseconds
         :type duration: float
-        :param dt: dt of input, in miliseconds
+        :param dt: dt of input, in milliseconds
         :type dt: float
         """
         raise NotImplementedError
@@ -90,9 +90,9 @@ class ModelInput:
         """
         Return input as numpy array.
 
-        :param duration: duration of the input, in miliseconds
+        :param duration: duration of the input, in milliseconds
         :type duration: float
-        :param dt: some reasonable "speed" of input, in miliseconds
+        :param dt: some reasonable "speed" of input, in milliseconds
         :type dt: float
         """
         return self.generate_input(duration, dt)
@@ -101,9 +101,9 @@ class ModelInput:
         """
         Return as cubic Hermite splines.
 
-        :param duration: duration of the input, in miliseconds
+        :param duration: duration of the input, in milliseconds
         :type duration: float
-        :param dt: some reasonable "speed" of input, in miliseconds
+        :param dt: some reasonable "speed" of input, in milliseconds
         :type dt: float
         """
         self._get_times(duration, dt)
@@ -123,9 +123,9 @@ class StimulusInput(ModelInput):
         seed=None,
     ):
         """
-        :param stim_start: start of the stimulus, in miliseconds
+        :param stim_start: start of the stimulus, in milliseconds
         :type stim_start: float
-        :param stim_end: end of the stimulus, in miliseconds
+        :param stim_end: end of the stimulus, in milliseconds
         :type stim_end: float
         """
         self.stim_start = stim_start
@@ -158,15 +158,15 @@ class StimulusInput(ModelInput):
         return stim_input
 
 
-class ConcatenatedInput(StimulusInput):
+class SummedInput(StimulusInput):
     """
-    Represents concatenation of inputs - typically for stimulus plus noise.
-    Supports concatenation of arbitrary many objects.
+    Represents summation of inputs - typically for stimulus plus noise.
+    Supports summation of arbitrary many objects.
     """
 
     def __init__(self, noise_processes):
         """
-        :param noise_processes: list of noise/stimulation processes to concatinate
+        :param noise_processes: list of noise/stimulation processes to sum
         :type noise_processes: list[`ModelInput`]
         """
         assert all(isinstance(process, ModelInput) for process in noise_processes)
@@ -181,10 +181,10 @@ class ConcatenatedInput(StimulusInput):
     def __add__(self, other):
         assert isinstance(other, ModelInput)
         assert self.num_iid == other.num_iid
-        if isinstance(other, ConcatenatedInput):
-            return ConcatenatedInput(noise_processes=self.noise_processes + other.noise_processes)
+        if isinstance(other, SummedInput):
+            return SummedInput(noise_processes=self.noise_processes + other.noise_processes)
         else:
-            return ConcatenatedInput(noise_processes=self.noise_processes + [other])
+            return SummedInput(noise_processes=self.noise_processes + [other])
 
     def get_params(self):
         """
@@ -336,7 +336,7 @@ class SinusoidalInput(StimulusInput):
         """
         :param amplitude: amplitude of the sinusoid
         :type amplitude: float
-        :param period: period of the sinusoid, in miliseconds
+        :param period: period of the sinusoid, in milliseconds
         :type period: float
         :param nonnegative: whether the sinusoid oscillates around 0 point
             (False), or around its amplitude, thus is nonnegative (True)
@@ -378,7 +378,7 @@ class SquareInput(StimulusInput):
         """
         :param amplitude: amplitude of the square
         :type amplitude: float
-        :param period: period of the square, in miliseconds
+        :param period: period of the square, in milliseconds
         :type period: float
         :param nonnegative: whether the square oscillates around 0 point
             (False), or around its amplitude, thus is nonnegative (True)
@@ -419,7 +419,7 @@ class LinearRampInput(StimulusInput):
         """
         :param inp_max: maximum of stimulus
         :type inp_max: float
-        :param ramp_length: length of linear ramp, in miliseconds
+        :param ramp_length: length of linear ramp, in milliseconds
         :type ramp_length: float
         """
         self.inp_max = inp_max
