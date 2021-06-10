@@ -36,7 +36,7 @@ class ModelInput:
 
     def __add__(self, other):
         """
-        Sum two processes.
+        Sum two processes into SummedInput.
         """
         assert isinstance(other, ModelInput)
         assert self.num_iid == other.num_iid
@@ -44,6 +44,19 @@ class ModelInput:
             return SummedInput(noise_processes=[self] + other.noise_processes)
         else:
             return SummedInput(noise_processes=[self, other])
+
+    def __and__(self, other):
+        """
+        Concatenate two processes into ConcatenatedInput.
+        """
+        assert isinstance(other, ModelInput)
+        assert self.num_iid == other.num_iid
+        if isinstance(other, ConcatenatedInput):
+            return ConcatenatedInput(
+                noise_processes=[self] + other.noise_processes, length_ratios=[1] + other.length_ratios
+            )
+        else:
+            return ConcatenatedInput(noise_processes=[self, other])
 
     def get_params(self):
         """
@@ -173,6 +186,12 @@ class BaseMultipleInputs(StimulusInput):
         assert all(isinstance(process, ModelInput) for process in noise_processes)
         self.noise_processes = noise_processes
 
+    def __len__(self):
+        """
+        Return length of noise processes.
+        """
+        return len(self.noise_processes)
+
     @property
     def num_iid(self):
         num_iid = set([process.num_iid for process in self.noise_processes])
@@ -246,6 +265,19 @@ class ConcatenatedInput(BaseMultipleInputs):
         self.length_ratios = length_ratios
         super().__init__(noise_processes)
 
+    def __and__(self, other):
+        assert isinstance(other, ModelInput)
+        assert self.num_iid == other.num_iid
+        if isinstance(other, ConcatenatedInput):
+            return ConcatenatedInput(
+                noise_processes=self.noise_processes + other.noise_processes,
+                length_ratios=self.length_ratios + other.length_ratios,
+            )
+        else:
+            return ConcatenatedInput(
+                noise_processes=self.noise_processes + [other], length_ratios=self.length_ratios + [1]
+            )
+
     def as_array(self, duration, dt):
         """
         Return concatenation of all processes as numpy array.
@@ -264,6 +296,8 @@ class ConcatenatedInput(BaseMultipleInputs):
         for process, ratio in zip(self.noise_processes[1:], ratios[1:]):
             last_time = result[-1].time
             temp = process.as_cubic_splines(duration * ratio, dt, shift_start_time=last_time)
+            # `extend` adds an iteratable (whole `CubicHermiteSpline` is an
+            # iterable of `Anchors`) to the current spline
             result.extend(temp)
         return result
 
