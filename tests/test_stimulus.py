@@ -492,7 +492,7 @@ class TestSummedInput(unittest.TestCase):
         sq = SquareInput(amplitude=0.2, period=20.0, num_iid=2, stim_start=5)
         sin = SinusoidalInput(amplitude=0.1, period=10.0, num_iid=2, stim_start=2)
         step = StepInput(step_size=0.5, num_iid=2, stim_start=7)
-        return sq + sin + step + ou
+        return sq + (sin + step + ou)
 
     def test_init(self):
         summed = self._create_input()
@@ -529,14 +529,16 @@ class TestConcatenatedInput(unittest.TestCase):
     def _create_input(self):
         ou = OrnsteinUhlenbeckProcess(mu=0.1, sigma=0.02, tau=2.0, num_iid=2)
         sq = SquareInput(amplitude=0.2, period=20.0, num_iid=2)
-        return ou & sq
+        sin = SinusoidalInput(amplitude=0.1, period=10.0, num_iid=2)
+        step = StepInput(step_size=0.5, num_iid=2)
+        return ou & (sq & sin & step)
 
     def test_init(self):
         conc = self._create_input()
-        self.assertEqual(len(conc), 2)
+        self.assertEqual(len(conc), 4)
         self.assertTrue(isinstance(conc, ConcatenatedInput))
         self.assertEqual(conc.num_iid, 2)
-        self.assertEqual(len(conc.noise_processes), 2)
+        self.assertEqual(len(conc.noise_processes), 4)
 
     def test_generate_input(self):
         conc = self._create_input()
