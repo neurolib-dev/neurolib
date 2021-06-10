@@ -3,7 +3,6 @@ Functions for creating stimuli and noise inputs for models.
 """
 
 import inspect
-from shelve import Shelf
 
 import numba
 import numpy as np
