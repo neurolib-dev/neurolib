@@ -3,6 +3,7 @@ Functions for creating stimuli and noise inputs for models.
 """
 
 import inspect
+from shelve import Shelf
 
 import numba
 import numpy as np
@@ -192,9 +193,15 @@ class BaseMultipleInputs(StimulusInput):
         """
         return len(self.noise_processes)
 
+    def __getitem__(self, index):
+        """
+        Return process with index. This also allows iteration.
+        """
+        return self.noise_processes[index]
+
     @property
     def num_iid(self):
-        num_iid = set([process.num_iid for process in self.noise_processes])
+        num_iid = set([process.num_iid for process in self])
         assert len(num_iid) == 1
         return next(iter(num_iid))
 
@@ -204,14 +211,14 @@ class BaseMultipleInputs(StimulusInput):
         """
         return {
             "type": self.__class__.__name__,
-            **{f"noise_{i}": process.get_params() for i, process in enumerate(self.noise_processes)},
+            **{f"noise_{i}": process.get_params() for i, process in enumerate(self)},
         }
 
     def update_params(self, params_dict):
         """
         Update all parameters recursively.
         """
-        for i, process in enumerate(self.noise_processes):
+        for i, process in enumerate(self):
             process.update_params(params_dict.get(f"noise_{i}", {}))
 
 
