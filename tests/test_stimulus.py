@@ -43,6 +43,13 @@ class TestCubicSplines(unittest.TestCase):
         time_idx = np.around(TESTING_TIME / DT).astype(int)
         np.testing.assert_allclose(self.RESULT_ARRAY, dW[time_idx, :])
 
+    def test_shift_start_time(self):
+        SHIFT = 5.0
+        dW = WienerProcess(num_iid=2, seed=42).as_cubic_splines(duration=DURATION, dt=DT, shift_start_time=SHIFT)
+        self.assertTrue(isinstance(dW, CubicHermiteSpline))
+        self.assertEqual(dW[0].time, SHIFT + DT)
+        np.testing.assert_allclose(self.RESULT_SPLINES, dW.get_state(TESTING_TIME + SHIFT))
+
 
 class TestZeroInput(unittest.TestCase):
     def test_generate_input(self):
