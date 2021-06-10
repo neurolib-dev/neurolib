@@ -8,6 +8,7 @@ import numpy as np
 from chspy import CubicHermiteSpline
 from neurolib.models.aln import ALNModel
 from neurolib.utils.stimulus import (
+    ConcatenatedInput,
     ExponentialInput,
     LinearRampInput,
     OrnsteinUhlenbeckProcess,
@@ -494,10 +495,48 @@ class TestSummedInput(unittest.TestCase):
         return sq + sin + step + ou
 
     def test_init(self):
+        summed = self._create_input()
+        self.assertEqual(len(summed), 4)
+        self.assertTrue(isinstance(summed, SummedInput))
+        self.assertEqual(summed.num_iid, 2)
+        self.assertEqual(len(summed.noise_processes), 4)
+
+    def test_generate_input(self):
+        summed = self._create_input()
+        ts = summed.as_array(duration=DURATION, dt=DT)
+        self.assertTrue(isinstance(ts, np.ndarray))
+        self.assertTupleEqual(ts.shape, SHAPE)
+
+        ts = summed.as_cubic_splines(duration=DURATION, dt=DT)
+        self.assertTrue(isinstance(ts, CubicHermiteSpline))
+
+    def test_get_params(self):
+        summed = self._create_input()
+        params = summed.get_params()
+        self.assertTrue(isinstance(params, dict))
+        self.assertEqual(len(params), 1 + len(summed.noise_processes))
+        for i, process in enumerate(summed):
+            self.assertDictEqual(process.get_params(), params[f"noise_{i}"])
+
+    def test_update_params(self):
+        summed = self._create_input()
+        UPDATE_DICT = {f"noise_{i}": {"num_iid": 3} for i in range(len(summed))}
+        summed.update_params(UPDATE_DICT)
+        self.assertEqual(summed.num_iid, 3)
+
+
+class TestConcatenatedInput(unittest.TestCase):
+    def _create_input(self):
+        ou = OrnsteinUhlenbeckProcess(mu=0.1, sigma=0.02, tau=2.0, num_iid=2)
+        sq = SquareInput(amplitude=0.2, period=20.0, num_iid=2)
+        return ou & sq
+
+    def test_init(self):
         conc = self._create_input()
-        self.assertTrue(isinstance(conc, SummedInput))
+        self.assertEqual(len(conc), 2)
+        self.assertTrue(isinstance(conc, ConcatenatedInput))
         self.assertEqual(conc.num_iid, 2)
-        self.assertEqual(len(conc.noise_processes), 4)
+        self.assertEqual(len(conc.noise_processes), 2)
 
     def test_generate_input(self):
         conc = self._create_input()
@@ -513,14 +552,48 @@ class TestSummedInput(unittest.TestCase):
         params = conc.get_params()
         self.assertTrue(isinstance(params, dict))
         self.assertEqual(len(params), 1 + len(conc.noise_processes))
-        for i, process in enumerate(conc.noise_processes):
+        for i, process in enumerate(conc):
             self.assertDictEqual(process.get_params(), params[f"noise_{i}"])
 
     def test_update_params(self):
         conc = self._create_input()
-        UPDATE_DICT = {f"noise_{i}": {"num_iid": 3} for i in range(len(conc.noise_processes))}
+        UPDATE_DICT = {f"noise_{i}": {"num_iid": 3} for i in range(len(conc))}
         conc.update_params(UPDATE_DICT)
         self.assertEqual(conc.num_iid, 3)
+
+
+class TestBeastInput(unittest.TestCase):
+    def _create_input(self):
+        ou = OrnsteinUhlenbeckProcess(mu=0.1, sigma=0.02, tau=2.0, num_iid=2)
+        sq = SquareInput(amplitude=0.2, period=20.0, num_iid=2)
+        sin = SinusoidalInput(amplitude=0.1, period=10.0, num_iid=2)
+        step = StepInput(step_size=0.5, num_iid=2)
+        return (sq + sin) & (step + ou)
+
+    def test_init(self):
+        beast = self._create_input()
+        self.assertEqual(len(beast), 2)
+        self.assertTrue(isinstance(beast, ConcatenatedInput))
+        for process in beast:
+            self.assertTrue(isinstance(process, SummedInput))
+        self.assertEqual(beast.num_iid, 2)
+
+    def test_generate_input(self):
+        beast = self._create_input()
+        ts = beast.as_array(duration=DURATION, dt=DT)
+        self.assertTrue(isinstance(ts, np.ndarray))
+        self.assertTupleEqual(ts.shape, SHAPE)
+
+        ts = beast.as_cubic_splines(duration=DURATION, dt=DT)
+        self.assertTrue(isinstance(ts, CubicHermiteSpline))
+
+    def test_get_params(self):
+        beast = self._create_input()
+        params = beast.get_params()
+        self.assertTrue(isinstance(params, dict))
+        self.assertEqual(len(params), 1 + len(beast.noise_processes))
+        for i, process in enumerate(beast):
+            self.assertDictEqual(process.get_params(), params[f"noise_{i}"])
 
 
 class TestConstructStimulus(unittest.TestCase):
