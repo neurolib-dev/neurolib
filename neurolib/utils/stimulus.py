@@ -97,7 +97,7 @@ class ModelInput:
         """
         return self.generate_input(duration, dt)
 
-    def as_cubic_splines(self, duration, dt):
+    def as_cubic_splines(self, duration, dt, shift_start_time=0.0):
         """
         Return as cubic Hermite splines.
 
@@ -105,9 +105,11 @@ class ModelInput:
         :type duration: float
         :param dt: some reasonable "speed" of input, in milliseconds
         :type dt: float
+        :param shift_start_time: by how much to shift start time
+        :type shift_start_time: float
         """
         self._get_times(duration, dt)
-        return CubicHermiteSpline.from_data(self.times, self.generate_input(duration, dt))
+        return CubicHermiteSpline.from_data(self.times + shift_start_time, self.generate_input(duration, dt))
 
 
 class StimulusInput(ModelInput):
@@ -158,10 +160,9 @@ class StimulusInput(ModelInput):
         return stim_input
 
 
-class SummedInput(StimulusInput):
+class BaseMultipleInputs(StimulusInput):
     """
-    Represents summation of inputs - typically for stimulus plus noise.
-    Supports summation of arbitrary many objects.
+    Base class for stimuli with multiple inputs. Takes care of parameters et al.
     """
 
     def __init__(self, noise_processes):
@@ -177,14 +178,6 @@ class SummedInput(StimulusInput):
         num_iid = set([process.num_iid for process in self.noise_processes])
         assert len(num_iid) == 1
         return next(iter(num_iid))
-
-    def __add__(self, other):
-        assert isinstance(other, ModelInput)
-        assert self.num_iid == other.num_iid
-        if isinstance(other, SummedInput):
-            return SummedInput(noise_processes=self.noise_processes + other.noise_processes)
-        else:
-            return SummedInput(noise_processes=self.noise_processes + [other])
 
     def get_params(self):
         """
@@ -202,6 +195,21 @@ class SummedInput(StimulusInput):
         for i, process in enumerate(self.noise_processes):
             process.update_params(params_dict.get(f"noise_{i}", {}))
 
+
+class SummedInput(BaseMultipleInputs):
+    """
+    Represents summation of inputs - typically for stimulus plus noise.
+    Supports summation of arbitrary many objects.
+    """
+
+    def __add__(self, other):
+        assert isinstance(other, ModelInput)
+        assert self.num_iid == other.num_iid
+        if isinstance(other, SummedInput):
+            return SummedInput(noise_processes=self.noise_processes + other.noise_processes)
+        else:
+            return SummedInput(noise_processes=self.noise_processes + [other])
+
     def as_array(self, duration, dt):
         """
         Return sum of all processes as numpy array.
@@ -211,13 +219,52 @@ class SummedInput(StimulusInput):
             axis=0,
         )
 
-    def as_cubic_splines(self, duration, dt):
+    def as_cubic_splines(self, duration, dt, shift_start_time=0.0):
         """
         Return sum of all processes as cubic Hermite splines.
         """
-        result = self.noise_processes[0].as_cubic_splines(duration, dt)
+        result = self.noise_processes[0].as_cubic_splines(duration, dt, shift_start_time)
         for process in self.noise_processes[1:]:
-            result.plus(process.as_cubic_splines(duration, dt))
+            result.plus(process.as_cubic_splines(duration, dt, shift_start_time))
+        return result
+
+
+class ConcatenatedInput(BaseMultipleInputs):
+    """
+    Represents concatenation (temporal sense) of inputs. Supports concatenation
+    of arbitrary many objects.
+    """
+
+    def __init__(self, noise_processes, length_ratios=None):
+        """
+        :param length_ratios: ratios of length of concatenated process
+        :type length_ratios: list[int|float]
+        """
+        if length_ratios is None:
+            length_ratios = [1] * len(noise_processes)
+        assert len(noise_processes) == len(length_ratios)
+        self.length_ratios = length_ratios
+        super().__init__(noise_processes)
+
+    def as_array(self, duration, dt):
+        """
+        Return concatenation of all processes as numpy array.
+        """
+        # normalize ratios to sum = 1
+        ratios = [i / sum(self.length_ratios) for i in self.length_ratios]
+        return np.concatenate(
+            [process.as_array(duration * ratio, dt) for process, ratio in zip(self.noise_processes, ratios)],
+            axis=0,
+        )
+
+    def as_cubic_splines(self, duration, dt, shift_start_time=0.0):
+        # normalize ratios to sum = 1
+        ratios = [i / sum(self.length_ratios) for i in self.length_ratios]
+        result = self.noise_processes[0].as_cubic_splines(duration * ratios[0], dt, shift_start_time)
+        for process, ratio in zip(self.noise_processes[1:], ratios[1:]):
+            last_time = result[-1].time
+            temp = process.as_cubic_splines(duration * ratio, dt, shift_start_time=last_time)
+            result.extend(temp)
         return result
 
 
