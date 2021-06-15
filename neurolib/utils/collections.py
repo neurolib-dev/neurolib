@@ -10,7 +10,7 @@ from dpath.util import delete, search
 
 DEFAULT_STAR_SEPARATOR = "."
 
-FORWARD_REPLACE = {"*": "STAR", "|": "MINUS"}
+FORWARD_REPLACE = {"*": "STAR", "|": "MINUS", ".": "DOT"}
 BACKWARD_REPLACE = {v: k for k, v in FORWARD_REPLACE.items()}
 
 
