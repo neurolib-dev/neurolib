@@ -68,13 +68,13 @@ class TestCollections(unittest.TestCase):
     def test_sanitize_keys(self):
         k = "mass1.tau*|noise"
         k_san = _sanitize_keys(k, FORWARD_REPLACE)
-        self.assertEqual(k_san, k.replace("*", "STAR").replace("|", "MINUS"))
+        self.assertEqual(k_san, k.replace("*", "STAR").replace("|", "MINUS").replace(".", "DOT"))
         k_back = _sanitize_keys(k_san, BACKWARD_REPLACE)
         self.assertEqual(k, k_back)
 
     def test_sanitize_dotdict(self):
         dct = {"mass1*tau": 2.5, "mass2*tau": 4.1, "mass2.x": 12.0}
-        should_be = {"mass1STARtau": 2.5, "mass2STARtau": 4.1, "mass2.x": 12.0}
+        should_be = {"mass1STARtau": 2.5, "mass2STARtau": 4.1, "mass2DOTx": 12.0}
         dct_san = sanitize_dot_dict(dct, FORWARD_REPLACE)
         self.assertDictEqual(dct_san, should_be)
         dct_back = sanitize_dot_dict(dct_san, BACKWARD_REPLACE)
