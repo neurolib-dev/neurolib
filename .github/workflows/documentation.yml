@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies 🛠
         run: |
           python -m pip install --upgrade pip
-          pip install mkdocs mkdocs-material mkdocstrings mknotebooks Pygments mkdocs-include-markdown-plugin
+          pip install mkdocs mkdocs-material mkdocstrings mknotebooks Pygments mkdocs-include-markdown-plugin livereload
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install .
       - name: Build documentation 👷‍♀️
@@ -39,18 +39,17 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
-            folder: site
-            target-folder: 'predeploy'
-            token: ${{ secrets.DOC_ACCESS_TOKEN }}
-            branch: master
-            commit-message: 'PR predeploy'
-            repository-name: neurolib-dev/neurolib-dev.github.io
+          folder: site
+          target-folder: "predeploy"
+          token: ${{ secrets.DOC_ACCESS_TOKEN }}
+          branch: master
+          commit-message: "PR predeploy"
+          repository-name: neurolib-dev/neurolib-dev.github.io
       - name: Deploy 🚀
         if: github.event_name == 'push'
         uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
-            folder: site
-            token: ${{ secrets.DOC_ACCESS_TOKEN }}
-            branch: master
-            repository-name: neurolib-dev/neurolib-dev.github.io
-
+          folder: site
+          token: ${{ secrets.DOC_ACCESS_TOKEN }}
+          branch: master
+          repository-name: neurolib-dev/neurolib-dev.github.io
