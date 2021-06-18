@@ -561,10 +561,8 @@ class LinearRampInput(StimulusInput):
 
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
-        # need to adjust times for stimulus start
-        times = self.times - self.stim_start
-        linear_inp = (self.inp_max / self.ramp_length) * times * (times < self.ramp_length) + self.inp_max * (
-            times >= self.ramp_length
+        linear_inp = (self.inp_max / self.ramp_length) * self.times * (self.times < self.ramp_length) + self.inp_max * (
+            self.times >= self.ramp_length
         )
         return self._trim_stim_input(np.vstack([linear_inp] * self.num_iid).T)
 
