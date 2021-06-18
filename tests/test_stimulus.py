@@ -523,6 +523,16 @@ class TestSummedInput(unittest.TestCase):
         self.assertEqual(summed.num_iid, 2)
         self.assertEqual(len(summed.noise_processes), 4)
 
+    def test_set_num_iid(self):
+        summed = self._create_input()
+        self.assertEqual(summed.num_iid, 2)
+        ts = summed.as_array(duration=DURATION, dt=DT)
+        self.assertEqual(ts.shape[1], 2)
+        summed.num_iid = 5
+        self.assertEqual(summed.num_iid, 5)
+        ts = summed.as_array(duration=DURATION, dt=DT)
+        self.assertEqual(ts.shape[1], 5)
+
     def test_generate_input(self):
         summed = self._create_input()
         ts = summed.as_array(duration=DURATION, dt=DT)
@@ -561,6 +571,16 @@ class TestConcatenatedInput(unittest.TestCase):
         self.assertTrue(isinstance(conc, ConcatenatedInput))
         self.assertEqual(conc.num_iid, 2)
         self.assertEqual(len(conc.noise_processes), 4)
+
+    def test_set_num_iid(self):
+        conc = self._create_input()
+        self.assertEqual(conc.num_iid, 2)
+        ts = conc.as_array(duration=DURATION, dt=DT)
+        self.assertEqual(ts.shape[1], 2)
+        conc.num_iid = 5
+        self.assertEqual(conc.num_iid, 5)
+        ts = conc.as_array(duration=DURATION, dt=DT)
+        self.assertEqual(ts.shape[1], 5)
 
     def test_generate_input(self):
         conc = self._create_input()
@@ -601,6 +621,16 @@ class TestBeastInput(unittest.TestCase):
         for process in beast:
             self.assertTrue(isinstance(process, SummedInput))
         self.assertEqual(beast.num_iid, 2)
+
+    def test_set_num_iid(self):
+        beast = self._create_input()
+        self.assertEqual(beast.num_iid, 2)
+        ts = beast.as_array(duration=DURATION, dt=DT)
+        self.assertEqual(ts.shape[1], 2)
+        beast.num_iid = 5
+        self.assertEqual(beast.num_iid, 5)
+        ts = beast.as_array(duration=DURATION, dt=DT)
+        self.assertEqual(ts.shape[1], 5)
 
     def test_generate_input(self):
         beast = self._create_input()

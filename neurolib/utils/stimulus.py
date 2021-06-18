@@ -236,6 +236,11 @@ class BaseMultipleInputs(StimulusInput):
         assert len(num_iid) == 1
         return next(iter(num_iid))
 
+    @num_iid.setter
+    def num_iid(self, num_iid):
+        for process in self:
+            process.num_iid = num_iid
+
     def get_params(self):
         """
         Get parameters recursively from all input processes.
