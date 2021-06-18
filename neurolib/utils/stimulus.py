@@ -3,10 +3,12 @@ Functions for creating stimuli and noise inputs for models.
 """
 
 import inspect
+import logging
 
 import numba
 import numpy as np
 from chspy import CubicHermiteSpline
+from ..models.model import Model
 from scipy.signal import square
 
 
@@ -134,6 +136,24 @@ class ModelInput:
         splines = CubicHermiteSpline.from_data(self.times + shift_start_time, self.generate_input(duration, dt))
         self._reset()
         return splines
+
+    def to_model(self, model):
+        """
+        Return numpy array of stimuli based on model parameters.
+
+        :param model: neurolib's model
+        :type model: `neurolib.models.Model`
+        """
+        assert isinstance(model, Model)
+        if self.num_iid != 1 and self.num_iid != model.params["N"]:
+            logging.warning(
+                f"Model has {model.params['N']} nodes; but stimulus"
+                f" has {self.num_iid} dims. Will set number of dims to number "
+                "of model nodes."
+            )
+            self.num_iid = model.params["N"]
+        # core neurolib uses nodes x time
+        return self.as_array(duration=model.params["duration"], dt=model.params["dt"]).T
 
 
 class StimulusInput(ModelInput):
