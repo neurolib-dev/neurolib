@@ -145,13 +145,8 @@ class ModelInput:
         :type model: `neurolib.models.Model`
         """
         assert isinstance(model, Model)
-        if self.num_iid != 1 and self.num_iid != model.params["N"]:
-            logging.warning(
-                f"Model has {model.params['N']} nodes; but stimulus"
-                f" has {self.num_iid} dims. Will set number of dims to number "
-                "of model nodes."
-            )
-            self.num_iid = model.params["N"]
+        # set number of IID process as per number of nodes
+        self.num_iid = model.params["N"]
         # core neurolib uses nodes x time
         return self.as_array(duration=model.params["duration"], dt=model.params["dt"]).T
 
