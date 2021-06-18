@@ -58,6 +58,13 @@ class ModelInput:
         else:
             return ConcatenatedInput(noise_processes=[self, other])
 
+    def _reset(self):
+        """
+        Reset is called after generating an input. Can be used to reset
+        intrinsic properties.
+        """
+        pass
+
     def get_params(self):
         """
         Return model input parameters as dict.
@@ -108,7 +115,9 @@ class ModelInput:
         :param dt: some reasonable "speed" of input, in milliseconds
         :type dt: float
         """
-        return self.generate_input(duration, dt)
+        array = self.generate_input(duration, dt)
+        self._reset()
+        return array
 
     def as_cubic_splines(self, duration, dt, shift_start_time=0.0):
         """
@@ -122,7 +131,9 @@ class ModelInput:
         :type shift_start_time: float
         """
         self._get_times(duration, dt)
-        return CubicHermiteSpline.from_data(self.times + shift_start_time, self.generate_input(duration, dt))
+        splines = CubicHermiteSpline.from_data(self.times + shift_start_time, self.generate_input(duration, dt))
+        self._reset()
+        return splines
 
 
 class StimulusInput(ModelInput):
@@ -145,10 +156,16 @@ class StimulusInput(ModelInput):
         """
         self.stim_start = stim_start
         self.stim_end = stim_end
+        self._default_stim_start = stim_start
+        self._default_stim_end = stim_end
         super().__init__(
             num_iid=num_iid,
             seed=seed,
         )
+
+    def _reset(self):
+        self.stim_start = self._default_stim_start
+        self.stim_end = self._default_stim_end
 
     def _get_times(self, duration, dt):
         super()._get_times(duration=duration, dt=dt)
@@ -268,6 +285,7 @@ class ConcatenatedInput(BaseMultipleInputs):
         if length_ratios is None:
             length_ratios = [1] * len(noise_processes)
         assert len(noise_processes) == len(length_ratios)
+        assert all(length > 0 for length in length_ratios)
         self.length_ratios = length_ratios
         super().__init__(noise_processes)
 
@@ -290,10 +308,13 @@ class ConcatenatedInput(BaseMultipleInputs):
         """
         # normalize ratios to sum = 1
         ratios = [i / sum(self.length_ratios) for i in self.length_ratios]
-        return np.concatenate(
+        concat = np.concatenate(
             [process.as_array(duration * ratio, dt) for process, ratio in zip(self.noise_processes, ratios)],
             axis=0,
         )
+        length = int(duration / dt)
+        # due to rounding errors, the overall length might be longer by a few dt
+        return concat[:length, :]
 
     def as_cubic_splines(self, duration, dt, shift_start_time=0.0):
         # normalize ratios to sum = 1
@@ -571,104 +592,31 @@ class ExponentialInput(StimulusInput):
         return self._trim_stim_input(np.vstack([exponential] * self.num_iid).T)
 
 
-def construct_stimulus(
-    stim="dc",
-    duration=6000,
-    dt=0.1,
-    stim_amp=0.2,
-    stim_freq=1,
-    stim_bias=0,
-    n_periods=None,
-    nostim_before=0,
-    nostim_after=0,
-):
-    """Constructs a stimulus that can be applied to a model
-
-    :param stim: Stimulation type: 'ac':oscillatory stimulus, 'dc': stimple step current,
-                'rect': step current in negative then positive direction with slowly
-                decaying amplitude, used for bistability detection, defaults to 'dc'
-    :type stim: str, optional
-    :param duration: Duration of stimulus in ms, defaults to 6000
-    :type duration: int, optional
-    :param dt: Integration time step in ms, defaults to 0.1
-    :type dt: float, optional
-    :param stim_amp: Amplitude of stimulus (for AdEx: in mV/ms, multiply by conductance C to get current in pA), defaults to 0.2
-    :type stim_amp: float, optional
-    :param stim_freq: Stimulation frequency, defaults to 1
-    :type stim_freq: int, optional
-    :param stim_bias: Stimulation offset (bias), defaults to 0
-    :type stim_bias: int, optional
-    :param n_periods: Numer of periods of stimulus, defaults to None
-    :type n_periods: [type], optional
-    :param nostim_before: Time before stimulation, defaults to 0
-    :type nostim_before: int, optional
-    :param nostim_after: Time after stimulation, defaults to 0
-    :type nostim_after: int, optional
-    :raises ValueError: Raises error if unsupported stimulus type is chosen.
-    :return: Stimulus timeseries
-    :rtype: numpy.ndarray
+def RectifiedInput(amplitude, num_iid=1):
     """
-    """Constructs a sitmulus that can be applied as input to a model
+    Return rectified input, i.e. a negative step current, followed by positive
+    exponentially increasing and then slowly decaying amplitude, typically used
+    for bistablity detection.
 
-    TODO: rewrite
-
-    stim:       Stimulus type: 'ac':oscillatory stimulus, 'dc': stimple step current, 
-                'rect': step current in negative then positive direction with slowly
-                decaying amplitude, used for bistability detection
-    stim_amp:   Amplitude of stimulus (for AdEx: in mV/ms, multiply by conductance C to get current in pA)
+    :param amplitude: overall amplitude (both negative and positive) for the
+        rectified stimulus
+    :type amplitude: float
+    :param num_iid: how many independent realisation of
+        the input we want - for constant inputs the array is just copied,
+        for noise this means independent realisation
+    :type num_iid: int
+    :return: concatenated input which represents rectified stimulus
+    :rtype: `ConctatenatedInput`
     """
 
-    def sinus_stim(f=1, amplitude=0.2, positive=0, phase=0, cycles=1, t_pause=0):
-        x = np.linspace(np.pi, -np.pi, int(1000 / dt / f))
-        sinus_function = np.hstack(((np.sin(x + phase) + positive), np.tile(0, t_pause)))
-        sinus_function *= amplitude
-        return np.tile(sinus_function, cycles)
-
-    if stim == "ac":
-        """Oscillatory stimulus"""
-        n_periods = n_periods or int(stim_freq)
-
-        stimulus = np.hstack(
-            (
-                [stim_bias] * int(nostim_before / dt),
-                np.tile(sinus_stim(stim_freq, stim_amp) + stim_bias, n_periods),
-            )
-        )
-        stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
-    elif stim == "dc":
-        """Simple DC input and return to baseline"""
-        stimulus = np.hstack(([stim_bias] * int(nostim_before / dt), [stim_bias + stim_amp] * int(1000 / dt)))
-        stimulus = np.hstack((stimulus, [stim_bias] * int(nostim_after / dt)))
-        stimulus[stimulus < 0] = 0
-    elif stim == "rect":
-        """Rectified step current with slow decay"""
-        # construct input
-        stimulus = np.zeros(int(duration / dt))
-        tot_len = int(duration / dt)
-        stim_epoch = tot_len / 6
-
-        stim_increase_counter = 0
-        stim_decrease_counter = 0
-        stim_step_increase = 5.0 / stim_epoch
-
-        for i, m in enumerate(stimulus):
-            if 0 * stim_epoch <= i < 0.5 * stim_epoch:
-                stimulus[i] -= stim_amp
-            elif 0.5 * stim_epoch <= i < 3.0 * stim_epoch:
-                stimulus[i] = -np.exp(-stim_increase_counter) * stim_amp
-                stim_increase_counter += stim_step_increase
-            elif 3.0 * stim_epoch <= i < 3.5 * stim_epoch:
-                stimulus[i] += stim_amp
-            elif 3.5 * stim_epoch <= i < 5 * stim_epoch:
-                stimulus[i] = np.exp(-stim_decrease_counter) * stim_amp
-                stim_decrease_counter += stim_step_increase
-    else:
-        raise ValueError(f'Stimulus {stim} not found. Use "ac", "dc" or "rect".')
-
-    # repeat stimulus until full length
-    steps = int(duration / dt)
-    stimlength = int(len(stimulus))
-    stimulus = np.tile(stimulus, int(steps / stimlength + 2))
-    stimulus = stimulus[:steps]
-
-    return stimulus
+    return ConcatenatedInput(
+        [
+            StepInput(step_size=-amplitude, num_iid=num_iid),
+            ExponentialInput(inp_max=amplitude, exp_type="rise", exp_coef=12.5, num_iid=num_iid)
+            + StepInput(step_size=-amplitude, num_iid=num_iid),
+            StepInput(step_size=amplitude, num_iid=num_iid),
+            ExponentialInput(amplitude, exp_type="decay", exp_coef=7.5, num_iid=num_iid),
+            StepInput(step_size=0.0, num_iid=num_iid),
+        ],
+        length_ratios=[0.5, 2.5, 0.5, 1.5, 1.0],
+    )
