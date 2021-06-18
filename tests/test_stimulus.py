@@ -6,19 +6,18 @@ import unittest
 
 import numpy as np
 from chspy import CubicHermiteSpline
-from neurolib.models.aln import ALNModel
 from neurolib.utils.stimulus import (
     ConcatenatedInput,
     ExponentialInput,
     LinearRampInput,
     OrnsteinUhlenbeckProcess,
+    RectifiedInput,
     SinusoidalInput,
     SquareInput,
     StepInput,
     SummedInput,
     WienerProcess,
     ZeroInput,
-    construct_stimulus,
 )
 
 TESTING_TIME = 5.3
@@ -598,34 +597,21 @@ class TestBeastInput(unittest.TestCase):
             self.assertDictEqual(process.get_params(), params[f"noise_{i}"])
 
 
-class TestConstructStimulus(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.single_node = ALNModel()
+class TestRectifiedInput(unittest.TestCase):
+    def test_init(self):
+        rect = RectifiedInput(0.2, num_iid=2)
+        self.assertTrue(isinstance(rect, ConcatenatedInput))
+        self.assertEqual(len(rect), 5)
+        self.assertEqual(rect.num_iid, 2)
 
-    def test_construct_stimulus_ac(self):
-        self.single_node.params["duration"] = 2000
-        stimulus = construct_stimulus(
-            "ac", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
-        )
-        self.single_node.params["ext_exc_current"] = stimulus
-        self.single_node.run()
+    def test_generate(self):
+        rect = RectifiedInput(0.2, num_iid=2)
+        ts = rect.as_array(DURATION, DT)
+        self.assertTrue(isinstance(ts, np.ndarray))
+        self.assertTupleEqual(ts.shape, SHAPE)
 
-    def test_construct_stimulus_dc(self):
-        self.single_node.params["duration"] = 2000
-        stimulus = construct_stimulus(
-            "dc", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
-        )
-        self.single_node.params["ext_exc_current"] = stimulus
-        self.single_node.run()
-
-    def test_construct_stimulus_rect(self):
-        self.single_node.params["duration"] = 2000
-        stimulus = construct_stimulus(
-            "rect", duration=self.single_node.params.duration, dt=self.single_node.params.dt, stim_amp=1.0, stim_freq=1
-        )
-        self.single_node.params["ext_exc_current"] = stimulus
-        self.single_node.run()
+        ts = rect.as_cubic_splines(duration=DURATION, dt=DT)
+        self.assertTrue(isinstance(ts, CubicHermiteSpline))
 
 
 if __name__ == "__main__":
