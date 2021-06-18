@@ -6,6 +6,7 @@ import unittest
 
 import numpy as np
 from chspy import CubicHermiteSpline
+from neurolib.models.aln import ALNModel
 from neurolib.utils.stimulus import (
     ConcatenatedInput,
     ExponentialInput,
@@ -49,6 +50,47 @@ class TestCubicSplines(unittest.TestCase):
         self.assertTrue(isinstance(dW, CubicHermiteSpline))
         self.assertEqual(dW[0].time, SHIFT + DT)
         np.testing.assert_allclose(self.RESULT_SPLINES, dW.get_state(TESTING_TIME + SHIFT))
+
+
+class TestToModel(unittest.TestCase):
+    def test_single_node(self):
+        model = ALNModel()
+        model.params["duration"] = 2 * 1000
+        stim = SinusoidalInput(amplitude=1.0, period=1000.0)
+        model_stim = stim.to_model(model)
+        model.params["ext_exc_current"] = model_stim
+        model.run()
+        self.assertTrue(isinstance(model_stim, np.ndarray))
+        self.assertTupleEqual(model_stim.shape, (1, int(model.params["duration"] / model.params["dt"])))
+
+    def test_multi_node_single_stim(self):
+        model = ALNModel(Cmat=np.random.rand(5, 5), Dmat=np.zeros((5, 5)))
+        model.params["duration"] = 2 * 1000
+        stim = SinusoidalInput(amplitude=1.0, period=1000.0, num_iid=1)
+        model_stim = stim.to_model(model)
+        model.params["ext_exc_current"] = model_stim
+        model.run()
+        self.assertTrue(isinstance(model_stim, np.ndarray))
+        self.assertTupleEqual(model_stim.shape, (1, int(model.params["duration"] / model.params["dt"])))
+
+    def test_multi_node_multi_stim(self):
+        model = ALNModel(Cmat=np.random.rand(5, 5), Dmat=np.zeros((5, 5)))
+        model.params["duration"] = 2 * 1000
+        stim = SinusoidalInput(amplitude=1.0, period=1000.0, num_iid=5)
+        model_stim = stim.to_model(model)
+        model.params["ext_exc_current"] = model_stim
+        model.run()
+        self.assertTrue(isinstance(model_stim, np.ndarray))
+        self.assertTupleEqual(model_stim.shape, (5, int(model.params["duration"] / model.params["dt"])))
+
+    def test_multi_node_multi_stim_wrong_iid(self):
+        model = ALNModel(Cmat=np.random.rand(5, 5), Dmat=np.zeros((5, 5)))
+        model.params["duration"] = 2 * 1000
+        stim = SinusoidalInput(amplitude=1.0, period=1000.0, num_iid=3)
+        self.assertEqual(stim.num_iid, 3)
+        model_stim = stim.to_model(model)
+        self.assertEqual(stim.num_iid, 5)
+        self.assertTupleEqual(model_stim.shape, (5, int(model.params["duration"] / model.params["dt"])))
 
 
 class TestZeroInput(unittest.TestCase):
