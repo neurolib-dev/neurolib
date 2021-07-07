@@ -27,4 +27,4 @@ jobs:
           pip install .
       - name: Test notebooks with treon 🧪
         run: |
-          treon examples/
+          treon examples/ --exclude examples/example-4.2-MultiModel-backends-and-optimisation.ipynb
