@@ -12,23 +12,23 @@ from ..models.model import Model
 from scipy.signal import square
 
 
-class ModelInput:
+class Input:
     """
     Generates input to model.
 
     Base class for other input types.
     """
 
-    def __init__(self, num_iid=1, seed=None):
+    def __init__(self, n=1, seed=None):
         """
-        :param num_iid: how many independent realisation of
-            the input we want - for constant inputs the array is just copied,
-            for noise this means independent realisation
-        :type num_iid: int
-        :param seed: optional seed for noise generator
+        :param n: Number of spatial dimensions / independent realizations of the input.
+            For determinstic inputs, the array is just copied,
+            for stociastic / noisy inputs, this means independent realizations.
+        :type n: int
+        :param seed: Seed for the random number generator.
         :type seed: int|None
         """
-        self.num_iid = num_iid
+        self.n = n
         self.seed = seed
         # seed the generator
         np.random.seed(seed)
@@ -38,27 +38,25 @@ class ModelInput:
 
     def __add__(self, other):
         """
-        Sum two processes into SummedInput.
+        Sum two inputs into one SummedStimulus.
         """
-        assert isinstance(other, ModelInput)
-        assert self.num_iid == other.num_iid
-        if isinstance(other, SummedInput):
-            return SummedInput(noise_processes=[self] + other.noise_processes)
+        assert isinstance(other, Input)
+        assert self.n == other.n
+        if isinstance(other, SummedStimulus):
+            return SummedStimulus(inputs=[self] + other.inputs)
         else:
-            return SummedInput(noise_processes=[self, other])
+            return SummedStimulus(inputs=[self, other])
 
     def __and__(self, other):
         """
-        Concatenate two processes into ConcatenatedInput.
+        Concatenate two inputs into ConcatenatedStimulus.
         """
-        assert isinstance(other, ModelInput)
-        assert self.num_iid == other.num_iid
-        if isinstance(other, ConcatenatedInput):
-            return ConcatenatedInput(
-                noise_processes=[self] + other.noise_processes, length_ratios=[1] + other.length_ratios
-            )
+        assert isinstance(other, Input)
+        assert self.n == other.n
+        if isinstance(other, ConcatenatedStimulus):
+            return ConcatenatedStimulus(inputs=[self] + other.inputs, length_ratios=[1] + other.length_ratios)
         else:
-            return ConcatenatedInput(noise_processes=[self, other])
+            return ConcatenatedStimulus(inputs=[self, other])
 
     def _reset(self):
         """
@@ -69,7 +67,7 @@ class ModelInput:
 
     def get_params(self):
         """
-        Return model input parameters as dict.
+        Return the parameters of the input as dict.
         """
         assert all(hasattr(self, name) for name in self.param_names), self.param_names
         params = {name: getattr(self, name) for name in self.param_names}
@@ -79,7 +77,7 @@ class ModelInput:
         """
         Update model input parameters.
 
-        :param params_dict: new parameters for this model input
+        :param params_dict: New parameters for this input
         :type params_dict: dict
         """
         for param, value in params_dict.items():
@@ -90,7 +88,7 @@ class ModelInput:
         """
         Generate time vector.
 
-        :param duration: duration of the input, in milliseconds
+        :param duration: Duration of the input, in milliseconds
         :type duration: float
         :param dt: dt of input, in milliseconds
         :type dt: float
@@ -101,7 +99,7 @@ class ModelInput:
         """
         Function to generate input.
 
-        :param duration: duration of the input, in milliseconds
+        :param duration: Duration of the input, in milliseconds
         :type duration: float
         :param dt: dt of input, in milliseconds
         :type dt: float
@@ -112,9 +110,9 @@ class ModelInput:
         """
         Return input as numpy array.
 
-        :param duration: duration of the input, in milliseconds
+        :param duration: Duration of the input, in milliseconds
         :type duration: float
-        :param dt: some reasonable "speed" of input, in milliseconds
+        :param dt: dt of input, in milliseconds
         :type dt: float
         """
         array = self.generate_input(duration, dt)
@@ -125,11 +123,11 @@ class ModelInput:
         """
         Return as cubic Hermite splines.
 
-        :param duration: duration of the input, in milliseconds
+        :param duration: Duration of the input, in milliseconds
         :type duration: float
-        :param dt: some reasonable "speed" of input, in milliseconds
+        :param dt: dt of input, in milliseconds
         :type dt: float
-        :param shift_start_time: by how much to shift start time
+        :param shift_start_time: By how much to shift the stimulus start time
         :type shift_start_time: float
         """
         self._get_times(duration, dt)
@@ -141,237 +139,247 @@ class ModelInput:
         """
         Return numpy array of stimuli based on model parameters.
 
+        Example:
+        ```
+        model.params["ext_exc_input"] = SinusoidalInput(...).to_model(model)
+        ```
+
         :param model: neurolib's model
         :type model: `neurolib.models.Model`
         """
         assert isinstance(model, Model)
-        # set number of IID process as per number of nodes
-        self.num_iid = model.params["N"]
-        # core neurolib uses nodes x time
-        return self.as_array(duration=model.params["duration"], dt=model.params["dt"]).T
+        # set number of spatial dimensions as the number of nodes in the brian network
+        self.n = model.params["N"]
+        return self.as_array(duration=model.params["duration"], dt=model.params["dt"])
 
 
-class StimulusInput(ModelInput):
+class Stimulus(Input):
     """
-    Generates stimulus input with optional start and end times.
+    Generates a stimulus with optional start and end times.
     """
 
     def __init__(
         self,
-        stim_start=None,
-        stim_end=None,
-        num_iid=1,
+        start=None,
+        end=None,
+        n=1,
         seed=None,
     ):
         """
-        :param stim_start: start of the stimulus, in milliseconds
-        :type stim_start: float
-        :param stim_end: end of the stimulus, in milliseconds
-        :type stim_end: float
+        :param start: start of the stimulus, in milliseconds
+        :type start: float
+        :param end: end of the stimulus, in milliseconds
+        :type end: float
         """
-        self.stim_start = stim_start
-        self.stim_end = stim_end
-        self._default_stim_start = stim_start
-        self._default_stim_end = stim_end
+        self.start = start
+        self.end = end
+        self._default_start = start
+        self._default_end = end
         super().__init__(
-            num_iid=num_iid,
+            n=n,
             seed=seed,
         )
 
     def _reset(self):
-        self.stim_start = self._default_stim_start
-        self.stim_end = self._default_stim_end
+        self.start = self._default_start
+        self.end = self._default_end
 
     def _get_times(self, duration, dt):
         super()._get_times(duration=duration, dt=dt)
-        self.stim_start = self.stim_start or 0.0
-        self.stim_end = self.stim_end or duration + dt
-        assert self.stim_start < duration
-        assert self.stim_end <= duration + dt
+        self.start = self.start or 0.0
+        self.end = self.end or duration + dt
+        assert self.start < duration
+        assert self.end <= duration + dt
 
-    def _trim_stim_input(self, stim_input):
+    def _trim_stim(self, stim_input):
         """
-        Trim stimulation input. Translate the start of the stimulation by
-        padding with zeros and just nullify end of the stimulation.
+        Trim stimulus. Translate the start of the stimulus by
+        padding the beginning and replace the end with zeros.
         """
         # trim start
-        how_much = int(np.sum(self.times <= self.stim_start))
+        how_much = int(np.sum(self.times <= self.start))
         # translate start of the stim by padding the beginning with zeros
-        stim_input = np.pad(stim_input, ((how_much, 0), (0, 0)), mode="constant")
+        stim_input = np.pad(stim_input, ((0, 0), (how_much, 0)), mode="constant")
         if how_much > 0:
-            stim_input = stim_input[:-how_much, :]
+            stim_input = stim_input[:, :-how_much]
         # trim end
-        stim_input[self.times > self.stim_end] = 0.0
+        stim_input[:, self.times > self.end] = 0.0
         return stim_input
 
 
-class BaseMultipleInputs(StimulusInput):
+class BaseMultipleInputs(Stimulus):
     """
-    Base class for stimuli with multiple inputs. Takes care of parameters et al.
+    Base class for stimuli consisting of multiple time series, such as summed inputs or concatenated inputs.
     """
 
-    def __init__(self, noise_processes):
+    def __init__(self, inputs):
         """
-        :param noise_processes: list of noise/stimulation processes to sum
-        :type noise_processes: list[`ModelInput`]
+        :param inputs: List of Inputs to combine
+        :type inputs: list[`Input`]
         """
-        assert all(isinstance(process, ModelInput) for process in noise_processes)
-        self.noise_processes = noise_processes
+        assert all(isinstance(input, Input) for input in inputs)
+        self.inputs = inputs
 
     def __len__(self):
         """
-        Return length of noise processes.
+        Return number of inputs.
         """
-        return len(self.noise_processes)
+        return len(self.inputs)
 
     def __getitem__(self, index):
         """
-        Return process with index. This also allows iteration.
+        Return inputs by index. This also allows iteration.
         """
-        return self.noise_processes[index]
+        return self.inputs[index]
 
     @property
-    def num_iid(self):
-        num_iid = set([process.num_iid for process in self])
-        assert len(num_iid) == 1
-        return next(iter(num_iid))
+    def n(self):
+        n = set([input.n for input in self])
+        assert len(n) == 1
+        return next(iter(n))
 
-    @num_iid.setter
-    def num_iid(self, num_iid):
-        for process in self:
-            process.num_iid = num_iid
+    @n.setter
+    def n(self, n):
+        for input in self:
+            input.n = n
 
     def get_params(self):
         """
-        Get parameters recursively from all input processes.
+        Get all parameters recursively for all inputs.
         """
         return {
             "type": self.__class__.__name__,
-            **{f"noise_{i}": process.get_params() for i, process in enumerate(self)},
+            **{f"input_{i}": input.get_params() for i, input in enumerate(self)},
         }
 
     def update_params(self, params_dict):
         """
         Update all parameters recursively.
         """
-        for i, process in enumerate(self):
-            process.update_params(params_dict.get(f"noise_{i}", {}))
+        for i, input in enumerate(self):
+            input.update_params(params_dict.get(f"input_{i}", {}))
 
 
-class SummedInput(BaseMultipleInputs):
+class SummedStimulus(BaseMultipleInputs):
     """
-    Represents summation of inputs - typically for stimulus plus noise.
-    Supports summation of arbitrary many objects.
+    Represents the summation of arbitrary many stimuli.
+
+    Example:
+    ```
+        summed_stimulus = SinusoidalInput(...) + OrnsteinUhlenbeckProcess(...)
+    ```
     """
 
     def __add__(self, other):
-        assert isinstance(other, ModelInput)
-        assert self.num_iid == other.num_iid
-        if isinstance(other, SummedInput):
-            return SummedInput(noise_processes=self.noise_processes + other.noise_processes)
+        assert isinstance(other, Input)
+        assert self.n == other.n
+        if isinstance(other, SummedStimulus):
+            return SummedStimulus(inputs=self.inputs + other.inputs)
         else:
-            return SummedInput(noise_processes=self.noise_processes + [other])
+            return SummedStimulus(inputs=self.inputs + [other])
 
     def as_array(self, duration, dt):
         """
-        Return sum of all processes as numpy array.
+        Return sum of all inputes as numpy array.
         """
         return np.sum(
-            np.stack([process.as_array(duration, dt) for process in self.noise_processes]),
+            np.stack([input.as_array(duration, dt) for input in self.inputs]),
             axis=0,
         )
 
     def as_cubic_splines(self, duration, dt, shift_start_time=0.0):
         """
-        Return sum of all processes as cubic Hermite splines.
+        Return sum of all inputes as cubic Hermite splines.
         """
-        result = self.noise_processes[0].as_cubic_splines(duration, dt, shift_start_time)
-        for process in self.noise_processes[1:]:
-            result.plus(process.as_cubic_splines(duration, dt, shift_start_time))
+        result = self.inputs[0].as_cubic_splines(duration, dt, shift_start_time)
+        for input in self.inputs[1:]:
+            result.plus(input.as_cubic_splines(duration, dt, shift_start_time))
         return result
 
 
-class ConcatenatedInput(BaseMultipleInputs):
+class ConcatenatedStimulus(BaseMultipleInputs):
     """
-    Represents concatenation (temporal sense) of inputs. Supports concatenation
-    of arbitrary many objects.
+    Represents temporal concatenation of of arbitrary many stimuli.
+
+    Example:
+    ```
+        summed_stimulus = SinusoidalInput(...) & OrnsteinUhlenbeckProcess(...)
+    ```
     """
 
-    def __init__(self, noise_processes, length_ratios=None):
+    def __init__(self, inputs, length_ratios=None):
         """
-        :param length_ratios: ratios of length of concatenated process
+        :param length_ratios: Ratios of lengths of concatenated stimuli
         :type length_ratios: list[int|float]
         """
         if length_ratios is None:
-            length_ratios = [1] * len(noise_processes)
-        assert len(noise_processes) == len(length_ratios)
+            length_ratios = [1] * len(inputs)
+        assert len(inputs) == len(length_ratios)
         assert all(length > 0 for length in length_ratios)
         self.length_ratios = length_ratios
-        super().__init__(noise_processes)
+        super().__init__(inputs)
 
     def __and__(self, other):
-        assert isinstance(other, ModelInput)
-        assert self.num_iid == other.num_iid
-        if isinstance(other, ConcatenatedInput):
-            return ConcatenatedInput(
-                noise_processes=self.noise_processes + other.noise_processes,
+        assert isinstance(other, Input)
+        assert self.n == other.n
+        if isinstance(other, ConcatenatedStimulus):
+            return ConcatenatedStimulus(
+                inputs=self.inputs + other.inputs,
                 length_ratios=self.length_ratios + other.length_ratios,
             )
         else:
-            return ConcatenatedInput(
-                noise_processes=self.noise_processes + [other], length_ratios=self.length_ratios + [1]
-            )
+            return ConcatenatedStimulus(inputs=self.inputs + [other], length_ratios=self.length_ratios + [1])
 
     def as_array(self, duration, dt):
         """
-        Return concatenation of all processes as numpy array.
+        Return concatenation of all stimuli as numpy array.
         """
         # normalize ratios to sum = 1
         ratios = [i / sum(self.length_ratios) for i in self.length_ratios]
         concat = np.concatenate(
-            [process.as_array(duration * ratio, dt) for process, ratio in zip(self.noise_processes, ratios)],
-            axis=0,
+            [input.as_array(duration * ratio, dt) for input, ratio in zip(self.inputs, ratios)],
+            axis=1,
         )
         length = int(duration / dt)
         # due to rounding errors, the overall length might be longer by a few dt
-        return concat[:length, :]
+        return concat[:, :length]
 
     def as_cubic_splines(self, duration, dt, shift_start_time=0.0):
         # normalize ratios to sum = 1
         ratios = [i / sum(self.length_ratios) for i in self.length_ratios]
-        result = self.noise_processes[0].as_cubic_splines(duration * ratios[0], dt, shift_start_time)
-        for process, ratio in zip(self.noise_processes[1:], ratios[1:]):
+        result = self.inputs[0].as_cubic_splines(duration * ratios[0], dt, shift_start_time)
+        for input, ratio in zip(self.inputs[1:], ratios[1:]):
             last_time = result[-1].time
-            temp = process.as_cubic_splines(duration * ratio, dt, shift_start_time=last_time)
+            temp = input.as_cubic_splines(duration * ratio, dt, shift_start_time=last_time)
             # `extend` adds an iteratable (whole `CubicHermiteSpline` is an
             # iterable of `Anchors`) to the current spline
             result.extend(temp)
         return result
 
 
-class ZeroInput(ModelInput):
+class ZeroInput(Input):
     """
-    No noise input, i.e. all zeros. For convenience.
-    """
-
-    def generate_input(self, duration, dt):
-        self._get_times(duration=duration, dt=dt)
-        return np.zeros((self.times.shape[0], self.num_iid))
-
-
-class WienerProcess(ModelInput):
-    """
-    Basic Wiener process, dW, i.e. drawn from standard normal N(0, sqrt(dt)).
+    No stimulus, i.e. all zeros. Can be used to add a delay between two stimuli.
     """
 
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
-        return np.random.normal(0.0, np.sqrt(dt), (self.times.shape[0], self.num_iid))
+        return np.zeros((self.n, self.times.shape[0]))
 
 
-class OrnsteinUhlenbeckProcess(ModelInput):
+class WienerProcess(Input):
     """
-    Ornstein–Uhlenbeck process, i.e.
+    Stimulus sampled from a Wiener process, i.e. drawn from standard normal distribution N(0, sqrt(dt)).
+    """
+
+    def generate_input(self, duration, dt):
+        self._get_times(duration=duration, dt=dt)
+        return np.random.normal(0.0, np.sqrt(dt), (self.n, self.times.shape[0]))
+
+
+class OrnsteinUhlenbeckProcess(Input):
+    """
+    Ornstein–Uhlenbeck input, i.e.
         dX = (mu - X)/tau * dt + sigma*dW
     """
 
@@ -380,73 +388,73 @@ class OrnsteinUhlenbeckProcess(ModelInput):
         mu,
         sigma,
         tau,
-        num_iid=1,
+        n=1,
         seed=None,
     ):
         """
-        :param mu: drift of the O-U process
+        :param mu: Drift of the OU process
         :type mu: float
-        :param sigma: scale of the Wiener process
+        :param sigma: Standard deviation of the Wiener process, i.e. strength of the noise
         :type sigma: float
-        :param tau: O-U process timescale, same unit as time
+        :param tau: Timescale of the OU process, in ms
         :type tau: float
         """
         self.mu = mu
         self.sigma = sigma
         self.tau = tau
         super().__init__(
-            num_iid=num_iid,
+            n=n,
             seed=seed,
         )
 
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
-        x = np.random.rand(self.times.shape[0], self.num_iid) * self.mu
-        return self.numba_ou(x, self.times, dt, self.mu, self.sigma, self.tau, self.num_iid)
+        x = np.random.rand(self.n, self.times.shape[0]) * self.mu
+        return self.numba_ou(x, self.times, dt, self.mu, self.sigma, self.tau, self.n)
 
     @staticmethod
     @numba.njit()
-    def numba_ou(x, times, dt, mu, sigma, tau, num_iid):
+    def numba_ou(x, times, dt, mu, sigma, tau, n):
         """
-        Generation of Ornstein-Uhlenback process - wrapped in numba's jit for
+        Generation of Ornstein-Uhlenback input - wrapped in numba's jit for
         speed.
         """
         for i in range(times.shape[0] - 1):
-            x[i + 1, :] = x[i, :] + dt * ((mu - x[i, :]) / tau) + sigma * np.sqrt(dt) * np.random.randn(num_iid)
+            x[:, i + 1] = x[:, i] + dt * ((mu - x[:, i]) / tau) + sigma * np.sqrt(dt) * np.random.randn(n)
         return x
 
 
-class StepInput(StimulusInput):
+class StepInput(Stimulus):
     """
-    Basic step process.
+    Step input.
     """
 
     def __init__(
         self,
         step_size,
-        stim_start=None,
-        stim_end=None,
-        num_iid=1,
+        start=None,
+        end=None,
+        n=1,
         seed=None,
     ):
         """
-        :param step_size: size of the stimulus
+        :param step_size: Size of the step, i.e., the amplitude.
         :type step_size: float
         """
         self.step_size = step_size
         super().__init__(
-            stim_start=stim_start,
-            stim_end=stim_end,
-            num_iid=num_iid,
+            start=start,
+            end=end,
+            n=n,
             seed=seed,
         )
 
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
-        return self._trim_stim_input(np.ones((self.times.shape[0], self.num_iid)) * self.step_size)
+        return self._trim_stim(np.ones((self.n, self.times.shape[0])) * self.step_size)
 
 
-class SinusoidalInput(StimulusInput):
+class SinusoidalInput(Stimulus):
     """
     Sinusoidal input.
     """
@@ -454,83 +462,83 @@ class SinusoidalInput(StimulusInput):
     def __init__(
         self,
         amplitude,
-        period,
-        nonnegative=True,
-        stim_start=None,
-        stim_end=None,
-        num_iid=1,
+        frequency,
+        dc_bias=False,
+        start=None,
+        end=None,
+        n=1,
         seed=None,
     ):
         """
-        :param amplitude: amplitude of the sinusoid
+        :param amplitude: Amplitude of the sinusoid.
         :type amplitude: float
-        :param period: period of the sinusoid, in milliseconds
-        :type period: float
-        :param nonnegative: whether the sinusoid oscillates around 0 point
-            (False), or around its amplitude, thus is nonnegative (True)
-        :type nonnegative: bool
+        :param frequency: Frequency of the sinus oscillation, in Hz
+        :type frequency: float
+        :param dc_bias: Whether the sinusoid oscillates around 0
+            (False), or has a positive DC bias, thus non-negative (True).
+        :type dc_bias: bool
         """
         self.amplitude = amplitude
-        self.period = period
-        self.nonnegative = nonnegative
+        self.frequency = frequency
+        self.dc_bias = dc_bias
         super().__init__(
-            stim_start=stim_start,
-            stim_end=stim_end,
-            num_iid=num_iid,
+            start=start,
+            end=end,
+            n=n,
             seed=seed,
         )
 
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
-        sinusoid = self.amplitude * np.sin(2 * np.pi * self.times * (1.0 / self.period))
-        if self.nonnegative:
+        sinusoid = self.amplitude * np.sin(2 * np.pi * self.times * (self.frequency / 1000.0))
+        if self.dc_bias:
             sinusoid += self.amplitude
-        return self._trim_stim_input(np.vstack([sinusoid] * self.num_iid).T)
+        return self._trim_stim(np.vstack([sinusoid] * self.n))
 
 
-class SquareInput(StimulusInput):
+class SquareInput(Stimulus):
     """
-    Square input.
+    Oscillatory square input.
     """
 
     def __init__(
         self,
         amplitude,
-        period,
-        nonnegative=True,
-        stim_start=None,
-        stim_end=None,
-        num_iid=1,
+        frequency,
+        dc_bias=False,
+        start=None,
+        end=None,
+        n=1,
         seed=None,
     ):
         """
-        :param amplitude: amplitude of the square
+        :param amplitude: Amplitude of the square
         :type amplitude: float
-        :param period: period of the square, in milliseconds
-        :type period: float
-        :param nonnegative: whether the square oscillates around 0 point
-            (False), or around its amplitude, thus is nonnegative (True)
-        :type nonnegative: bool
+        :param frequency: Frequency of the square oscillation, in Hz
+        :type frequency: float
+        :param dc_bias: Whether the square oscillates around 0
+            (False), or has a positive DC bias, thus non-negative (True).
+        :type dc_bias: bool
         """
         self.amplitude = amplitude
-        self.period = period
-        self.nonnegative = nonnegative
+        self.frequency = frequency
+        self.dc_bias = dc_bias
         super().__init__(
-            stim_start=stim_start,
-            stim_end=stim_end,
-            num_iid=num_iid,
+            start=start,
+            end=end,
+            n=n,
             seed=seed,
         )
 
     def generate_input(self, duration, dt):
         self._get_times(duration=duration, dt=dt)
-        square_inp = self.amplitude * square(2 * np.pi * self.times * (1.0 / self.period))
-        if self.nonnegative:
+        square_inp = self.amplitude * square(2 * np.pi * self.times * (self.frequency / 1000.0))
+        if self.dc_bias:
             square_inp += self.amplitude
-        return self._trim_stim_input(np.vstack([square_inp] * self.num_iid).T)
+        return self._trim_stim(np.vstack([square_inp] * self.n))
 
 
-class LinearRampInput(StimulusInput):
+class LinearRampInput(Stimulus):
     """
     Linear ramp input.
     """
@@ -539,23 +547,23 @@ class LinearRampInput(StimulusInput):
         self,
         inp_max,
         ramp_length,
-        stim_start=None,
-        stim_end=None,
-        num_iid=1,
+        start=None,
+        end=None,
+        n=1,
         seed=None,
     ):
         """
-        :param inp_max: maximum of stimulus
+        :param inp_max: Maximum of stimulus.
         :type inp_max: float
-        :param ramp_length: length of linear ramp, in milliseconds
+        :param ramp_length: Duration of linear ramp, in milliseconds
         :type ramp_length: float
         """
         self.inp_max = inp_max
         self.ramp_length = ramp_length
         super().__init__(
-            stim_start=stim_start,
-            stim_end=stim_end,
-            num_iid=num_iid,
+            start=start,
+            end=end,
+            n=n,
             seed=seed,
         )
 
@@ -564,10 +572,10 @@ class LinearRampInput(StimulusInput):
         linear_inp = (self.inp_max / self.ramp_length) * self.times * (self.times < self.ramp_length) + self.inp_max * (
             self.times >= self.ramp_length
         )
-        return self._trim_stim_input(np.vstack([linear_inp] * self.num_iid).T)
+        return self._trim_stim(np.vstack([linear_inp] * self.n))
 
 
-class ExponentialInput(StimulusInput):
+class ExponentialInput(Stimulus):
     """
     Exponential rise or decay input.
     """
@@ -577,18 +585,18 @@ class ExponentialInput(StimulusInput):
         inp_max,
         exp_coef=30.0,
         exp_type="rise",
-        stim_start=None,
-        stim_end=None,
-        num_iid=1,
+        start=None,
+        end=None,
+        n=1,
         seed=None,
     ):
         """
-        :param inp_max: maximum of stimulus
+        :param inp_max: Maximum of stimulus.
         :type inp_max: float
-        :param exp_coeficient: coeffiecent for exponential, the higher the
-            coefficient is, the faster it rises or decays
+        :param exp_coeficient: Coeffiecent for the exponential (the higher the
+            coefficient, the faster it rises or decays).
         :type exp_coeficient: float
-        :param exp_type: whether its rise or decay
+        :param exp_type: Whether to "rise" or to "decay".
         :type exp_type: str
         """
         self.inp_max = inp_max
@@ -596,9 +604,9 @@ class ExponentialInput(StimulusInput):
         assert exp_type in ["rise", "decay"]
         self.exp_type = exp_type
         super().__init__(
-            stim_start=stim_start,
-            stim_end=stim_end,
-            num_iid=num_iid,
+            start=start,
+            end=end,
+            n=n,
             seed=seed,
         )
 
@@ -607,34 +615,31 @@ class ExponentialInput(StimulusInput):
         exponential = np.exp(-(self.exp_coef / self.times[-1]) * self.times) * self.inp_max
         if self.exp_type == "rise":
             exponential = -exponential + self.inp_max
-        return self._trim_stim_input(np.vstack([exponential] * self.num_iid).T)
+        return self._trim_stim(np.vstack([exponential] * self.n))
 
 
-def RectifiedInput(amplitude, num_iid=1):
+def RectifiedInput(amplitude, n=1):
     """
-    Return rectified input, i.e. a negative step current, followed by positive
-    exponentially increasing and then slowly decaying amplitude, typically used
-    for bistablity detection.
+    Return rectified input with exponential decay, i.e. a negative step followed by a
+    slow decay to zero, followed by a positive step and again a slow decay to zero.
+    Can be used for bistablity detection.
 
-    :param amplitude: overall amplitude (both negative and positive) for the
-        rectified stimulus
+    :param amplitude: Amplitude (both negative and positive) for the step
     :type amplitude: float
-    :param num_iid: how many independent realisation of
-        the input we want - for constant inputs the array is just copied,
-        for noise this means independent realisation
-    :type num_iid: int
-    :return: concatenated input which represents rectified stimulus
+    :param n: Number of realizations (spatial dimension)
+    :type n: int
+    :return: Concatenated input which represents the rectified stimulus with exponential decay
     :rtype: `ConctatenatedInput`
     """
 
-    return ConcatenatedInput(
+    return ConcatenatedStimulus(
         [
-            StepInput(step_size=-amplitude, num_iid=num_iid),
-            ExponentialInput(inp_max=amplitude, exp_type="rise", exp_coef=12.5, num_iid=num_iid)
-            + StepInput(step_size=-amplitude, num_iid=num_iid),
-            StepInput(step_size=amplitude, num_iid=num_iid),
-            ExponentialInput(amplitude, exp_type="decay", exp_coef=7.5, num_iid=num_iid),
-            StepInput(step_size=0.0, num_iid=num_iid),
+            StepInput(step_size=-amplitude, n=n),
+            ExponentialInput(inp_max=amplitude, exp_type="rise", exp_coef=12.5, n=n)
+            + StepInput(step_size=-amplitude, n=n),
+            StepInput(step_size=amplitude, n=n),
+            ExponentialInput(amplitude, exp_type="decay", exp_coef=7.5, n=n),
+            StepInput(step_size=0.0, n=n),
         ],
         length_ratios=[0.5, 2.5, 0.5, 1.5, 1.0],
     )

@@ -143,7 +143,7 @@ class MultiModel(Model):
             join_func = lambda x: join(*x)
         elif backend == "numba":
             init_func = lambda noise: noise.as_array(duration=self.params["duration"], dt=self.params["dt"])
-            join_func = lambda x: np.hstack(x).T
+            join_func = lambda x: np.hstack(x)
         else:
             raise ValueError(f"Unknown backend {backend}")
         # initialise each noise / stimulation process and join
