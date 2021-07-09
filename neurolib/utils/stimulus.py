@@ -131,7 +131,7 @@ class Input:
         :type shift_start_time: float
         """
         self._get_times(duration, dt)
-        splines = CubicHermiteSpline.from_data(self.times + shift_start_time, self.generate_input(duration, dt))
+        splines = CubicHermiteSpline.from_data(self.times + shift_start_time, self.generate_input(duration, dt).T)
         self._reset()
         return splines
 

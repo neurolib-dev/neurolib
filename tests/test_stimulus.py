@@ -30,26 +30,26 @@ SHAPE = (2, int(DURATION / DT))
 
 
 class TestCubicSplines(unittest.TestCase):
-    RESULT_SPLINES = np.array([-0.05100302, 0.1277721])
-    RESULT_ARRAY = np.array([0.59646435, 0.05520635])
+    RESULT_SPLINES = np.array([-0.214062, -0.215043])
+    RESULT_ARRAY = np.array([0.193429, 0.073445])
 
     def test_splines(self):
         dW = WienerProcess(n=2, seed=42).as_cubic_splines(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(dW, CubicHermiteSpline))
-        np.testing.assert_allclose(self.RESULT_SPLINES, dW.get_state(TESTING_TIME))
+        np.testing.assert_allclose(self.RESULT_SPLINES, dW.get_state(TESTING_TIME), atol=1e-05)
 
     def test_arrays(self):
         dW = WienerProcess(n=2, seed=42).as_array(duration=DURATION, dt=DT)
         self.assertTrue(isinstance(dW, np.ndarray))
         time_idx = np.around(TESTING_TIME / DT).astype(int)
-        np.testing.assert_allclose(self.RESULT_ARRAY, dW[:, time_idx])
+        np.testing.assert_allclose(self.RESULT_ARRAY, dW[:, time_idx], atol=1e-05)
 
     def test_shift_start_time(self):
         SHIFT = 5.0
         dW = WienerProcess(n=2, seed=42).as_cubic_splines(duration=DURATION, dt=DT, shift_start_time=SHIFT)
         self.assertTrue(isinstance(dW, CubicHermiteSpline))
         self.assertEqual(dW[0].time, SHIFT + DT)
-        np.testing.assert_allclose(self.RESULT_SPLINES, dW.get_state(TESTING_TIME + SHIFT))
+        np.testing.assert_allclose(self.RESULT_SPLINES, dW.get_state(TESTING_TIME + SHIFT), atol=1e-05)
 
 
 class TestToModel(unittest.TestCase):
