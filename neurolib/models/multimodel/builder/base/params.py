@@ -17,7 +17,7 @@ def count_float_params(param_dict):
             k: v
             for k, v in param_dict.items()
             if isinstance(v, (int, float))
-            if not any(["noise" in sp for sp in k.split(".")])
+            if not any(["input" in sp for sp in k.split(".")])
         }
     )
 
@@ -38,7 +38,7 @@ def float_params_to_vector_symbolic(param_dict):
     symbol_dict = {}
     for k, v in param_dict.items():
         splitted_key = k.split(".")
-        if any(["noise" in sp for sp in splitted_key]):
+        if any(["input" in sp for sp in splitted_key]):
             continue
         if isinstance(v, (float, int)):
             symbol_dict[k] = param_vec[cnt, 0]
@@ -59,7 +59,7 @@ def float_params_to_individual_symbolic(param_dict):
     symbol_dict = {}
     for k, v in param_dict.items():
         splitted_key = k.split(".")
-        if any(["noise" in sp for sp in splitted_key]):
+        if any(["input" in sp for sp in splitted_key]):
             continue
         if isinstance(v, (float, int)):
             symbol_dict[k] = sp.Symbol(k.replace(".", "DOT"))
