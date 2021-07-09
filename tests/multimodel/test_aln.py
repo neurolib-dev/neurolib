@@ -25,7 +25,7 @@ from neurolib.models.multimodel.builder.base.constants import EXC
 from neurolib.utils.stimulus import ZeroInput
 
 # these keys do not test since they are rescaled on the go
-PARAMS_NOT_TEST_KEYS = ["c_gl", "taum", "noise_0"]
+PARAMS_NOT_TEST_KEYS = ["c_gl", "taum", "input_0"]
 
 
 def _strip_keys(dict_test, strip_keys=PARAMS_NOT_TEST_KEYS):

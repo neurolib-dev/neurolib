@@ -64,8 +64,8 @@ class TestWilsonCowanMass(MassTestCase):
         wc_inh = self._create_inh_mass()
         self.assertTrue(isinstance(wc_exc, ExcitatoryWilsonCowanMass))
         self.assertTrue(isinstance(wc_inh, InhibitoryWilsonCowanMass))
-        self.assertDictEqual({k: v for k, v in wc_exc.params.items() if "noise" not in k}, WC_EXC_DEFAULT_PARAMS)
-        self.assertDictEqual({k: v for k, v in wc_inh.params.items() if "noise" not in k}, WC_INH_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in wc_exc.params.items() if "input" not in k}, WC_EXC_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in wc_inh.params.items() if "input" not in k}, WC_INH_DEFAULT_PARAMS)
         for wc in [wc_exc, wc_inh]:
             coupling_variables = {k: 0.0 for k in wc.required_couplings}
             self.assertEqual(len(wc._derivatives(coupling_variables)), wc.num_state_variables)
@@ -93,8 +93,8 @@ class TestWilsonCowanNode(unittest.TestCase):
         wc = self._create_node()
         self.assertTrue(isinstance(wc, WilsonCowanNode))
         self.assertEqual(len(wc), 2)
-        self.assertDictEqual({k: v for k, v in wc[0].params.items() if "noise" not in k}, WC_EXC_DEFAULT_PARAMS)
-        self.assertDictEqual({k: v for k, v in wc[1].params.items() if "noise" not in k}, WC_INH_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in wc[0].params.items() if "input" not in k}, WC_EXC_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in wc[1].params.items() if "input" not in k}, WC_INH_DEFAULT_PARAMS)
         self.assertEqual(len(wc.default_network_coupling), 2)
         np.testing.assert_equal(
             np.array(sum([wcm.initial_state for wcm in wc], [])),
