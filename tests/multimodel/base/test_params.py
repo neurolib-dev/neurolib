@@ -15,7 +15,7 @@ from neurolib.models.multimodel.builder.base.params import (
 
 class TestSymbolicParams(unittest.TestCase):
     def test_count_float_params(self):
-        DICT_IN = {"a": 40.0, "b": 15, "conn": np.random.rand(4, 4), "a.noise": 12.5}
+        DICT_IN = {"a": 40.0, "b": 15, "conn": np.random.rand(4, 4), "a.input": 12.5}
         length = count_float_params(DICT_IN)
         self.assertEqual(length, 2)
 

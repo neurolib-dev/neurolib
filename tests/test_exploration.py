@@ -181,7 +181,7 @@ class TestExplorationMultiModel(unittest.TestCase):
         DELAY = 13.0
         fhn_net = FitzHughNagumoNetwork(np.random.rand(2, 2), np.array([[0.0, DELAY], [DELAY, 0.0]]))
         model = MultiModel(fhn_net)
-        parameters = ParameterSpace({"*noise*sigma": [0.0, 0.05], "*epsilon*": [0.5, 0.6]}, allow_star_notation=True)
+        parameters = ParameterSpace({"*input*sigma": [0.0, 0.05], "*epsilon*": [0.5, 0.6]}, allow_star_notation=True)
         search = BoxSearch(model, parameters, filename="test_multimodel.hdf")
         search.run()
         search.loadResults()
