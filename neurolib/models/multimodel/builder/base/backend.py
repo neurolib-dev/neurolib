@@ -218,7 +218,7 @@ def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
         """
         all_params = set()
         for k, v in symbol_params.items():
-            if "noise" in k:
+            if "input" in k:
                 continue
             if isinstance(v, sp.Symbol):
                 # extract symbols from sympy expressions
@@ -243,7 +243,7 @@ def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
         dct = {}
         for (k_sym, v_sym), (k_fl, v_fl) in zip(symbol_params.items(), float_params.items()):
             assert k_sym == k_fl
-            if "noise" in k_sym:
+            if "input" in k_sym:
                 continue
             if isinstance(v_sym, sp.Symbol):
                 dct[str(v_sym)] = v_fl
@@ -314,6 +314,7 @@ def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
         assert callable(integrate)
         # run the numba-jitted function
         times = np.arange(dt, duration + dt, dt)
+        assert times.shape[0] == noise_input.shape[1]
         logging.info(f"Integrating for {times.shape[0]} time steps...")
         max_delay_dt = np.around(self.max_delay / dt).astype(int)
         init_state = self.initial_state

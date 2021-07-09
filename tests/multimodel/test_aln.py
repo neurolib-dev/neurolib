@@ -25,7 +25,7 @@ from neurolib.models.multimodel.builder.base.constants import EXC
 from neurolib.utils.stimulus import ZeroInput
 
 # these keys do not test since they are rescaled on the go
-PARAMS_NOT_TEST_KEYS = ["c_gl", "taum", "noise_0"]
+PARAMS_NOT_TEST_KEYS = ["c_gl", "taum", "input_0"]
 
 
 def _strip_keys(dict_test, strip_keys=PARAMS_NOT_TEST_KEYS):
@@ -41,7 +41,7 @@ NEUROLIB_VARIABLES_TO_TEST = [("r_mean_EXC", "rates_exc"), ("r_mean_INH", "rates
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
     "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
-    "numba": lambda x, d, dt: x.as_array(d, dt).T,
+    "numba": lambda x, d, dt: x.as_array(d, dt),
 }
 
 
@@ -111,7 +111,7 @@ class TestALNCallbacks(unittest.TestCase):
 class ALNMassTestCase(unittest.TestCase):
     def _run_node(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(num_iid=node.num_noise_variables).as_cubic_splines(duration, dt)
+        noise = ZeroInput(n=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(
             node._derivatives(coupling_variables),
             input=noise,
