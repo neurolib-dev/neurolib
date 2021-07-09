@@ -314,6 +314,7 @@ def integrate(dt, system_size, max_delay, t_max, y0, input_y, {params}):
         assert callable(integrate)
         # run the numba-jitted function
         times = np.arange(dt, duration + dt, dt)
+        assert times.shape[0] == noise_input.shape[1]
         logging.info(f"Integrating for {times.shape[0]} time steps...")
         max_delay_dt = np.around(self.max_delay / dt).astype(int)
         init_state = self.initial_state
