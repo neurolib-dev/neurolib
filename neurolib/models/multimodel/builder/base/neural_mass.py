@@ -170,7 +170,7 @@ class NeuralMass:
         if self.noise_input_idx is None:
             self.noise_input_idx = [start_idx_for_noise + i for i in range(self.num_noise_variables)]
         assert len(self.noise_input) == self.num_noise_variables
-        assert all(isinstance(noise_process, ModelInput) for noise_process in self.noise_input), self.noise_input
+        assert all(isinstance(noise_process, Input) for noise_process in self.noise_input), self.noise_input
         self._get_params_from_noise()
         self.initialised = True
 
