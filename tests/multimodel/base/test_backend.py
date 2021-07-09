@@ -103,7 +103,7 @@ class TestNumbaBackend(unittest.TestCase):
         backend = NumbaBackend()
         symbol_params = {
             "node1.mass1.a": sp.Symbol("a"),
-            "node1.mass1.noise.a": sp.Symbol("noise_a"),
+            "node1.mass1.input.a": sp.Symbol("input_a"),
             "node1.connectivity": np.array([[sp.Symbol("conn11"), sp.Symbol("conn12")]]),
         }
         should_be = set([sp.Symbol("conn11"), sp.Symbol("conn12"), sp.Symbol("a")])
@@ -114,12 +114,12 @@ class TestNumbaBackend(unittest.TestCase):
         backend = NumbaBackend()
         symbol_params = {
             "node1.mass1.a": sp.Symbol("a"),
-            "node1.mass1.noise.a": sp.Symbol("noise_a"),
+            "node1.mass1.input.a": sp.Symbol("input_a"),
             "node1.connectivity": np.array([[sp.Symbol("conn11"), sp.Symbol("conn12")]]),
         }
         float_params = {
             "node1.mass1.a": 12.0,
-            "node1.mass1.noise.a": 19 / 7.0,
+            "node1.mass1.input.a": 19 / 7.0,
             "node1.connectivity": np.array([[4.3, 3.4]]),
         }
         should_be = {"a": 12.0, "conn11": 4.3, "conn12": 3.4}

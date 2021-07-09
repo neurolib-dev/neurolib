@@ -20,14 +20,14 @@ NEUROLIB_VARIABLES_TO_TEST = ["x", "y"]
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
     "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
-    "numba": lambda x, d, dt: x.as_array(d, dt).T,
+    "numba": lambda x, d, dt: x.as_array(d, dt),
 }
 
 
 class MassTestCase(unittest.TestCase):
     def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(num_iid=node.num_noise_variables).as_cubic_splines(duration, dt)
+        noise = ZeroInput(n=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()
@@ -46,7 +46,7 @@ class TestHopfMass(MassTestCase):
     def test_init(self):
         hopf = self._create_mass()
         self.assertTrue(isinstance(hopf, HopfMass))
-        self.assertDictEqual({k: v for k, v in hopf.params.items() if "noise" not in k}, HOPF_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in hopf.params.items() if "input" not in k}, HOPF_DEFAULT_PARAMS)
         coupling_variables = {k: 0.0 for k in hopf.required_couplings}
         self.assertEqual(len(hopf._derivatives(coupling_variables)), hopf.num_state_variables)
         self.assertEqual(len(hopf.initial_state), hopf.num_state_variables)
@@ -71,7 +71,7 @@ class TestHopfNode(unittest.TestCase):
         hopf = self._create_node()
         self.assertTrue(isinstance(hopf, HopfNode))
         self.assertEqual(len(hopf), 1)
-        self.assertDictEqual({k: v for k, v in hopf[0].params.items() if "noise" not in k}, HOPF_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in hopf[0].params.items() if "input" not in k}, HOPF_DEFAULT_PARAMS)
         self.assertEqual(len(hopf.default_network_coupling), 2)
         np.testing.assert_equal(np.array(hopf[0].initial_state), hopf.initial_state)
 

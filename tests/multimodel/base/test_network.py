@@ -129,12 +129,12 @@ class TestNode(unittest.TestCase):
         self.assertFalse(node.are_params_floats)
         self.assertDictEqual(orig_params, node.float_params)
         for k, v in node[0].params.items():
-            if "noise" in k:
+            if "input" in k:
                 continue
             self.assertTrue(isinstance(v, sp.Symbol))
 
         for k, v in node[1].params.items():
-            if "noise" in k:
+            if "input" in k:
                 continue
             self.assertTrue(isinstance(v, sp.Symbol))
 
@@ -250,12 +250,12 @@ class TestSingleCouplingExcitatoryInhibitoryNode(unittest.TestCase):
         node.make_params_symbolic(vector=False)
         self.assertFalse(node.are_params_floats)
         for k, v in node[0].params.items():
-            if "noise" in k:
+            if "input" in k:
                 continue
             self.assertTrue(isinstance(v, sp.Symbol))
 
         for k, v in node[1].params.items():
-            if "noise" in k:
+            if "input" in k:
                 continue
             self.assertTrue(isinstance(v, sp.Symbol))
 

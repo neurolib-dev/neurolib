@@ -30,14 +30,14 @@ NEUROLIB_VARIABLES_TO_TEST = [
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
     "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
-    "numba": lambda x, d, dt: x.as_array(d, dt).T,
+    "numba": lambda x, d, dt: x.as_array(d, dt),
 }
 
 
 class MassTestCase(unittest.TestCase):
     def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(num_iid=node.num_noise_variables).as_cubic_splines(duration, dt)
+        noise = ZeroInput(n=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()
@@ -65,8 +65,8 @@ class TestThalamicMass(MassTestCase):
         trn = self._create_trn_mass()
         self.assertTrue(isinstance(tcr, ThalamocorticalMass))
         self.assertTrue(isinstance(trn, ThalamicReticularMass))
-        self.assertDictEqual({k: v for k, v in tcr.params.items() if "noise" not in k}, TCR_DEFAULT_PARAMS)
-        self.assertDictEqual({k: v for k, v in trn.params.items() if "noise" not in k}, TRN_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in tcr.params.items() if "input" not in k}, TCR_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in trn.params.items() if "input" not in k}, TRN_DEFAULT_PARAMS)
         for thlm in [tcr, trn]:
             coupling_variables = {k: 0.0 for k in thlm.required_couplings}
             self.assertEqual(
@@ -97,8 +97,8 @@ class TestThalamicNode(unittest.TestCase):
         thlm = self._create_node()
         self.assertTrue(isinstance(thlm, ThalamicNode))
         self.assertEqual(len(thlm), 2)
-        self.assertDictEqual({k: v for k, v in thlm[0].params.items() if "noise" not in k}, TCR_DEFAULT_PARAMS)
-        self.assertDictEqual({k: v for k, v in thlm[1].params.items() if "noise" not in k}, TRN_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in thlm[0].params.items() if "input" not in k}, TCR_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in thlm[1].params.items() if "input" not in k}, TRN_DEFAULT_PARAMS)
         self.assertEqual(len(thlm.default_network_coupling), 2)
         np.testing.assert_equal(
             np.array(sum([thlmm.initial_state for thlmm in thlm], [])),

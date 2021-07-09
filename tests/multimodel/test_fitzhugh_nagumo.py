@@ -25,14 +25,14 @@ NEUROLIB_VARIABLES_TO_TEST = ["x", "y"]
 # dictionary as backend name: format in which the noise is passed
 BACKENDS_TO_TEST = {
     "jitcdde": lambda x, d, dt: x.as_cubic_splines(d, dt),
-    "numba": lambda x, d, dt: x.as_array(d, dt).T,
+    "numba": lambda x, d, dt: x.as_array(d, dt),
 }
 
 
 class MassTestCase(unittest.TestCase):
     def _run_mass(self, node, duration, dt):
         coupling_variables = {k: 0.0 for k in node.required_couplings}
-        noise = ZeroInput(num_iid=node.num_noise_variables).as_cubic_splines(duration, dt)
+        noise = ZeroInput(n=node.num_noise_variables).as_cubic_splines(duration, dt)
         system = jitcdde_input(node._derivatives(coupling_variables), input=noise)
         system.constant_past(np.array(node.initial_state))
         system.adjust_diff()
@@ -51,7 +51,7 @@ class TestFitzHughNagumoMass(MassTestCase):
     def test_init(self):
         fhn = self._create_mass()
         self.assertTrue(isinstance(fhn, FitzHughNagumoMass))
-        self.assertDictEqual({k: v for k, v in fhn.params.items() if "noise" not in k}, FHN_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in fhn.params.items() if "input" not in k}, FHN_DEFAULT_PARAMS)
         coupling_variables = {k: 0.0 for k in fhn.required_couplings}
         self.assertEqual(len(fhn._derivatives(coupling_variables)), fhn.num_state_variables)
         self.assertEqual(len(fhn.initial_state), fhn.num_state_variables)
@@ -76,7 +76,7 @@ class TestFitzHughNagumoNode(unittest.TestCase):
         fhn = self._create_node()
         self.assertTrue(isinstance(fhn, FitzHughNagumoNode))
         self.assertEqual(len(fhn), 1)
-        self.assertDictEqual({k: v for k, v in fhn[0].params.items() if "noise" not in k}, FHN_DEFAULT_PARAMS)
+        self.assertDictEqual({k: v for k, v in fhn[0].params.items() if "input" not in k}, FHN_DEFAULT_PARAMS)
         self.assertEqual(len(fhn.default_network_coupling), 2)
         np.testing.assert_equal(np.array(fhn[0].initial_state), fhn.initial_state)
 
