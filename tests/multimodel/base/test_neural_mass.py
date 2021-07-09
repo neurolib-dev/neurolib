@@ -49,7 +49,7 @@ class TestNeuralMass(unittest.TestCase):
         self.assertDictEqual(self.PARAMS, mass.params)
 
     def test_update_params(self):
-        UPDATE_WITH = {"a": 2.4, "noise_0": {"seed": 12}}
+        UPDATE_WITH = {"a": 2.4, "input_0": {"seed": 12}}
 
         mass = MassTest(self.PARAMS)
         mass.index = 0
@@ -57,7 +57,7 @@ class TestNeuralMass(unittest.TestCase):
         self.assertEqual(mass.params["a"], self.PARAMS["a"])
         mass.update_params(UPDATE_WITH)
         self.assertEqual(mass.params["a"], UPDATE_WITH["a"])
-        self.assertEqual(mass.params["noise_0"]["seed"], UPDATE_WITH["noise_0"]["seed"])
+        self.assertEqual(mass.params["input_0"]["seed"], UPDATE_WITH["input_0"]["seed"])
 
     def test_init_mass(self):
         mass = MassTest(self.PARAMS)

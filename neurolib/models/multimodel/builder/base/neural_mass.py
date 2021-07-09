@@ -176,7 +176,7 @@ class NeuralMass:
 
     def _get_params_from_noise(self):
         for i, noise_process in enumerate(self.noise_input):
-            self.params[f"noise_{i}"] = noise_process.get_params()
+            self.params[f"input_{i}"] = noise_process.get_params()
 
     def update_params(self, params_dict, **kwargs):
         """
@@ -190,7 +190,7 @@ class NeuralMass:
         # validate again
         self._validate_params()
         for i, noise_process in enumerate(self.noise_input):
-            noise_process.update_params(params_dict.get(f"noise_{i}", {}))
+            noise_process.update_params(params_dict.get(f"input_{i}", {}))
         # update noise params
         self._get_params_from_noise()
 
