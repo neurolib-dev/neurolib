@@ -281,6 +281,8 @@ class BoxSearch:
         """
         model = self.model
         runParams = self.getParametersFromTraj(traj)
+        if self.parameterSpace.star:
+            runParams = flatten_nested_dict(flat_dict_to_nested(runParams)["parameters"])
 
         model.params.update(runParams)
         return model
