@@ -80,9 +80,20 @@ class Input:
         :param params_dict: New parameters for this input
         :type params_dict: dict
         """
+
+        def _sanitize(value):
+            """
+            Change string `None` to actual None - can happen with Exploration or
+            Evolution, since `pypet` does None -> "None".
+            """
+            if value == "None":
+                return None
+            else:
+                return value
+
         for param, value in params_dict.items():
             if hasattr(self, param):
-                setattr(self, param, value)
+                setattr(self, param, _sanitize(value))
 
     def _get_times(self, duration, dt):
         """
