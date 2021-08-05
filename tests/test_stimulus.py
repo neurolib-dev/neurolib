@@ -238,7 +238,7 @@ class TestSinusoidalInput(unittest.TestCase):
             n=2,
             seed=42,
         )
-        UPDATE = {"amplitude": 43.0, "seed": 12}
+        UPDATE = {"amplitude": 43.0, "seed": 12, "start": "None"}
         sin.update_params(UPDATE)
         params = sin.get_params()
         params.pop("type")
@@ -249,10 +249,10 @@ class TestSinusoidalInput(unittest.TestCase):
                 "seed": 42,
                 "frequency": self.FREQUENCY,
                 "amplitude": self.AMPLITUDE,
-                "start": STIM_START,
                 "dc_bias": False,
                 "end": STIM_END,
                 **UPDATE,
+                "start": None,
             },
         )
 
@@ -318,7 +318,7 @@ class TestSquareInput(unittest.TestCase):
             n=2,
             seed=42,
         )
-        UPDATE = {"amplitude": 43.0, "seed": 12}
+        UPDATE = {"amplitude": 43.0, "seed": 12, "start": "None"}
         sq.update_params(UPDATE)
         params = sq.get_params()
         params.pop("type")
@@ -329,10 +329,10 @@ class TestSquareInput(unittest.TestCase):
                 "seed": 42,
                 "frequency": self.FREQUENCY,
                 "amplitude": self.AMPLITUDE,
-                "start": STIM_START,
                 "end": STIM_END,
                 "dc_bias": False,
                 **UPDATE,
+                "start": None,
             },
         )
 
