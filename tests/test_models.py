@@ -225,6 +225,8 @@ class TestMultiModel(unittest.TestCase):
         self.assertTrue(isinstance(model.params, star_dotdict))
         self.assertTrue(model.integration is None)
         self.assertEqual(model.start_t, 0.0)
+        self.assertEqual(model.num_noise_variables, 4)
+        self.assertEqual(model.num_state_variables, 4)
         max_delay = int(DELAY / model.params["dt"])
         self.assertEqual(model.getMaxDelay(), max_delay)
 
