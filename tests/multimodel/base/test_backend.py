@@ -8,7 +8,6 @@ import unittest
 from copy import deepcopy
 from shutil import rmtree
 
-import numba
 import numpy as np
 import pytest
 import symengine as se
@@ -308,6 +307,23 @@ class TestBackendIntegrator(unittest.TestCase):
         )
         self.assertTrue(all(dim in results.dims for dim in ["time", "node"]))
         self.assertDictEqual(results.attrs, self.EXTRA_ATTRS)
+
+    def test_run_both(self):
+        system = BackendTestingHelper()
+        results_numba = system.run(
+            self.DURATION,
+            self.DT,
+            ZeroInput().as_array(self.DURATION, self.DT),
+            backend="numba",
+        )
+        results_jitcdde = system.run(
+            self.DURATION,
+            self.DT,
+            ZeroInput().as_cubic_splines(self.DURATION, self.DT),
+            backend="jitcdde",
+        )
+        self.assertTrue(isinstance(results_jitcdde, xr.Dataset))
+        self.assertTrue(isinstance(results_numba, xr.Dataset))
 
     def test_save_pickle(self):
         """
