@@ -94,6 +94,14 @@ class MultiModel(Model):
         self.model_instance.update_params(flat_dict_to_nested(params_to_update))
 
     @property
+    def num_noise_variables(self):
+        return self.model_instance.num_noise_variables
+
+    @property
+    def num_state_variables(self):
+        return self.model_instance.num_state_variables
+
+    @property
     def noise_input(self):
         return self.model_instance.noise_input
 
