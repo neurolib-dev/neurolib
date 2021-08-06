@@ -93,6 +93,17 @@ class MultiModel(Model):
         params_to_update = {k: v for k, v in self.params.items() if self.model_instance.label in k}
         self.model_instance.update_params(flat_dict_to_nested(params_to_update))
 
+    @property
+    def noise_input(self):
+        return self.model_instance.noise_input
+
+    @noise_input.setter
+    def noise_input(self, new_noise):
+        self.model_instance.noise_input = new_noise
+        # re-set the model params
+        new_model_params = flatten_nested_dict(self.model_instance.get_nested_params())
+        self.params.update(new_model_params)
+
     def run(
         self,
         chunkwise=False,
