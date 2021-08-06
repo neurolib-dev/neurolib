@@ -394,7 +394,7 @@ class JitcddeBackend(BaseBackend):
             verbose=False,
         )
 
-    def _set_constant_past(self, past_state):
+    def _set_constant_past(self, past_state, squeeze=False):
         """
         Sets past of the delayed system with a constant vector. This usually
         means that `past_state` is 1D vector of length `num_state_variables`.
@@ -404,7 +404,10 @@ class JitcddeBackend(BaseBackend):
         :param past_state: vector of past states of length `num_state_variables`
         :type past_state: np.ndarray
         """
-        self.dde_system.constant_past(past_state)
+        if squeeze:
+            self.dde_system.constant_past(past_state.squeeze())
+        else:
+            self.dde_system.constant_past(past_state)
         self.dde_system.adjust_diff()
 
     def _set_past_from_vector(self, past_state, dt):
@@ -423,7 +426,6 @@ class JitcddeBackend(BaseBackend):
         """
         derivatives = np.hstack([np.zeros((past_state.shape[0], 1)), np.diff(past_state, axis=1)])
         assert derivatives.shape == past_state.shape
-        print(past_state.shape)
         for t in range(past_state.shape[1]):
             self.dde_system.add_past_point(-t * dt, past_state[:, -t], derivatives[:, -t])
         self.dde_system.adjust_diff()
@@ -466,8 +468,10 @@ class JitcddeBackend(BaseBackend):
         self.dde_system.purge_past()
         self.dde_system.reset_integrator()
         logging.info("Setting past of the state vector...")
-        if self.initial_state.squeeze().ndim == 1:
-            self._set_constant_past(self.initial_state.squeeze())
+        if self.initial_state.ndim == 1:
+            self._set_constant_past(self.initial_state)
+        elif self.initial_state.shape[1] == 1:
+            self._set_constant_past(self.initial_state, squeeze=True)
         else:
             self._set_past_from_vector(self.initial_state, dt)
         # integrate
@@ -550,7 +554,27 @@ class BackendIntegrator:
         assert self.initialised, "Model must be initialised"
         assert isinstance(noise_input, (CubicHermiteSpline, np.ndarray))
 
-        if (self.backend_instance is None) or (self.backend_instance.backend_name != backend):
+        def _check_backend_init():
+            # if backend was never initialized -> init and compile
+            if self.backend_instance is None:
+                return True
+            # if user wants different backend -> init other backend
+            if self.backend_instance.backend_name != backend:
+                return True
+            # if symbol_params exists (i.e. we used numba backend before)
+            if self.symbol_params is not None:
+                # set on dict gets the set of dict's keys
+                existing_params = set(flatten_nested_dict(self.symbol_params))
+                new_params = set(flatten_nested_dict(self.get_nested_params()))
+                # if the keys differ (i.e. parameter keys changed) -> recompile
+                # set - set produces an intersection and if empty, then bool(<empty set>) = False
+                # if not empty then bool(<set>) = True
+                if bool(existing_params - new_params):
+                    return True
+
+            return False
+
+        if _check_backend_init():
             logging.info(f"Initialising {backend} backend...")
             if backend == "jitcdde":
                 self._init_jitcdde_backend()
