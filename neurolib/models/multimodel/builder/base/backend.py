@@ -423,6 +423,7 @@ class JitcddeBackend(BaseBackend):
         """
         derivatives = np.hstack([np.zeros((past_state.shape[0], 1)), np.diff(past_state, axis=1)])
         assert derivatives.shape == past_state.shape
+        print(past_state.shape)
         for t in range(past_state.shape[1]):
             self.dde_system.add_past_point(-t * dt, past_state[:, -t], derivatives[:, -t])
         self.dde_system.adjust_diff()
@@ -465,8 +466,8 @@ class JitcddeBackend(BaseBackend):
         self.dde_system.purge_past()
         self.dde_system.reset_integrator()
         logging.info("Setting past of the state vector...")
-        if self.initial_state.ndim == 1:
-            self._set_constant_past(self.initial_state)
+        if self.initial_state.squeeze().ndim == 1:
+            self._set_constant_past(self.initial_state.squeeze())
         else:
             self._set_past_from_vector(self.initial_state, dt)
         # integrate
@@ -561,6 +562,9 @@ class BackendIntegrator:
         if isinstance(self.backend_instance, NumbaBackend):
             assert self.are_params_floats
             self.float_params = deepcopy(self.get_nested_params())
+
+        # update initial state
+        self.backend_instance.initial_state = self.initial_state.copy()
         times, result = self.backend_instance.run(
             duration=duration,
             dt=dt,
