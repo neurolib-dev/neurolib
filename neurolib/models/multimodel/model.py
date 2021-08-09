@@ -59,6 +59,8 @@ class MultiModel(Model):
         self.boldInitialized = False
         self.params["sampling_dt"] = self.params["sampling_dt"] or self.params["dt"]
 
+        self.start_t = 0.0
+
         logging.info(f"{self.name}: Model initialized.")
 
     def _set_model_params(self):
@@ -91,6 +93,25 @@ class MultiModel(Model):
         params_to_update = {k: v for k, v in self.params.items() if self.model_instance.label in k}
         self.model_instance.update_params(flat_dict_to_nested(params_to_update))
 
+    @property
+    def num_noise_variables(self):
+        return self.model_instance.num_noise_variables
+
+    @property
+    def num_state_variables(self):
+        return self.model_instance.num_state_variables
+
+    @property
+    def noise_input(self):
+        return self.model_instance.noise_input
+
+    @noise_input.setter
+    def noise_input(self, new_noise):
+        self.model_instance.noise_input = new_noise
+        # re-set the model params
+        new_model_params = flatten_nested_dict(self.model_instance.get_nested_params())
+        self.params.update(new_model_params)
+
     def run(
         self,
         chunkwise=False,
@@ -116,8 +137,7 @@ class MultiModel(Model):
         if chunkwise is False:
             self.integrate(append_outputs=append, simulate_bold=bold, noise_input=noise_input)
             if continue_run:
-                raise NotImplementedError("for now")
-                # self.setInitialValuesToLastState()
+                self.setInitialValuesToLastState()
 
         else:
             if chunksize is None:
@@ -182,13 +202,31 @@ class MultiModel(Model):
         if simulate_bold and self.boldInitialized:
             self.simulateBold(result[self.default_output].values.T, append=True)
 
+    def setInitialValuesToLastState(self):
+        # set start t for next run for the last value now
+        self.start_t = self.t[-1]
+        new_initial_state = np.zeros((self.model_instance.initial_state.shape[0], self.maxDelay + 1))
+        total_vars_counter = 0
+        for node_idx, node_vars in enumerate(self.state_vars):
+            for var in node_vars:
+                new_initial_state[total_vars_counter, :] = self.state[var][node_idx, :]
+                total_vars_counter += 1
+        # set initial state
+        self.model_instance.initial_state = new_initial_state
+
+    def clearModelState(self):
+        # set start_t to zero again
+        self.start_t = 0.0
+        # `clearModelState` as per base class
+        super().clearModelState()
+
     def integrateChunkwise(self, chunksize, bold, append_outputs):
         raise NotImplementedError("for now...")
 
     def storeOutputsAndStates(self, results, append):
         # save time array
-        self.setOutput("t", results.time.values, append=append, removeICs=False)
-        self.setStateVariables("t", results.time.values)
+        self.setOutput("t", results.time.values + self.start_t, append=append, removeICs=False)
+        self.setStateVariables("t", results.time.values + self.start_t)
         # save outputs
         for variable in results:
             if variable in self.output_vars:
