@@ -214,6 +214,12 @@ class MultiModel(Model):
         # set initial state
         self.model_instance.initial_state = new_initial_state
 
+    def clearModelState(self):
+        # set start_t to zero again
+        self.start_t = 0.0
+        # `clearModelState` as per base class
+        super().clearModelState()
+
     def integrateChunkwise(self, chunksize, bold, append_outputs):
         raise NotImplementedError("for now...")
 

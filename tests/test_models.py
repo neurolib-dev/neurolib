@@ -312,13 +312,17 @@ class TestMultiModel(unittest.TestCase):
         last_x = model.state["x"][:, -model.maxDelay - 1 :]
         last_y = model.state["y"][:, -model.maxDelay - 1 :]
         # assert last state is initial state now
+        self.assertEqual(model.start_t, last_t)
         np.testing.assert_equal(last_x.squeeze(), model.model_instance.initial_state[0, :])
         np.testing.assert_equal(last_y.squeeze(), model.model_instance.initial_state[1, :])
         # change noise - just to make things more interesting
         model.noise_input = [ZeroInput()] * model.model_instance.num_noise_variables
-        model.run()
+        model.run(continue_run=True)
         # assert continuous time
         self.assertAlmostEqual(model.t[0] - last_t, model.params["dt"] / 1000.0)
+        # assert start_t is reset to 0, when continue_run=False
+        model.run()
+        self.assertEqual(model.start_t, 0.0)
 
     def test_continue_run_network(self):
         DELAY = 13.0
@@ -332,13 +336,17 @@ class TestMultiModel(unittest.TestCase):
         last_x = model.state["x"][:, -model.maxDelay - 1 :]
         last_y = model.state["y"][:, -model.maxDelay - 1 :]
         # assert last state is initial state now
+        self.assertEqual(model.start_t, last_t)
         np.testing.assert_equal(last_x, model.model_instance.initial_state[[0, 2], :])
         np.testing.assert_equal(last_y, model.model_instance.initial_state[[1, 3], :])
         # change noise - just to make things more interesting
         model.noise_input = [ZeroInput()] * model.model_instance.num_noise_variables
-        model.run()
+        model.run(continue_run=True)
         # assert continuous time
         self.assertAlmostEqual(model.t[0] - last_t, model.params["dt"] / 1000.0)
+        # assert start_t is reset to 0, when continue_run=False
+        model.run()
+        self.assertEqual(model.start_t, 0.0)
 
 
 if __name__ == "__main__":
