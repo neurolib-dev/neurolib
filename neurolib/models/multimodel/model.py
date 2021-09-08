@@ -116,8 +116,11 @@ class MultiModel(Model):
 
     @noise_input.setter
     def noise_input(self, new_noise):
+        # first - update model params to save any changes
+        self._update_model_params()
+        # change the noise in the model instance
         self.model_instance.noise_input = new_noise
-        # re-set the model params
+        # re-set the model params - to write new noise params into self.params
         self._sync_model_params()
 
     def run(
