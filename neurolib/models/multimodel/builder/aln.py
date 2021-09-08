@@ -818,8 +818,10 @@ class ALNNode(SingleCouplingExcitatoryInhibitoryNode):
         """
         Rescale connectivity after params update if connectivity was updated.
         """
-        rescale_flag = "local_connectivity" in params_dict
+        old_connectivity = self.connectivity.copy()
         super().update_params(params_dict)
+        # rescale when connectivity matrix is different
+        rescale_flag = not (self.connectivity == old_connectivity).all()
         if rescale_flag and rescale:
             self._rescale_connectivity()
 
