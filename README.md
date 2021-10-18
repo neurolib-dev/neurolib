@@ -1,11 +1,14 @@
 <p align="center">
-  	<img alt="Header image of neurolib - A Python simulation framework foreasy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neurolib/raw/master/resources/readme_header.png" >
+  	<img alt="Header image of neurolib - A Python simulation framework for
+easy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neurolib/raw/master/resources/readme_header.png" >
 </p> 
 <p align="center">
   <a href="https://github.com/neurolib-dev/neurolib/actions">
   	<img alt="Build" src="https://img.shields.io/github/workflow/status/neurolib-dev/neurolib/ci"></a>
   <a href="https://zenodo.org/badge/latestdoi/236208651">
   	<img alt="DOI" src="https://zenodo.org/badge/236208651.svg"></a>
+  <a href="https://link.springer.com/article/10.1007%2Fs12559-021-09931-9">
+    <img alt="paper" src="https://img.shields.io/badge/DOI-10.1007%2Fs12559--021--09931--9-blue"></a>
   <a href="https://github.com/neurolib-dev/neurolib/releases">
   	<img alt="Release" src="https://img.shields.io/github/v/release/neurolib-dev/neurolib"></a>
   <br>
@@ -288,6 +291,21 @@ This will gives us a summary of the last generation and plots a distribution of 
 * [numpy](https://github.com/numpy/numpy) - The fundamental package for scientific computing with Python
 * [numba](https://github.com/numba/numba) - NumPy aware dynamic Python compiler using LLVM
 * [Jupyter](https://github.com/jupyter/notebook) - Jupyter Interactive Notebook
+
+### How to cite
+Cakan, C., Jajcay, N. & Obermayer, K. neurolib: A Simulation Framework for Whole-Brain Neural Mass Modeling. Cogn. Comput. (2021). https://doi.org/10.1007/s12559-021-09931-9
+```bibtex
+@article{cakan2021,
+    author={Cakan, Caglar and Jajcay, Nikola and Obermayer, Klaus},
+    title={neurolib: A Simulation Framework for Whole-Brain Neural Mass Modeling},
+    journal={Cognitive Computation},
+    year={2021},
+    month={Oct},
+    issn={1866-9964},
+    doi={10.1007/s12559-021-09931-9},
+    url={https://doi.org/10.1007/s12559-021-09931-9}
+}
+```
 
 ### Get in touch
 
