@@ -35,7 +35,7 @@ easy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neu
 
 📝 <a href="#how-to-cite">Cite</a> the following paper if you use `neurolib` for your own research:
 
-**Reference:** Cakan, C., Jajcay, N. & Obermayer, K. neurolib: A Simulation Framework for Whole-Brain Neural Mass Modeling. [Cogn. Comput. (2021)](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822). 
+> Cakan, C., Jajcay, N. & Obermayer, K. neurolib: A Simulation Framework for Whole-Brain Neural Mass Modeling. [Cogn. Comput. (2021)](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822). 
 
 The figure below shows a schematic of how a brain network is constructed:
 
