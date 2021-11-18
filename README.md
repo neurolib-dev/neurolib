@@ -27,13 +27,13 @@ easy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neu
 
 ## What is neurolib?
 
-Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and some background information on the science behind whole-brain simulations or read the [documentation](https://neurolib-dev.github.io/) for getting started.
-
 `neurolib` allows you to build, simulate, and optimize whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `ALNModel`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `ALNModel` model can be found in our [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
 
 `neurolib` provides a simulation and optimization framework which allows you to easily implement your own neural mass model, simulate fMRI BOLD activity, analyse the results and fit your model to empirical data.
 
-Please cite the following paper if you use `neurolib` for your own research:
+📚 Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and the science behind whole-brain simulations or read the [documentation](https://neurolib-dev.github.io/) for getting started.
+
+📝 <a href="#how-to-cite">Cite</a> the following paper if you use `neurolib` for your own research:
 
 **Reference:** Cakan, C., Jajcay, N. & Obermayer, K. neurolib: A Simulation Framework for Whole-Brain Neural Mass Modeling. [Cogn. Comput. (2021)](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822). 
 
