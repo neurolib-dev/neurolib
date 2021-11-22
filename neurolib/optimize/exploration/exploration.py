@@ -525,9 +525,12 @@ class BoxSearch:
             dataarrays.append(data_temp.expand_dims(expand_coords))
 
         # finally, combine all arrays into one
-        combined = xr.combine_by_coords(dataarrays)["exploration"]
+        # sometimes combining xr.DataArrays does not work, see https://github.com/pydata/xarray/issues/3248#issuecomment-531511177
+        # resolved by casting them explicitely to xr.Dataset
+        combined = xr.combine_by_coords([da.to_dataset() for da in dataarrays])["exploration"]
         if self.parameterSpace.star:
-            combined.attrs = {k: list(self.model.params[k].keys()) for k in orig_search_coords.keys()}
+            # if we explored over star params, unwrap them into attributes
+            combined.attrs = {k: list(self.model.params[k].keys()) for k in orig_search_coords.keys() if "*" in k}
 
         return combined
 
