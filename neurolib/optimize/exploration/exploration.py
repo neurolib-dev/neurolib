@@ -488,6 +488,10 @@ class BoxSearch:
         :param bold: if True, will load and return only BOLD output
         :type bold: bool
         """
+
+        def _sanitize_nc_key(k):
+            return k.replace("*", "_").replace(".", "_").replace("|", "_")
+
         assert self.results is not None, "Run `loadResults()` first to populate the results"
         assert len(self.results) == len(self.dfResults)
         # create intrisinsic dims for one run
@@ -510,6 +514,8 @@ class BoxSearch:
             expand_coords = {}
             # iterate exploration coordinates
             for k, v in expl_coords.items():
+                # sanitize keys in the case of stars etc
+                k = _sanitize_nc_key(k)
                 # if single values, just assing
                 if isinstance(v, (str, float, int)):
                     expand_coords[k] = [v]
@@ -530,8 +536,9 @@ class BoxSearch:
         combined = xr.combine_by_coords([da.to_dataset() for da in dataarrays])["exploration"]
         if self.parameterSpace.star:
             # if we explored over star params, unwrap them into attributes
-            combined.attrs = {k: list(self.model.params[k].keys()) for k in orig_search_coords.keys() if "*" in k}
-
+            combined.attrs = {
+                _sanitize_nc_key(k): list(self.model.params[k].keys()) for k in orig_search_coords.keys() if "*" in k
+            }
         return combined
 
     def getRun(self, runId, filename=None, trajectoryName=None, pypetShortNames=True):
