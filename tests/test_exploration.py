@@ -188,7 +188,10 @@ class TestExplorationMultiModel(unittest.TestCase):
         dataarray = search.xr()
         self.assertTrue(isinstance(dataarray, xr.DataArray))
         self.assertTrue(isinstance(dataarray.attrs, dict))
-        self.assertListEqual(list(dataarray.attrs.keys()), list(parameters.dict().keys()))
+        self.assertListEqual(
+            list(dataarray.attrs.keys()),
+            [k.replace("*", "_").replace(".", "_").replace("|", "_") for k in parameters.dict().keys()],
+        )
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
