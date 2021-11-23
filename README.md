@@ -27,15 +27,17 @@ easy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neu
 
 ## What is neurolib?
 
-Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and some background information on the science behind whole-brain simulations or read the [documentation](https://neurolib-dev.github.io/) for getting started.
+`neurolib` is a simulation and optimization framework for whole-brain modeling. It allows you to implement your own neural mass models which can simulate fMRI BOLD activity. `neurolib` helps you to analyse your simulations, to load and handle structural and functional brain data, and to use powerful evolutionary algorithms to tune your model's parameters and fit it to empirical data.
 
-`neurolib` allows you to build, simulate, and optimize your own state-of-the-art whole-brain models. To simulate the neural activity of each brain area, the main implementation provides an advanced neural mass mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `ALNModel`. Each brain area is represented by two populations of excitatory and inhibitory neurons. An extensive analysis and validation of the `ALNModel` model can be found in our [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822) and its associated [github page](https://github.com/caglarcakan/stimulus_neural_populations).
+You can chose from different neural mass [models](https://github.com/neurolib-dev/neurolib/tree/master/neurolib/models) to simulate the activity of each brain area. The main implementation is a mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `ALNModel` where each brain area contains two populations of excitatory and inhibitory neurons. An analysis and validation of the `ALNModel` model can be found in our [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822).
 
-`neurolib` provides a simulation and optimization framework which allows you to easily implement your own neural mass model, simulate fMRI BOLD activity, analyse the results and fit your model to empirical data.
 
-Please reference the following paper if you use `neurolib` for your own research:
 
-**Reference:** Cakan, C., Obermayer, K. (2020). Biophysically grounded mean-field models of neural populations under electrical stimulation. PLOS Computational Biology ([Link](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822)).
+📚 Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and the science behind whole-brain simulations or read the [documentation](https://neurolib-dev.github.io/) for getting started.
+
+📝 <a href="#how-to-cite">Cite</a> the following paper if you use `neurolib` for your own research:
+
+> Cakan, C., Jajcay, N. & Obermayer, K. neurolib: A Simulation Framework for Whole-Brain Neural Mass Modeling. [Cogn. Comput. (2021)](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822). 
 
 The figure below shows a schematic of how a brain network is constructed:
 
@@ -55,7 +57,7 @@ Examples:
 
 ## Whole-brain modeling
 
-Typically, in whole-brain modeling, diffusion tensor imaging (DTI) is used to infer the structural connectivity (the connection strength) between different brain areas. In a DTI scan, the direction of the diffusion of molecules is measured across the whole brain. Using [tractography](https://en.wikipedia.org/wiki/Tractography), this information can yield the distribution of axonal fibers in the brain that connect distant brain areas, called the connectome. Together with an atlas that divides the brain into distinct areas, a matrix can be computed that encodes how many fibers go from one area to another, the so-called structural connectivity (SC) matrix. This matrix defines the coupling strengths between brain areas and acts as an adjacency matrix of the brain network. The fiber length determines the signal transmission delay between all brain areas. Combining the structural data with a computational model of the neuronal activity of each brain area, we can create a dynamical model of the whole brain.
+Typically, in whole-brain modeling, diffusion tensor imaging (DTI) is used to infer the structural connectivity (the connection strengths) between different brain areas. In a DTI scan, the direction of the diffusion of molecules is measured across the whole brain. Using [tractography](https://en.wikipedia.org/wiki/Tractography), this information can yield the distribution of axonal fibers in the brain that connect distant brain areas, called the connectome. Together with an atlas that divides the brain into distinct areas, a matrix can be computed that encodes how many fibers go from one area to another, the so-called structural connectivity (SC) matrix. This matrix defines the coupling strengths between brain areas and acts as an adjacency matrix of the brain network. The fiber length determines the signal transmission delay between all brain areas. Combining the structural data with a computational model of the neuronal activity of each brain area, we can create a dynamical model of the whole brain.
 
 The resulting whole-brain model consists of interconnected brain areas, with each brain area having their internal neural dynamics. The neural activity can also be used to simulate hemodynamic [BOLD](https://en.wikipedia.org/wiki/Blood-oxygen-level-dependent_imaging) activity using the Balloon-Windkessel model, which can be compared to empirical fMRI data. Often, BOLD activity is used to compute correlations of activity between brain areas, the so called [resting state functional connectivity](https://en.wikipedia.org/wiki/Resting_state_fMRI#Functional), resulting in a matrix with correlations between each brain area. This matrix can then be fitted to empirical fMRI recordings of the resting-state activity of the brain.
 
