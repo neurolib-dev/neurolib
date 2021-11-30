@@ -29,7 +29,7 @@ easy whole-brain neural mass modeling." src="https://github.com/neurolib-dev/neu
 
 `neurolib` is a simulation and optimization framework for whole-brain modeling. It allows you to implement your own neural mass models which can simulate fMRI BOLD activity. `neurolib` helps you to analyse your simulations, to load and handle structural and functional brain data, and to use powerful evolutionary algorithms to tune your model's parameters and fit it to empirical data.
 
-You can chose from different neural mass [models](https://github.com/neurolib-dev/neurolib/tree/master/neurolib/models) to simulate the activity of each brain area. The main implementation is a mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `ALNModel` where each brain area contains two populations of excitatory and inhibitory neurons. An analysis and validation of the `ALNModel` model can be found in our [paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822).
+You can chose from different neural mass [models](https://github.com/neurolib-dev/neurolib/tree/master/neurolib/models) to simulate the activity of each brain area. The main implementation is a mean-field model of spiking adaptive exponential integrate-and-fire neurons (AdEx) called `ALNModel` where each brain area contains two populations of excitatory and inhibitory neurons. An analysis and validation of the `ALNModel` model can be found in our [paper](https://link.springer.com/article/10.1007%2Fs12559-021-09931-9).
 
 
 
