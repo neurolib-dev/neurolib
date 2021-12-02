@@ -132,14 +132,14 @@ class BoxSearch:
             self._addParametersToPypet(self.traj, self.parameterSpace.getRandom(safe=True))
 
         # Tell pypet which parameters to explore
-        self.pypetParametrization = pypet.cartesian_product(self.exploreParameters)
+        self.pypetParametrization = self.parameterSpace.get_parametrization()
         # explicitely add all parameters within star notation, hence unwrap star notation into actual params names
         if self.parameterSpace.star:
             assert self.model is not None, "With star notation, model cannot be None"
             self.pypetParametrization = unwrap_star_dotdict(self.pypetParametrization, self.model)
         self.nRuns = len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
         logging.info(f"Number of parameter configurations: {self.nRuns}")
-
+        # TODO need to figure out how to process None.. pypet doesn't do None
         self.traj.f_explore(self.pypetParametrization)
 
         # initialization done
@@ -281,6 +281,8 @@ class BoxSearch:
         """
         model = self.model
         runParams = self.getParametersFromTraj(traj)
+        # removes keys with None values
+        # runParams = {k: v for k, v in runParams.items() if v is not None}
         if self.parameterSpace.star:
             runParams = flatten_nested_dict(flat_dict_to_nested(runParams)["parameters"])
 
@@ -497,7 +499,7 @@ class BoxSearch:
         # create intrisinsic dims for one run
         timeDictKey, run_coords = self._getCoordsFromRun(self.results[0], bold=bold)
         dataarrays = []
-        orig_search_coords = pypet.cartesian_product(self.exploreParameters)
+        orig_search_coords = self.parameterSpace.get_parametrization()
         for runId, run_result in self.results.items():
             # take exploration coordinates for this run
             expl_coords = {k: v[runId] for k, v in orig_search_coords.items()}
