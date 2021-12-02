@@ -3,8 +3,13 @@ Class for representing a parameter space for exploration or optimization.
 """
 
 from collections import namedtuple
+
 import numpy as np
+import pypet
+
 from ..utils.collections import sanitize_dot_dict
+
+SUPPORTED_KINDS = ["point", "bound", "grid", "sequence", "explicit", None]
 
 
 class ParameterSpace:
@@ -22,11 +27,19 @@ class ParameterSpace:
         :type parameters: `dict, list[str, str]`
         :param parameterValues: list of parameter values (must be floats) e.g. `[[x_min, x_max], [y_min, y_max], ...]`
         :type parameterValues: `list[list[float, float]]`
-        :param kind: string describing the kind of parameter space. Supports "point", "bound", "grid"
+        :param kind: string describing the kind of parameter space:
+            - `point`: a single point in parameter space
+            - `bound`: a bound in parameter space, i.e. two values per parameter
+            - `grid`: a cartesian product over parameters
+            - `sequence`: a sequence of univariate parameter changes - only one will change at the time, other
+                parameters will stay as default
+            - `explicit`: explicitely define a parameter space, i.e lists of all parameters have to have the same length
+            - None: parameterSpace tries to auto-detect the correct kind
         :type kind: str
         :param allow_star_notation: whether to allow star notation in parameter names - MultiModel
         :type allow_star_notation: bool
         """
+        assert kind in SUPPORTED_KINDS
         self.kind = kind
         self.parameters = parameters
         self.star = allow_star_notation
@@ -73,6 +86,37 @@ class ParameterSpace:
         :rtype: dict
         """
         return self.parameters
+
+    def get_parametrization(self):
+        assert self.kind is not None
+        if self.kind in ["point", "bound", "explicit"]:
+            # check same length
+            it = iter(self.parameters.values())
+            length = len(next(it))
+            assert all(len(l) == length for l in it)
+            # just return as dict
+            return self.parameters
+        elif self.kind == "grid":
+            # cartesian product
+            return pypet.cartesian_product(self.parameters)
+        elif self.kind == "sequence":
+            # return as sequence
+            return self._inflate_to_sequence(self.parameters)
+
+    @staticmethod
+    def _inflate_to_sequence(param_dict):
+        """
+        Inflate dict of parameters to a sequence of same length, using None as
+        placeholder when a particular parameter should not change.
+        {"a": [1, 2], "b": [3, 4, 5]} ->
+            {"a": [1, 2, None, None, None], "b": [None, None, 3, 4, 5]}
+        """
+        return {
+            k: [None] * sum([len(tmp) for tmp in list(param_dict.values())[:i]])
+            + v
+            + [None] * sum([len(tmp) for tmp in list(param_dict.values())[i + 1 :]])
+            for i, (k, v) in enumerate(param_dict.items())
+        }
 
     def getRandom(self, safe=False):
         """This function returns a random single parameter from the whole space
