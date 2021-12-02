@@ -8,8 +8,8 @@ import unittest
 import neurolib.utils.paths as paths
 import neurolib.utils.pypetUtils as pu
 import numpy as np
+import pytest
 import xarray as xr
-
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.multimodel import MultiModel
@@ -182,6 +182,36 @@ class TestExplorationMultiModel(unittest.TestCase):
         fhn_net = FitzHughNagumoNetwork(np.random.rand(2, 2), np.array([[0.0, DELAY], [DELAY, 0.0]]))
         model = MultiModel(fhn_net)
         parameters = ParameterSpace({"*input*sigma": [0.0, 0.05], "*epsilon*": [0.5, 0.6]}, allow_star_notation=True)
+        search = BoxSearch(model, parameters, filename="test_multimodel.hdf")
+        search.run()
+        search.loadResults()
+        dataarray = search.xr()
+        self.assertTrue(isinstance(dataarray, xr.DataArray))
+        self.assertTrue(isinstance(dataarray.attrs, dict))
+        self.assertListEqual(
+            list(dataarray.attrs.keys()),
+            [k.replace("*", "_").replace(".", "_").replace("|", "_") for k in parameters.dict().keys()],
+        )
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+@pytest.mark.skip("not ready")
+class TestExplorationMultiModelSequential(unittest.TestCase):
+    """
+    MultiModel exploration test - uses FHN network.
+    """
+
+    def test_multimodel_explore(self):
+        start = time.time()
+
+        DELAY = 13.0
+        fhn_net = FitzHughNagumoNetwork(np.random.rand(2, 2), np.array([[0.0, DELAY], [DELAY, 0.0]]))
+        model = MultiModel(fhn_net)
+        parameters = ParameterSpace(
+            {"*input*sigma": [0.0, 0.05], "*epsilon*": [0.5, 0.6, 0.7]}, allow_star_notation=True, kind="sequence"
+        )
         search = BoxSearch(model, parameters, filename="test_multimodel.hdf")
         search.run()
         search.loadResults()
