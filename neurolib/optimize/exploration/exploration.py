@@ -19,7 +19,7 @@ from ...utils.collections import dotdict, flat_dict_to_nested, flatten_nested_di
 
 class BoxSearch:
     """
-    Paremter box search for a given model and a range of parameters.
+    Paremeter box search for a given model and a range of parameters.
     """
 
     def __init__(
@@ -34,12 +34,12 @@ class BoxSearch:
         """Either a model has to be passed, or an evalFunction. If an evalFunction
         is passed, then the evalFunction will be called and the model is accessible to the
         evalFunction via `self.getModelFromTraj(traj)`. The parameters of the current
-        run are accible via `self.getParametersFromTraj(traj)`.
+        run are accessible via `self.getParametersFromTraj(traj)`.
 
         If no evaluation function is passed, then the model is simulated using `Model.run()`
         for every parameter.
 
-        :param model: Model to run for each parameter (or model to pass to the evaluation funciton if an evaluation
+        :param model: Model to run for each parameter (or model to pass to the evaluation function if an evaluation
             function is used), defaults to None
         :type model: `neurolib.models.model.Model`, optional
         :param parameterSpace: Parameter space to explore, defaults to None
@@ -67,6 +67,9 @@ class BoxSearch:
         ), "Either a model has to be specified or an evalFunction."
 
         assert parameterSpace is not None, "No parameters to explore."
+
+        if parameterSpace.kind == "sequence":
+            assert model is not None, "Model must be defined for sequential explore"
 
         self.parameterSpace = parameterSpace
         self.exploreParameters = parameterSpace.dict()
@@ -139,12 +142,23 @@ class BoxSearch:
             self.pypetParametrization = unwrap_star_dotdict(self.pypetParametrization, self.model)
         self.nRuns = len(self.pypetParametrization[list(self.pypetParametrization.keys())[0]])
         logging.info(f"Number of parameter configurations: {self.nRuns}")
-        # TODO need to figure out how to process None.. pypet doesn't do None
+        if self.parameterSpace.kind == "sequence":
+            # if sequential explore, need to fill-in the default parameters instead of None
+            self.pypetParametrization = self._fillin_default_parameters_for_sequential(
+                self.pypetParametrization, self.model.params
+            )
         self.traj.f_explore(self.pypetParametrization)
 
         # initialization done
         logging.info("BoxSearch: Environment initialized.")
         self.initialized = True
+
+    @staticmethod
+    def _fillin_default_parameters_for_sequential(parametrization, model_params):
+        fresh_dict = {}
+        for k, params in parametrization.items():
+            fresh_dict[k] = [v if v is not None else model_params[k] for v in params]
+        return fresh_dict
 
     def _addParametersToPypet(self, traj, params):
         """This function registers the parameters of the model to Pypet.
@@ -518,13 +532,13 @@ class BoxSearch:
             for k, v in expl_coords.items():
                 # sanitize keys in the case of stars etc
                 k = _sanitize_nc_key(k)
-                # if single values, just assing
+                # if single values, just assign
                 if isinstance(v, (str, float, int)):
                     expand_coords[k] = [v]
-                # if arrays, check whether they can be sqeezed into one value
+                # if arrays, check whether they can be squeezed into one value
                 elif isinstance(v, np.ndarray):
                     if np.unique(v).size == 1:
-                        # if yes, just assing that one value
+                        # if yes, just assign that one value
                         expand_coords[k] = [float(np.unique(v))]
                     else:
                         # if no, sorry - coordinates cannot be array
@@ -533,9 +547,13 @@ class BoxSearch:
             dataarrays.append(data_temp.expand_dims(expand_coords))
 
         # finally, combine all arrays into one
-        # sometimes combining xr.DataArrays does not work, see https://github.com/pydata/xarray/issues/3248#issuecomment-531511177
-        # resolved by casting them explicitely to xr.Dataset
-        combined = xr.combine_by_coords([da.to_dataset() for da in dataarrays])["exploration"]
+        if self.parameterSpace.kind == "sequence":
+            # when run in sequence, cannot combine to grid, so just concatenate along new dimension
+            combined = xr.concat(dataarrays, dim="run_no", coords="all")
+        else:
+            # sometimes combining xr.DataArrays does not work, see https://github.com/pydata/xarray/issues/3248#issuecomment-531511177
+            # resolved by casting them explicitely to xr.Dataset
+            combined = xr.combine_by_coords([da.to_dataset() for da in dataarrays])["exploration"]
         if self.parameterSpace.star:
             # if we explored over star params, unwrap them into attributes
             combined.attrs = {
