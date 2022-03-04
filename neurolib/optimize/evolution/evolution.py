@@ -2,6 +2,7 @@ import datetime
 import logging
 import multiprocessing
 import os
+from functools import partial
 
 import deap
 import numpy as np
@@ -11,14 +12,14 @@ from deap import base, creator, tools
 
 from ...utils import paths as paths
 from ...utils import pypetUtils as pu
+from ...utils.collections import BACKWARD_REPLACE, unwrap_star_dotdict
 from ...utils.parameterSpace import ParameterSpace
-from ...utils.collections import unwrap_star_dotdict, BACKWARD_REPLACE
 from . import deapUtils as du
 from . import evolutionaryUtils as eu
 
 
 class Evolution:
-    """Evolutionary parameter optimization. This class helps you to optimize any function or model using an evlutionary algorithm.
+    """Evolutionary parameter optimization. This class helps you to optimize any function or model using an evolutionary algorithm.
     It uses the package `deap` and supports its builtin mating and selection functions as well as custom ones.
     """
 
@@ -410,8 +411,19 @@ class Evolution:
 
         toolbox.register("population", deap.tools.initRepeat, list, toolbox.individual)
         toolbox.register("map", pypetEnvironment.run)
-        toolbox.register("evaluate", evalFunction)
         toolbox.register("run_map", pypetEnvironment.run_map)
+
+        def _worker(arg, fn):
+            """
+            Wrapper to get original exception from inner, `fn`, function.
+            """
+            try:
+                return fn(arg)
+            except Exception as e:
+                logging.exception(e)
+                raise
+
+        toolbox.register("evaluate", partial(_worker, fn=evalFunction))
 
         # Operator registering
 
@@ -473,7 +485,7 @@ class Evolution:
 
         # This error can have different reasons but is most likely
         # due to multiprocessing problems. One possibility is that your evaluation
-        # funciton is not pickleable or that it returns an object that is not pickleable.
+        # function is not pickleable or that it returns an object that is not pickleable.
         assert len(evolutionResult) > 0, "No results returned from simulations."
 
         for idx, result in enumerate(evolutionResult):
@@ -508,7 +520,7 @@ class Evolution:
         :rtype: list
         """
         pop = pop or self.pop
-        return [p for p in pop if not (np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any())]
+        return [p for p in pop if np.isfinite(p.fitness.values).all()]
 
     def getInvalidPopulation(self, pop=None):
         """Returns a list of the invalid population.
@@ -519,7 +531,7 @@ class Evolution:
         :rtype: list
         """
         pop = pop or self.pop
-        return [p for p in pop if np.isnan(p.fitness.values).any() or np.isinf(p.fitness.values).any()]
+        return [p for p in pop if not np.isfinite(p.fitness.values).all()]
 
     def _tagPopulation(self, pop):
         """Take a fresh population and add id's and attributes such as parameters that we can use later
@@ -582,7 +594,7 @@ class Evolution:
         logging.info("Start of evolution")
         self._t_start_evolution = datetime.datetime.now()
         for self.gIdx in range(self.gIdx + 1, self.gIdx + self.traj.NGEN):
-            # ------- Weed out the invalid individuals and replace them by random new indivuals -------- #
+            # ------- Weed out the invalid individuals and replace them by random new individuals -------- #
             validpop = self.getValidPopulation(self.pop)
             # replace invalid individuals
             invalidpop = self.getInvalidPopulation(self.pop)
@@ -744,11 +756,11 @@ class Evolution:
         logging.info(f"Saving evolution to {fname}")
 
     def loadEvolution(self, fname):
-        """Load evolution from previously saved simulatoins.
+        """Load evolution from previously saved simulations.
 
         Example usage:
         ```
-        evaluateSimulation = lambda x: x # the funciton can be ommited, that's why we define a lambda here
+        evaluateSimulation = lambda x: x # the function can be omitted, that's why we define a lambda here
         pars = ParameterSpace(['a', 'b'], # should be same as previously saved evolution
                       [[0.0, 4.0], [0.0, 5.0]])
         evolution = Evolution(evaluateSimulation, pars, weightList = [1.0])
