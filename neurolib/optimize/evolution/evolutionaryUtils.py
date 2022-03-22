@@ -12,16 +12,20 @@ def saveToPypet(traj, pop, gIdx):
     try:
         traj.f_add_result_group(f"evolution.gen_{gIdx:06d}")
         traj.f_add_result(
-            f"evolution.gen_{gIdx:06d}.fitness", np.array([p.fitness.values for p in pop]),
+            f"evolution.gen_{gIdx:06d}.fitness",
+            np.array([p.fitness.values for p in pop]),
         )
         traj.f_add_result(
-            f"evolution.gen_{gIdx:06d}.scores", np.array([p.fitness.score for p in pop]),
+            f"evolution.gen_{gIdx:06d}.scores",
+            np.array([p.fitness.score for p in pop]),
         )
         traj.f_add_result(
-            f"evolution.gen_{gIdx:06d}.population", np.array([list(p) for p in pop]),
+            f"evolution.gen_{gIdx:06d}.population",
+            np.array([list(p) for p in pop]),
         )
         traj.f_add_result(
-            f"evolution.gen_{gIdx:06d}.ind_ids", np.array([p.id for p in pop]),
+            f"evolution.gen_{gIdx:06d}.ind_ids",
+            np.array([p.id for p in pop]),
         )
         # recursively store all simulated outputs into hdf
         for i, p in enumerate(pop):
@@ -116,7 +120,10 @@ def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0", line
         vars=vars,
         diag_kind="kde",
         kind="reg",
-        plot_kws={"line_kws": _line_kws, "scatter_kws": _scatter_kws,},
+        plot_kws={
+            "line_kws": _line_kws,
+            "scatter_kws": _scatter_kws,
+        },
         diag_kws={"color": color},
     )
 
@@ -128,7 +135,11 @@ def plotSeabornScatter1(evolution, dfPop=None, save_plots=None, color="C0", line
 
     if save_plots is not None:
         plt.savefig(
-            os.path.join(paths.FIGURES_DIR, f"{save_plots}_sns_params_{evolution}.png",), bbox_inches="tight",
+            os.path.join(
+                paths.FIGURES_DIR,
+                f"{save_plots}_sns_params_{evolution.gIdx}.png",
+            ),
+            bbox_inches="tight",
         )
     plt.show()
 
@@ -161,14 +172,19 @@ def plotSeabornScatter2(evolution, dfPop=None, save_plots=None, color="C0"):
                 pass
     if save_plots is not None:
         plt.savefig(
-            os.path.join(paths.FIGURES_DIR, "{}_sns_params_red_{}.png".format(save_plots, evolution.gIdx),),
+            os.path.join(paths.FIGURES_DIR, f"{save_plots}_sns_params_red_{evolution.gIdx}.png"),
             bbox_inches="tight",
         )
     plt.show()
 
 
 def plotPopulation(
-    evolution, history=False, plotDistribution=True, plotScattermatrix=False, save_plots=None, color="C0",
+    evolution,
+    history=False,
+    plotDistribution=True,
+    plotScattermatrix=False,
+    save_plots=None,
+    color="C0",
 ):
 
     """
@@ -197,7 +213,13 @@ def plotProgress(evolution, reverse=True):
 
     gens, all_scores = evolution.getScoresDuringEvolution(reverse=reverse)
 
-    fig, axs = plt.subplots(2, 1, figsize=(3.5, 3), sharex=True, gridspec_kw={"height_ratios": [2, 1]},)
+    fig, axs = plt.subplots(
+        2,
+        1,
+        figsize=(3.5, 3),
+        sharex=True,
+        gridspec_kw={"height_ratios": [2, 1]},
+    )
     im = axs[0].imshow(all_scores.T, aspect="auto", origin="lower")
     axs[0].set_ylabel("Individuals")
     cbar_ax = fig.add_axes([1.0, 0.55, 0.02, 0.3])
@@ -205,7 +227,11 @@ def plotProgress(evolution, reverse=True):
 
     axs[1].plot(gens, np.nanmean(all_scores, axis=1), label="Average")
     axs[1].fill_between(
-        gens, np.nanmin(all_scores, axis=1), np.nanmax(all_scores, axis=1), alpha=0.3, label="Bound",
+        gens,
+        np.nanmin(all_scores, axis=1),
+        np.nanmax(all_scores, axis=1),
+        alpha=0.3,
+        label="Bound",
     )
     axs[1].set_xlabel("Generation")
     axs[1].set_ylabel("Score")
