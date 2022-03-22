@@ -8,8 +8,8 @@ import unittest
 import neurolib.utils.paths as paths
 import neurolib.utils.pypetUtils as pu
 import numpy as np
+import pytest
 import xarray as xr
-
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.multimodel import MultiModel
@@ -23,6 +23,35 @@ def randomString(stringLength=10):
     """Generate a random string of fixed length"""
     letters = string.ascii_lowercase
     return "".join(random.choice(letters) for i in range(stringLength))
+
+
+class TestBoxSearch(unittest.TestCase):
+    """
+    Basic tests.
+    """
+
+    def test_assertions(self):
+        parameters = ParameterSpace(
+            {"mue_ext_mean": np.linspace(0, 3, 2), "mui_ext_mean": np.linspace(0, 3, 2)}, kind="sequence"
+        )
+        with pytest.raises(AssertionError):
+            _ = BoxSearch(model=None, parameterSpace=parameters)
+
+        with pytest.raises(AssertionError):
+            _ = BoxSearch(model=None, parameterSpace=None)
+
+        with pytest.raises(AssertionError):
+            _ = BoxSearch(model=None, parameterSpace=parameters, evalFunction=None)
+
+    def test_fillin_default_parameters_for_sequential(self):
+        in_dict = {"a": [None, None, 1, 2], "b": [4, 5, None, None]}
+        SHOULD_BE = {"a": [0, 0, 1, 2], "b": [4, 5, 12, 12]}
+        model_params = {"a": 0, "b": 12}
+
+        parameters = ParameterSpace({"mue_ext_mean": [1.0, 2.0]})
+        search = BoxSearch(model=ALNModel(), parameterSpace=parameters)
+        out_dict = search._fillin_default_parameters_for_sequential(in_dict, model_params)
+        self.assertDictEqual(out_dict, SHOULD_BE)
 
 
 class TestExplorationSingleNode(unittest.TestCase):
@@ -192,6 +221,65 @@ class TestExplorationMultiModel(unittest.TestCase):
             list(dataarray.attrs.keys()),
             [k.replace("*", "_").replace(".", "_").replace("|", "_") for k in parameters.dict().keys()],
         )
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+class TestExplorationMultiModelSequential(unittest.TestCase):
+    """
+    MultiModel exploration test with sequential exploration - uses FHN network.
+    """
+
+    def test_multimodel_explore(self):
+        start = time.time()
+
+        DELAY = 13.0
+        fhn_net = FitzHughNagumoNetwork(np.random.rand(2, 2), np.array([[0.0, DELAY], [DELAY, 0.0]]))
+        model = MultiModel(fhn_net)
+        parameters = ParameterSpace(
+            {"*input*sigma": [0.0, 0.05], "*epsilon*": [0.5, 0.6, 0.7]}, allow_star_notation=True, kind="sequence"
+        )
+        search = BoxSearch(model, parameters, filename="test_multimodel.hdf")
+        search.run()
+        search.loadResults()
+        dataarray = search.xr()
+        self.assertTrue(isinstance(dataarray, xr.DataArray))
+        self.assertTrue("run_no" in dataarray.dims)
+        self.assertEqual(len(dataarray["run_no"]), 5)
+        self.assertTrue(isinstance(dataarray.attrs, dict))
+        self.assertListEqual(
+            list(dataarray.attrs.keys()),
+            [k.replace("*", "_").replace(".", "_").replace("|", "_") for k in parameters.dict().keys()],
+        )
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+class TestExplorationSingleNodeSequential(unittest.TestCase):
+    """
+    ALN single node test with sequential exploration.
+    """
+
+    def test_single_node(self):
+        start = time.time()
+
+        model = ALNModel()
+        parameters = ParameterSpace({"mue_ext_mean": [0.0, 1.5, 3.0], "mui_ext_mean": [1.5, 3.0]}, kind="sequence")
+        search = BoxSearch(model, parameters, filename="test_single_nodes.hdf")
+        search.run()
+        search.loadResults()
+        dataarray = search.xr()
+        self.assertTrue(isinstance(dataarray, xr.DataArray))
+        self.assertTrue("run_no" in dataarray.dims)
+        self.assertEqual(len(dataarray["run_no"]), 5)
+        self.assertFalse(dataarray.attrs)
+
+        for i in search.dfResults.index:
+            search.dfResults.loc[i, "max_r"] = np.max(
+                search.results[i]["rates_exc"][:, -int(1000 / model.params["dt"]) :]
+            )
 
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
