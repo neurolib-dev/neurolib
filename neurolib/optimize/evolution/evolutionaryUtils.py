@@ -172,7 +172,7 @@ def plotSeabornScatter2(evolution, dfPop=None, save_plots=None, color="C0"):
                 pass
     if save_plots is not None:
         plt.savefig(
-            os.path.join(paths.FIGURES_DIR, "{save_plots}_sns_params_red_{evolution.gIdx}.png"),
+            os.path.join(paths.FIGURES_DIR, f"{save_plots}_sns_params_red_{evolution.gIdx}.png"),
             bbox_inches="tight",
         )
     plt.show()
