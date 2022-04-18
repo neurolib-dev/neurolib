@@ -867,6 +867,37 @@ class Network(BackendIntegrator):
             var_idx += self.nodes[node_idx].num_state_variables
         return helpers
 
+    def _multiplicative_coupling(self, within_node_idx, symbol, connectivity=None):
+        """
+        Perform multiplicative coupling on the network with given symbol, i.e.
+            network_inp = SUM_idx(Cmat[to, idx]*X[idx](t - Dmat)*X[to](t))
+        """
+        assert symbol in self.sync_variables
+        if isinstance(within_node_idx, int):
+            within_node_idx = [within_node_idx] * self.num_nodes
+        assert self.num_nodes == len(within_node_idx)
+        inputs = self._construct_input_matrix(within_node_idx)
+        connectivity = self.connectivity if connectivity is None else connectivity
+        assert connectivity.shape == (self.num_nodes, self.num_nodes)
+        var_idx = 0
+        helpers = []
+        for node_idx, node_var_idx in zip(range(self.num_nodes), within_node_idx):
+            helpers.append(
+                (
+                    self.sync_symbols[f"{symbol}_{node_idx}"],
+                    sum(
+                        [
+                            connectivity[node_idx, row]
+                            * (inputs[node_idx, row])
+                            * state_vector(var_idx + node_var_idx, time=time_vector)
+                            for row in range(self.num_nodes)
+                        ]
+                    ),
+                )
+            )
+            var_idx += self.nodes[node_idx].num_state_variables
+        return helpers
+
     def _additive_coupling(self, within_node_idx, symbol, connectivity=None):
         """
         Perform additive coupling on the network within given symbol, i.e.
@@ -911,6 +942,11 @@ class Network(BackendIntegrator):
             )
         elif coupling_type == "diffusive":
             return self._diffusive_coupling(
+                self.coupling_symbols[coupling_variable],
+                f"network_{coupling_variable}",
+            )
+        elif coupling_type == "multiplicative":
+            return self._multiplicative_coupling(
                 self.coupling_symbols[coupling_variable],
                 f"network_{coupling_variable}",
             )
