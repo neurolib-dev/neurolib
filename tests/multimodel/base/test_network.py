@@ -412,6 +412,18 @@ class TestNetwork(unittest.TestCase):
             evaluated = se.sympify(coupling[1]).subs(subs)
             self.assertEqual(float(evaluated), 0.0)
 
+    def test_multiplicative_coupling(self):
+        net, subs = self._create_network()
+        multip_coupling = net._multiplicative_coupling(0, net.sync_variables[0])
+        self.assertEqual(len(multip_coupling), net.num_nodes)
+        for i, coupling in enumerate(multip_coupling):
+            self.assertTrue(isinstance(coupling, tuple))
+            self.assertEqual(len(coupling), 2)
+            self.assertTrue(isinstance(coupling[0], se.Symbol))
+            self.assertTrue(isinstance(coupling[1], se.Add))
+            evaluated = se.sympify(coupling[1]).subs(subs)
+            self.assertEqual(float(evaluated), net.connectivity.sum(axis=1)[i])
+
     def test_additive_coupling(self):
         net, subs = self._create_network()
         add_coupling = net._additive_coupling(0, net.sync_variables[0])
