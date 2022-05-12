@@ -78,6 +78,10 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.x_ext = np.ones((params.N,))
     params.y_ext = np.zeros((params.N,))
 
+    # time-dependent stimulation inputs
+    params.x_stim = 0.
+    params.y_stim = 0.
+
     return params
 
 
