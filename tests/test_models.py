@@ -7,11 +7,6 @@ import pytest
 import xarray as xr
 from chspy import join
 
-import sys, os
-path = os.getcwd().split('tests')[0]
-if path not in sys.path:
-    sys.path.append(path)
-
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.hopf import HopfModel
