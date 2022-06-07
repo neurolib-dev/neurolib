@@ -122,7 +122,7 @@ class TestFHN(unittest.TestCase):
         fhn.params["duration"] = 10 * 1000
         fhn.params["sigma_ou"] = 0.1
         fhn.params["K_gl"] = 0.6
-        fhn.params["x_ext_mean"] = 0.72
+        fhn.params["x_ext"] = 0.72
 
         fhn.run(chunkwise=True, bold=True, append_outputs=True)
         end = time.time()

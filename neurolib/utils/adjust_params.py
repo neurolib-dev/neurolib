@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def adjust_shape(original, target):
     """
     Tiles and then cuts an array (or list or float) such that
