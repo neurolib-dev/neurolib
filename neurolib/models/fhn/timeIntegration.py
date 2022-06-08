@@ -193,7 +193,7 @@ def timeIntegration_njit_elementwise(
 ):
     """
     Fitz-Hugh Nagumo equations
-    du/dt = -alpha u^3 + beta u^2 - gamma u - w + I_{x, ext}
+    du/dt = -alpha u^3 + beta u^2 + gamma u - w + I_{x, ext}
     dw/dt = 1/tau (u + delta  - epsilon w) + I_{y, ext}
     """
     ### integrate ODE system:
