@@ -6,7 +6,7 @@ from . import timeIntegration as ti
 class ThalamicMassModel(Model):
     """
     Two population thalamic model
-    
+
     Reference:
     Costa, M. S., Weigenand, A., Ngo, H. V. V., Marshall, L., Born, J.,
     Martinetz, T., & Claussen, J. C. (2016). A thalamocortical neural mass
@@ -69,7 +69,7 @@ class ThalamicMassModel(Model):
 
         # load default parameters if none were given
         if params is None:
-            params = dp.loadDefaultParams()
+            params = dp.loadDefaultParams(seed=seed)
 
         # Initialize base class Model
         super().__init__(integration=integration, params=params)
