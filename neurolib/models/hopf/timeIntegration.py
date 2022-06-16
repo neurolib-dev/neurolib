@@ -208,14 +208,14 @@ def timeIntegration_njit_elementwise(
                 - w * ys[no, i - 1]
                 + xs_input_d[no]  # input from other nodes
                 + x_ou[no]  # ou noise
-                + x_ext[no, i]  # external input
+                + x_ext[no, i-1]  # external input
             )
             y_rhs = (
                 (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
                 + w * xs[no, i - 1]
                 + ys_input_d[no]  # input from other nodes
                 + y_ou[no]  # ou noise
-                + y_ext[no, i]  # external input
+                + y_ext[no, i-1]  # external input
             )
 
             # Euler integration
