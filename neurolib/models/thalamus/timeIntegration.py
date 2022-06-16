@@ -13,7 +13,7 @@ def timeIntegration(params):
 
     dt = params["dt"]  # Time step for the Euler intergration (ms)
     sqrt_dt = np.sqrt(dt)
-    duration = params["duration"]  # imulation duration (ms)
+    duration = params["duration"]  # Simulation duration (ms)
     RNGseed = params["seed"]  # seed for RNG
 
     startind = 1  # int(max_global_delay + 1)
@@ -334,7 +334,7 @@ def timeIntegration_njit_elementwise(
         s_er = s_er + dt * d_s_er
         s_gr = s_gr + dt * d_s_gr
         # noisy variable
-        ds_et = ds_et + dt * d_ds_et + gamma_e ** 2 * d_phi * sqrt_dt * noise[i]
+        ds_et = ds_et + dt * d_ds_et + gamma_e ** 2 * d_phi * sqrt_dt * noise[i - startind]
         ds_gt = ds_gt + dt * d_ds_gt
         ds_er = ds_er + dt * d_ds_er
         ds_gr = ds_gr + dt * d_ds_gr
