@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 import xarray as xr
 from chspy import join
-
 from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.hopf import HopfModel
@@ -18,7 +17,6 @@ from neurolib.models.ww import WWModel
 from neurolib.utils.collections import star_dotdict
 from neurolib.utils.loadData import Dataset
 from neurolib.utils.stimulus import ZeroInput
-
 
 class TestAln(unittest.TestCase):
     """
