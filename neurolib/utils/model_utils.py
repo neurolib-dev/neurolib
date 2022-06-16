@@ -41,4 +41,4 @@ def adjustArrayShape(original, target):
     # cut from end because the beginning can be initial condition
     original = original[: target.shape[0], -target.shape[1] :]
 
-    return 
+    return original

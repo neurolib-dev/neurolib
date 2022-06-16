@@ -1,0 +1,1 @@
+- optimal control as [2,21] array, not [21,2] (same as activity?)
