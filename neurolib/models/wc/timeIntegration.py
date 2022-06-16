@@ -2,7 +2,7 @@ import numpy as np
 import numba
 
 from . import loadDefaultParams as dp
-from ...utils import adjust_params as ap
+from ...utils import model_utils as mu
 
 
 def timeIntegration(params):
@@ -82,8 +82,8 @@ def timeIntegration(params):
     excs = np.zeros((N, startind + len(t)))
     inhs = np.zeros((N, startind + len(t)))
 
-    exc_ext = ap.adjust_shape(params["exc_ext"], excs)
-    inh_ext = ap.adjust_shape(params["inh_ext"], inhs)
+    exc_ext = mu.adjustArrayShape(params["exc_ext"], excs)
+    inh_ext = mu.adjustArrayShape(params["inh_ext"], inhs)
 
     # ------------------------------------------------------------------------
     # Set initial values

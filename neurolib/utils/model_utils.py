@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def adjust_shape(original, target):
+def adjustArrayShape(original, target):
     """
     Tiles and then cuts an array (or list or float) such that
     it has the same shape as target at the end.

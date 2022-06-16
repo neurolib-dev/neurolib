@@ -2,7 +2,7 @@ import numpy as np
 import numba
 
 from . import loadDefaultParams as dp
-from ...utils import adjust_params as ap
+from ...utils import model_utils as mu
 
 
 def timeIntegration(params):
@@ -221,10 +221,10 @@ def timeIntegration(params):
     noise_inh = np.zeros((N,))
 
     # tile external inputs to appropriate shape
-    ext_exc_current = ap.adjust_shape(params["ext_exc_current"], rates_exc)
-    ext_inh_current = ap.adjust_shape(params["ext_inh_current"], rates_exc)
-    ext_exc_rate = ap.adjust_shape(params["ext_exc_rate"], rates_exc)
-    ext_inh_rate = ap.adjust_shape(params["ext_inh_rate"], rates_exc)
+    ext_exc_current = mu.adjustArrayShape(params["ext_exc_current"], rates_exc)
+    ext_inh_current = mu.adjustArrayShape(params["ext_inh_current"], rates_exc)
+    ext_exc_rate = mu.adjustArrayShape(params["ext_exc_rate"], rates_exc)
+    ext_inh_rate = mu.adjustArrayShape(params["ext_inh_rate"], rates_exc)
 
     # ------------------------------------------------------------------------
 
