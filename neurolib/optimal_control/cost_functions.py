@@ -1,6 +1,7 @@
 import numpy as np
+import numba
 
-
+#@numba.njit
 def precision_cost(x_target, x_sim, w_p):
     """ Summed squared difference between target and simulation weighted by w_p.
     :param x_target:
@@ -22,39 +23,39 @@ def precision_cost(x_target, x_sim, w_p):
     # (commutative)
     return w_p*0.5 * np.sum((x_target-x_sim)**2.)
 
-
+#@numba.njit
 def derivative_precision_cost(x_target, x_sim, w_p):
     """ Derivative of precision cost wrt. to x_sim.
     """
     # REMARK - why not "-"?
     return - w_p * (x_target - x_sim)
 
-
-def energy_cost(u, w_e):
+#@numba.njit
+def energy_cost(u, w_2):
     """
     :param u:
     :type u:
 
-    :param w_e:
-    :type w_e: float
+    :param w_2:
+    :type w_2: float
 
     :return:
     :rtype:
     """
     # ToDo: tests for multidimensional case
-    return w_e/2. * np.sum(u**2.)
+    return w_2/2. * np.sum(u**2.)
 
-
-def derivative_energy_cost(u, w_e):
+##@numba.njit
+def derivative_energy_cost(u, w_2):
     """
     :param u:
     :type u:
 
-    :param w_e:
-    :type w_e: float
+    :param w_2:
+    :type w_2: float
 
     :return:
     :rtype:
     """
-    # return w_e * np.abs(u)
-    return w_e * u
+    # return w_2 * np.abs(u)
+    return w_2 * u

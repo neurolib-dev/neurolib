@@ -1,4 +1,5 @@
 import numpy as np
+import numba
 from neurolib.optimal_control import cost_functions
 
 """
@@ -82,12 +83,12 @@ for i in range(4):
 
 class OcFhn:
 
-    def __init__(self, fhn_model, target, w_p=1, w_e=1):
+    def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[]):
         """
             :param fhn_model: custom "fhn2" model
             :param target:
             :param w_p: weight of the precision cost term
-            :param w_e: weight of the energy cost term
+            :param w_2: weight of the energy cost term
             :param target: 2xN_t matrix with [0, :] target of x-population and [1, :] target of y-population
         """
 
@@ -96,7 +97,7 @@ class OcFhn:
         self.target = target
 
         self.w_p = w_p
-        self.w_e = w_e
+        self.w_2 = w_2
 
         self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
         self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
@@ -133,6 +134,8 @@ class OcFhn:
 
         self.x_grads = np.array(())  # save gradients throughout optimization iterations for
                                      # later analysis
+
+        self.print_array = print_array
 
     def add_cost_to_history(self, cost):
         """ For later analysis.
@@ -181,15 +184,14 @@ class OcFhn:
     def Du(self):
         """ 2x2 Jacobian of systems dynamics wrt. to I_ext (external control input)
         """
-        # Remark: this assumes input only to x-population!!!!
         return(np.array([[-1, 0],
-                         [0, 0]]))
+                         [0, -1]]))
 
     def compute_total_cost(self):
         """
         """
         precision_cost = cost_functions.precision_cost(self.target, self.get_xs(), w_p=self.w_p)
-        energy_cost = cost_functions.energy_cost(self.control, w_e=self.w_e)
+        energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2)
         return precision_cost + energy_cost
 
     def compute_gradient(self):
@@ -197,7 +199,7 @@ class OcFhn:
         Du @ fk + adjoint_k.T @ Du @ h
         """
         self.solve_adjoint()
-        fk = cost_functions.derivative_energy_cost(self.control, self.w_e)
+        fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
 
         return fk + (self.adjoint_state.T @ self.Du()).T
 
@@ -226,7 +228,6 @@ class OcFhn:
 
         adjoint_state = np.zeros(self.output_dim)
         adjoint_state[:, -1] = 0
-        #adjoint_state[:, -1] = fx[:, -1]
 
         for ind in range(self.T - 2, -1, -1):
             adjoint_state[:, ind] = adjoint_state[:, ind + 1] \
@@ -307,7 +308,8 @@ class OcFhn:
         self.simulate_forward()
 
         for i in range(n_max_iterations):
-            print(f"Cost in iteration %s: %s" % (i, self.compute_total_cost()))
+            if i in self.print_array:
+                print(f"Cost in iteration %s: %s" % (i, self.compute_total_cost()))
             self.add_cost_to_history(self.compute_total_cost())
             # (V.I) control gradient happens within "step_size"
             # c_grad = control_gradient(target, control1, x0)
