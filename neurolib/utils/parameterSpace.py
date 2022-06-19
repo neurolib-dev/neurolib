@@ -4,6 +4,7 @@ Class for representing a parameter space for exploration or optimization.
 
 from collections import namedtuple
 
+import logging
 import numpy as np
 import pypet
 
@@ -48,16 +49,14 @@ class ParameterSpace:
             assert isinstance(
                 parameters, dict
             ), "Parameters must be a dict, if no values are given in `parameterValues`"
-            processedParameters = self._processParameterDict(parameters)
         else:
             # check if all names are strings
             assert np.all([isinstance(pn, str) for pn in parameters]), "Parameter names must all be strings."
             # check if all parameter values are lists
             assert np.all([isinstance(pv, (list, tuple)) for pv in parameterValues]), "Parameter values must be a list."
             parameters = self._parameterListsToDict(parameters, parameterValues)
-            processedParameters = self._processParameterDict(parameters)
 
-        self.parameters = processedParameters
+        self.parameters = self._processParameterDict(parameters)
         self.parameterNames = list(self.parameters.keys())
         self.parameterValues = list(self.parameters.values())
 
@@ -210,6 +209,9 @@ class ParameterSpace:
                 # kind = "point" is a single point in parameter space, one value only
                 # kind = "bound" is a bounded parameter space with 2 values: min and max
                 # kind = "grid" is a grid space with as many values on each axis as wished
+
+                # first, we assume grid
+                self.kind = "grid"
                 parameterLengths = [len(value) for key, value in parameters.items()]
                 # if all parameters have the same length
                 if parameterLengths.count(parameterLengths[0]) == len(parameterLengths):
@@ -217,8 +219,7 @@ class ParameterSpace:
                         self.kind = "point"
                     elif parameterLengths[0] == 2:
                         self.kind = "bound"
-                else:
-                    self.kind = "grid"
+            logging.info(f'Assuming parameter kind "{self.kind}"')
 
         # do some kind-specific tests
         if self.kind == "bound":
