@@ -2,7 +2,7 @@ import numpy as np
 import numba
 
 from . import loadDefaultParams as dp
-from neurolib.utils import model_utils as mu
+from ...utils import model_utils as mu
 
 
 def timeIntegration(params):

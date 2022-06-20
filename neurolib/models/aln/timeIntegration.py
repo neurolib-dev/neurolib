@@ -2,7 +2,7 @@ import numpy as np
 import numba
 
 from . import loadDefaultParams as dp
-from neurolib.utils import model_utils as mu
+from ...utils import model_utils as mu
 
 
 def timeIntegration(params):
@@ -635,7 +635,6 @@ def lookup_no_interp(x, dx, xi, y, dy, yi):
         idxY = len(y) - 1
 
     return idxX, idxY
-
 
 @numba.njit(locals={"xid1": numba.int64, "yid1": numba.int64, "dxid": numba.float64, "dyid": numba.float64})
 def fast_interp2_opt(x, dx, xi, y, dy, yi):

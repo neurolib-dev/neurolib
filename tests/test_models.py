@@ -18,7 +18,6 @@ from neurolib.utils.collections import star_dotdict
 from neurolib.utils.loadData import Dataset
 from neurolib.utils.stimulus import ZeroInput
 
-
 class TestAln(unittest.TestCase):
     """
     Basic test for ALN model.
@@ -121,7 +120,7 @@ class TestFHN(unittest.TestCase):
         fhn.params["duration"] = 10 * 1000
         fhn.params["sigma_ou"] = 0.1
         fhn.params["K_gl"] = 0.6
-        fhn.params["x_ext_mean"] = 0.72
+        fhn.params["x_ext"] = 0.72
 
         fhn.run(chunkwise=True, bold=True, append_outputs=True)
         end = time.time()
