@@ -2,6 +2,7 @@ import numpy as np
 import numba
 
 from . import loadDefaultParams as dp
+from ...utils import model_utils as mu
 
 
 def timeIntegration(params):
@@ -76,13 +77,13 @@ def timeIntegration(params):
     exc_ou = params["exc_ou"]
     inh_ou = params["inh_ou"]
 
-    exc_ext = params["exc_ext"]
-    inh_ext = params["inh_ext"]
-
     # state variable arrays, have length of t + startind
     # they store initial conditions AND simulated data
     excs = np.zeros((N, startind + len(t)))
     inhs = np.zeros((N, startind + len(t)))
+
+    exc_ext = mu.adjustArrayShape(params["exc_ext"], excs)
+    inh_ext = mu.adjustArrayShape(params["inh_ext"], inhs)
 
     # ------------------------------------------------------------------------
     # Set initial values
@@ -218,7 +219,7 @@ def timeIntegration_njit_elementwise(
                         c_excexc * excs[no, i - 1]  # input from within the excitatory population
                         - c_inhexc * inhs[no, i - 1]  # input from the inhibitory population
                         + exc_input_d[no]  # input from other nodes
-                        + exc_ext
+                        + exc_ext[no, i-1]
                     )  # external input
                     + exc_ou[no]  # ou noise
                 )
@@ -232,7 +233,7 @@ def timeIntegration_njit_elementwise(
                     * S_I(
                         c_excinh * excs[no, i - 1]  # input from the excitatory population
                         - c_inhinh * inhs[no, i - 1]  # input from within the inhibitory population
-                        + inh_ext
+                        + inh_ext[no, i-1]
                     )  # external input
                     + inh_ou[no]  # ou noise
                 )
