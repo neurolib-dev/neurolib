@@ -2,94 +2,15 @@ import numpy as np
 import numba
 from neurolib.optimal_control import cost_functions
 
-"""
-1. forward model of system
-
-2. cost function definition
-
-3. gradient of cost function
-
-def precision_gradient(time_series, target, weight=1.):
-    precision_grad = weight * (target - time_series )
-    return precision_grad
-
-def energy_gradient(u, weight=1.):
-    return weight * u
-
-4. Jacobian of system wrt. to systems variables
-
-5. backwards computation of the adjoint state
-        
-def control_gradient(target, control0, x0):
-    T = control0.shape[0]
-    adjoint(target, control0, x0)
-    control_grad = energy_gradient(control0) - adjoint(target, control0, x0)
-    return control_grad
-
-def step_size(control, target, control_grad, x0, duration, dt):
-    time_series = model(x0, duration, dt, control)
-    cost0 = total_cost(control, time_series, target)
-    factor = 0.7
-    step = 10.
-    counter = 0.
-    
-    control1 = control + step * control_grad
-    time_series = model(x0, duration, dt, control1)
-    cost = total_cost(control1, time_series, target)
-    
-    while cost > cost0:
-        step *= factor
-        counter += 1
-        control1 = control + step * control_grad
-        time_series = model(x0, duration, dt, control1)
-        cost = total_cost(control1, time_series, target)
-        
-        if counter == 30.:
-            return 0., cost0, control
-            
-    return step, cost, control + step * control_grad
-    
-    
-(I) forward simulation
-
-x0 = 0. # let's start the optimization with initial condition x_0 = 0.
-x = model(x0, duration, dt, control0)
-
-(II) control gradient
-
-c_grad = control_gradient(target, control0, x0)
-
-(III) step size and control update
-step, cost, control1 = step_size(control0, target, c_grad, x0, duration, dt)
-
-(IV) forward simulation
-x = model(x0, duration, dt, control1)
-
-for i in range(4):
-
-    (V.I) control gradient
-    
-    c_grad = control_gradient(target, control1, x0)
-    
-    (V.II) step size and control update
-    
-    step, cost, control1 = step_size(control1, target, c_grad, x0, duration, dt)
-    
-    (V.III) forward simulation
-    
-    x = model(x0, duration, dt, control1)
-"""
-
-
 class OcFhn:
 
     def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[]):
         """
-            :param fhn_model: custom "fhn2" model
+            :param fhn_model
             :param target:
             :param w_p: weight of the precision cost term
-            :param w_2: weight of the energy cost term
-            :param target: 2xN_t matrix with [0, :] target of x-population and [1, :] target of y-population
+            :param w_2: weight of the L2 cost term
+            :param target: 2xT matrix with [0, :] target of x-population and [1, :] target of y-population
         """
 
         self.model = fhn_model
@@ -98,6 +19,8 @@ class OcFhn:
 
         self.w_p = w_p
         self.w_2 = w_2
+
+        self.step = 10.
 
         self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
         self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
@@ -109,11 +32,6 @@ class OcFhn:
         # check correct specification of inputs
         assert self.T == self.model.params["x_ext"].shape[1]
         assert self.T == self.model.params["y_ext"].shape[1]
-
-        # For now only allow input via I_ext (REMARK calculation of Jacobian wrt. to control depends on this)
-        # This makes the explicit specification of y_ext by user unnecessary, but leave it for now.
-        assert np.all(self.model.params["y_ext"] == 0), ("No y_ext allowed in the current implementation. " +
-                                                         "Precomputed Jacobian!")
 
         self.xs_init = np.vstack((self.model.params["xs_init"], self.model.params["ys_init"]))  # maybe redundant,
                                                                                                 # but convenient
@@ -245,16 +163,27 @@ class OcFhn:
         self.simulate_forward()
         cost0 = self.compute_total_cost()
         factor = 0.7
-        step = 10.
+        step = self.step
         counter = 0.
 
         control0 = self.control
 
-        # inplace updating of models x_ext bc. forward-sim relies on models parameters
-        self.control = control0 + step * cost_gradient
-        self.update_input()
+        while True:
+            # inplace updating of models x_ext bc. forward-sim relies on models parameters
+            self.control = control0 + step * cost_gradient
+            self.update_input()
 
-        self.simulate_forward()     # Debugging: cost gradients contains **58 values
+            # input signal might be too high and produce diverging values in simulation
+            try:
+                self.simulate_forward()     
+            except ValueError:
+                step *= factor
+                self.step = step
+                print("diverging model output, decrease step size to ", step)
+                self.control = control0 + step * cost_gradient
+                self.update_input()
+            else:
+                break
 
         cost = self.compute_total_cost()
         #print(f"cost0: %s, cost: %s" % (cost0, cost))
@@ -297,6 +226,7 @@ class OcFhn:
         # step, cost, control1 = step_size(control0, target, c_grad, x0, duration, dt)
         # step = self.step_size()
         grad = self.compute_gradient()
+
         self.step_size(-grad)
         self.x_grads = grad[0, :]
 
