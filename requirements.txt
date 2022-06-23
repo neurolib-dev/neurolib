@@ -12,3 +12,7 @@ dill
 sympy
 jitcdde
 dpath
+# tutorial
+matplotlib
+seaborn
+
