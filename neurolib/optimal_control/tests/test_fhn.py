@@ -9,6 +9,7 @@ from neurolib.optimal_control import oc_fhn
 global limit_diff
 limit_diff = 1.
 
+
 class TestFHN(unittest.TestCase):
     """
     Test fhn in neurolib/optimal_control/
@@ -24,10 +25,10 @@ class TestFHN(unittest.TestCase):
         input_x = np.copy(zero_input)
         input_y = np.copy(input_x)
         for t in range(1, input_x.shape[1]-2):
-            input_x[0,t] = np.random.uniform(-a, a)
+            input_x[0, t] = np.random.uniform(-a, a)
         fhn.params["x_ext"] = input_x
         for t in range(1, input_y.shape[1]-2):
-            input_y[0,t] = np.random.uniform(-a, a)
+            input_y[0, t] = np.random.uniform(-a, a)
         fhn.params["y_ext"] = input_y
 
         fhn.params["duration"] = duration
@@ -35,8 +36,8 @@ class TestFHN(unittest.TestCase):
         fhn.params["ys_init"] = np.array([[0.]])
 
         fhn.run()
-        x_target = np.vstack( [0., fhn.x.T])
-        y_target = np.vstack( [0., fhn.y.T])
+        x_target = np.vstack([0., fhn.x.T])
+        y_target = np.vstack([0., fhn.y.T])
 
         fhn.params["y_ext"] = zero_input
         fhn.params["x_ext"] = zero_input
@@ -56,7 +57,6 @@ class TestFHN(unittest.TestCase):
                 break
         
         self.assertTrue(control_coincide)
-
 
 
 if __name__ == "__main__":
