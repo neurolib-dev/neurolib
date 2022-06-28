@@ -247,15 +247,18 @@ class Model:
         # check nans in output
         if np.isnan(self.output).any():
             logging.error("nan in model output!")
+            raise ValueError(f"nan in model output")
         else:
             EXPLOSION_THRESHOLD = 1e20
             if (self.output > EXPLOSION_THRESHOLD).any() > 0:
                 logging.error("nan in model output!")
+                raise ValueError(f"nan in model output")
 
         # check nans in BOLD
         if "BOLD" in self.outputs:
             if np.isnan(self.outputs.BOLD.BOLD).any():
                 logging.error("nan in BOLD output!")
+                raise ValueError(f"nan in BOLD output")
 
     def integrate(self, append_outputs=False, simulate_bold=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.

@@ -7,7 +7,7 @@ from neurolib.utils.stimulus import ZeroInput
 from neurolib.optimal_control import oc_fhn
 
 global limit_diff
-limit_diff = 1.
+limit_diff = 1e-4
 
 
 class TestFHN(unittest.TestCase):
