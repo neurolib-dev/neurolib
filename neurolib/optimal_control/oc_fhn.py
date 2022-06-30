@@ -174,14 +174,13 @@ class OcFhn:
             self.update_input()
 
             # input signal might be too high and produce diverging values in simulation
-            try:
-                self.simulate_forward()     
-            except ValueError:
+            self.simulate_forward()
+            if np.isnan(self.get_xs()).any():
                 step *= factor
                 self.step = step
                 print("diverging model output, decrease step size to ", step)
                 self.control = control0 + step * cost_gradient
-                self.update_input()
+                self.update_input() 
             else:
                 break
 
