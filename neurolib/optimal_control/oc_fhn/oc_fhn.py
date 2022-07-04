@@ -218,7 +218,7 @@ class OcFhn:
         # (IV) forward simulation
         self.simulate_forward()
 
-        for i in range(n_max_iterations):
+        for i in range(n_max_iterations-1):
             if i in self.print_array:
                 print(f"Cost in iteration %s: %s" % (i, self.compute_total_cost()))
             self.add_cost_to_history(self.compute_total_cost())
