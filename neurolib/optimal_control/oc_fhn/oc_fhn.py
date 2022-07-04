@@ -1,6 +1,7 @@
 import numpy as np
 import numba
 from neurolib.optimal_control import cost_functions
+from .oc_fhn_jit import compute_hx, solve_adjoint
 
 
 class OcFhn:
@@ -84,16 +85,6 @@ class OcFhn:
 
         self.x_controls = np.vstack((self.x_controls, self.control[0, :].reshape(1, -1)))
 
-    def Dx(self, x):
-        """ 2x2 Jacobian of system dynamics wrt. to systems dynamic variables
-        """
-        return (np.array([[3 * self.model.params["alpha"] * x ** 2
-                           - 2 * self.model.params["beta"] * x
-                           - self.model.params["gamma"],
-                           0.],
-                          [-1 / self.model.params["tau"],
-                          self.model.params["epsilon"] / self.model.params["tau"]]]))
-
     def Dxdot(self):
         """ 2x2 Jacobian of systems dynamics wrt. to change of systems variables.
         """
@@ -126,12 +117,13 @@ class OcFhn:
         """ Jacobians for each time step.
             :return: array containing N 2x2-matrices
         """
-        hx = np.zeros((self.T, 2, 2))
-
-        for ind, x in enumerate(self.get_xs()[0, :]):
-            hx[ind, :, :] = self.Dx(x)
-
-        return hx
+        return compute_hx(self.model.params["alpha"],
+                          self.model.params["beta"],
+                          self.model.params["gamma"],
+                          self.model.params["tau"],
+                          self.model.params["epsilon"],
+                          self.T,
+                          self.get_xs()[0, :])
 
     def solve_adjoint(self):
         """ Backwards integration.
@@ -143,14 +135,7 @@ class OcFhn:
         # ToDo: generalize, not only precision cost
         fx = cost_functions.derivative_precision_cost(self.target, self.get_xs(), self.w_p)
 
-        adjoint_state = np.zeros(self.output_dim)
-        adjoint_state[:, -1] = 0
-
-        for ind in range(self.T - 2, -1, -1):
-            adjoint_state[:, ind] = adjoint_state[:, ind + 1] \
-                                    - (fx[:, ind + 1] + adjoint_state[:, ind + 1] @ hx[ind + 1]) * self.dt
-
-        self.adjoint_state = adjoint_state
+        self.adjoint_state = solve_adjoint(hx, fx, self.output_dim, self.dt, self.T)
 
     def step_size(self, cost_gradient):
         """
