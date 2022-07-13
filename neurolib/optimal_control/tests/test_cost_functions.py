@@ -7,7 +7,8 @@ class TestCostFunctions(unittest.TestCase):
 
     @staticmethod
     def get_arbitrary_array(self):
-        return np.array([1, -10, 5.555])  # an arbitrary vector with positive and negative entries
+        return np.array([[1, -10, 5.555],
+                         [-1, 3.3333, 9]])  # an arbitrary vector with positive and negative entries
 
     def test_precision_cost(self):
         w_p = 1
@@ -16,19 +17,26 @@ class TestCostFunctions(unittest.TestCase):
         self.assertEqual(cost_functions.precision_cost(x_target, x_target, w_p), 0)     # target and simulation coincide
 
         x_sim = np.copy(x_target)
-        x_sim[0] = - x_sim[0]   # create setting where result depends only on this first entry
+        x_sim[:, 0] = - x_sim[:, 0]   # create setting where result depends only on this first entries
         self.assertEqual(cost_functions.precision_cost(x_target, x_target, w_p), 0)
-        self.assertEqual(cost_functions.precision_cost(x_target, x_sim, w_p), w_p/2*(2*x_sim[0])**2)
+        self.assertEqual(cost_functions.precision_cost(x_target, x_sim, w_p), w_p/2*np.sum((2*x_target[:, 0])**2))
 
     def test_energy_cost(self):
         w_2 = 1
         u = self.get_arbitrary_array(self)
         energy_cost = cost_functions.energy_cost(u, w_2)
-        self.assertEqual(energy_cost, 65.9290125)
+        self.assertEqual(energy_cost, 112.484456945)
 
     def test_derivative_precision_cost(self):
-        # ToDo
-        pass
+        w_p = 1
+        x_target = self.get_arbitrary_array(self)
+        x_sim = np.copy(x_target)
+        x_sim[:, 0] = - x_sim[:, 0]  # create setting where result depends only on this first entries
+
+        derivative_p_c = cost_functions.derivative_precision_cost(x_target, x_sim, w_p)
+
+        self.assertTrue(np.all(derivative_p_c[:, 1::] == 0))
+        self.assertTrue(np.all(derivative_p_c[:, 0] == 2*(-w_p*x_target[:, 0])))
 
     def test_derivative_energy_cost(self):
         w_e = -0.9995
