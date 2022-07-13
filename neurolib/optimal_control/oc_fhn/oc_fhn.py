@@ -2,6 +2,7 @@ import numpy as np
 import numba
 from neurolib.optimal_control import cost_functions
 from .oc_fhn_jit import compute_hx, solve_adjoint
+import logging
 
 
 class OcFhn:
@@ -47,6 +48,7 @@ class OcFhn:
         self.control = np.vstack((self.model.params["x_ext"], self.model.params["y_ext"]))
 
         self.cost_history = None    # np.zeros(self.T)
+        self.step_sizes_history = None
         self.cost_history_index = 0
 
         self.x_controls = self.model.params["x_ext"]    # save control signals throughout optimization iterations for
@@ -56,6 +58,8 @@ class OcFhn:
                                      # later analysis
 
         self.print_array = print_array
+
+        self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
     def add_cost_to_history(self, cost):
         """ For later analysis.
@@ -183,15 +187,21 @@ class OcFhn:
                 step = 0.   # for later analysis only
                 self.control = control0
                 self.update_input()
+                logging.WARNING("Zero step size encountered! Optimization got to a halt.")
+                self.zero_step_encountered = True
                 break
+
+        self.step_sizes_history[self.cost_history_index - 1] = step
 
     def optimize(self, n_max_iterations):
         """ Compute the optimal control signal.
         """
         self.cost_history = np.zeros(n_max_iterations)
+        self.step_sizes_history = np.zeros(n_max_iterations)
         self.cost_history_index = 0
         # (I) forward simulation
         self.simulate_forward()  # yields x(t)
+        self.add_cost_to_history(self.compute_total_cost())
 
         # (II) control gradient happens within "step_size"
         # (III) step size and control update
@@ -214,3 +224,6 @@ class OcFhn:
 
             # (V.III) forward simulation
             self.simulate_forward()  # yields x(t)
+
+            if self.zero_step_encountered:
+                break
