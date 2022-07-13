@@ -5,6 +5,8 @@ import numpy as np
 from neurolib.models.fhn import FHNModel
 from neurolib.utils.stimulus import ZeroInput
 from neurolib.optimal_control import oc_fhn
+from numpy.random import MT19937
+from numpy.random import RandomState, SeedSequence
 
 global limit_diff
 limit_diff = 1e-4
@@ -24,11 +26,14 @@ class TestFHN(unittest.TestCase):
         zero_input = ZeroInput().generate_input(duration=duration+fhn.params.dt, dt=fhn.params.dt)
         input_x = np.copy(zero_input)
         input_y = np.copy(input_x)
+
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+
         for t in range(1, input_x.shape[1]-2):
-            input_x[0, t] = np.random.uniform(-a, a)
+            input_x[0, t] = rs.uniform(-a, a)
         fhn.params["x_ext"] = input_x
         for t in range(1, input_y.shape[1]-2):
-            input_y[0, t] = np.random.uniform(-a, a)
+            input_y[0, t] = rs.uniform(-a, a)
         fhn.params["y_ext"] = input_y
 
         fhn.params["duration"] = duration
