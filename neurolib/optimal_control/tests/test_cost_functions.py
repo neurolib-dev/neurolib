@@ -49,10 +49,10 @@ class TestCostFunctions(unittest.TestCase):
             the second interval is to be taken into account.
         """
         w_p = 1
-        x_target = np.vstack((self.get_arbitrary_array(), self.get_arbitrary_array()))
+        x_target = np.hstack((self.get_arbitrary_array(), self.get_arbitrary_array()))
         x_sim = np.copy(x_target)
         x_sim[:, 3] = - x_sim[:, 3]
-        interval = (3, -1)
+        interval = (3, None)
         precision_cost = cost_functions.precision_cost_in_interval(x_target, x_sim, w_p, interval)
         # Result should only depend on second half of the timeseries.
         self.assertEqual(precision_cost, w_p / 2 * np.sum((2 * x_target[:, 3]) ** 2))
@@ -62,14 +62,14 @@ class TestCostFunctions(unittest.TestCase):
          only the second interval is to be taken into account.
         """
         w_p = 1
-        x_target = np.vstack((self.get_arbitrary_array(), self.get_arbitrary_array()))
+        x_target = np.hstack((self.get_arbitrary_array(), self.get_arbitrary_array()))
         x_sim = np.copy(x_target)
         x_sim[:, 3] = - x_sim[:, 3]  # create setting where result depends only on this first entries
-        interval = (3, -1)
+        interval = (3, None)
         derivative_p_c = cost_functions.derivative_precision_cost_in_interval(x_target, x_sim, w_p, interval)
 
-        self.assertTrue(np.all(derivative_p_c[:, 0::3] == 0))
-        self.assertTrue(np.all(derivative_p_c[:, 4::-1] == 0))
+        self.assertTrue(np.all(derivative_p_c[:, 0:3] == 0))
+        self.assertTrue(np.all(derivative_p_c[:, 4::] == 0))
         self.assertTrue(np.all(derivative_p_c[:, 3] == 2 * (-w_p * x_target[:, 3])))
 
 

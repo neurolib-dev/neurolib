@@ -1,6 +1,24 @@
 import numpy as np
 import numba
 
+
+def precision_cost_in_interval(x_target, x_sim, w_p, interval: tuple[int, int]=(0, None)):
+    """
+        :param interval: [t_start, t_end], default is full time series
+    """
+    return w_p * 0.5 * np.sum((x_target[:, interval[0]:interval[1]] - x_sim[:, interval[0]:interval[1]]) ** 2.)
+
+
+def derivative_precision_cost_in_interval(x_target, x_sim, w_p, interval: tuple[int]=(0, None)):
+    """
+        :param interval: [t_start, t_end], default is full time series
+    """
+    derivative = np.zeros(x_target.shape)
+    derivative[:, interval[0]:interval[1]] = - w_p * (x_target[:, interval[0]:interval[1]]
+                                                      - x_sim[:, interval[0]:interval[1]])
+    return derivative
+
+
 #@numba.njit
 def precision_cost(x_target, x_sim, w_p):
     """ Summed squared difference between target and simulation weighted by w_p.
