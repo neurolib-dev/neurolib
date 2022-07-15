@@ -7,7 +7,7 @@ import logging
 
 class OcFhn:
 
-    def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[]):
+    def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[], precision_cost_interval=(0, None)):
         """
             :param fhn_model
             :param target:
@@ -61,6 +61,8 @@ class OcFhn:
 
         self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
+        self.precision_cost_interval = precision_cost_interval
+
     def add_cost_to_history(self, cost):
         """ For later analysis.
         """
@@ -104,7 +106,10 @@ class OcFhn:
     def compute_total_cost(self):
         """
         """
-        precision_cost = cost_functions.precision_cost(self.target, self.get_xs(), w_p=self.w_p)
+        precision_cost = cost_functions.precision_cost_in_interval(self.target,
+                                                                   self.get_xs(),
+                                                                   w_p=self.w_p,
+                                                                   interval=self.precision_cost_interval)
         energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2)
         return precision_cost + energy_cost
 
@@ -137,7 +142,10 @@ class OcFhn:
         hx = self.compute_hx()
 
         # ToDo: generalize, not only precision cost
-        fx = cost_functions.derivative_precision_cost(self.target, self.get_xs(), self.w_p)
+        fx = cost_functions.derivative_precision_cost_in_interval(self.target,
+                                                                  self.get_xs(),
+                                                                  self.w_p,
+                                                                  interval=self.precision_cost_interval)
 
         self.adjoint_state = solve_adjoint(hx, fx, self.output_dim, self.dt, self.T)
 
