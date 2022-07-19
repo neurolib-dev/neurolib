@@ -28,7 +28,8 @@ class OcFhn:
         self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
         self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
 
-        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps is initial condition
+        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps is
+                                                                        # initial condition.
         # + forward simulation steps of neurolibs model.run().
         self.output_dim = (2, self.T)  # FHN has two variables
 
@@ -107,10 +108,10 @@ class OcFhn:
     def compute_total_cost(self):
         """
         """
-        precision_cost = cost_functions.precision_cost_in_interval(self.target,
-                                                                   self.get_xs(),
-                                                                   w_p=self.w_p,
-                                                                   interval=self.precision_cost_interval)
+        precision_cost = cost_functions.precision_cost(self.target,
+                                                       self.get_xs(),
+                                                       w_p=self.w_p,
+                                                       interval=self.precision_cost_interval)
         energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2)
         return precision_cost + energy_cost
 
@@ -125,7 +126,7 @@ class OcFhn:
 
     def compute_hx(self):
         """ Jacobians for each time step.
-            :return: array containing N 2x2-matrices
+            :return: array containing self.T 2x2-matrices
         """
         return compute_hx(self.model.params["alpha"],
                           self.model.params["beta"],
@@ -143,10 +144,10 @@ class OcFhn:
         hx = self.compute_hx()
 
         # ToDo: generalize, not only precision cost
-        fx = cost_functions.derivative_precision_cost_in_interval(self.target,
-                                                                  self.get_xs(),
-                                                                  self.w_p,
-                                                                  interval=self.precision_cost_interval)
+        fx = cost_functions.derivative_precision_cost(self.target,
+                                                      self.get_xs(),
+                                                      self.w_p,
+                                                      interval=self.precision_cost_interval)
 
         self.adjoint_state = solve_adjoint(hx, fx, self.output_dim, self.dt, self.T)
 

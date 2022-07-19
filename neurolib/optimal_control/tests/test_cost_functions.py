@@ -10,7 +10,7 @@ class TestCostFunctions(unittest.TestCase):
         return np.array([[1, -10, 5.555],
                          [-1, 3.3333, 9]])  # an arbitrary vector with positive and negative entries
 
-    def test_precision_cost(self):
+    def test_precision_cost_full_timeseries(self):
         w_p = 1
         x_target = self.get_arbitrary_array()
 
@@ -22,12 +22,13 @@ class TestCostFunctions(unittest.TestCase):
         self.assertEqual(cost_functions.precision_cost(x_target, x_sim, w_p), w_p/2*np.sum((2*x_target[:, 0])**2))
 
     def test_energy_cost(self):
+        reference_result = 112.484456945
         w_2 = 1
         u = self.get_arbitrary_array()
         energy_cost = cost_functions.energy_cost(u, w_2)
-        self.assertEqual(energy_cost, 112.484456945)
+        self.assertEqual(energy_cost, reference_result)
 
-    def test_derivative_precision_cost(self):
+    def test_derivative_precision_cost_full_timeseries(self):
         w_p = 1
         x_target = self.get_arbitrary_array()
         x_sim = np.copy(x_target)
@@ -53,7 +54,7 @@ class TestCostFunctions(unittest.TestCase):
         x_sim = np.copy(x_target)
         x_sim[:, 3] = - x_sim[:, 3]
         interval = (3, None)
-        precision_cost = cost_functions.precision_cost_in_interval(x_target, x_sim, w_p, interval)
+        precision_cost = cost_functions.precision_cost(x_target, x_sim, w_p, interval)
         # Result should only depend on second half of the timeseries.
         self.assertEqual(precision_cost, w_p / 2 * np.sum((2 * x_target[:, 3]) ** 2))
 
@@ -66,7 +67,7 @@ class TestCostFunctions(unittest.TestCase):
         x_sim = np.copy(x_target)
         x_sim[:, 3] = - x_sim[:, 3]  # create setting where result depends only on this first entries
         interval = (3, None)
-        derivative_p_c = cost_functions.derivative_precision_cost_in_interval(x_target, x_sim, w_p, interval)
+        derivative_p_c = cost_functions.derivative_precision_cost(x_target, x_sim, w_p, interval)
 
         self.assertTrue(np.all(derivative_p_c[:, 0:3] == 0))
         self.assertTrue(np.all(derivative_p_c[:, 4::] == 0))
