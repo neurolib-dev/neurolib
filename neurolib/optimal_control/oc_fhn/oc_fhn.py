@@ -49,6 +49,7 @@ class OcFhn:
 
         self.cost_history = None    # np.zeros(self.T)
         self.step_sizes_history = None
+        self.step_sizes_loops_history = None
         self.cost_history_index = 0
 
         self.x_controls = self.model.params["x_ext"]    # save control signals throughout optimization iterations for
@@ -199,6 +200,7 @@ class OcFhn:
                 self.zero_step_encountered = True
                 break
 
+        self.step_sizes_loops_history[self.cost_history_index - 1] = counter
         self.step_sizes_history[self.cost_history_index - 1] = step
 
     def optimize(self, n_max_iterations):
@@ -206,6 +208,7 @@ class OcFhn:
         """
         self.cost_history = np.zeros(n_max_iterations)
         self.step_sizes_history = np.zeros(n_max_iterations)
+        self.step_sizes_loops_history = np.zeros(n_max_iterations)
         self.cost_history_index = 0
         # (I) forward simulation
         self.simulate_forward()  # yields x(t)
@@ -220,7 +223,7 @@ class OcFhn:
         # (IV) forward simulation
         self.simulate_forward()
 
-        for i in range(n_max_iterations-1):
+        for i in range(1, n_max_iterations):
             if i in self.print_array:
                 print(f"Cost in iteration %s: %s" % (i, self.compute_total_cost()))
             self.add_cost_to_history(self.compute_total_cost())
