@@ -48,9 +48,9 @@ class OcFhn:
         # ToDo: maybe add input to both?
         self.control = np.vstack((self.model.params["x_ext"], self.model.params["y_ext"]))
 
-        self.cost_history = None    # np.zeros(self.T)
-        self.step_sizes_history = None
-        self.step_sizes_loops_history = None
+        self.cost_history = np.array([])
+        self.step_sizes_history = np.array([])
+        self.step_sizes_loops_history = np.array([])
         self.cost_history_index = 0
 
         self.x_controls = self.model.params["x_ext"]    # save control signals throughout optimization iterations for
@@ -207,10 +207,9 @@ class OcFhn:
     def optimize(self, n_max_iterations):
         """ Compute the optimal control signal.
         """
-        self.cost_history = np.zeros(n_max_iterations)
-        self.step_sizes_history = np.zeros(n_max_iterations)
-        self.step_sizes_loops_history = np.zeros(n_max_iterations)
-        self.cost_history_index = 0
+        self.cost_history = np.hstack((self.cost_history, np.zeros(n_max_iterations)))
+        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
+        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
         # (I) forward simulation
         self.simulate_forward()  # yields x(t)
         self.add_cost_to_history(self.compute_total_cost())
