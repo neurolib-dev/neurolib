@@ -212,6 +212,9 @@ class OcFhn:
         self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
         # (I) forward simulation
         self.simulate_forward()  # yields x(t)
+
+        if 1 in self.print_array:
+            print(f"Cost in iteration 1: %s" % (self.compute_total_cost()))
         self.add_cost_to_history(self.compute_total_cost())
 
         # (II) control gradient happens within "step_size"
@@ -223,7 +226,7 @@ class OcFhn:
         # (IV) forward simulation
         self.simulate_forward()
 
-        for i in range(1, n_max_iterations):
+        for i in range(2, n_max_iterations+1):
             if i in self.print_array:
                 print(f"Cost in iteration %s: %s" % (i, self.compute_total_cost()))
             self.add_cost_to_history(self.compute_total_cost())
