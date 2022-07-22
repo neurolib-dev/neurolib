@@ -1,10 +1,13 @@
 import numpy as np
 import numba
 from neurolib.optimal_control import cost_functions
+from .oc_fhn_jit import compute_hx, solve_adjoint
+import logging
+
 
 class OcFhn:
 
-    def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[]):
+    def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[], precision_cost_interval=(0, None)):
         """
             :param fhn_model
             :param target:
@@ -25,7 +28,8 @@ class OcFhn:
         self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
         self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
 
-        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps is initial condition
+        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps is
+                                                                        # initial condition.
         # + forward simulation steps of neurolibs model.run().
         self.output_dim = (2, self.T)  # FHN has two variables
 
@@ -44,7 +48,9 @@ class OcFhn:
         # ToDo: maybe add input to both?
         self.control = np.vstack((self.model.params["x_ext"], self.model.params["y_ext"]))
 
-        self.cost_history = None #np.zeros(self.T)
+        self.cost_history = np.array([])
+        self.step_sizes_history = np.array([])
+        self.step_sizes_loops_history = np.array([])
         self.cost_history_index = 0
 
         self.x_controls = self.model.params["x_ext"]    # save control signals throughout optimization iterations for
@@ -54,6 +60,10 @@ class OcFhn:
                                      # later analysis
 
         self.print_array = print_array
+
+        self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
+
+        self.precision_cost_interval = precision_cost_interval
 
     def add_cost_to_history(self, cost):
         """ For later analysis.
@@ -83,16 +93,6 @@ class OcFhn:
 
         self.x_controls = np.vstack((self.x_controls, self.control[0, :].reshape(1, -1)))
 
-    def Dx(self, x):
-        """ 2x2 Jacobian of system dynamics wrt. to systems dynamic variables
-        """
-        return (np.array([[3 * self.model.params["alpha"] * x ** 2
-                           - 2 * self.model.params["beta"] * x
-                           - self.model.params["gamma"],
-                           0.],
-                          [-1 / self.model.params["tau"],
-                          self.model.params["epsilon"] / self.model.params["tau"]]]))
-
     def Dxdot(self):
         """ 2x2 Jacobian of systems dynamics wrt. to change of systems variables.
         """
@@ -108,7 +108,10 @@ class OcFhn:
     def compute_total_cost(self):
         """
         """
-        precision_cost = cost_functions.precision_cost(self.target, self.get_xs(), w_p=self.w_p)
+        precision_cost = cost_functions.precision_cost(self.target,
+                                                       self.get_xs(),
+                                                       w_p=self.w_p,
+                                                       interval=self.precision_cost_interval)
         energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2)
         return precision_cost + energy_cost
 
@@ -123,14 +126,15 @@ class OcFhn:
 
     def compute_hx(self):
         """ Jacobians for each time step.
-            :return: array containing N 2x2-matrices
+            :return: array containing self.T 2x2-matrices
         """
-        hx = np.zeros((self.T, 2, 2))
-
-        for ind, x in enumerate(self.get_xs()[0, :]):
-            hx[ind, :, :] = self.Dx(x)
-
-        return hx
+        return compute_hx(self.model.params["alpha"],
+                          self.model.params["beta"],
+                          self.model.params["gamma"],
+                          self.model.params["tau"],
+                          self.model.params["epsilon"],
+                          self.T,
+                          self.get_xs()[0, :])
 
     def solve_adjoint(self):
         """ Backwards integration.
@@ -140,21 +144,12 @@ class OcFhn:
         hx = self.compute_hx()
 
         # ToDo: generalize, not only precision cost
-        fx = cost_functions.derivative_precision_cost(self.target, self.get_xs(), self.w_p)
+        fx = cost_functions.derivative_precision_cost(self.target,
+                                                      self.get_xs(),
+                                                      self.w_p,
+                                                      interval=self.precision_cost_interval)
 
-        #print("fx = ", fx)
-
-        adjoint_state = np.zeros(self.output_dim)
-        adjoint_state[:, -1] = 0
-
-        for ind in range(self.T - 2, -1, -1):
-            adjoint_state[:, ind] = adjoint_state[:, ind + 1] \
-                                    - (fx[:, ind + 1] + adjoint_state[:, ind + 1] @ hx[ind + 1]) * self.dt
-
-
-        self.adjoint_state = adjoint_state
-
-        #print("adjoint = ", adjoint_state[0,:])
+        self.adjoint_state = solve_adjoint(hx, fx, self.output_dim, self.dt, self.T)
 
     def step_size(self, cost_gradient):
         """
@@ -185,7 +180,6 @@ class OcFhn:
                 break
 
         cost = self.compute_total_cost()
-        #print(f"cost0: %s, cost: %s" % (cost0, cost))
         while cost > cost0:
             step *= factor
             counter += 1
@@ -203,55 +197,49 @@ class OcFhn:
                 step = 0.   # for later analysis only
                 self.control = control0
                 self.update_input()
+                logging.WARNING("Zero step size encountered! Optimization got to a halt.")
+                self.zero_step_encountered = True
                 break
 
-        # print(f"step: %s" % (step))
+        self.step_sizes_loops_history[self.cost_history_index - 1] = counter
+        self.step_sizes_history[self.cost_history_index - 1] = step
 
     def optimize(self, n_max_iterations):
         """ Compute the optimal control signal.
         """
-        self.cost_history = np.zeros(n_max_iterations)
-        self.cost_history_index = 0
+        self.cost_history = np.hstack((self.cost_history, np.zeros(n_max_iterations)))
+        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
+        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
         # (I) forward simulation
-        # self.model.params["x_ext"] = self.control
-        # self.model.params["y_ext"] =
         self.simulate_forward()  # yields x(t)
 
+        cost = self.compute_total_cost()
+        if 1 in self.print_array:
+            print(f"Cost in iteration 1: %s" % (cost))
+        self.add_cost_to_history(cost)
+
         # (II) control gradient happens within "step_size"
-        # c_grad = control_gradient(target, control0, x0)
-        # c_grad = self.compute_gradient()
-
         # (III) step size and control update
-        # step, cost, control1 = step_size(control0, target, c_grad, x0, duration, dt)
-        # step = self.step_size()
         grad = self.compute_gradient()
-
         self.step_size(-grad)
         self.x_grads = grad[0, :]
 
-        #print('gradient = ', grad[0,:])
-
         # (IV) forward simulation
-        # self.model.params["x_ext"] =  updated within "step_size"
-        # self.model.params["y_ext"] =  updated within "step_size"
         self.simulate_forward()
 
-        for i in range(n_max_iterations):
+        for i in range(2, n_max_iterations+1):
+            cost = self.compute_total_cost()
             if i in self.print_array:
-                print(f"Cost in iteration %s: %s" % (i, self.compute_total_cost()))
-            self.add_cost_to_history(self.compute_total_cost())
+                print(f"Cost in iteration %s: %s" % (i, cost))
+            self.add_cost_to_history(cost)
             # (V.I) control gradient happens within "step_size"
-            # c_grad = control_gradient(target, control1, x0)
-
             # (V.II) step size and control update
-            # step, cost, control1 = step_size(control1, target, c_grad, x0, duration, dt)
-            # step = self.step_size()
             grad = self.compute_gradient()
             self.step_size(-grad)
             self.x_grads = np.vstack((self.x_grads, grad))
-            #print('gradient = ', grad[0,:])
 
             # (V.III) forward simulation
-            # self.model.params["x_ext"] =
-            # self.model.params["y_ext"] =
             self.simulate_forward()  # yields x(t)
+
+            if self.zero_step_encountered:
+                break
