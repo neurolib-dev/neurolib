@@ -213,9 +213,10 @@ class OcFhn:
         # (I) forward simulation
         self.simulate_forward()  # yields x(t)
 
+        cost = self.compute_total_cost()
         if 1 in self.print_array:
-            print(f"Cost in iteration 1: %s" % (self.compute_total_cost()))
-        self.add_cost_to_history(self.compute_total_cost())
+            print(f"Cost in iteration 1: %s" % (cost))
+        self.add_cost_to_history(cost)
 
         # (II) control gradient happens within "step_size"
         # (III) step size and control update
@@ -227,9 +228,10 @@ class OcFhn:
         self.simulate_forward()
 
         for i in range(2, n_max_iterations+1):
+            cost = self.compute_total_cost()
             if i in self.print_array:
-                print(f"Cost in iteration %s: %s" % (i, self.compute_total_cost()))
-            self.add_cost_to_history(self.compute_total_cost())
+                print(f"Cost in iteration %s: %s" % (i, cost))
+            self.add_cost_to_history(cost)
             # (V.I) control gradient happens within "step_size"
             # (V.II) step size and control update
             grad = self.compute_gradient()
