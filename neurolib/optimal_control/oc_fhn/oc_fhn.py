@@ -1,3 +1,4 @@
+from locale import MON_7
 import numpy as np
 import numba
 from neurolib.optimal_control import cost_functions
@@ -7,7 +8,7 @@ import logging
 
 class OcFhn:
 
-    def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[], precision_cost_interval=(0, None)):
+    def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[], precision_cost_interval=(0, None), M=1, M_validation=1000, validate_per_step=False, method='3'):
         """
             :param fhn_model
             :param target:
@@ -23,13 +24,20 @@ class OcFhn:
         self.w_p = w_p
         self.w_2 = w_2
 
-        self.step = 10.
+        self.step = 1.
+
+        self.M = M
+        self.M_validation = M_validation
+        self.cost_validation = 0.
+        self.validate_per_step = validate_per_step
+        self.method = method
 
         self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
         self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
 
         self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps is
                                                                         # initial condition.
+
         # + forward simulation steps of neurolibs model.run().
         self.output_dim = (2, self.T)  # FHN has two variables
 
@@ -56,7 +64,7 @@ class OcFhn:
         self.x_controls = self.model.params["x_ext"]    # save control signals throughout optimization iterations for
                                                         # later analysis
 
-        self.x_grads = np.array(())  # save gradients throughout optimization iterations for
+        self.x_grads = np.array([])  # save gradients throughout optimization iterations for
                                      # later analysis
 
         self.print_array = print_array
@@ -157,7 +165,7 @@ class OcFhn:
         """
         self.simulate_forward()
         cost0 = self.compute_total_cost()
-        factor = 0.7
+        factor = 0.5
         step = self.step
         counter = 0.
 
@@ -193,19 +201,31 @@ class OcFhn:
             # cost = total_cost(control1, time_series, target)
             cost = self.compute_total_cost()
 
-            if counter == 30.:
+            if counter == 20.:
                 step = 0.   # for later analysis only
                 self.control = control0
                 self.update_input()
-                logging.WARNING("Zero step size encountered! Optimization got to a halt.")
-                self.zero_step_encountered = True
+                #logging.warning("Zero step encoutered, stop bisection")
+                if self.M == 1:
+                    self.zero_step_encountered = True
                 break
 
         self.step_sizes_loops_history[self.cost_history_index - 1] = counter
         self.step_sizes_history[self.cost_history_index - 1] = step
 
+        return step
+
     def optimize(self, n_max_iterations):
-        """ Compute the optimal control signal.
+        if self.M == 1:
+            return self.optimize_M0(n_max_iterations)
+        elif self.method == '3':
+                return self.optimize_M3(n_max_iterations)
+        else:
+            print("Optimization method not implemented.")
+            return
+
+    def optimize_M0(self, n_max_iterations):
+        """ Compute the optimal control signal for noise averaging method 2
         """
         self.cost_history = np.hstack((self.cost_history, np.zeros(n_max_iterations)))
         self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
@@ -243,3 +263,78 @@ class OcFhn:
 
             if self.zero_step_encountered:
                 break
+
+    def optimize_M3(self, n_max_iterations):
+        """ Compute the optimal control signal for noise averaging method 3
+        """
+        self.cost_history = np.hstack(( self.cost_history, np.zeros((n_max_iterations)) ))
+        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
+        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
+
+        # (I) forward simulation
+        grad_m = np.zeros((self.M, self.control.shape[0], self.control.shape[1] ))
+
+        for i in range(1, n_max_iterations+1):
+
+            if self.validate_per_step:
+                for m in range(self.M):
+                    self.simulate_forward()
+                    grad_m[m,:] = self.compute_gradient()
+                cost = self.compute_cost_validation()
+            else:
+                cost_m = 0.
+                for m in range(self.M):
+                    self.simulate_forward()
+                    cost_m += self.compute_total_cost()
+                    grad_m[m,:] = self.compute_gradient()
+                cost = cost_m / self.M
+
+            grad = np.mean(grad_m, axis=0)
+
+            if i in self.print_array:
+                print(f"Mean cost in iteration %s: %s" % (i, cost))
+            self.add_cost_to_history(cost)
+
+            control0 = self.control
+            step = self.get_step_noisy(grad)
+
+            self.control = control0 + step * (-grad)
+            self.update_input()
+            self.simulate_forward()
+
+            if self.zero_step_encountered:
+                break
+
+        if self.validate_per_step:
+            self.cost_validation = cost
+        else:
+            self.cost_validation = self.compute_cost_validation()
+            print(f"Final cost validated with %s noise realizations : %s" % (self.M_validation, self.cost_validation))
+
+
+    def compute_cost_validation(self):
+        cost_validation = 0.
+        for m in range(self.M_validation):
+            self.simulate_forward()
+            cost_validation += self.compute_total_cost()
+        return cost_validation / self.M_validation
+
+    def get_step_noisy(self, gradient):
+
+        step = 0.
+        n_steps = 0.
+        control0 = self.control
+
+        for m in range(self.M):
+            step_m = self.step_size(-gradient)
+            self.control = control0.copy()
+            self.update_input()
+
+            if step_m > 0.:
+                step += step_m
+                n_steps += 1
+
+        if n_steps == 0.:
+            self.zero_step_encountered = True
+
+        return ( step / n_steps )
