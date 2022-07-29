@@ -216,6 +216,13 @@ class OcFhn:
         return step
 
     def optimize(self, n_max_iterations):
+        """ Optimization method
+            chose from deteministic (M=1) or one of several stochastic (M>1) approaches
+            
+        :param n_max_iteration: maximum number of iterations of gradient descent
+        :type n_max_iteration: int
+        
+        """
         if self.M == 1:
             return self.optimize_M0(n_max_iterations)
         elif self.method == '3':
@@ -225,7 +232,7 @@ class OcFhn:
             return
 
     def optimize_M0(self, n_max_iterations):
-        """ Compute the optimal control signal for noise averaging method 2
+        """ Compute the optimal control signal for noise averaging method 0 (deterministic, M=1)
         """
         self.cost_history = np.hstack((self.cost_history, np.zeros(n_max_iterations)))
         self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
@@ -238,7 +245,7 @@ class OcFhn:
             print(f"Cost in iteration 1: %s" % (cost))
         self.add_cost_to_history(cost)
 
-        # (II) control gradient happens within "step_size"
+        # (II) gradient descent takes place within "step_size"
         # (III) step size and control update
         grad = self.compute_gradient()
         self.step_size(-grad)
@@ -252,7 +259,7 @@ class OcFhn:
             if i in self.print_array:
                 print(f"Cost in iteration %s: %s" % (i, cost))
             self.add_cost_to_history(cost)
-            # (V.I) control gradient happens within "step_size"
+            # (V.I) gradient descent takes place within "step_size"
             # (V.II) step size and control update
             grad = self.compute_gradient()
             self.step_size(-grad)
@@ -271,12 +278,13 @@ class OcFhn:
         self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
         self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
 
-        # (I) forward simulation
+        # initialize array containing M gradients (one per noise realization) for each iteration
         grad_m = np.zeros((self.M, self.control.shape[0], self.control.shape[1] ))
 
         for i in range(1, n_max_iterations+1):
 
-            if self.validate_per_step:
+            #(I) compute gradient and mean cost
+            if self.validate_per_step: # if cost is computed for M_validation realizations in every step
                 for m in range(self.M):
                     self.simulate_forward()
                     grad_m[m,:] = self.compute_gradient()
@@ -313,6 +321,8 @@ class OcFhn:
 
 
     def compute_cost_validation(self):
+        """ Computes the average cost from M_validation noise realizations
+        """
         cost_validation = 0.
         for m in range(self.M_validation):
             self.simulate_forward()
@@ -320,6 +330,11 @@ class OcFhn:
         return cost_validation / self.M_validation
 
     def get_step_noisy(self, gradient):
+        """ Computes the mean descent step for M noise realizations
+
+        :param gradient: (mean) gradient of the respective iteration
+        :type: numpy array
+        """
 
         step = 0.
         n_steps = 0.
@@ -330,10 +345,12 @@ class OcFhn:
             self.control = control0.copy()
             self.update_input()
 
+            # sort out zero stepsizes and average only over rest
             if step_m > 0.:
                 step += step_m
                 n_steps += 1
 
+        # if step=0 in all M realizations, this will interrupt the optimization
         if n_steps == 0.:
             self.zero_step_encountered = True
 
