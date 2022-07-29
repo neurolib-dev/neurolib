@@ -40,10 +40,10 @@ Example [IPython Notebooks](examples/) on how to use the library can be found in
 
 #### Get in touch
 
-Lena Salfenmoser (lena.salfenmoser@tu-berlin.de)
+Lena Salfenmoser (lena.salfenmoser@tu-berlin.de)  
 Department of Software Engineering and Theoretical Computer Science, Neural Information Processing Group, Technische Universität Berlin, Germany
 
-Collaborators: Martin Krück (martink@bccn-berlin.de)
+Collaborators: Martin Krück (martink@bccn-berlin.de)  
 Bernstein Center for Computational Neuroscience Berlin, Germany
 
 #### Acknowledgments
