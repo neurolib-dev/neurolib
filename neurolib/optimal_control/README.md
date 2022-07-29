@@ -2,6 +2,7 @@
 
 ## What is neurolib?
 
+neurolib is a simulation and optimization framework for whole-brain modeling. More information can be found in the project overview.
 
 
 ## Installation
@@ -38,7 +39,9 @@ Example [IPython Notebooks](examples/) on how to use the library can be found in
 ### Get in touch
 
 Lena Salfenmoser (lena.salfenmoser@tu-berlin.de)
-Department of Software Engineering and Theoretical Computer Science, Technische Universität Berlin, Germany
+Department of Software Engineering and Theoretical Computer Science, Neural Information Processing Group, Technische Universität Berlin, Germany
+
+Collaborators: Martin Krück (martink@bccn-berlin.de)
 Bernstein Center for Computational Neuroscience Berlin, Germany
 
 ### Acknowledgments
