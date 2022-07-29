@@ -1,11 +1,13 @@
 <!--include-in-documentation-->
+## Compute optimal control signals within neurolib
 
-## What is neurolib?
+This package enables to compute optimal control signals for single-node or whole-brain network models available in neurolib. Optimal control is the most efficient stimulus that can be applied to a system such that it, e.g., follows a particular trajectory. This framework enables to:
+- define individual targets
+- compute optimal control signals for any desired simulation setup (duration, network structure, dynamical model)
 
-neurolib is a simulation and optimization framework for whole-brain modeling. More information can be found in the project overview.
+It is based on the neurolib library, a simulation and optimization framework for whole-brain modeling. More information can be found in the project overview.
 
-
-## Installation
+### Installation
 
 By cloning this repository, you will automatically install the latest version of neurolib. You can also clone this repository and install all dependencies with
 
