@@ -1,6 +1,6 @@
 ### Contributing to the optimal control extension
 
-Thank you for your interest in contributing to `neurolib`. We welcome bug reports through the issues tab and pull requests for fixes or improvements. You are warlmy invited to join our development efforts and make brain network modeling easier and more useful for all researchers.
+Thank you for your interest in contributing to [neurolib](https://github.com/neurolib-dev/neurolib). We welcome bug reports through the issues tab and pull requests for fixes or improvements. You are warlmy invited to join our development efforts and make brain network modeling easier and more useful for all researchers.
 
 We use the same coding standards (in particular, coding style) as the neurolib library.
 
