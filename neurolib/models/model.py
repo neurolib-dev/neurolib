@@ -29,13 +29,17 @@ class Model:
         assert hasattr(
             self, "state_vars"
         ), f"Model {self.name} has no attribute `state_vars`, which should be alist of strings containing all variable names."
-        assert np.all([type(s) is str for s in self.state_vars]), "All entries in state_vars must be strings."
+        assert np.all(
+            [type(s) is str for s in self.state_vars]
+        ), "All entries in state_vars must be strings."
 
         assert hasattr(
             self, "default_output"
         ), f"Model {self.name} needs to define a default output variable in `default_output`."
 
-        assert isinstance(self.default_output, str), "`default_output` must be a string."
+        assert isinstance(
+            self.default_output, str
+        ), "`default_output` must be a string."
 
         # if no output_vars is set, it will be replaced by state_vars
         if not hasattr(self, "output_vars"):
@@ -81,12 +85,17 @@ class Model:
                         # only if the length of the output has a zero mod to the sampling rate,
                         # the downsampled output from the boldModel can correctly appended to previous data
                         # so: we are lazy here and simply disable appending in that case ...
-                        if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
+                        if (
+                            not bold_input.shape[1] % self.boldModel.samplingRate_NDt
+                            == 0
+                        ):
                             append = False
                             logging.warn(
                                 f"Output size {bold_input.shape[1]} is not a multiple of BOLD sampling length { self.boldModel.samplingRate_NDt}, will not append data."
                             )
-                        logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+                        logging.debug(
+                            f"Simulating BOLD: boldModel.run(append={append})"
+                        )
 
                         # transform bold input according to self.boldInputTransform
                         if self.boldInputTransform:
@@ -104,7 +113,9 @@ class Model:
                             f"Will not simulate BOLD if output {bold_input.shape[1]*self.params['dt']} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
                         )
         else:
-            logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
+            logging.warn(
+                "BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`"
+            )
 
     def checkChunkwise(self, chunksize):
         """Checks if the model fulfills requirements for chunkwise simulation.
@@ -112,7 +123,9 @@ class Model:
         Throws errors if not."""
         assert self.state_vars is not None, "State variable names not given."
         assert self.init_vars is not None, "Initial value variable names not given."
-        assert len(self.state_vars) == len(self.init_vars), "State variables are not same length as initial values."
+        assert len(self.state_vars) == len(
+            self.init_vars
+        ), "State variables are not same length as initial values."
 
         # throw a warning if the user is nasty
         if int(self.params["duration"] / self.params["dt"]) % chunksize != 0:
@@ -129,12 +142,15 @@ class Model:
 
             # ugly floating point modulo hack: instead of float1%float2==0, we do
             # (float1/float2)%1==0
-            assert ((chunksize * self.params["dt"]) / self.params["sampling_dt"]) % 1 == 0, (
+            assert (
+                (chunksize * self.params["dt"]) / self.params["sampling_dt"]
+            ) % 1 == 0, (
                 f"Chunksize {chunksize * self.params['dt']} must be divisible by sampling dt "
                 f"{self.params['sampling_dt']}"
             )
             assert (
-                (self.params["duration"] % (chunksize * self.params["dt"])) / self.params["sampling_dt"]
+                (self.params["duration"] % (chunksize * self.params["dt"]))
+                / self.params["sampling_dt"]
             ) % 1 == 0, (
                 f"Last chunk of size {self.params['duration'] % (chunksize * self.params['dt'])} must be divisible by sampling dt "
                 f"{self.params['sampling_dt']}"
@@ -149,13 +165,17 @@ class Model:
         if self.params.get("sampling_dt") is None:
             self.sample_every = 1
         elif self.params.get("sampling_dt") > 0:
-            assert self.params["sampling_dt"] >= self.params["dt"], "`sampling_dt` needs to be >= `dt`"
+            assert (
+                self.params["sampling_dt"] >= self.params["dt"]
+            ), "`sampling_dt` needs to be >= `dt`"
             assert (
                 self.params["duration"] >= self.params["sampling_dt"]
             ), "`sampling_dt` needs to be lower than `duration`"
             self.sample_every = int(self.params["sampling_dt"] / self.params["dt"])
         else:
-            raise ValueError(f"Can't handle `sampling_dt`={self.params.get('sampling_dt')}")
+            raise ValueError(
+                f"Can't handle `sampling_dt`={self.params.get('sampling_dt')}"
+            )
 
     def initializeRun(self, initializeBold=False):
         """Initialization before each run.
@@ -236,9 +256,13 @@ class Model:
             # and whether sampling_dt is compatible with duration and chunksize
             self.checkChunkwise(chunksize)
             if bold and not self.boldInitialized:
-                logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
+                logging.warn(
+                    f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`"
+                )
                 bold = False
-            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
+            self.integrateChunkwise(
+                chunksize=chunksize, bold=bold, append_outputs=append
+            )
 
         # check if there was a problem with the simulated data
         self.checkOutputs()
@@ -297,7 +321,9 @@ class Model:
             remainingChunkSize = int(round((totalDuration - lastT) / dt))
             currentChunkSize = min(chunksize, remainingChunkSize)
 
-            self.autochunk(chunksize=currentChunkSize, append_outputs=append_outputs, bold=bold)
+            self.autochunk(
+                chunksize=currentChunkSize, append_outputs=append_outputs, bold=bold
+            )
             # we save the last simulated time step
             lastT += currentChunkSize * dt
             # or
@@ -471,7 +497,9 @@ class Model:
             elif data.ndim == 2:
                 data = data[:, self.startindt :]
             else:
-                raise ValueError(f"Don't know how to truncate data of shape {data.shape}.")
+                raise ValueError(
+                    f"Don't know how to truncate data of shape {data.shape}."
+                )
 
         # subsample to sampling dt
         if data.ndim == 1:
@@ -569,7 +597,9 @@ class Model:
             for i, k in enumerate(keys):
                 assert k in lastOutput, f"Key {k} not found in outputs."
                 lastOutput = lastOutput[k]
-                assert isinstance(lastOutput, dict), f"Key {k} does not refer to a group."
+                assert isinstance(
+                    lastOutput, dict
+                ), f"Key {k} does not refer to a group."
         # filter out all output *groups* that might be in this node and return only output data
         return filterOutputsFromGroupDict(lastOutput)
 
@@ -578,7 +608,9 @@ class Model:
         """Returns value of default output as defined by `self.default_output`.
         Note that all outputs are saved in the attribute `self.outputs`.
         """
-        assert self.default_output is not None, "Default output has not been set yet. Use `setDefaultOutput()`."
+        assert (
+            self.default_output is not None
+        ), "Default output has not been set yet. Use `setDefaultOutput()`."
         return self.getOutput(self.default_output)
 
     def xr(self, group=""):
@@ -601,7 +633,9 @@ class Model:
                     timeDictKey = k
                     logging.info(f"Assuming {k} to be the time axis.")
                     break
-        assert len(timeDictKey) > 0, f"No time array found (starting with t) in output group {group}."
+        assert (
+            len(timeDictKey) > 0
+        ), f"No time array found (starting with t) in output group {group}."
         t = outputDict[timeDictKey].copy()
         del outputDict[timeDictKey]
         outputs = []
@@ -613,5 +647,9 @@ class Model:
         nNodes = outputs[0].shape[0]
         nodes = list(range(nNodes))
         allOutputsStacked = np.stack(outputs)  # What? Where? When?
-        result = xr.DataArray(allOutputsStacked, coords=[outputNames, nodes, t], dims=["output", "space", "time"])
+        result = xr.DataArray(
+            allOutputsStacked,
+            coords=[outputNames, nodes, t],
+            dims=["output", "space", "time"],
+        )
         return result
