@@ -19,7 +19,7 @@ pip install .
 ```
 It is recommended to clone or fork the entire repository since it will also include all examples and tests.
 
-## Project layout
+### Project layout
 
 This project is an extenstion to the neurolib framework. The optimal control package is structured as follows:
 
@@ -32,13 +32,13 @@ neurolib/	 				# Main module
 	├── cost_functions.py 			# Implementation of cost functions and gradients
 ```
 
-## Examples
+### Examples
 
 Example [IPython Notebooks](examples/) on how to use the library can be found in the `./examples/` directory.
 
-## More information
+### More information
 
-### Get in touch
+#### Get in touch
 
 Lena Salfenmoser (lena.salfenmoser@tu-berlin.de)
 Department of Software Engineering and Theoretical Computer Science, Neural Information Processing Group, Technische Universität Berlin, Germany
@@ -46,7 +46,7 @@ Department of Software Engineering and Theoretical Computer Science, Neural Info
 Collaborators: Martin Krück (martink@bccn-berlin.de)
 Bernstein Center for Computational Neuroscience Berlin, Germany
 
-### Acknowledgments
+#### Acknowledgments
 This work is supported by the DFG (German Research Foundation) via the CRC 910 (Project number
 538 163436311).
 
