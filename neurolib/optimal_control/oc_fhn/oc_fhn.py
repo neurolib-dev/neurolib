@@ -10,11 +10,21 @@ class OcFhn:
 
     def __init__(self, fhn_model, target, w_p=1, w_2=1, print_array=[], precision_cost_interval=(0, None), M=1, M_validation=1000, validate_per_step=False, method='3'):
         """
-            :param fhn_model
-            :param target:
-            :param w_p: weight of the precision cost term
-            :param w_2: weight of the L2 cost term
-            :param target: 2xT matrix with [0, :] target of x-population and [1, :] target of y-population
+            :param fhn_model:   An instance of neurolibs FHNModel. Parameters like ".duration" and methods like ".run()"
+                                are used within the optimal control.
+            :param target:      2xT matrix with [0, :] target of x-population and [1, :] target of y-population.
+            :param w_p:         Weight of the precision cost term.
+            :param w_2:         Weight of the L2 cost term.
+            :param print_array: Array of optimization-iteration-indices (starting at 1) in which cost is printed out.
+            :param precision_cost_interval: [t_start, t_end]. Indices of start and end point (both inclusive) of the
+                                            time interval in which the precision cost is evaluated. Default is full time
+                                            series.
+            :param M :                  Number of noise realizations. M=1 implies deterministic case (default).
+            :param M_validation:        Number of noise realizations for validation.
+            :param validate_per_step:   "True" for validation in each iteration of the optimization, "False" for
+                                        validation only after final optimization iteration.
+            :param method:              Noise averaging method.
+
         """
 
         self.model = fhn_model
@@ -53,7 +63,6 @@ class OcFhn:
         self.adjoint_state = np.zeros(self.output_dim)
 
         # ToDo: HUGE REMARK ON MODELS SPECIFIED FOR MULTIPLE NODES!!!!!
-        # ToDo: maybe add input to both?
         self.control = np.vstack((self.model.params["x_ext"], self.model.params["y_ext"]))
 
         self.cost_history = np.array([])
@@ -217,7 +226,7 @@ class OcFhn:
 
     def optimize(self, n_max_iterations):
         """ Optimization method
-            chose from deteministic (M=1) or one of several stochastic (M>1) approaches
+            chose from deterministic (M=1) or one of several stochastic (M>1) approaches
             
         :param n_max_iteration: maximum number of iterations of gradient descent
         :type n_max_iteration: int
@@ -318,7 +327,6 @@ class OcFhn:
         else:
             self.cost_validation = self.compute_cost_validation()
             print(f"Final cost validated with %s noise realizations : %s" % (self.M_validation, self.cost_validation))
-
 
     def compute_cost_validation(self):
         """ Computes the average cost from M_validation noise realizations
