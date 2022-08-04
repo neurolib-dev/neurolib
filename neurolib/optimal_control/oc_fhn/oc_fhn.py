@@ -16,9 +16,9 @@ class OcFhn:
         print_array=[],
         precision_cost_interval=(0, None),
         M=1,
-        M_validation=1000,
+        M_validation=0,
         validate_per_step=False,
-        method="3",
+        method=None,
     ):
         """
         :param fhn_model:   An instance of neurolibs FHNModel. Parameters like ".duration" and methods like ".run()"
@@ -67,9 +67,9 @@ class OcFhn:
         else:  # deterministic system
             if (
                 self.M > 1
-                or self.M_validation != 1000
+                or self.M_validation != 0
                 or validate_per_step
-                or method != "3"
+                or method != None
             ):
                 print(
                     'For deterministic systems, parameters "M", "M_validation", "validate_per_step" and "method" are not relevant.'
@@ -290,12 +290,15 @@ class OcFhn:
 
         """
         if self.M == 1:
+            print("Compute control for a deterministic system")
             return self.optimize_M0(n_max_iterations)
-        elif self.method == "3":
-            return self.optimize_M3(n_max_iterations)
         else:
-            print("Optimization method not implemented.")
-            return
+            print("Compute control for a noisy system")
+            if self.method == "3":
+                return self.optimize_M3(n_max_iterations)
+            else:
+                logging.error("Optimization method not implemented.")
+                return
 
     def optimize_M0(self, n_max_iterations):
         """Compute the optimal control signal for noise averaging method 0 (deterministic, M=1)"""
