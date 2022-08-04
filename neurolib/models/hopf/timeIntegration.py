@@ -7,7 +7,7 @@ from ...utils import model_utils as mu
 
 def timeIntegration(params):
     """Sets up the parameters for time integration
-    
+
     :param params: Parameter dictionary of the model
     :type params: dict
     :return: Integrated activity variables of the model
@@ -194,12 +194,18 @@ def timeIntegration_njit_elementwise(
             # diffusive coupling
             if coupling == 0:
                 for l in range(N):
-                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
+                    xs_input_d[no] += (
+                        K_gl
+                        * Cmat[no, l]
+                        * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
+                    )
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1] - ys[no, i - 1])
             # additive coupling
             elif coupling == 1:
                 for l in range(N):
-                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
+                    xs_input_d[no] += (
+                        K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
+                    )
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1])
 
             # Stuart-Landau / Hopf Oscillator
@@ -208,14 +214,14 @@ def timeIntegration_njit_elementwise(
                 - w * ys[no, i - 1]
                 + xs_input_d[no]  # input from other nodes
                 + x_ou[no]  # ou noise
-                + x_ext[no, i-1]  # external input
+                + x_ext[no, i - 1]  # external input
             )
             y_rhs = (
                 (a - xs[no, i - 1] ** 2 - ys[no, i - 1] ** 2) * ys[no, i - 1]
                 + w * xs[no, i - 1]
                 + ys_input_d[no]  # input from other nodes
                 + y_ou[no]  # ou noise
-                + y_ext[no, i-1]  # external input
+                + y_ext[no, i - 1]  # external input
             )
 
             # Euler integration
@@ -223,7 +229,15 @@ def timeIntegration_njit_elementwise(
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
             # Ornstein-Uhlenbeck process
-            x_ou[no] = x_ou[no] + (x_ou_mean - x_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
-            y_ou[no] = y_ou[no] + (y_ou_mean - y_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
+            x_ou[no] = (
+                x_ou[no]
+                + (x_ou_mean - x_ou[no]) * dt / tau_ou
+                + sigma_ou * sqrt_dt * noise_xs[no]
+            )  # mV/ms
+            y_ou[no] = (
+                y_ou[no]
+                + (y_ou_mean - y_ou[no]) * dt / tau_ou
+                + sigma_ou * sqrt_dt * noise_ys[no]
+            )  # mV/ms
 
     return t, xs, ys, x_ou, y_ou
