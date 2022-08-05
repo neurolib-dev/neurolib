@@ -20,34 +20,38 @@ class TestFHN(unittest.TestCase):
     def test_onenode_oc(self):
         fhn = FHNModel()
 
-        duration = 3.
-        a = 10.
+        duration = 3.0
+        a = 10.0
 
-        zero_input = ZeroInput().generate_input(duration=duration+fhn.params.dt, dt=fhn.params.dt)
+        zero_input = ZeroInput().generate_input(
+            duration=duration + fhn.params.dt, dt=fhn.params.dt
+        )
         input_x = np.copy(zero_input)
         input_y = np.copy(input_x)
 
-        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+        rs = RandomState(
+            MT19937(SeedSequence(0))
+        )  # work with fixed seed for reproducibility
 
-        for t in range(1, input_x.shape[1]-2):
+        for t in range(1, input_x.shape[1] - 2):
             input_x[0, t] = rs.uniform(-a, a)
         fhn.params["x_ext"] = input_x
-        for t in range(1, input_y.shape[1]-2):
+        for t in range(1, input_y.shape[1] - 2):
             input_y[0, t] = rs.uniform(-a, a)
         fhn.params["y_ext"] = input_y
 
         fhn.params["duration"] = duration
-        fhn.params["xs_init"] = np.array([[0.]])
-        fhn.params["ys_init"] = np.array([[0.]])
+        fhn.params["xs_init"] = np.array([[0.0]])
+        fhn.params["ys_init"] = np.array([[0.0]])
 
         fhn.run()
-        x_target = np.vstack([0., fhn.x.T])
-        y_target = np.vstack([0., fhn.y.T])
+        x_target = np.vstack([0.0, fhn.x.T])
+        y_target = np.vstack([0.0, fhn.y.T])
 
         fhn.params["y_ext"] = zero_input
         fhn.params["x_ext"] = zero_input
 
-        target = np.column_stack(( [x_target, y_target] )).T
+        target = np.column_stack(([x_target, y_target])).T
         fhn_controlled = oc_fhn.OcFhn(fhn, target, w_p=1, w_2=0)
 
         control_coincide = False
@@ -56,11 +60,13 @@ class TestFHN(unittest.TestCase):
             fhn_controlled.optimize(1000)
             control = fhn_controlled.control
 
-            c_diff = np.vstack( [np.abs(control[0,:] - input_x), np.abs(control[1,:] - input_y) ] )
+            c_diff = np.vstack(
+                [np.abs(control[0, :] - input_x), np.abs(control[1, :] - input_y)]
+            )
             if np.amax(c_diff) < limit_diff:
                 control_coincide = True
                 break
-        
+
         self.assertTrue(control_coincide)
 
 

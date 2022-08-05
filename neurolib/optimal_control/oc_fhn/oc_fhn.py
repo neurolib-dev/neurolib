@@ -1,6 +1,4 @@
-from locale import MON_7
 import numpy as np
-import numba
 from neurolib.optimal_control import cost_functions
 from .oc_fhn_jit import compute_hx, solve_adjoint
 import logging
@@ -21,20 +19,42 @@ class OcFhn:
         method=None,
     ):
         """
-        :param fhn_model:   An instance of neurolibs FHNModel. Parameters like ".duration" and methods like ".run()"
+        :param fhn_model:   An instance of neurolib's FHNModel. Parameters like ".duration" and methods like ".run()"
                             are used within the optimal control.
+        :type fhn_model:    neurolib.models.fhn.FHNModel
+
         :param target:      2xT matrix with [0, :] target of x-population and [1, :] target of y-population.
-        :param w_p:         Weight of the precision cost term.
-        :param w_2:         Weight of the L2 cost term.
+        :type target:       np.ndarray
+
+        :param w_p:         Weight of the precision cost term, defaults to 1.
+        :type w_p:          float, optional
+
+        :param w_2:         Weight of the L2 cost term, defaults to 1.
+        :type w_2:          float, optional
+
         :param print_array: Array of optimization-iteration-indices (starting at 1) in which cost is printed out.
+                            Defaults to empty list `[]`.
+        :type print_array:  list, optional
+
         :param precision_cost_interval: [t_start, t_end]. Indices of start and end point (both inclusive) of the
                                         time interval in which the precision cost is evaluated. Default is full time
-                                        series.
-        :param M :                  Number of noise realizations. M=1 implies deterministic case (default).
-        :param M_validation:        Number of noise realizations for validation.
-        :param validate_per_step:   "True" for validation in each iteration of the optimization, "False" for
-                                    validation only after final optimization iteration.
-        :param method:              Noise averaging method.
+                                        series. Defaults to (0, None).
+        :type precision_cost_interval:  tuple, optional
+
+        :param M :                  Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
+        :type M:                    int, optional
+
+        :param M_validation:        Number of noise realizations for validation (only used in stochastic case, M>1).
+                                    Defaults to 0.
+        :type M_validation:         int, optional
+
+        :param validate_per_step:   True for validation in each iteration of the optimization, False for
+                                    validation only after final optimization iteration (only used in stochastic case,
+                                    M>1). Defaults to False.
+        :type validate_per_step:    bool, optional
+
+        :param method:              Noise averaging method (only used in stochastic case, M>1), defaults to None.
+        :type method:               None or str, optional
 
         """
 
@@ -178,7 +198,7 @@ class OcFhn:
         return np.array([[-1, 0], [0, -1]])
 
     def compute_total_cost(self):
-        """ """
+        """Compute the total cost as weighted sum precision of precision and L2 term."""
         precision_cost = cost_functions.precision_cost(
             self.target,
             self.get_xs(),
@@ -199,7 +219,9 @@ class OcFhn:
 
     def compute_hx(self):
         """Jacobians for each time step.
-        :return: array containing self.T 2x2-matrices
+
+        :return: Array of length self.T containing 2x2-matrices
+        :rtype: np.ndarray
         """
         return compute_hx(
             self.model.params["alpha"],
@@ -212,10 +234,7 @@ class OcFhn:
         )
 
     def solve_adjoint(self):
-        """Backwards integration.
-        :param fx: df/dx
-        :param hx: dh/dx
-        """
+        """Backwards integration of the adjoint state."""
         hx = self.compute_hx()
 
         # ToDo: generalize, not only precision cost
@@ -226,8 +245,12 @@ class OcFhn:
         self.adjoint_state = solve_adjoint(hx, fx, self.output_dim, self.dt, self.T)
 
     def step_size(self, cost_gradient):
-        """
-        use cost_gradient to avoid unnecessary re-computations (also of the adjoint state)
+        """Use cost_gradient to avoid unnecessary re-computations (also of the adjoint state)
+        :param cost_gradient:
+        :type cost_gradient:
+
+        :return:    Step size that got multiplied with the cost_gradient.
+        :rtype:     float
         """
         self.simulate_forward()
         cost0 = self.compute_total_cost()
@@ -285,8 +308,8 @@ class OcFhn:
         """Optimization method
             chose from deterministic (M=1) or one of several stochastic (M>1) approaches
 
-        :param n_max_iteration: maximum number of iterations of gradient descent
-        :type n_max_iteration: int
+        :param n_max_iterations: maximum number of iterations of gradient descent
+        :type n_max_iterations: int
 
         """
         if self.M == 1:
@@ -301,7 +324,11 @@ class OcFhn:
                 return
 
     def optimize_M0(self, n_max_iterations):
-        """Compute the optimal control signal for noise averaging method 0 (deterministic, M=1)"""
+        """Compute the optimal control signal for noise averaging method 0 (deterministic, M=1).
+
+        :param n_max_iterations: maximum number of iterations of gradient descent
+        :type n_max_iterations: int
+        """
         self.cost_history = np.hstack((self.cost_history, np.zeros(n_max_iterations)))
         self.step_sizes_history = np.hstack(
             (self.step_sizes_history, np.zeros(n_max_iterations))
@@ -344,7 +371,11 @@ class OcFhn:
                 break
 
     def optimize_M3(self, n_max_iterations):
-        """Compute the optimal control signal for noise averaging method 3"""
+        """Compute the optimal control signal for noise averaging method 3.
+
+        :param n_max_iterations: maximum number of iterations of gradient descent
+        :type n_max_iterations: int
+        """
         self.cost_history = np.hstack((self.cost_history, np.zeros((n_max_iterations))))
         self.step_sizes_history = np.hstack(
             (self.step_sizes_history, np.zeros(n_max_iterations))
@@ -400,7 +431,7 @@ class OcFhn:
             )
 
     def compute_cost_validation(self):
-        """Computes the average cost from M_validation noise realizations"""
+        """Computes the average cost from M_validation noise realizations."""
         cost_validation = 0.0
         for m in range(self.M_validation):
             self.simulate_forward()
@@ -408,10 +439,13 @@ class OcFhn:
         return cost_validation / self.M_validation
 
     def get_step_noisy(self, gradient):
-        """Computes the mean descent step for M noise realizations
+        """Computes the mean descent step for M noise realizations.
 
         :param gradient: (mean) gradient of the respective iteration
-        :type: numpy array
+        :type: np.ndarray
+
+        :return:    Mean descent step size for M noise realizations.
+        :rtype:     float
         """
 
         step = 0.0
