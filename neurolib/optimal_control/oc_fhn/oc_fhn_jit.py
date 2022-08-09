@@ -26,9 +26,7 @@ def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x):
     :return:        Jacobian matrix.
     :rtype:         np.ndarray of dimensions 2x2
     """
-    jacobian = np.array(
-        [[3 * alpha * x**2 - 2 * beta * x - gamma, 1], [-1 / tau, epsilon / tau]]
-    )
+    jacobian = np.array([[3 * alpha * x**2 - 2 * beta * x - gamma, 1], [-1 / tau, epsilon / tau]])
     return jacobian
 
 
@@ -89,8 +87,7 @@ def solve_adjoint(hx, fx, output_dim, dt, T):
 
     for ind in range(T - 2, 0, -1):
         adjoint_state[:, ind] = (
-            adjoint_state[:, ind + 1]
-            - (fx[:, ind + 1] + adjoint_state[:, ind + 1] @ hx[ind + 1]) * dt
+            adjoint_state[:, ind + 1] - (fx[:, ind + 1] + adjoint_state[:, ind + 1] @ hx[ind + 1]) * dt
         )
 
     return adjoint_state

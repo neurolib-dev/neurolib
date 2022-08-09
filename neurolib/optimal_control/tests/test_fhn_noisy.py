@@ -23,15 +23,11 @@ class TestFHN(unittest.TestCase):
         duration = 3.0
         a = 10.0
 
-        zero_input = ZeroInput().generate_input(
-            duration=duration + fhn.params.dt, dt=fhn.params.dt
-        )
+        zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
         input_x = np.copy(zero_input)
         input_y = np.copy(input_x)
 
-        rs = RandomState(
-            MT19937(SeedSequence(0))
-        )  # work with fixed seed for reproducibility
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
         for t in range(1, input_x.shape[1] - 2):
             input_x[0, t] = rs.uniform(-a, a)
@@ -60,9 +56,7 @@ class TestFHN(unittest.TestCase):
             fhn_controlled_noisy.optimize(1000)
             control = fhn_controlled_noisy.control
 
-            c_diff = np.vstack(
-                [np.abs(control[0, :] - input_x), np.abs(control[1, :] - input_y)]
-            )
+            c_diff = np.vstack([np.abs(control[0, :] - input_x), np.abs(control[1, :] - input_y)])
             if np.amax(c_diff) < limit_diff:
                 control_coincide = True
                 break
@@ -76,15 +70,11 @@ class TestFHN(unittest.TestCase):
         a = 10.0
         test_iterations = 30
 
-        zero_input = ZeroInput().generate_input(
-            duration=duration + fhn.params.dt, dt=fhn.params.dt
-        )
+        zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
         input_x = np.copy(zero_input)
         input_y = np.copy(input_x)
 
-        rs = RandomState(
-            MT19937(SeedSequence(0))
-        )  # work with fixed seed for reproducibility
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
         for t in range(1, input_x.shape[1] - 2):
             input_x[0, t] = rs.uniform(-a, a)

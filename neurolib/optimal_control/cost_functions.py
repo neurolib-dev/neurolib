@@ -25,17 +25,7 @@ def precision_cost(x_target, x_sim, w_p, interval=(0, None)):
     # summation that would correspond to np.sum((x1(t)-x2(t)**2)
     # for the norm at one particular t as well as the integration over t
     # (commutative)
-    return (
-        w_p
-        * 0.5
-        * np.sum(
-            (
-                x_target[:, interval[0] : interval[1]]
-                - x_sim[:, interval[0] : interval[1]]
-            )
-            ** 2.0
-        )
-    )
+    return w_p * 0.5 * np.sum((x_target[:, interval[0] : interval[1]] - x_sim[:, interval[0] : interval[1]]) ** 2.0)
 
 
 def derivative_precision_cost(x_target, x_sim, w_p, interval=(0, None)):
