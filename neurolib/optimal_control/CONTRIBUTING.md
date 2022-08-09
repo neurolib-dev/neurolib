@@ -16,4 +16,6 @@ More information on how to make pull requests can be found in the
 
 Just like the `neurolib` library, we use the [black](https://github.com/psf/black) code formatter with the additional argument `--line-length=120`. We recommend using black directly in your IDE, for example in [VSCode](https://marcobelo.medium.com/setting-up-python-black-on-visual-studio-code-5318eba4cd00).
 
+We use `snake_case`for variables and functions, and `CapWords` for classes (see [PEP 8 – Style Guide for Python Code](https://peps.python.org/pep-0008/#function-and-variable-names)).
+
 We use the [sphinx format](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html) for commenting code.
