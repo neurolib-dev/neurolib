@@ -2,7 +2,7 @@ import numba
 import numpy as np
 
 
-@numba.njit
+# @numba.njit
 def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x):
     """Jacobian of the FHN dynamical system.
     :param alpha:   FHN model parameter.
@@ -26,12 +26,19 @@ def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x):
     :return:        Jacobian matrix.
     :rtype:         np.ndarray of dimensions 2x2
     """
-    jacobian = np.array([[3 * alpha * x**2 - 2 * beta * x - gamma, 1], [-1 / tau, epsilon / tau]])
+    jacobian = np.array(
+        [
+            [3 * alpha * x**2 - 2 * beta * x - gamma, 1, 0, 0],
+            [-1 / tau, epsilon / tau, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ]
+    )
     return jacobian
 
 
-@numba.njit
-def compute_hx(alpha, beta, gamma, tau, epsilon, T, xs):
+# @numba.njit
+def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, xs):
     """Jacobians for each time step.
 
     :param alpha:   FHN model parameter.
@@ -56,38 +63,45 @@ def compute_hx(alpha, beta, gamma, tau, epsilon, T, xs):
     :return: array of length T containing 2x2-matrices
     :rtype: np.ndarray of shape Tx2x2
     """
-    hx = np.zeros((T, 2, 2))
+    hx = np.zeros((N, T, V, V))
 
-    for ind, x in enumerate(xs):
-        hx[ind, :, :] = jacobian_fhn(alpha, beta, gamma, tau, epsilon, x)
-
+    for n in range(N):
+        for ind, x in enumerate(xs[n, 0, :]):
+            hx[0, ind, :, :] = jacobian_fhn(alpha, beta, gamma, tau, epsilon, x)
     return hx
 
 
-@numba.njit
-def solve_adjoint(hx, fx, output_dim, dt, T):
+# @numba.njit
+def solve_adjoint(hx, fx, state_dim, dt, N, T):
     """Backwards integration of the adjoint state.
     :param fx: df/dx    Derivative of cost function wrt. to systems dynamics.
     :type fx:           np.ndarray
     :param hx: dh/dx    Jacobians.
     :type hx:           np.ndarray of shape Tx2x2
-    :param output_dim:
-    :type output_dim:   tuple
+    :param state_dim:
+    :type state_dim:   tuple
     :param dt:          Time resolution of integration.
     :type dt:           float
     :param T:           Length of simulation (time dimension).
     :type T:            int
 
     :return:            Adjoint state.
-    :rtype:             np.ndarray of shape `output_dim`
+    :rtype:             np.ndarray of shape `state_dim`
     """
     # ToDo: generalize, not only precision cost
-    adjoint_state = np.zeros(output_dim)
-    adjoint_state[:, -1] = 0
+    adjoint_state = np.zeros(state_dim)
+    fx_fullstate = adjoint_state.copy()
+    fx_fullstate[:, :2, :] = fx
 
-    for ind in range(T - 2, 0, -1):
-        adjoint_state[:, ind] = (
-            adjoint_state[:, ind + 1] - (fx[:, ind + 1] + adjoint_state[:, ind + 1] @ hx[ind + 1]) * dt
-        )
+    for n in range(N):
+        for ind in range(T - 2, 0, -1):
+            adjoint_state[n, :, ind] = (
+                adjoint_state[n, :, ind + 1]
+                - (
+                    fx_fullstate[n, :, ind + 1]
+                    + adjoint_state[n, :, ind + 1] @ hx[n, ind + 1]
+                )
+                * dt
+            )
 
-    return adjoint_state
+        return adjoint_state
