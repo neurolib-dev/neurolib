@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def precision_cost(x_target, x_sim, N, w_p, interval=(0, None)):
+def precision_cost(x_target, x_sim, w_p, N, precision_matrix, interval=(0, None)):
     """Summed squared difference between target and simulation within specified time interval weighted by w_p.
 
     :param x_target:    Control-dimensions x T array that contains the target time series.
@@ -32,8 +32,11 @@ def precision_cost(x_target, x_sim, N, w_p, interval=(0, None)):
             * 0.5
             * np.sum(
                 (
-                    x_target[n, :, interval[0] : interval[1]]
-                    - x_sim[n, :, interval[0] : interval[1]]
+                    np.diag(precision_matrix[n, :])
+                    @ (
+                        x_target[n, :, interval[0] : interval[1]]
+                        - x_sim[n, :, interval[0] : interval[1]]
+                    )
                 )
                 ** 2.0
             )
@@ -41,7 +44,9 @@ def precision_cost(x_target, x_sim, N, w_p, interval=(0, None)):
     return cost
 
 
-def derivative_precision_cost(x_target, x_sim, w_p, interval=(0, None)):
+def derivative_precision_cost(
+    x_target, x_sim, w_p, precision_matrix, interval=(0, None)
+):
     """Derivative of precision cost wrt. to x_sim.
 
     :param x_target:    Control-dimensions x T array that contains the target time series.
@@ -65,6 +70,8 @@ def derivative_precision_cost(x_target, x_sim, w_p, interval=(0, None)):
         x_target[:, :, interval[0] : interval[1]]
         - x_sim[:, :, interval[0] : interval[1]]
     )
+    for t in range(x_target.shape[2]):
+        derivative[:, :, t] = np.multiply(derivative[:, :, t], precision_matrix)
     return derivative
 
 

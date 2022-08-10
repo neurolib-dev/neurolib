@@ -13,6 +13,8 @@ class OcFhn:
         w_2=1,
         print_array=[],
         precision_cost_interval=(0, None),
+        precision_matrix=None,
+        control_matrix=None,
         M=1,
         M_validation=0,
         validate_per_step=False,
@@ -41,6 +43,12 @@ class OcFhn:
                                         series. Defaults to (0, None).
         :type precision_cost_interval:  tuple, optional
 
+        :param precision_matrix: NxV binary matrix that defines nodes and channels of precision measurement, defaults to None
+        :type precision_matrix:  np.ndarray
+
+        :param control_matrix: NxV binary matrix that defines active control inputs, defaults to None
+        :type control_matrix:  np.ndarray
+
         :param M :                  Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
         :type M:                    int, optional
 
@@ -68,7 +76,26 @@ class OcFhn:
         self.step = 1.0
 
         self.N = self.model.params.N
-        self.V = len(self.model.state_vars)
+        self.dim_vars = len(self.model.state_vars)
+        self.dim_out = len(self.model.output_vars)
+
+        self.precision_matrix = precision_matrix
+        if type(self.precision_matrix) == type(None):
+            self.precision_matrix = np.ones(
+                (self.N, self.dim_out)
+            )  # default: measure precision in all variables in all nodes
+
+        # check if matrix is binary
+        assert np.array_equal(self.precision_matrix, self.precision_matrix.astype(bool))
+
+        self.control_matrix = control_matrix
+        if type(self.control_matrix) == type(None):
+            self.control_matrix = np.ones(
+                (self.N, self.dim_vars)
+            )  # default: all channels in all nodes active
+
+        # check if matrix is binary
+        assert np.array_equal(self.control_matrix, self.control_matrix.astype(bool))
 
         self.M = max(1, M)
         self.M_validation = M_validation
@@ -113,22 +140,13 @@ class OcFhn:
         # + forward simulation steps of neurolibs model.run().
         self.state_dim = (
             self.N,
-            self.V,
+            self.dim_vars,
             self.T,
         )  # dimensions of state. Model has N network nodes, V state variables, T time points
 
         # check correct specification of inputs
         assert self.T == self.model.params["x_ext"].shape[1]
         assert self.T == self.model.params["y_ext"].shape[1]
-
-        self.xs_init = np.vstack(
-            (self.model.params["xs_init"], self.model.params["ys_init"])
-        )  # maybe redundant,
-        # but convenient
-        assert self.xs_init.shape == (2, 1), (
-            "Specification of initial conditions does not match the current OC "
-            "implementation."
-        )
 
         self.adjoint_state = np.zeros(self.state_dim)
 
@@ -141,7 +159,13 @@ class OcFhn:
                     (self.model.params["x_ext"], self.model.params["y_ext"]), axis=0
                 )[np.newaxis, :, :]
         else:
-            print("not implemented yet")
+            self.control = np.stack(
+                (self.model.params["x_ext"], self.model.params["y_ext"]), axis=1
+            )
+
+        for n in range(self.N):
+            assert (self.control[n, 0, :] == self.model.params["x_ext"][n, :]).all()
+            assert (self.control[n, 1, :] == self.model.params["y_ext"][n, :]).all()
 
         self.cost_history = np.array([])
         self.step_sizes_history = np.array([])
@@ -194,16 +218,24 @@ class OcFhn:
         """Update the parameters in self.model according to the current control such that self.simulate_forward
         operates with the appropriate control signal.
         """
-        self.model.params["x_ext"] = self.control[:, 0, :].reshape(
-            1, -1
-        )  # Reshape as row vector to match access
-        self.model.params["y_ext"] = self.control[:, 1, :].reshape(
-            1, -1
-        )  # in model's time integration.
+        # ToDo: find elegant way to combine the cases
+        if self.N == 1:
+            self.model.params["x_ext"] = self.control[:, 0, :].reshape(
+                1, -1
+            )  # Reshape as row vector to match access
+            self.model.params["y_ext"] = self.control[:, 1, :].reshape(
+                1, -1
+            )  # in model's time integration.
 
-        self.x_controls = np.vstack(
-            (self.x_controls, self.control[:, 0, :].reshape(1, -1))
-        )
+            self.x_controls = np.vstack(
+                (self.x_controls, self.control[:, 0, :].reshape(1, -1))
+            )
+
+        else:
+            self.model.params["x_ext"] = self.control[:, 0, :]
+            self.model.params["y_ext"] = self.control[:, 1, :]
+
+            self.x_controls = np.vstack((self.x_controls, self.control[:, 0, :]))
 
     def Dxdot(self):
         """2x2 Jacobian of systems dynamics wrt. to change of systems variables."""
@@ -218,8 +250,9 @@ class OcFhn:
         precision_cost = cost_functions.precision_cost(
             self.target,
             self.get_xs(),
+            self.w_p,
             self.N,
-            w_p=self.w_p,
+            self.precision_matrix,
             interval=self.precision_cost_interval,
         )
         energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2)
@@ -235,7 +268,12 @@ class OcFhn:
         grad = np.zeros((fk.shape))
         for n in range(self.N):
             grad[n, :, :] = (
-                fk[n, :, :] + (self.adjoint_state[n, :, :].T @ self.Du()).T[:2, :]
+                fk[n, :, :]
+                + (
+                    self.adjoint_state[n, :, :].T
+                    @ np.diag(self.control_matrix[n, :])
+                    @ self.Du()
+                ).T[:2, :]
             )
         return grad
 
@@ -253,7 +291,7 @@ class OcFhn:
             self.model.params["tau"],
             self.model.params["epsilon"],
             self.N,
-            self.V,
+            self.dim_vars,
             self.T,
             self.get_xs(),
         )
@@ -264,10 +302,12 @@ class OcFhn:
 
         # ToDo: generalize, not only precision cost
         fx = cost_functions.derivative_precision_cost(
-            self.target, self.get_xs(), self.w_p, interval=self.precision_cost_interval
+            self.target,
+            self.get_xs(),
+            self.w_p,
+            self.precision_matrix,
+            interval=self.precision_cost_interval,
         )
-        print(fx.shape)
-
         self.adjoint_state = solve_adjoint(
             hx, fx, self.state_dim, self.dt, self.N, self.T
         )
@@ -396,6 +436,7 @@ class OcFhn:
             self.simulate_forward()  # yields x(t)
 
             if self.zero_step_encountered:
+                print(f"Converged in iteration %s with cost %s" % (i, cost))
                 break
 
     def optimize_M3(self, n_max_iterations):
