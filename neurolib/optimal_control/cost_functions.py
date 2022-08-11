@@ -25,6 +25,7 @@ def precision_cost(x_target, x_sim, w_p, N, precision_matrix, interval=(0, None)
     # summation that would correspond to np.sum((x1(t)-x2(t)**2)
     # for the norm at one particular t as well as the integration over t
     # (commutative)
+
     cost = 0.0
     for n in range(N):
         cost += (

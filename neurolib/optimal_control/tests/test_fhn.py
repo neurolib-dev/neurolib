@@ -2,25 +2,9 @@ import unittest
 
 import numpy as np
 
-import sys, os
-
-print(sys.path)
-
-if os.getcwd().split(os.sep)[-1] == "tests":
-    os.chdir("..")
-if os.getcwd().split(os.sep)[-1] == "optimal_control":
-    os.chdir("..")
-if os.getcwd().split(os.sep)[-1] == "neurolib":
-    path_ = os.getcwd()
-    print(path_)
-
-sys.path.append(path_)
-print(sys.path)
-
 from neurolib.models.fhn import FHNModel
-
-# from neurolib.utils.stimulus import ZeroInput
-# from neurolib.optimal_control import oc_fhn
+from neurolib.utils.stimulus import ZeroInput
+from neurolib.optimal_control import oc_fhn
 from numpy.random import MT19937
 from numpy.random import RandomState, SeedSequence
 

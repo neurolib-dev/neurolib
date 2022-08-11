@@ -68,6 +68,9 @@ class OcFhn:
 
         self.model = fhn_model
 
+        if self.model.getMaxDelay() > 0.0:
+            print("Delay not yet implemented, please set delays to zero")
+
         self.target = target
 
         self.w_p = w_p
@@ -76,6 +79,7 @@ class OcFhn:
         self.step = 1.0
 
         self.N = self.model.params.N
+
         self.dim_vars = len(self.model.state_vars)
         self.dim_out = len(self.model.output_vars)
 
@@ -265,6 +269,8 @@ class OcFhn:
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
 
+        # print("adjoint ", self.adjoint_state[0, 0, ::20])
+
         grad = np.zeros((fk.shape))
         for n in range(self.N):
             grad[n, :, :] = (
@@ -296,9 +302,32 @@ class OcFhn:
             self.get_xs(),
         )
 
+    def compute_hx_nw(self):
+        """Jacobians for each time step for the network coupling
+
+        :return: (N x self.T x (2x2) array
+        :rtype: np.ndarray
+        """
+        # input from n2 on n1
+        hx_nw = np.zeros((self.N, self.N, self.T, self.dim_vars, self.dim_vars))
+        coupling = self.model.params.coupling
+        K_gl = self.model.params.K_gl
+        cmat = self.model.params.Cmat
+
+        for n1 in range(self.N):
+            for n2 in range(self.N):
+                hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
+                if coupling == "diffusive":
+                    hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
+
+        return -hx_nw
+
     def solve_adjoint(self):
         """Backwards integration of the adjoint state."""
         hx = self.compute_hx()
+        hx_nw = self.compute_hx_nw()
+
+        # print(hx_nw[:, :, 2, 0, 0])
 
         # ToDo: generalize, not only precision cost
         fx = cost_functions.derivative_precision_cost(
@@ -308,8 +337,9 @@ class OcFhn:
             self.precision_matrix,
             interval=self.precision_cost_interval,
         )
+
         self.adjoint_state = solve_adjoint(
-            hx, fx, self.state_dim, self.dt, self.N, self.T
+            hx, hx_nw, fx, self.state_dim, self.dt, self.N, self.T
         )
 
     def step_size(self, cost_gradient):
@@ -348,6 +378,8 @@ class OcFhn:
         while cost > cost0:
             step *= factor
             counter += 1
+
+            print("step size loop", cost, step)
 
             # inplace updating of models x_ext bc. forward-sim relies on models parameters
             self.control = control0 + step * cost_gradient
@@ -415,6 +447,7 @@ class OcFhn:
         # (II) gradient descent takes place within "step_size"
         # (III) step size and control update
         grad = self.compute_gradient()
+        print("max grad ", np.amax(np.abs(grad)))
         self.step_size(-grad)
         self.x_grads = grad[:, 0, :]
 

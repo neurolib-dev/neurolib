@@ -67,12 +67,12 @@ def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, xs):
 
     for n in range(N):
         for ind, x in enumerate(xs[n, 0, :]):
-            hx[0, ind, :, :] = jacobian_fhn(alpha, beta, gamma, tau, epsilon, x)
+            hx[n, ind, :, :] = jacobian_fhn(alpha, beta, gamma, tau, epsilon, x)
     return hx
 
 
 # @numba.njit
-def solve_adjoint(hx, fx, state_dim, dt, N, T):
+def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
     """Backwards integration of the adjoint state.
     :param fx: df/dx    Derivative of cost function wrt. to systems dynamics.
     :type fx:           np.ndarray
@@ -93,15 +93,21 @@ def solve_adjoint(hx, fx, state_dim, dt, N, T):
     fx_fullstate = adjoint_state.copy()
     fx_fullstate[:, :2, :] = fx
 
-    for n in range(N):
-        for ind in range(T - 2, 0, -1):
-            adjoint_state[n, :, ind] = (
-                adjoint_state[n, :, ind + 1]
-                - (
-                    fx_fullstate[n, :, ind + 1]
-                    + adjoint_state[n, :, ind + 1] @ hx[n, ind + 1]
-                )
-                * dt
+    for ind in range(T - 2, 0, -1):
+        for n in range(N):
+            der = 0.0
+            der1 = 0.0
+            der += (
+                fx_fullstate[n, :, ind + 1]
+                + adjoint_state[n, :, ind + 1] @ hx[n, ind + 1]
             )
+            for n2 in range(N):
+                der1 += adjoint_state[n2, :, ind + 1] @ hx_nw[n2, n, ind + 1]
+                # if ind in [10, 20, 30] and n2 == 1 and n == 0:
+                # print("compute der ")
+                # print(adjoint_state[n2, :, ind + 1])
+                # print(hx_nw[n2, n, ind + 1])
+                # print(adjoint_state[n2, :, ind + 1] @ hx_nw[n2, n, ind + 1])
+            adjoint_state[n, :, ind] = adjoint_state[n, :, ind + 1] - (der + der1) * dt
 
-        return adjoint_state
+    return adjoint_state
