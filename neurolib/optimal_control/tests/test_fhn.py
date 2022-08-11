@@ -2,9 +2,25 @@ import unittest
 
 import numpy as np
 
+import sys, os
+
+print(sys.path)
+
+if os.getcwd().split(os.sep)[-1] == "tests":
+    os.chdir("..")
+if os.getcwd().split(os.sep)[-1] == "optimal_control":
+    os.chdir("..")
+if os.getcwd().split(os.sep)[-1] == "neurolib":
+    path_ = os.getcwd()
+    print(path_)
+
+sys.path.append(path_)
+print(sys.path)
+
 from neurolib.models.fhn import FHNModel
-from neurolib.utils.stimulus import ZeroInput
-from neurolib.optimal_control import oc_fhn
+
+# from neurolib.utils.stimulus import ZeroInput
+# from neurolib.optimal_control import oc_fhn
 from numpy.random import MT19937
 from numpy.random import RandomState, SeedSequence
 
@@ -23,11 +39,15 @@ class TestFHN(unittest.TestCase):
         duration = 3.0
         a = 10.0
 
-        zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
+        zero_input = ZeroInput().generate_input(
+            duration=duration + fhn.params.dt, dt=fhn.params.dt
+        )
         input_x = np.copy(zero_input)
         input_y = np.copy(input_x)
 
-        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+        rs = RandomState(
+            MT19937(SeedSequence(0))
+        )  # work with fixed seed for reproducibility
 
         for t in range(1, input_x.shape[1] - 2):
             input_x[0, t] = rs.uniform(-a, a)
@@ -56,7 +76,9 @@ class TestFHN(unittest.TestCase):
             fhn_controlled.optimize(1000)
             control = fhn_controlled.control
 
-            c_diff = np.vstack([np.abs(control[0, :] - input_x), np.abs(control[1, :] - input_y)])
+            c_diff = np.vstack(
+                [np.abs(control[0, :] - input_x), np.abs(control[1, :] - input_y)]
+            )
             if np.amax(c_diff) < limit_diff:
                 control_coincide = True
                 break
