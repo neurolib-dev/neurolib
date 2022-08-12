@@ -1,6 +1,6 @@
 import numpy as np
 from neurolib.optimal_control import cost_functions
-from .oc_fhn_jit import compute_hx, solve_adjoint
+from .oc_fhn_jit import compute_hx, solve_adjoint, compute_hx_nw
 import logging
 
 
@@ -76,7 +76,7 @@ class OcFhn:
         self.w_p = w_p
         self.w_2 = w_2
 
-        self.step = 1.0
+        self.step = 2.0
 
         self.N = self.model.params.N
 
@@ -269,8 +269,6 @@ class OcFhn:
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
 
-        # print("adjoint ", self.adjoint_state[0, 0, ::20])
-
         grad = np.zeros((fk.shape))
         for n in range(self.N):
             grad[n, :, :] = (
@@ -308,26 +306,19 @@ class OcFhn:
         :return: (N x self.T x (2x2) array
         :rtype: np.ndarray
         """
-        # input from n2 on n1
-        hx_nw = np.zeros((self.N, self.N, self.T, self.dim_vars, self.dim_vars))
-        coupling = self.model.params.coupling
-        K_gl = self.model.params.K_gl
-        cmat = self.model.params.Cmat
-
-        for n1 in range(self.N):
-            for n2 in range(self.N):
-                hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
-                if coupling == "diffusive":
-                    hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
-
-        return -hx_nw
+        return compute_hx_nw(
+            self.model.params["K_gl"],
+            self.model.params["Cmat"],
+            self.model.params["coupling"],
+            self.N,
+            self.dim_vars,
+            self.T,
+        )
 
     def solve_adjoint(self):
         """Backwards integration of the adjoint state."""
         hx = self.compute_hx()
         hx_nw = self.compute_hx_nw()
-
-        # print(hx_nw[:, :, 2, 0, 0])
 
         # ToDo: generalize, not only precision cost
         fx = cost_functions.derivative_precision_cost(
@@ -379,7 +370,7 @@ class OcFhn:
             step *= factor
             counter += 1
 
-            print("step size loop", cost, step)
+            # "step size loop", cost, step)
 
             # inplace updating of models x_ext bc. forward-sim relies on models parameters
             self.control = control0 + step * cost_gradient
@@ -447,7 +438,7 @@ class OcFhn:
         # (II) gradient descent takes place within "step_size"
         # (III) step size and control update
         grad = self.compute_gradient()
-        print("max grad ", np.amax(np.abs(grad)))
+
         self.step_size(-grad)
         self.x_grads = grad[:, 0, :]
 
