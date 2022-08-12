@@ -478,7 +478,7 @@ class OcFhn:
         )
 
         # initialize array containing M gradients (one per noise realization) for each iteration
-        grad_m = np.zeros((self.M, self.control.shape[0], self.control.shape[1]))
+        grad_m = np.zeros((self.M, self.N, self.dim_out, self.T))
 
         for i in range(1, n_max_iterations + 1):
 
