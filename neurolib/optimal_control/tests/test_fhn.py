@@ -112,10 +112,14 @@ class TestFHN(unittest.TestCase):
 
                 for c_channel in [0, 1]:
 
+                    # for faster convergence, only run tests with x input channel
+                    if c_channel == 1:
+                        continue
+
                     for p_channel in [0, 1]:
 
+                        # for faster convergence, only run tests with x precision channel
                         if p_channel == 1:
-                            print("precision channel 1 too slow to converge, continue")
                             continue
 
                         for bi_dir_connectivity in [0, 1]:
