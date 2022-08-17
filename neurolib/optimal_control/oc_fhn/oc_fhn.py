@@ -76,7 +76,7 @@ class OcFhn:
         self.w_p = w_p
         self.w_2 = w_2
 
-        self.step = 2.0
+        self.step = 10.0
 
         self.N = self.model.params.N
 

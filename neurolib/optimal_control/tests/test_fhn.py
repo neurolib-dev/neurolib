@@ -23,14 +23,10 @@ class TestFHN(unittest.TestCase):
         duration = 3.0
         a = 10.0
 
-        zero_input = ZeroInput().generate_input(
-            duration=duration + fhn.params.dt, dt=fhn.params.dt
-        )
+        zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
         input = np.copy(zero_input)
 
-        rs = RandomState(
-            MT19937(SeedSequence(0))
-        )  # work with fixed seed for reproducibility
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
         for t in range(1, input.shape[1] - 2):
             input[0, t] = rs.uniform(-a, a)
@@ -59,9 +55,7 @@ class TestFHN(unittest.TestCase):
             fhn.run()
             target = np.concatenate(
                 (
-                    np.concatenate(
-                        (fhn.params["xs_init"], fhn.params["ys_init"]), axis=1
-                    )[:, :, np.newaxis],
+                    np.concatenate((fhn.params["xs_init"], fhn.params["ys_init"]), axis=1)[:, :, np.newaxis],
                     np.stack((fhn.x, fhn.y), axis=1),
                 ),
                 axis=2,
@@ -104,23 +98,13 @@ class TestFHN(unittest.TestCase):
 
         for coupling in ["additive", "diffusive"]:
 
-            if coupling == "additive":
-                continue
-
             for c_node in [0, 1]:
+
                 p_node = np.abs(c_node - 1).astype(int)
 
                 for c_channel in [0, 1]:
 
-                    # for faster convergence, only run tests with x input channel
-                    if c_channel == 1:
-                        continue
-
                     for p_channel in [0, 1]:
-
-                        # for faster convergence, only run tests with x precision channel
-                        if p_channel == 1:
-                            continue
 
                         for bi_dir_connectivity in [0, 1]:
                             print(coupling, " coupling")
@@ -147,21 +131,22 @@ class TestFHN(unittest.TestCase):
 
                             fhn.params.duration = duration
                             fhn.params.coupling = coupling
+
+                            # change parameters for faster congervence
                             fhn.params.K_gl = 5.0  # for faster convergence
-                            fhn.params.tau = (
-                                1.0  # for stronger (faster) impact of x on y
-                            )
+
+                            if c_channel == 1 and p_channel == 1:
+                                fhn.params.K_gl = 20.0
+                                fhn.params.duration = 0.5
 
                             zero_input = ZeroInput().generate_input(
-                                duration=duration + fhn.params.dt, dt=fhn.params.dt
+                                duration=fhn.params.duration + fhn.params.dt, dt=fhn.params.dt
                             )
                             input = np.copy(zero_input)
 
-                            rs = RandomState(
-                                MT19937(SeedSequence(0))
-                            )  # work with fixed seed for reproducibility
+                            rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
-                            for t in range(2, input.shape[1] - 3):
+                            for t in range(1, input.shape[1] - 4):
                                 input[0, t] = rs.uniform(-a, a)
 
                             fhn.params["y_ext"] = np.vstack([zero_input, zero_input])
@@ -205,23 +190,28 @@ class TestFHN(unittest.TestCase):
                                 control_matrix=control_mat,
                                 precision_matrix=prec_mat,
                             )
+                            fhn_controlled.step = 400.0
+
                             control_coincide = False
-
                             lim = limit_diff
-                            if c_channel == 1:
-                                lim *= 100  # slow convergence
+                            if c_channel == 1 and p_channel == 1:  # slow convergence
+                                lim *= 100  # for internal purposes: 1000, for simple testing: 4000
 
-                            for i in range(100):
-                                fhn_controlled.optimize(2000)
+                            for i in range(1000):
+                                fhn_controlled.optimize(4000)
                                 control = fhn_controlled.control
 
-                                diff_abs = np.abs(
-                                    control[c_node, c_channel, :] - input[0, :]
-                                )
+                                diff_abs = np.abs(control[c_node, c_channel, :] - input[0, :])
                                 c_diff_max = np.amax(diff_abs)
                                 if c_diff_max < lim:
                                     control_coincide = True
                                     break
+
+                                # TODO: remove when step size function is improved
+                                if np.mean(fhn_controlled.step_sizes_history[:-1]) == fhn_controlled.step:
+                                    fhn_controlled.step *= 2.0
+                                elif np.mean(fhn_controlled.step_sizes_history[:-1]) < 0.5 * fhn_controlled.step:
+                                    fhn_controlled.step /= 2.0
 
                             self.assertTrue(control_coincide)
 
@@ -245,14 +235,10 @@ class TestFHN(unittest.TestCase):
 
                 fhn.params.duration = duration
 
-                zero_input = ZeroInput().generate_input(
-                    duration=duration + fhn.params.dt, dt=fhn.params.dt
-                )
+                zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
                 input = np.copy(zero_input)
 
-                rs = RandomState(
-                    MT19937(SeedSequence(0))
-                )  # work with fixed seed for reproducibility
+                rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
                 for t in range(2, input.shape[1] - 3):
                     input[0, t] = rs.uniform(-a, a)
