@@ -83,6 +83,9 @@ class OcFhn:
         self.dim_vars = len(self.model.state_vars)
         self.dim_out = len(self.model.output_vars)
 
+        if self.N > 1:  # check that coupling matrix has zero diagonal
+            assert np.all(np.diag(self.model.params["Cmat"]) == 0.0)
+
         self.precision_matrix = precision_matrix
         if type(self.precision_matrix) == type(None):
             self.precision_matrix = np.ones(
@@ -94,9 +97,7 @@ class OcFhn:
 
         self.control_matrix = control_matrix
         if type(self.control_matrix) == type(None):
-            self.control_matrix = np.ones(
-                (self.N, self.dim_vars)
-            )  # default: all channels in all nodes active
+            self.control_matrix = np.ones((self.N, self.dim_vars))  # default: all channels in all nodes active
 
         # check if matrix is binary
         assert np.array_equal(self.control_matrix, self.control_matrix.astype(bool))
@@ -115,16 +116,9 @@ class OcFhn:
                     + 'If you want to study a deterministic system, please set model parameter "sigma_ou" to zero'
                 )
             if self.M > self.M_validation:
-                print(
-                    'Parameter "M_validation" should be chosen larger than parameter "M".'
-                )
+                print('Parameter "M_validation" should be chosen larger than parameter "M".')
         else:  # deterministic system
-            if (
-                self.M > 1
-                or self.M_validation != 0
-                or validate_per_step
-                or method != None
-            ):
+            if self.M > 1 or self.M_validation != 0 or validate_per_step or method != None:
                 print(
                     'For deterministic systems, parameters "M", "M_validation", "validate_per_step" and "method" are not relevant.'
                     + "\n"
@@ -132,13 +126,9 @@ class OcFhn:
                 )
 
         self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
-        self.duration = self.model.params[
-            "duration"
-        ]  # maybe redundant but for now code clarity
+        self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
 
-        self.T = (
-            np.around(self.duration / self.dt, 0).astype(int) + 1
-        )  # Total number of time steps is
+        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps is
         # initial condition.
 
         # + forward simulation steps of neurolibs model.run().
@@ -159,13 +149,11 @@ class OcFhn:
             if self.model.params["x_ext"].ndim == 1:
                 print("not implemented yet")
             else:
-                self.control = np.concatenate(
-                    (self.model.params["x_ext"], self.model.params["y_ext"]), axis=0
-                )[np.newaxis, :, :]
+                self.control = np.concatenate((self.model.params["x_ext"], self.model.params["y_ext"]), axis=0)[
+                    np.newaxis, :, :
+                ]
         else:
-            self.control = np.stack(
-                (self.model.params["x_ext"], self.model.params["y_ext"]), axis=1
-            )
+            self.control = np.stack((self.model.params["x_ext"], self.model.params["y_ext"]), axis=1)
 
         for n in range(self.N):
             assert (self.control[n, 0, :] == self.model.params["x_ext"][n, :]).all()
@@ -176,21 +164,15 @@ class OcFhn:
         self.step_sizes_loops_history = np.array([])
         self.cost_history_index = 0
 
-        self.x_controls = self.model.params[
-            "x_ext"
-        ]  # save control signals throughout optimization iterations for
+        self.x_controls = self.model.params["x_ext"]  # save control signals throughout optimization iterations for
         # later analysis
 
-        self.x_grads = np.array(
-            []
-        )  # save gradients throughout optimization iterations for
+        self.x_grads = np.array([])  # save gradients throughout optimization iterations for
         # later analysis
 
         self.print_array = print_array
 
-        self.zero_step_encountered = (
-            False  # deterministic gradient descent cannot further improve
-        )
+        self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
         self.precision_cost_interval = precision_cost_interval
 
@@ -204,9 +186,7 @@ class OcFhn:
         # ToDo: assert to make sure single node setting is fullfilled (bc. of incorporation of init conditions)
         return np.concatenate(
             (
-                np.concatenate(
-                    (self.model.params["xs_init"], self.model.params["ys_init"]), axis=1
-                )[:, :, np.newaxis],
+                np.concatenate((self.model.params["xs_init"], self.model.params["ys_init"]), axis=1)[:, :, np.newaxis],
                 np.stack((self.model.x, self.model.y), axis=1),
             ),
             axis=2,
@@ -224,16 +204,10 @@ class OcFhn:
         """
         # ToDo: find elegant way to combine the cases
         if self.N == 1:
-            self.model.params["x_ext"] = self.control[:, 0, :].reshape(
-                1, -1
-            )  # Reshape as row vector to match access
-            self.model.params["y_ext"] = self.control[:, 1, :].reshape(
-                1, -1
-            )  # in model's time integration.
+            self.model.params["x_ext"] = self.control[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
+            self.model.params["y_ext"] = self.control[:, 1, :].reshape(1, -1)  # in model's time integration.
 
-            self.x_controls = np.vstack(
-                (self.x_controls, self.control[:, 0, :].reshape(1, -1))
-            )
+            self.x_controls = np.vstack((self.x_controls, self.control[:, 0, :].reshape(1, -1)))
 
         else:
             self.model.params["x_ext"] = self.control[:, 0, :]
@@ -272,12 +246,7 @@ class OcFhn:
         grad = np.zeros((fk.shape))
         for n in range(self.N):
             grad[n, :, :] = (
-                fk[n, :, :]
-                + (
-                    self.adjoint_state[n, :, :].T
-                    @ np.diag(self.control_matrix[n, :])
-                    @ self.Du()
-                ).T[:2, :]
+                fk[n, :, :] + (self.adjoint_state[n, :, :].T @ np.diag(self.control_matrix[n, :]) @ self.Du()).T[:2, :]
             )
         return grad
 
@@ -329,9 +298,7 @@ class OcFhn:
             interval=self.precision_cost_interval,
         )
 
-        self.adjoint_state = solve_adjoint(
-            hx, hx_nw, fx, self.state_dim, self.dt, self.N, self.T
-        )
+        self.adjoint_state = solve_adjoint(hx, hx_nw, fx, self.state_dim, self.dt, self.N, self.T)
 
     def step_size(self, cost_gradient):
         """Use cost_gradient to avoid unnecessary re-computations (also of the adjoint state)
@@ -421,12 +388,8 @@ class OcFhn:
         :type n_max_iterations: int
         """
         self.cost_history = np.hstack((self.cost_history, np.zeros(n_max_iterations)))
-        self.step_sizes_history = np.hstack(
-            (self.step_sizes_history, np.zeros(n_max_iterations))
-        )
-        self.step_sizes_loops_history = np.hstack(
-            (self.step_sizes_loops_history, np.zeros(n_max_iterations))
-        )
+        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
+        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
         # (I) forward simulation
         self.simulate_forward()  # yields x(t)
 
@@ -470,12 +433,8 @@ class OcFhn:
         :type n_max_iterations: int
         """
         self.cost_history = np.hstack((self.cost_history, np.zeros((n_max_iterations))))
-        self.step_sizes_history = np.hstack(
-            (self.step_sizes_history, np.zeros(n_max_iterations))
-        )
-        self.step_sizes_loops_history = np.hstack(
-            (self.step_sizes_loops_history, np.zeros(n_max_iterations))
-        )
+        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
+        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
 
         # initialize array containing M gradients (one per noise realization) for each iteration
         grad_m = np.zeros((self.M, self.N, self.dim_out, self.T))
@@ -483,9 +442,7 @@ class OcFhn:
         for i in range(1, n_max_iterations + 1):
 
             # (I) compute gradient and mean cost
-            if (
-                self.validate_per_step
-            ):  # if cost is computed for M_validation realizations in every step
+            if self.validate_per_step:  # if cost is computed for M_validation realizations in every step
                 for m in range(self.M):
                     self.simulate_forward()
                     grad_m[m, :] = self.compute_gradient()
@@ -518,10 +475,7 @@ class OcFhn:
             self.cost_validation = cost
         else:
             self.cost_validation = self.compute_cost_validation()
-            print(
-                f"Final cost validated with %s noise realizations : %s"
-                % (self.M_validation, self.cost_validation)
-            )
+            print(f"Final cost validated with %s noise realizations : %s" % (self.M_validation, self.cost_validation))
 
     def compute_cost_validation(self):
         """Computes the average cost from M_validation noise realizations."""
