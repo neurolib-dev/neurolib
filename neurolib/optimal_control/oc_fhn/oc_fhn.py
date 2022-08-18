@@ -240,6 +240,7 @@ class OcFhn:
         """
         Du @ fk + adjoint_k.T @ Du @ h
         """
+
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
 
