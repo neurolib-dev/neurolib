@@ -16,8 +16,10 @@ class TestFHN(unittest.TestCase):
     Test fhn in neurolib/optimal_control/
     """
 
+    # tests if the control from OC computation coincides with a random input used for target forward-simulation
+    # single-node case
     def test_onenode_oc(self):
-        print("Test OC in single-node network")
+        print("Test OC in single-node system")
         fhn = FHNModel()
 
         duration = 3.0
@@ -89,6 +91,8 @@ class TestFHN(unittest.TestCase):
 
             self.assertTrue(control_coincide)
 
+    # tests if the control from OC computation coincides with a random input used for target forward-simulation
+    # network case
     def test_twonode_oc(self):
         print("Test OC in 2-node network")
 
@@ -215,6 +219,7 @@ class TestFHN(unittest.TestCase):
 
                             self.assertTrue(control_coincide)
 
+    # test whether the control matrix restricts the computed control output
     def test_control_matrix(self):
         print("Test control matrix in 2-node network")
 
@@ -281,6 +286,105 @@ class TestFHN(unittest.TestCase):
                         if n == c_node and v == c_channel:
                             continue
                         self.assertTrue(np.all(control[n, v, :] == 0))
+
+    # tests if the OC computation returns zero control when w_p = 0
+    # single-node case
+    def test_onenode_wp0(self):
+        print("Test OC for w_p = 0 in single-node model")
+        fhn = FHNModel()
+
+        duration = 3.0
+        a = 10.0
+
+        fhn.params["duration"] = duration
+        fhn.params["xs_init"] = np.array([[0.0]])
+        fhn.params["ys_init"] = np.array([[0.0]])
+
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+        input_x = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
+        input_y = np.copy(input_x)
+
+        for t in range(1, input_x.shape[1] - 2):
+            input_x[0, :] = rs.uniform(-a, a)
+            input_y[0, :] = rs.uniform(-a, a)
+        fhn.params["x_ext"] = input_x
+        fhn.params["y_ext"] = input_y
+
+        fhn.run()
+        target = np.concatenate(
+            (
+                np.concatenate((fhn.params["xs_init"], fhn.params["ys_init"]), axis=1)[:, :, np.newaxis],
+                np.stack((fhn.x, fhn.y), axis=1),
+            ),
+            axis=2,
+        )
+
+        fhn_controlled = oc_fhn.OcFhn(fhn, target, w_p=0, w_2=1)
+        control_is_zero = False
+
+        for i in range(100):
+            fhn_controlled.optimize(1000)
+            control = fhn_controlled.control
+
+            c_max = np.amax(np.abs(control))
+            if c_max < limit_diff:
+                control_is_zero = True
+                break
+
+        self.assertTrue(control_is_zero)
+
+    # tests if the OC computation returns zero control when w_p = 0
+    # 3-node network case
+    def test_3n_wp0(self):
+        print("Test OC for w_p = 0 in single-node model")
+
+        N = 3
+        dmat = np.zeros((N, N))  # no delay
+        cmat = np.array([[0.0, 1.0, 2.0], [3.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
+
+        fhn = FHNModel(Cmat=cmat, Dmat=dmat)
+
+        duration = 3.0
+        a = 10.0
+
+        fhn.params["duration"] = duration
+        fhn.params["xs_init"] = np.vstack([0.0, 0.0, 0.0])
+        fhn.params["ys_init"] = np.vstack([0.0, 0.0, 0.0])
+
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+        input_x = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
+        input_x = np.vstack((input_x, input_x, input_x))
+        input_y = np.copy(input_x)
+
+        for t in range(1, input_x.shape[1] - 2):
+            for n in range(N):
+                input_x[n, :] = rs.uniform(-a, a)
+                input_y[n, :] = rs.uniform(-a, a)
+        fhn.params["x_ext"] = input_x
+        fhn.params["y_ext"] = input_y
+
+        fhn.run()
+        target = np.concatenate(
+            (
+                np.concatenate((fhn.params["xs_init"], fhn.params["ys_init"]), axis=1)[:, :, np.newaxis],
+                np.stack((fhn.x, fhn.y), axis=1),
+            ),
+            axis=2,
+        )
+
+        fhn_controlled = oc_fhn.OcFhn(fhn, target, w_p=0, w_2=1)
+        control_is_zero = False
+
+        for i in range(100):
+            fhn_controlled.optimize(1000)
+            control = fhn_controlled.control
+
+            c_max = np.amax(np.abs(control))
+            if c_max < limit_diff:
+                control_is_zero = True
+                break
+
+        self.assertTrue(control_is_zero)
 
 
 if __name__ == "__main__":
