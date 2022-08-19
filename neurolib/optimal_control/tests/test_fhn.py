@@ -136,7 +136,7 @@ class TestFHN(unittest.TestCase):
                             fhn.params.duration = duration
                             fhn.params.coupling = coupling
 
-                            # change parameters for faster congervence
+                            # change parameters for faster convergence
                             fhn.params.K_gl = 5.0  # for faster convergence
 
                             if c_channel == 1 and p_channel == 1:
@@ -340,7 +340,7 @@ class TestFHN(unittest.TestCase):
 
         N = 3
         dmat = np.zeros((N, N))  # no delay
-        cmat = np.array([[0.0, 1.0, 2.0], [3.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
+        cmat = np.array([[0.0, 1.0, 0.9], [0.8, 0.0, 1.0], [0.0, 1.0, 0.0]])
 
         fhn = FHNModel(Cmat=cmat, Dmat=dmat)
 

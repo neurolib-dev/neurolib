@@ -261,8 +261,6 @@ class TestFHNNoisy(unittest.TestCase):
             axis=2,
         )
 
-        import matplotlib.pyplot as plt
-
         fhn.params.sigma_ou = 1.0
 
         fhn_controlled = oc_fhn.OcFhn(fhn, target, w_p=0, w_2=1, M=2, M_validation=1000, method="3")
