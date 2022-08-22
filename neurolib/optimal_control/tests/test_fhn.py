@@ -137,11 +137,21 @@ class TestFHN(unittest.TestCase):
                             fhn.params.coupling = coupling
 
                             # change parameters for faster convergence
-                            fhn.params.K_gl = 5.0  # for faster convergence
+                            fhn.params.K_gl = 1.0
 
-                            if c_channel == 1 and p_channel == 1:
-                                fhn.params.K_gl = 20.0
-                                fhn.params.duration = 0.5
+                            # high parameter value will cause numerical problems for certain settings
+                            if p_channel == 1:
+                                fhn.params.K_gl = 10.0
+                                if coupling == "additive":
+                                    if bi_dir_connectivity == 0:
+                                        fhn.params.K_gl = 20.0
+                                elif coupling == "diffusive":
+                                    fhn.params.K_gl = 5.0
+                            if c_channel == 1:
+                                if bi_dir_connectivity == 0 and coupling == "additive":
+                                    fhn.params.K_gl = 20.0
+                                if p_channel == 1:
+                                    fhn.params.duration = 0.5
 
                             zero_input = ZeroInput().generate_input(
                                 duration=fhn.params.duration + fhn.params.dt, dt=fhn.params.dt
@@ -194,27 +204,27 @@ class TestFHN(unittest.TestCase):
                                 control_matrix=control_mat,
                                 precision_matrix=prec_mat,
                             )
-                            fhn_controlled.step = 400.0
 
                             control_coincide = False
                             lim = limit_diff
-                            if c_channel == 1 and p_channel == 1:  # slow convergence
-                                lim *= 100  # for internal purposes: 1000, for simple testing: 4000
+                            if p_channel == 1 or c_channel == 1:
+                                lim *= 4000  # for internal purposes: 1000, for simple testing: 4000
 
-                            for i in range(1000):
-                                fhn_controlled.optimize(4000)
+                            iterations = 4000
+                            for i in range(100):
+                                fhn_controlled.optimize(iterations)
                                 control = fhn_controlled.control
 
-                                diff_abs = np.abs(control[c_node, c_channel, :] - input[0, :])
-                                c_diff_max = np.amax(diff_abs)
+                                c_diff_max = np.amax(np.abs(control[c_node, c_channel, :] - input[0, :]))
                                 if c_diff_max < lim:
                                     control_coincide = True
                                     break
 
                                 # TODO: remove when step size function is improved
-                                if np.mean(fhn_controlled.step_sizes_history[:-1]) == fhn_controlled.step:
+                                mean_step = np.mean(fhn_controlled.step_sizes_history[:-1][-iterations:])
+                                if mean_step > 0.75 * fhn_controlled.step:
                                     fhn_controlled.step *= 2.0
-                                elif np.mean(fhn_controlled.step_sizes_history[:-1]) < 0.5 * fhn_controlled.step:
+                                elif mean_step < 0.5 * fhn_controlled.step:
                                     fhn_controlled.step /= 2.0
 
                             self.assertTrue(control_coincide)
