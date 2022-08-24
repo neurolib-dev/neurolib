@@ -76,46 +76,6 @@ def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, xs):
     return hx
 
 
-# compared loops agains "@", "np.matmul" and "np.dot": loops ~factor 3.5 faster
-@numba.njit
-def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
-    """Backwards integration of the adjoint state.
-    :param fx: df/dx    Derivative of cost function wrt. to systems dynamics.
-    :type fx:           np.ndarray
-    :param hx: dh/dx    Jacobians.
-    :type hx:           np.ndarray of shape Tx2x2
-    :param state_dim:
-    :type state_dim:    tuple
-    :param dt:          Time resolution of integration.
-    :type dt:           float
-    :param N:           number of nodes in the network
-    :type N:            int
-    :param T:           length of simulation (time dimension)
-    :type T:            int
-
-    :return:            adjoint state.
-    :rtype:             np.ndarray of shape `state_dim`
-    """
-    # ToDo: generalize, not only precision cost
-    adjoint_state = np.zeros(state_dim)
-    fx_fullstate = np.zeros(state_dim)
-    fx_fullstate[:, :2, :] = fx.copy()
-
-    for ind in range(T - 2, 0, -1):
-        for n in range(N):
-            der = fx_fullstate[n, :, ind + 1].copy()
-            for k in range(len(der)):
-                for i in range(len(der)):
-                    der[k] += adjoint_state[n, i, ind + 1] * hx[n, ind + 1][i, k]
-            for n2 in range(N):
-                for k in range(len(der)):
-                    for i in range(len(der)):
-                        der[k] += adjoint_state[n2, i, ind + 1] * hx_nw[n2, n, ind + 1][i, k]
-            adjoint_state[n, :, ind] = adjoint_state[n, :, ind + 1] - der * dt
-
-    return adjoint_state
-
-
 @numba.njit
 def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
     """Jacobian for network connectivity.

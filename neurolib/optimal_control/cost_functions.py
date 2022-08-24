@@ -1,6 +1,8 @@
 import numpy as np
+import numba
 
 
+@numba.njit
 def precision_cost(x_target, x_sim, w_p, N, precision_matrix, interval=(0, None)):
     """Summed squared difference between target and simulation within specified time interval weighted by w_p.
 
@@ -12,6 +14,13 @@ def precision_cost(x_target, x_sim, w_p, N, precision_matrix, interval=(0, None)
 
     :param w_p:         Weight that is multiplied with the precision cost.
     :type w_p:          float
+
+    :param N:           Number of nodes.
+    :type N:            int
+
+    :param precision_matrix: NxV binary matrix that defines nodes and channels of precision measurement, defaults to
+                                 None
+    :type precision_matrix:  np.ndarray
 
     :param interval:    [t_start, t_end]. Indices of start and end point of the slice (both inclusive) in time
                         dimension. Default is full time series, defaults to (0, None).
@@ -45,6 +54,7 @@ def precision_cost(x_target, x_sim, w_p, N, precision_matrix, interval=(0, None)
     return cost
 
 
+@numba.njit
 def derivative_precision_cost(
     x_target, x_sim, w_p, precision_matrix, interval=(0, None)
 ):
@@ -58,6 +68,10 @@ def derivative_precision_cost(
 
     :param w_p:         Weight that is multiplied with the precision cost.
     :type w_p:          float
+
+    :param precision_matrix: NxV binary matrix that defines nodes and channels of precision measurement, defaults to
+                                 None
+    :type precision_matrix:  np.ndarray
 
     :param interval:    [t_start, t_end]. Indices of start and end point of the slice (both inclusive) in time
                         dimension. Default is full time series, defaults to (0, None).
@@ -76,6 +90,7 @@ def derivative_precision_cost(
     return derivative
 
 
+@numba.njit
 def energy_cost(u, w_2):
     """
     :param u:   Control-dimensions x T array. Control signals.
@@ -90,6 +105,7 @@ def energy_cost(u, w_2):
     return w_2 / 2.0 * np.sum(u**2.0)
 
 
+@numba.njit
 def derivative_energy_cost(u, w_2):
     """
     :param u:   Control-dimensions x T array. Control signals.
