@@ -196,7 +196,7 @@ class OC:
         self.cost_history_index = 0
 
         # ToDo: not "x" in other models
-        self.x_controls = None # save control signals throughout optimization iterations for
+        self.x_controls = None  # save control signals throughout optimization iterations for
         # later analysis
         self.x_grads = np.array([])  # save gradients throughout optimization iterations for
         # later analysis

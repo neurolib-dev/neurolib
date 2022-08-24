@@ -18,26 +18,18 @@ class TestCostFunctions(unittest.TestCase):
         x_target = self.get_arbitrary_array()
 
         self.assertEqual(
-            cost_functions.precision_cost(
-                x_target, x_target, w_p, N, precision_cost_matrix
-            ),
+            cost_functions.precision_cost(x_target, x_target, w_p, N, precision_cost_matrix),
             0,
         )  # target and simulation coincide
 
         x_sim = np.copy(x_target)
-        x_sim[:, 0] = -x_sim[
-            :, 0
-        ]  # create setting where result depends only on this first entries
+        x_sim[:, 0] = -x_sim[:, 0]  # create setting where result depends only on this first entries
         self.assertEqual(
-            cost_functions.precision_cost(
-                x_target, x_target, w_p, N, precision_cost_matrix
-            ),
+            cost_functions.precision_cost(x_target, x_target, w_p, N, precision_cost_matrix),
             0,
         )
         self.assertEqual(
-            cost_functions.precision_cost(
-                x_target, x_sim, w_p, N, precision_cost_matrix
-            ),
+            cost_functions.precision_cost(x_target, x_sim, w_p, N, precision_cost_matrix),
             w_p / 2 * np.sum((2 * x_target[:, 0]) ** 2),
         )
 
@@ -52,9 +44,7 @@ class TestCostFunctions(unittest.TestCase):
         zerostate = np.zeros((target.shape))
 
         self.assertEqual(
-            cost_functions.precision_cost(
-                target, zerostate, w_p, N, precision_cost_matrix
-            ),
+            cost_functions.precision_cost(target, zerostate, w_p, N, precision_cost_matrix),
             0.0,
         )  # no cost if precision matrix is zero
 
@@ -63,9 +53,7 @@ class TestCostFunctions(unittest.TestCase):
                 precision_cost_matrix[i, j] = 1
                 result = w_p * 0.5 * sum((target[i, j, :] ** 2))
                 self.assertEqual(
-                    cost_functions.precision_cost(
-                        target, zerostate, w_p, N, precision_cost_matrix
-                    ),
+                    cost_functions.precision_cost(target, zerostate, w_p, N, precision_cost_matrix),
                     result,
                 )
                 precision_cost_matrix[i, j] = 0
@@ -78,23 +66,15 @@ class TestCostFunctions(unittest.TestCase):
         x_target = self.get_arbitrary_array()
         x_sim = np.copy(x_target)
 
-        x_sim[0, :, 0] = -x_sim[
-            0, :, 0
-        ]  # create setting where result depends only on this first entries
+        x_sim[0, :, 0] = -x_sim[0, :, 0]  # create setting where result depends only on this first entries
 
-        derivative_p_c = cost_functions.derivative_precision_cost(
-            x_target, x_sim, w_p, precision_cost_matrix
-        )
+        derivative_p_c = cost_functions.derivative_precision_cost(x_target, x_sim, w_p, precision_cost_matrix)
 
         self.assertTrue(np.all(derivative_p_c[0, :, 1::] == 0))
-        self.assertTrue(
-            np.all(derivative_p_c[0, :, 0] == 2 * (-w_p * x_target[0, :, 0]))
-        )
+        self.assertTrue(np.all(derivative_p_c[0, :, 0] == 2 * (-w_p * x_target[0, :, 0])))
 
     def test_derivative_precision_cost_full_timeseries_nodes_channels(self):
-        print(
-            " Test precision cost derivative full timeseries for node and channel selection"
-        )
+        print(" Test precision cost derivative full timeseries for node and channel selection")
         w_p = 1
         N = 2
         precision_cost_matrix = np.ones((N, 2))
@@ -104,17 +84,13 @@ class TestCostFunctions(unittest.TestCase):
         precision_cost_matrix = np.zeros((N, 2))
         zerostate = np.zeros((target.shape))
 
-        derivative_p_c = cost_functions.derivative_precision_cost(
-            target, zerostate, w_p, precision_cost_matrix
-        )
+        derivative_p_c = cost_functions.derivative_precision_cost(target, zerostate, w_p, precision_cost_matrix)
         self.assertTrue(np.all(derivative_p_c == 0))
 
         for i in range(N):
             for j in range(N):
                 precision_cost_matrix[i, j] = 1
-                derivative_p_c = cost_functions.derivative_precision_cost(
-                    target, zerostate, w_p, precision_cost_matrix
-                )
+                derivative_p_c = cost_functions.derivative_precision_cost(target, zerostate, w_p, precision_cost_matrix)
                 result = -w_p * np.einsum("ijk,ij->ijk", target, precision_cost_matrix)
                 self.assertTrue(np.all(derivative_p_c - result == 0))
                 precision_cost_matrix[i, j] = 0
@@ -127,15 +103,11 @@ class TestCostFunctions(unittest.TestCase):
         w_p = 1
         N = 1
         precision_cost_matrix = np.ones((N, 2))
-        x_target = np.concatenate(
-            (self.get_arbitrary_array(), self.get_arbitrary_array()), axis=2
-        )
+        x_target = np.concatenate((self.get_arbitrary_array(), self.get_arbitrary_array()), axis=2)
         x_sim = np.copy(x_target)
         x_sim[0, :, 3] = -x_sim[0, :, 3]
         interval = (3, None)
-        precision_cost = cost_functions.precision_cost(
-            x_target, x_sim, w_p, N, precision_cost_matrix, interval
-        )
+        precision_cost = cost_functions.precision_cost(x_target, x_sim, w_p, N, precision_cost_matrix, interval)
         # Result should only depend on second half of the timeseries.
         self.assertEqual(precision_cost, w_p / 2 * np.sum((2 * x_target[0, :, 3]) ** 2))
 
@@ -147,23 +119,15 @@ class TestCostFunctions(unittest.TestCase):
         w_p = 1
         N = 1
         precision_cost_matrix = np.ones((N, 2))
-        x_target = np.concatenate(
-            (self.get_arbitrary_array(), self.get_arbitrary_array()), axis=2
-        )
+        x_target = np.concatenate((self.get_arbitrary_array(), self.get_arbitrary_array()), axis=2)
         x_sim = np.copy(x_target)
-        x_sim[0, :, 3] = -x_sim[
-            0, :, 3
-        ]  # create setting where result depends only on this first entries
+        x_sim[0, :, 3] = -x_sim[0, :, 3]  # create setting where result depends only on this first entries
         interval = (3, None)
-        derivative_p_c = cost_functions.derivative_precision_cost(
-            x_target, x_sim, w_p, precision_cost_matrix, interval
-        )
+        derivative_p_c = cost_functions.derivative_precision_cost(x_target, x_sim, w_p, precision_cost_matrix, interval)
 
         self.assertTrue(np.all(derivative_p_c[0, :, 0:3] == 0))
         self.assertTrue(np.all(derivative_p_c[0, :, 4::] == 0))
-        self.assertTrue(
-            np.all(derivative_p_c[0, :, 3] == 2 * (-w_p * x_target[0, :, 3]))
-        )
+        self.assertTrue(np.all(derivative_p_c[0, :, 3] == 2 * (-w_p * x_target[0, :, 3])))
 
     def test_energy_cost(self):
         print(" Test energy cost")
@@ -178,9 +142,7 @@ class TestCostFunctions(unittest.TestCase):
         w_e = -0.9995
         u = self.get_arbitrary_array()
         desired_output = w_e * u
-        self.assertTrue(
-            np.all(cost_functions.derivative_energy_cost(u, w_e) == desired_output)
-        )
+        self.assertTrue(np.all(cost_functions.derivative_energy_cost(u, w_e) == desired_output))
 
 
 if __name__ == "__main__":

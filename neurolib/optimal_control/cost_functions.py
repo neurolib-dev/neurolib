@@ -43,10 +43,7 @@ def precision_cost(x_target, x_sim, w_p, N, precision_matrix, interval=(0, None)
             * np.sum(
                 (
                     np.diag(precision_matrix[n, :])
-                    @ (
-                        x_target[n, :, interval[0] : interval[1]]
-                        - x_sim[n, :, interval[0] : interval[1]]
-                    )
+                    @ (x_target[n, :, interval[0] : interval[1]] - x_sim[n, :, interval[0] : interval[1]])
                 )
                 ** 2.0
             )
@@ -55,9 +52,7 @@ def precision_cost(x_target, x_sim, w_p, N, precision_matrix, interval=(0, None)
 
 
 @numba.njit
-def derivative_precision_cost(
-    x_target, x_sim, w_p, precision_matrix, interval=(0, None)
-):
+def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval=(0, None)):
     """Derivative of precision cost wrt. to x_sim.
 
     :param x_target:    Control-dimensions x T array that contains the target time series.
@@ -82,8 +77,7 @@ def derivative_precision_cost(
     """
     derivative = np.zeros(x_target.shape)
     derivative[:, :, interval[0] : interval[1]] = -w_p * (
-        x_target[:, :, interval[0] : interval[1]]
-        - x_sim[:, :, interval[0] : interval[1]]
+        x_target[:, :, interval[0] : interval[1]] - x_sim[:, :, interval[0] : interval[1]]
     )
     for t in range(x_target.shape[2]):
         derivative[:, :, t] = np.multiply(derivative[:, :, t], precision_matrix)

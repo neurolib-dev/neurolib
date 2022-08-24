@@ -4,21 +4,20 @@ from .oc_fhn_jit import compute_hx, compute_hx_nw
 
 
 class OcFhn(OC):
-
     def __init__(
-            self,
-            model,
-            target,
-            w_p=1,
-            w_2=1,
-            print_array=[],
-            precision_cost_interval=(0, None),
-            precision_matrix=None,
-            control_matrix=None,
-            M=1,
-            M_validation=0,
-            validate_per_step=False,
-            method=None,
+        self,
+        model,
+        target,
+        w_p=1,
+        w_2=1,
+        print_array=[],
+        precision_cost_interval=(0, None),
+        precision_matrix=None,
+        control_matrix=None,
+        M=1,
+        M_validation=0,
+        validate_per_step=False,
+        method=None,
     ):
         super().__init__(
             model,
@@ -42,8 +41,8 @@ class OcFhn(OC):
                 print("not implemented yet")
             else:
                 self.control = np.concatenate((self.model.params["x_ext"], self.model.params["y_ext"]), axis=0)[
-                               np.newaxis, :, :
-                               ]
+                    np.newaxis, :, :
+                ]
         else:
             self.control = np.stack((self.model.params["x_ext"], self.model.params["y_ext"]), axis=1)
 
@@ -61,8 +60,7 @@ class OcFhn(OC):
         """Stack the initial condition with the simulation results for both populations."""
         return np.concatenate(
             (
-                np.concatenate((self.model.params["xs_init"], self.model.params["ys_init"]), axis=1)[:, :,
-                np.newaxis],
+                np.concatenate((self.model.params["xs_init"], self.model.params["ys_init"]), axis=1)[:, :, np.newaxis],
                 np.stack((self.model.x, self.model.y), axis=1),
             ),
             axis=2,
@@ -75,8 +73,7 @@ class OcFhn(OC):
         # ToDo: model dependent
         # ToDo: find elegant way to combine the cases
         if self.N == 1:
-            self.model.params["x_ext"] = self.control[:, 0, :].reshape(1,
-                                                                       -1)  # Reshape as row vector to match access
+            self.model.params["x_ext"] = self.control[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
             self.model.params["y_ext"] = self.control[:, 1, :].reshape(1, -1)  # in model's time integration.
 
             self.x_controls = np.vstack((self.x_controls, self.control[:, 0, :].reshape(1, -1)))
@@ -90,6 +87,7 @@ class OcFhn(OC):
     def Dxdot(self):
         """2x2 Jacobian of systems dynamics wrt. to change of systems variables."""
         # ToDo: model dependent
+        # Remark: do the dimensions need to be expanded accourding to x_ou and y_ou here?
         return np.array([[1, 0], [0, 1]])
 
     def Du(self):
