@@ -1,6 +1,115 @@
 from neurolib.optimal_control.oc import OC
+from neurolib.optimal_control import cost_functions
 import numpy as np
-from .oc_fhn_jit import compute_hx, compute_hx_nw
+import numba
+
+
+@numba.njit
+def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
+    """Jacobian of the FHN dynamical system.
+    :param alpha:   FHN model parameter.
+    :type alpha:    float
+
+    :param beta:    FHN model parameter.
+    :type beta:     float
+
+    :param gamma:   FHN model parameter.
+    :type gamma:    float
+
+    :param tau:     FHN model parameter.
+    :type tau:      float
+
+    :param epsilon: FHN model parameter.
+    :type epsilon:  float
+
+    :param x:       Value of the x-population in the FHN model at a specific time step.
+    :type x:        float
+
+    :param V:           number of system variables
+    :type V:            int
+
+    :return:        Jacobian matrix.
+    :rtype:         np.ndarray of dimensions 2x2
+    """
+    jacobian = np.zeros((V, V))
+    jacobian[0, :2] = [3 * alpha * x**2 - 2 * beta * x - gamma, 1]
+    jacobian[1, :2] = [-1 / tau, epsilon / tau]
+    return jacobian
+
+
+@numba.njit
+def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, xs):
+    """Jacobians for each time step.
+
+    :param alpha:   FHN model parameter.
+    :type alpha:    float
+
+    :param beta:    FHN model parameter.
+    :type beta:     float
+
+    :param gamma:   FHN model parameter.
+    :type gamma:    float
+
+    :param tau:     FHN model parameter.
+    :type tau:      float
+
+    :param epsilon: FHN model parameter.
+    :type epsilon:  float
+
+    :param N:           number of nodes in the network
+    :type N:            int
+    :param V:           number of system variables
+    :type V:            int
+    :param T:           length of simulation (time dimension)
+    :type T:            int
+
+    :param xs:  The jacobian of the FHN systems dynamics depends only on the constant parameters and the values of
+                    the x-population.
+    :type xs:   np.ndarray of shape 1xT
+
+    :return: array of length T containing 2x2-matrices
+    :rtype: np.ndarray of shape Tx2x2
+    """
+    hx = np.zeros((N, T, V, V))
+
+    for n in range(N):
+        for ind, x in enumerate(xs[n, 0, :]):
+            hx[n, ind, :, :] = jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V)
+    return hx
+
+
+@numba.njit
+def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
+    """Jacobians for network connectivity in all time steps.
+
+    :param K_gl:    FHN model parameter.
+    :type K_gl:     float
+
+    :param cmat:    FHN model parameter, connectivity matrix.
+    :type cmat:     ndarray
+
+    :param coupling: FHN model parameter.
+    :type coupling:  string
+
+    :param N:           number of nodes in the network
+    :type N:            int
+    :param V:           number of system variables
+    :type V:            int
+    :param T:           length of simulation (time dimension)
+    :type T:            int
+
+    :return: Jacobians for network connectivity in all time steps.
+    :rtype: np.ndarray of shape NxNxTx4x4
+    """
+    hx_nw = np.zeros((N, N, T, V, V))
+
+    for n1 in range(N):
+        for n2 in range(N):
+            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
+            if coupling == "diffusive":
+                hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
+
+    return -hx_nw
 
 
 class OcFhn(OC):
@@ -70,7 +179,6 @@ class OcFhn(OC):
         """Update the parameters in self.model according to the current control such that self.simulate_forward
         operates with the appropriate control signal.
         """
-        # ToDo: model dependent
         # ToDo: find elegant way to combine the cases
         if self.N == 1:
             self.model.params["x_ext"] = self.control[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
@@ -85,23 +193,19 @@ class OcFhn(OC):
             self.x_controls = np.vstack((self.x_controls, self.control[:, 0, :]))
 
     def Dxdot(self):
-        """2x2 Jacobian of systems dynamics wrt. to change of systems variables."""
-        # ToDo: model dependent
-        # Remark: do the dimensions need to be expanded accourding to x_ou and y_ou here?
-        return np.array([[1, 0], [0, 1]])
+        """4x4 Jacobian of systems dynamics wrt. to change of systems variables."""
+        raise NotImplementedError  # return np.eye(4)
 
     def Du(self):
-        """2x2 Jacobian of systems dynamics wrt. to I_ext (external control input)"""
-        # ToDo: model dependent
+        """4x4 Jacobian of systems dynamics wrt. to I_ext (external control input)"""
         return np.array([[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
 
     def compute_hx(self):
         """Jacobians for each time step.
 
-        :return: Array of length self.T containing 2x2-matrices
+        :return: Array of length self.T containing 4x4-matrices
         :rtype: np.ndarray
         """
-        # ToDo: model dependent
         return compute_hx(
             self.model.params["alpha"],
             self.model.params["beta"],
@@ -115,12 +219,11 @@ class OcFhn(OC):
         )
 
     def compute_hx_nw(self):
-        """Jacobians for each time step for the network coupling
+        """Jacobians for each time step for the network coupling.
 
-        :return: (N x self.T x (2x2) array
+        :return: N x N x T x (4x4) array
         :rtype: np.ndarray
         """
-        # ToDo: model dependent
         return compute_hx_nw(
             self.model.params["K_gl"],
             self.model.params["Cmat"],
@@ -129,3 +232,18 @@ class OcFhn(OC):
             self.dim_vars,
             self.T,
         )
+
+    def compute_gradient(self):
+        """
+        Du @ fk + adjoint_k.T @ Du @ h
+        """
+        # ToDo: model specific due to slicing '[:2, :]'
+        self.solve_adjoint()
+        fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
+
+        grad = np.zeros(fk.shape)
+        for n in range(self.N):
+            grad[n, :, :] = (
+                fk[n, :, :] + (self.adjoint_state[n, :, :].T @ np.diag(self.control_matrix[n, :]) @ self.Du()).T[:2, :]
+            )
+        return grad

@@ -3,18 +3,19 @@ import numba
 import numpy as np
 from neurolib.optimal_control import cost_functions
 import logging
+import copy
 
 
 # compared loops agains "@", "np.matmul" and "np.dot": loops ~factor 3.5 faster
 @numba.njit
 def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
     """Backwards integration of the adjoint state.
-    :param fx: df/dx    Derivative of cost function wrt. to systems dynamics.
-    :type fx:           np.ndarray
     :param hx: dh/dx    Jacobians for each time step.
     :type hx:           np.ndarray of shape Tx2x2
     :param hx_nw:       Jacobians for each time step for the network coupling.
     :type hx_nw:        np.ndarray
+    :param fx: df/dx    Derivative of cost function wrt. to systems dynamics.
+    :type fx:           np.ndarray
     :param state_dim:   Dimensions of state (NxVxT).
     :type state_dim:    tuple
     :param dt:          Time resolution of integration.
@@ -112,7 +113,7 @@ class OC:
 
         """
 
-        self.model = model
+        self.model = copy.deepcopy(model)
 
         if self.model.getMaxDelay() > 0.0:
             print("Delay not yet implemented, please set delays to zero")
@@ -256,20 +257,11 @@ class OC:
         energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2)
         return precision_cost + energy_cost
 
+    @abc.abstractmethod
     def compute_gradient(self):
-        """
-        Du @ fk + adjoint_k.T @ Du @ h
-        """
-
-        self.solve_adjoint()
-        fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
-
-        grad = np.zeros((fk.shape))
-        for n in range(self.N):
-            grad[n, :, :] = (
-                fk[n, :, :] + (self.adjoint_state[n, :, :].T @ np.diag(self.control_matrix[n, :]) @ self.Du()).T[:2, :]
-            )
-        return grad
+        """Du @ fk + adjoint_k.T @ Du @ h"""
+        # ToDo: model dependent due to slicing '[:2, :]'
+        pass
 
     @abc.abstractmethod
     def compute_hx(self):

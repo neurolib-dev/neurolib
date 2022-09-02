@@ -1,8 +1,7 @@
 from neurolib.optimal_control.oc import OC
+from neurolib.optimal_control import cost_functions
 import numba
 import numpy as np
-from neurolib.optimal_control.oc_fhn.oc_fhn_jit import compute_hx_nw    # Remark: then function should be placed
-                                                                        # elsewhere and the docstring should be updated.
 
 
 @numba.njit
@@ -53,6 +52,40 @@ def compute_hx(a, w, N, V, T, xs):
             y = xs[n, 1, t]
             hx[n, t, :, :] = jacobian_hopf(a, w, V, x, y)
     return hx
+
+
+@numba.njit
+def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
+    """Jacobians for network connectivity in all time steps.
+
+    :param K_gl:    FHN model parameter.
+    :type K_gl:     float
+
+    :param cmat:    FHN model parameter, connectivity matrix.
+    :type cmat:     ndarray
+
+    :param coupling: FHN model parameter.
+    :type coupling:  string
+
+    :param N:           number of nodes in the network
+    :type N:            int
+    :param V:           number of system variables
+    :type V:            int
+    :param T:           length of simulation (time dimension)
+    :type T:            int
+
+    :return: Jacobians for network connectivity in all time steps.
+    :rtype: np.ndarray of shape NxNxTx4x4
+    """
+    hx_nw = np.zeros((N, N, T, V, V))
+
+    for n1 in range(N):
+        for n2 in range(N):
+            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
+            if coupling == "diffusive":
+                hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
+
+    return -hx_nw
 
 
 class OcHopf(OC):
@@ -123,7 +156,6 @@ class OcHopf(OC):
         """Update the parameters in self.model according to the current control such that self.simulate_forward
         operates with the appropriate control signal.
         """
-        # ToDo: model dependent
         # ToDo: find elegant way to combine the cases
         if self.N == 1:
             self.model.params["x_ext"] = self.control[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
@@ -138,37 +170,34 @@ class OcHopf(OC):
             self.x_controls = np.vstack((self.x_controls, self.control[:, 0, :]))
 
     def Dxdot(self):
-        """2x2 Jacobian of systems dynamics wrt. to change of systems variables."""
-        # ToDo: model dependent
-        # Remark: do the dimensions need to be expanded according to x_ou and y_ou here?
-        return np.array([[1, 0], [0, 1]])
+        """4x4 Jacobian of systems dynamics wrt. to change of systems variables."""
+        raise NotImplementedError  # return np.eye(4)
 
     def Du(self):
         """2x2 Jacobian of systems dynamics wrt. to I_ext (external control input)"""
-        # ToDo: model dependent
         return np.array([[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
 
     def compute_hx(self):
         """Jacobians for each time step.
 
-        :return: Array of length self.T containing 2x2-matrices
+        :return: Array of length self.T containing 4x4-matrices
         :rtype: np.ndarray
         """
-        # ToDo: model dependent
-        return compute_hx(self.model.params.a,
-                          self.model.params.w,
-                          self.N,
-                          self.dim_vars,
-                          self.T,
-                          self.get_xs(), )
+        return compute_hx(
+            self.model.params.a,
+            self.model.params.w,
+            self.N,
+            self.dim_vars,
+            self.T,
+            self.get_xs(),
+        )
 
     def compute_hx_nw(self):
-        """Jacobians for each time step for the network coupling
+        """Jacobians for each time step for the network coupling.
 
-        :return: (N x self.T x (2x2) array
+        :return: N x N x T x (4x4) array
         :rtype: np.ndarray
         """
-        # ToDo: model dependent
         return compute_hx_nw(
             self.model.params["K_gl"],
             self.model.params["Cmat"],
@@ -177,3 +206,18 @@ class OcHopf(OC):
             self.dim_vars,
             self.T,
         )
+
+    def compute_gradient(self):
+        """
+        Du @ fk + adjoint_k.T @ Du @ h
+        """
+        # ToDo: model specific due to slicing '[:2, :]'
+        self.solve_adjoint()
+        fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
+
+        grad = np.zeros(fk.shape)
+        for n in range(self.N):
+            grad[n, :, :] = (
+                fk[n, :, :] + (self.adjoint_state[n, :, :].T @ np.diag(self.control_matrix[n, :]) @ self.Du()).T[:2, :]
+            )
+        return grad
