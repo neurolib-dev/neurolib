@@ -89,3 +89,7 @@ class TestHopf(unittest.TestCase):
                     break
 
             self.assertTrue(control_coincide)
+
+
+if __name__ == "__main__":
+    unittest.main()

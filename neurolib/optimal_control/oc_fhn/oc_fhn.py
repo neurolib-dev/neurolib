@@ -142,6 +142,9 @@ class OcFhn(OC):
             validate_per_step=validate_per_step,
             method=method,
         )
+
+        assert self.model.name == "fhn"
+
         assert self.T == self.model.params["x_ext"].shape[1]
         assert self.T == self.model.params["y_ext"].shape[1]
 

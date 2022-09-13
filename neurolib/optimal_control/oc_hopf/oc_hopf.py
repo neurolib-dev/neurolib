@@ -119,6 +119,9 @@ class OcHopf(OC):
             validate_per_step=validate_per_step,
             method=method,
         )
+
+        assert self.model.name == "hopf"
+
         assert self.T == self.model.params["x_ext"].shape[1]
         assert self.T == self.model.params["y_ext"].shape[1]
 
