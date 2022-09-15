@@ -161,7 +161,7 @@ class TestFHNNoisy(unittest.TestCase):
 
         fhn.params["y_ext"] = zero_input
         fhn.params["x_ext"] = zero_input
-        fhn_controlled_noisy = oc_fhn.OcFhn(fhn, target, w_p=1, w_2=0, M=2, M_validation=1000)
+        fhn_controlled_noisy = oc_fhn.OcFhn(fhn, target, w_p=1, w_2=0, M=2, M_validation=10)
         fhn_controlled_noisy.optimize(test_iterations)
         control_noisy = fhn_controlled_noisy.control
 

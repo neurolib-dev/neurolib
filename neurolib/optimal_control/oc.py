@@ -188,10 +188,9 @@ class OC:
         # ToDo: different models have different inputs
         self.control = None
 
-        self.cost_history = np.array([])
-        self.step_sizes_history = np.array([])
-        self.step_sizes_loops_history = np.array([])
-        self.cost_history_index = 0
+        self.cost_history = []
+        self.step_sizes_history = []
+        self.step_sizes_loops_history = []
 
         # ToDo: not "x" in other models
 
@@ -203,11 +202,6 @@ class OC:
         self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
         self.precision_cost_interval = precision_cost_interval
-
-    def add_cost_to_history(self, cost):
-        """For later analysis."""
-        self.cost_history[self.cost_history_index] = cost
-        self.cost_history_index += 1
 
     @abc.abstractmethod
     def get_xs(self):
@@ -332,15 +326,11 @@ class OC:
             step *= factor
             counter += 1
 
-            # "step size loop", cost, step)
-
             # inplace updating of models x_ext bc. forward-sim relies on models parameters
             self.control = control0 + step * cost_gradient
             self.update_input()
 
-            # time_series = model(x0, duration, dt, control1)
             self.simulate_forward()
-            # cost = total_cost(control1, time_series, target)
             cost = self.compute_total_cost()
 
             if counter == self.count_step:
@@ -352,8 +342,8 @@ class OC:
                     self.zero_step_encountered = True
                 break
 
-        self.step_sizes_loops_history[self.cost_history_index - 1] = counter
-        self.step_sizes_history[self.cost_history_index - 1] = step
+        self.step_sizes_loops_history.append(counter)
+        self.step_sizes_history.append(step)
 
         return step
 
@@ -378,16 +368,15 @@ class OC:
         :param n_max_iterations: maximum number of iterations of gradient descent
         :type n_max_iterations: int
         """
-        self.cost_history = np.hstack((self.cost_history, np.zeros(n_max_iterations)))
-        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
-        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
+
         # (I) forward simulation
         self.simulate_forward()  # yields x(t)
 
         cost = self.compute_total_cost()
         if 1 in self.print_array:
-            print(f"Cost in iteration 1: %s" % (cost))
-        self.add_cost_to_history(cost)
+            print(f"Cost in iteration 0: %s" % (cost))
+        if len(self.cost_history) == 0:  # add only if control model has not yet been optimized
+            self.cost_history.append(cost)
 
         # (II) gradient descent takes place within "step_size"
         # (III) step size and control update
@@ -398,11 +387,11 @@ class OC:
         # (IV) forward simulation
         self.simulate_forward()
 
-        for i in range(2, n_max_iterations + 1):
+        for i in range(1, n_max_iterations):
             cost = self.compute_total_cost()
             if i in self.print_array:
                 print(f"Cost in iteration %s: %s" % (i, cost))
-            self.add_cost_to_history(cost)
+            self.cost_history.append(cost)
             # (V.I) gradient descent takes place within "step_size"
             # (V.II) step size and control update
             grad = self.compute_gradient()
@@ -415,19 +404,27 @@ class OC:
                 print(f"Converged in iteration %s with cost %s" % (i, cost))
                 break
 
+        if i + 1 == n_max_iterations and not self.zero_step_encountered:
+            cost = self.compute_total_cost()
+            self.cost_history.append(cost)
+            if i + 1 in self.print_array:
+                print(f"Cost in iteration %s: %s" % (i + 1, cost))
+
+        print(f"Final cost : %s" % (cost))
+
     def optimize_noisy(self, n_max_iterations):
         """Compute the optimal control signal for noise averaging method 3.
 
         :param n_max_iterations: maximum number of iterations of gradient descent
         :type n_max_iterations: int
         """
-        self.cost_history = np.hstack((self.cost_history, np.zeros((n_max_iterations + 1))))
-        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
-        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
 
         # initialize array containing M gradients (one per noise realization) for each iteration
         grad_m = np.zeros((self.M, self.N, self.dim_out, self.T))
         consecutive_zero_step = 0
+
+        if len(self.control_history) == 0:
+            self.control_history.append(self.control)
 
         for i in range(1, n_max_iterations + 1):
 
@@ -449,7 +446,9 @@ class OC:
 
             if i - 1 in self.print_array:
                 print(f"Mean cost in iteration %s: %s" % (i - 1, cost))
-            self.add_cost_to_history(cost)
+
+            if i != 1 or len(self.cost_history) == 0:
+                self.cost_history.append(cost)
 
             count = 0
             while count < self.count_noisy_step:
@@ -480,14 +479,13 @@ class OC:
                 cost = self.compute_cost_noisy(self.M)
             if n_max_iterations in self.print_array:
                 print(f"Mean cost in iteration %s: %s" % (n_max_iterations, cost))
-            self.add_cost_to_history(cost)
+            self.cost_history.append(cost)
 
         # take most successful control as optimal control
         min_index = np.argmin(self.cost_history)
-        min_cost = self.cost_history[min_index]
         oc = self.control_history[min_index]
 
-        print(f"Minimal cost found at iteration %s" % (min_index))
+        print(f"Minimal cost %s found at iteration %s" % (min_index))
 
         self.control = oc
         self.update_input()
@@ -556,7 +554,7 @@ class OC:
                 self.update_input()
                 self.zero_step_encountered = True
 
-        self.step_sizes_loops_history[self.cost_history_index - 1] = counter
-        self.step_sizes_history[self.cost_history_index - 1] = step
+        self.step_sizes_loops_history.append(counter)
+        self.step_sizes_history.append(step)
 
         return step

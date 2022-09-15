@@ -138,7 +138,7 @@ class OcHopf(OC):
             assert (self.control[n, 1, :] == self.model.params["y_ext"][n, :]).all()
 
         # save control signals throughout optimization iterations for later analysis
-        self.control_history.append(self.control)
+        # self.control_history.append(self.control)
 
     def get_xs(self):
         """Stack the initial condition with the simulation results for both populations."""
