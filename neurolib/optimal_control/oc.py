@@ -373,42 +373,26 @@ class OC:
         self.simulate_forward()  # yields x(t)
 
         cost = self.compute_total_cost()
-        if 1 in self.print_array:
-            print(f"Cost in iteration 0: %s" % (cost))
+        print(f"Cost in iteration 0: %s" % (cost))
         if len(self.cost_history) == 0:  # add only if control model has not yet been optimized
             self.cost_history.append(cost)
 
-        # (II) gradient descent takes place within "step_size"
-        # (III) step size and control update
-        grad = self.compute_gradient()
+        i = 0
 
-        self.step_size(-grad)
-
-        # (IV) forward simulation
-        self.simulate_forward()
-
-        for i in range(1, n_max_iterations):
-            cost = self.compute_total_cost()
-            if i in self.print_array:
-                print(f"Cost in iteration %s: %s" % (i, cost))
-            self.cost_history.append(cost)
-            # (V.I) gradient descent takes place within "step_size"
-            # (V.II) step size and control update
+        for i in range(1, n_max_iterations + 1):
             grad = self.compute_gradient()
-            self.step_size(-grad)
-
-            # (V.III) forward simulation
-            self.simulate_forward()  # yields x(t)
 
             if self.zero_step_encountered:
                 print(f"Converged in iteration %s with cost %s" % (i, cost))
                 break
 
-        if i + 1 == n_max_iterations and not self.zero_step_encountered:
+            self.step_size(-grad)
+            self.simulate_forward()
+
             cost = self.compute_total_cost()
+            if i in self.print_array:
+                print(f"Cost in iteration %s: %s" % (i, cost))
             self.cost_history.append(cost)
-            if i + 1 in self.print_array:
-                print(f"Cost in iteration %s: %s" % (i + 1, cost))
 
         print(f"Final cost : %s" % (cost))
 
@@ -426,29 +410,27 @@ class OC:
         if len(self.control_history) == 0:
             self.control_history.append(self.control)
 
+        if self.validate_per_step:  # if cost is computed for M_validation realizations in every step
+            for m in range(self.M):
+                self.simulate_forward()
+                grad_m[m, :] = self.compute_gradient()
+            cost = self.compute_cost_noisy(self.M_validation)
+        else:
+            cost_m = 0.0
+            for m in range(self.M):
+                self.simulate_forward()
+                cost_m += self.compute_total_cost()
+                grad_m[m, :] = self.compute_gradient()
+            cost = cost_m / self.M
+
+        print(f"Mean cost in iteration 0: %s" % (cost))
+
+        if len(self.cost_history) == 0:
+            self.cost_history.append(cost)
+
         for i in range(1, n_max_iterations + 1):
 
-            # (I) compute gradient and mean cost
-            if self.validate_per_step:  # if cost is computed for M_validation realizations in every step
-                for m in range(self.M):
-                    self.simulate_forward()
-                    grad_m[m, :] = self.compute_gradient()
-                cost = self.compute_cost_noisy(self.M_validation)
-            else:
-                cost_m = 0.0
-                for m in range(self.M):
-                    self.simulate_forward()
-                    cost_m += self.compute_total_cost()
-                    grad_m[m, :] = self.compute_gradient()
-                cost = cost_m / self.M
-
             grad = np.mean(grad_m, axis=0)
-
-            if i - 1 in self.print_array:
-                print(f"Mean cost in iteration %s: %s" % (i - 1, cost))
-
-            if i != 1 or len(self.cost_history) == 0:
-                self.cost_history.append(cost)
 
             count = 0
             while count < self.count_noisy_step:
@@ -467,25 +449,30 @@ class OC:
                     print("Failed to improve further for noisy system three times in a row, stop optimization.")
                     break
 
-                continue
-
             self.control_history.append(self.control)
 
-        # if optimization was not interupted, compute cost for final control
-        if i == n_max_iterations:
-            if self.validate_per_step:
+            if self.validate_per_step:  # if cost is computed for M_validation realizations in every step
+                for m in range(self.M):
+                    self.simulate_forward()
+                    grad_m[m, :] = self.compute_gradient()
                 cost = self.compute_cost_noisy(self.M_validation)
             else:
-                cost = self.compute_cost_noisy(self.M)
-            if n_max_iterations in self.print_array:
-                print(f"Mean cost in iteration %s: %s" % (n_max_iterations, cost))
+                cost_m = 0.0
+                for m in range(self.M):
+                    self.simulate_forward()
+                    cost_m += self.compute_total_cost()
+                    grad_m[m, :] = self.compute_gradient()
+                cost = cost_m / self.M
+
+            if i in self.print_array:
+                print(f"Mean cost in iteration %s: %s" % (i, cost))
             self.cost_history.append(cost)
 
         # take most successful control as optimal control
         min_index = np.argmin(self.cost_history)
         oc = self.control_history[min_index]
 
-        print(f"Minimal cost %s found at iteration %s" % (min_index))
+        print(f"Minimal cost found at iteration %s" % (min_index))
 
         self.control = oc
         self.update_input()
