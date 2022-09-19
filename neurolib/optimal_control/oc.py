@@ -402,8 +402,6 @@ class OC:
         grad = self.compute_gradient()
 
         self.step_size(-grad)
-        self.x_grads = grad[:, 0, :]
-
         # (IV) forward simulation
         self.simulate_forward()
 
@@ -416,7 +414,6 @@ class OC:
             # (V.II) step size and control update
             grad = self.compute_gradient()
             self.step_size(-grad)
-            self.x_grads = np.vstack((self.x_grads, grad[:, 0, :]))
 
             # (V.III) forward simulation
             self.simulate_forward()  # yields x(t)

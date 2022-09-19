@@ -244,9 +244,11 @@ class OcFhn(OC):
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
 
+        duh = self.Du()
+
         grad = np.zeros(fk.shape)
         for n in range(self.N):
-            grad[n, :, :] = (
-                fk[n, :, :] + (self.adjoint_state[n, :, :].T @ np.diag(self.control_matrix[n, :]) @ self.Du()).T[:2, :]
-            )
+            for v in range(self.dim_out):
+                for t in range(self.T):
+                    grad[n, v, t] = fk[n, v, t] + self.adjoint_state[n, v, t] * self.control_matrix[n, v] * duh[v, v]
         return grad
