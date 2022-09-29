@@ -124,6 +124,8 @@ class OC:
         self.w_2 = w_2
 
         self.step = 10.0
+        if self.model.name == "wc":
+            self.step = 1000.0
 
         self.N = self.model.params.N
 
@@ -131,7 +133,14 @@ class OC:
         self.dim_out = len(self.model.output_vars)
 
         if self.N > 1:  # check that coupling matrix has zero diagonal
-            assert np.all(np.diag(self.model.params["Cmat"]) == 0.0)
+            assert np.all(np.diag(self.model.Cmat) == 0.0)
+        elif self.N == 1:
+            if type(self.model.Cmat) == type(None):
+                self.model.Cmat = np.zeros((self.N, self.N))
+            if type(self.model.Dmat) == type(None):
+                self.model.Dmat = np.zeros((self.N, self.N))
+
+        self.Dmat_ndt = np.around(self.model.Dmat / self.model.params.dt).astype(int)
 
         self.precision_matrix = precision_matrix
         if isinstance(self.precision_matrix, type(None)):

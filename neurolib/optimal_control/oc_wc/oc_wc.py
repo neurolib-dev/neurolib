@@ -4,17 +4,17 @@ import numpy as np
 import numba
 
 
-# @numba.njit
+@numba.njit
 def S(x, a, mu):
     return 1.0 / (1.0 + np.exp(-a * (x - mu)))
 
 
-# @numba.njit
+@numba.njit
 def S_der(x, a, mu):
     return (a * np.exp(-a * (x - mu))) / (1.0 + np.exp(-a * (x - mu))) ** 2
 
 
-# @numba.njit
+@numba.njit
 def Duh(
     N,
     V,
@@ -45,7 +45,7 @@ def Duh(
     return duh
 
 
-# @numba.njit
+@numba.njit
 def jacobian_wc(
     tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh, nw_e, e, i, ue, ui, V
 ):
@@ -77,7 +77,7 @@ def jacobian_wc(
     return jacobian
 
 
-# @numba.njit
+@numba.njit
 def compute_hx(
     tau_exc,
     tau_inh,
@@ -91,7 +91,7 @@ def compute_hx(
     c_inhinh,
     K_gl,
     cmat,
-    dmat,
+    dmat_ndt,
     N,
     V,
     T,
@@ -100,7 +100,7 @@ def compute_hx(
 ):
     """Jacobians for each time step.
 
-    :param tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh, K_gl, cmat, dmat:   model parameters
+    :param tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh, K_gl, cmat, dmat_ndt:   model parameters
     :type :    float
 
     :param N:           number of nodes in the network
@@ -118,7 +118,7 @@ def compute_hx(
     :rtype: np.ndarray of shape Tx2x2
     """
     hx = np.zeros((N, T, V, V))
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat, xs[:, 0, :])
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, xs[:, 0, :])
 
     for n in range(N):
         for t, e in enumerate(xs[n, 0, :]):
@@ -146,20 +146,35 @@ def compute_hx(
     return hx
 
 
-# @numba.njit
-def compute_nw_input(N, T, K_gl, cmat, dmat, E):
+@numba.njit
+def compute_nw_input(N, T, K_gl, cmat, dmat_ndt, E):
 
     nw_input = np.zeros((N, T))
-    if N > 1:
-        for t in range(1, T):
-            for n in range(N):
-                for l in range(N):
-                    nw_input[n, t] += K_gl * cmat[n, l] * (E[l, t - dmat[n, l] - 1])
+
+    for t in range(1, T):
+        for n in range(N):
+            for l in range(N):
+                nw_input[n, t] += K_gl * cmat[n, l] * (E[l, t - dmat_ndt[n, l] - 1])
     return nw_input
 
 
-# @numba.njit
-def compute_hx_nw(K_gl, cmat, N, V, T):
+@numba.njit
+def compute_hx_nw(
+    K_gl,
+    cmat,
+    dmat_ndt,
+    N,
+    V,
+    T,
+    e,
+    i,
+    ue,
+    tau_exc,
+    a_exc,
+    mu_exc,
+    c_excexc,
+    c_inhexc,
+):
     """Jacobians for network connectivity in all time steps.
 
     :param K_gl:    model parameter.
@@ -183,12 +198,14 @@ def compute_hx_nw(K_gl, cmat, N, V, T):
     """
     hx_nw = np.zeros((N, N, T, V, V))
 
-    print("network not implemented")
-    return hx_nw
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, e)
+    exc_input = c_excexc * e - c_inhexc * i + nw_e + ue
 
-    for n1 in range(N):
-        for n2 in range(N):
-            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
+    for t in range(T):
+        for n1 in range(N):
+            input_exc = c_excexc * e[n1, t] - c_inhexc * i[n1, t] + nw_e[n1, t] + ue[n1, t]
+            for n2 in range(N):
+                hx_nw[n1, n2, t, 0, 0] = (S_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]) / tau_exc
 
     return -hx_nw
 
@@ -278,9 +295,7 @@ class OcWc(OC):
         xs = self.get_xs()
         e = xs[:, 0, :]
         i = xs[:, 1, :]
-        nw_e = compute_nw_input(
-            self.N, self.T, self.model.params.K_gl, self.model.params.Cmat, self.model.params.Dmat, e
-        )
+        nw_e = compute_nw_input(self.N, self.T, self.model.params.K_gl, self.model.Cmat, self.Dmat_ndt, e)
 
         control = self.control
         ue = control[:, 0, :]
@@ -325,8 +340,8 @@ class OcWc(OC):
             self.model.params.c_excinh,
             self.model.params.c_inhinh,
             self.model.params.K_gl,
-            self.model.params.cmat,
-            self.model.params.dmat,
+            self.model.Cmat,
+            self.Dmat_ndt,
             self.N,
             self.dim_vars,
             self.T,
@@ -340,12 +355,27 @@ class OcWc(OC):
         :return: N x N x T x (4x4) array
         :rtype: np.ndarray
         """
+
+        xs = self.get_xs()
+        e = xs[:, 0, :]
+        i = xs[:, 1, :]
+        ue = self.control[:, 0, :]
+
         return compute_hx_nw(
-            self.model.params["K_gl"],
-            self.model.params["Cmat"],
+            self.model.params.K_gl,
+            self.model.Cmat,
+            self.Dmat_ndt,
             self.N,
             self.dim_vars,
             self.T,
+            e,
+            i,
+            ue,
+            self.model.params.tau_exc,
+            self.model.params.a_exc,
+            self.model.params.mu_exc,
+            self.model.params.c_excexc,
+            self.model.params.c_inhexc,
         )
 
     def compute_gradient(self):
@@ -357,11 +387,12 @@ class OcWc(OC):
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
 
         grad = np.zeros(fk.shape)
+        duh = self.Duh()
         for n in range(self.N):
             for v in range(self.dim_out):
                 for t in range(self.T):
                     grad[n, v, t] = (
-                        fk[n, v, t] + self.adjoint_state[n, v, t] * self.control_matrix[n, v] * self.Duh()[n, v, v, t]
+                        fk[n, v, t] + self.adjoint_state[n, v, t] * self.control_matrix[n, v] * duh[n, v, v, t]
                     )
 
         return grad
