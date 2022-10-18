@@ -21,8 +21,6 @@ class TestWC(unittest.TestCase):
         print("Test OC in single-node system")
         wc = WCModel()
 
-        return
-
         duration = 3.0
         a = 1.0
 
