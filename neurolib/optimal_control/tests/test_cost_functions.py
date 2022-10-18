@@ -18,18 +18,18 @@ class TestCostFunctions(unittest.TestCase):
         x_target = self.get_arbitrary_array()
 
         self.assertEqual(
-            cost_functions.precision_cost(x_target, x_target, w_p, N, precision_cost_matrix),
+            cost_functions.precision_cost(x_target, x_target, w_p, precision_cost_matrix),
             0,
         )  # target and simulation coincide
 
         x_sim = np.copy(x_target)
         x_sim[:, 0] = -x_sim[:, 0]  # create setting where result depends only on this first entries
         self.assertEqual(
-            cost_functions.precision_cost(x_target, x_target, w_p, N, precision_cost_matrix),
+            cost_functions.precision_cost(x_target, x_target, w_p, precision_cost_matrix),
             0,
         )
         self.assertEqual(
-            cost_functions.precision_cost(x_target, x_sim, w_p, N, precision_cost_matrix),
+            cost_functions.precision_cost(x_target, x_sim, w_p, precision_cost_matrix),
             w_p / 2 * np.sum((2 * x_target[:, 0]) ** 2),
         )
 
@@ -44,7 +44,7 @@ class TestCostFunctions(unittest.TestCase):
         zerostate = np.zeros((target.shape))
 
         self.assertEqual(
-            cost_functions.precision_cost(target, zerostate, w_p, N, precision_cost_matrix),
+            cost_functions.precision_cost(target, zerostate, w_p, precision_cost_matrix),
             0.0,
         )  # no cost if precision matrix is zero
 
@@ -53,7 +53,7 @@ class TestCostFunctions(unittest.TestCase):
                 precision_cost_matrix[i, j] = 1
                 result = w_p * 0.5 * sum((target[i, j, :] ** 2))
                 self.assertEqual(
-                    cost_functions.precision_cost(target, zerostate, w_p, N, precision_cost_matrix),
+                    cost_functions.precision_cost(target, zerostate, w_p, precision_cost_matrix),
                     result,
                 )
                 precision_cost_matrix[i, j] = 0
@@ -107,7 +107,7 @@ class TestCostFunctions(unittest.TestCase):
         x_sim = np.copy(x_target)
         x_sim[0, :, 3] = -x_sim[0, :, 3]
         interval = (3, None)
-        precision_cost = cost_functions.precision_cost(x_target, x_sim, w_p, N, precision_cost_matrix, interval)
+        precision_cost = cost_functions.precision_cost(x_target, x_sim, w_p, precision_cost_matrix, interval)
         # Result should only depend on second half of the timeseries.
         self.assertEqual(precision_cost, w_p / 2 * np.sum((2 * x_target[0, :, 3]) ** 2))
 

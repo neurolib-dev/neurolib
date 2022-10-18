@@ -240,7 +240,6 @@ class OC:
             self.target,
             self.get_xs(),
             self.w_p,
-            self.N,
             self.precision_matrix,
             interval=self.precision_cost_interval,
         )
