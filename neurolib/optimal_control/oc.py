@@ -62,7 +62,6 @@ class OC:
         M=1,
         M_validation=0,
         validate_per_step=False,
-        method=None,
     ):
         """
         Base class for optimal control. Model specific methods, like
@@ -108,9 +107,6 @@ class OC:
                                     M>1). Defaults to False.
         :type validate_per_step:    bool, optional
 
-        :param method:              Noise averaging method (only used in stochastic case, M>1), defaults to None.
-        :type method:               None or str, optional
-
         """
 
         self.model = copy.deepcopy(model)
@@ -126,6 +122,8 @@ class OC:
         self.step = 10.0
         if self.model.name == "wc":
             self.step = 1000.0
+        self.count_noisy_step = 10
+        self.count_step = 20
 
         self.N = self.model.params.N
 
@@ -162,7 +160,6 @@ class OC:
         self.M_validation = M_validation
         self.cost_validation = 0.0
         self.validate_per_step = validate_per_step
-        self.method = method
 
         if self.model.params.sigma_ou != 0.0:  # noisy system
             if self.M <= 1:
@@ -174,9 +171,9 @@ class OC:
             if self.M > self.M_validation:
                 print('Parameter "M_validation" should be chosen larger than parameter "M".')
         else:  # deterministic system
-            if self.M > 1 or self.M_validation != 0 or validate_per_step or method != None:
+            if self.M > 1 or self.M_validation != 0 or validate_per_step:
                 print(
-                    'For deterministic systems, parameters "M", "M_validation", "validate_per_step" and "method" are not relevant.'
+                    'For deterministic systems, parameters "M", "M_validation" and "validate_per_step" are not relevant.'
                     + "\n"
                     + 'If you want to study a noisy system, please set model parameter "sigma_ou" larger than zero'
                 )
@@ -200,27 +197,20 @@ class OC:
         # ToDo: different models have different inputs
         self.control = None
 
-        self.cost_history = np.array([])
-        self.step_sizes_history = np.array([])
-        self.step_sizes_loops_history = np.array([])
-        self.cost_history_index = 0
+        self.cost_history = []
+        self.step_sizes_history = []
+        self.step_sizes_loops_history = []
 
         # ToDo: not "x" in other models
-        self.x_controls = None  # save control signals throughout optimization iterations for
-        # later analysis
-        self.x_grads = np.array([])  # save gradients throughout optimization iterations for
-        # later analysis
+
+        # save control signals throughout optimization iterations for later analysis
+        self.control_history = []
 
         self.print_array = print_array
 
         self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
         self.precision_cost_interval = precision_cost_interval
-
-    def add_cost_to_history(self, cost):
-        """For later analysis."""
-        self.cost_history[self.cost_history_index] = cost
-        self.cost_history_index += 1
 
     @abc.abstractmethod
     def get_xs(self):
@@ -345,18 +335,14 @@ class OC:
             step *= factor
             counter += 1
 
-            # "step size loop", cost, step)
-
             # inplace updating of models x_ext bc. forward-sim relies on models parameters
             self.control = control0 + step * cost_gradient
             self.update_input()
 
-            # time_series = model(x0, duration, dt, control1)
             self.simulate_forward()
-            # cost = total_cost(control1, time_series, target)
             cost = self.compute_total_cost()
 
-            if counter == 20.0:
+            if counter == self.count_step:
                 step = 0.0  # for later analysis only
                 self.control = control0
                 self.update_input()
@@ -365,8 +351,8 @@ class OC:
                     self.zero_step_encountered = True
                 break
 
-        self.step_sizes_loops_history[self.cost_history_index - 1] = counter
-        self.step_sizes_history[self.cost_history_index - 1] = step
+        self.step_sizes_loops_history.append(counter)
+        self.step_sizes_history.append(step)
 
         return step
 
@@ -380,78 +366,105 @@ class OC:
         """
         if self.M == 1:
             print("Compute control for a deterministic system")
-            return self.optimize_M0(n_max_iterations)
+            return self.optimize_deterministic(n_max_iterations)
         else:
             print("Compute control for a noisy system")
-            if self.method == "3":
-                return self.optimize_M3(n_max_iterations)
-            else:
-                logging.error("Optimization method not implemented.")
-                return
+            return self.optimize_noisy(n_max_iterations)
 
-    def optimize_M0(self, n_max_iterations):
+    def optimize_deterministic(self, n_max_iterations):
         """Compute the optimal control signal for noise averaging method 0 (deterministic, M=1).
 
         :param n_max_iterations: maximum number of iterations of gradient descent
         :type n_max_iterations: int
         """
-        self.cost_history = np.hstack((self.cost_history, np.zeros(n_max_iterations)))
-        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
-        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
+
         # (I) forward simulation
         self.simulate_forward()  # yields x(t)
 
         cost = self.compute_total_cost()
-        if 1 in self.print_array:
-            print(f"Cost in iteration 1: %s" % (cost))
-        self.add_cost_to_history(cost)
+        print(f"Cost in iteration 0: %s" % (cost))
+        if len(self.cost_history) == 0:  # add only if control model has not yet been optimized
+            self.cost_history.append(cost)
 
-        # (II) gradient descent takes place within "step_size"
-        # (III) step size and control update
-        grad = self.compute_gradient()
+        i = 0
 
-        self.step_size(-grad)
-        # (IV) forward simulation
-        self.simulate_forward()
-
-        for i in range(2, n_max_iterations + 1):
-            cost = self.compute_total_cost()
-            if i in self.print_array:
-                print(f"Cost in iteration %s: %s" % (i, cost))
-            self.add_cost_to_history(cost)
-            # (V.I) gradient descent takes place within "step_size"
-            # (V.II) step size and control update
+        for i in range(1, n_max_iterations + 1):
             grad = self.compute_gradient()
-            self.step_size(-grad)
-
-            # (V.III) forward simulation
-            self.simulate_forward()  # yields x(t)
 
             if self.zero_step_encountered:
                 print(f"Converged in iteration %s with cost %s" % (i, cost))
                 break
 
-    def optimize_M3(self, n_max_iterations):
+            self.step_size(-grad)
+            self.simulate_forward()
+
+            cost = self.compute_total_cost()
+            if i in self.print_array:
+                print(f"Cost in iteration %s: %s" % (i, cost))
+            self.cost_history.append(cost)
+
+        print(f"Final cost : %s" % (cost))
+
+    def optimize_noisy(self, n_max_iterations):
         """Compute the optimal control signal for noise averaging method 3.
 
         :param n_max_iterations: maximum number of iterations of gradient descent
         :type n_max_iterations: int
         """
-        self.cost_history = np.hstack((self.cost_history, np.zeros((n_max_iterations))))
-        self.step_sizes_history = np.hstack((self.step_sizes_history, np.zeros(n_max_iterations)))
-        self.step_sizes_loops_history = np.hstack((self.step_sizes_loops_history, np.zeros(n_max_iterations)))
 
         # initialize array containing M gradients (one per noise realization) for each iteration
         grad_m = np.zeros((self.M, self.N, self.dim_out, self.T))
+        consecutive_zero_step = 0
+
+        if len(self.control_history) == 0:
+            self.control_history.append(self.control)
+
+        if self.validate_per_step:  # if cost is computed for M_validation realizations in every step
+            for m in range(self.M):
+                self.simulate_forward()
+                grad_m[m, :] = self.compute_gradient()
+            cost = self.compute_cost_noisy(self.M_validation)
+        else:
+            cost_m = 0.0
+            for m in range(self.M):
+                self.simulate_forward()
+                cost_m += self.compute_total_cost()
+                grad_m[m, :] = self.compute_gradient()
+            cost = cost_m / self.M
+
+        print(f"Mean cost in iteration 0: %s" % (cost))
+
+        if len(self.cost_history) == 0:
+            self.cost_history.append(cost)
 
         for i in range(1, n_max_iterations + 1):
 
-            # (I) compute gradient and mean cost
+            grad = np.mean(grad_m, axis=0)
+
+            count = 0
+            while count < self.count_noisy_step:
+                count += 1
+                self.zero_step_encountered = False
+                step = self.step_size_noisy(-grad)
+                if not self.zero_step_encountered:
+                    consecutive_zero_step = 0
+                    break
+
+            if self.zero_step_encountered:
+                consecutive_zero_step += 1
+                print("Failed to improve further for noisy system.")
+
+                if consecutive_zero_step > 2:
+                    print("Failed to improve further for noisy system three times in a row, stop optimization.")
+                    break
+
+            self.control_history.append(self.control)
+
             if self.validate_per_step:  # if cost is computed for M_validation realizations in every step
                 for m in range(self.M):
                     self.simulate_forward()
                     grad_m[m, :] = self.compute_gradient()
-                cost = self.compute_cost_validation()
+                cost = self.compute_cost_noisy(self.M_validation)
             else:
                 cost_m = 0.0
                 for m in range(self.M):
@@ -460,62 +473,84 @@ class OC:
                     grad_m[m, :] = self.compute_gradient()
                 cost = cost_m / self.M
 
-            grad = np.mean(grad_m, axis=0)
-
             if i in self.print_array:
                 print(f"Mean cost in iteration %s: %s" % (i, cost))
-            self.add_cost_to_history(cost)
+            self.cost_history.append(cost)
 
-            control0 = self.control
-            step = self.get_step_noisy(grad)
+        # take most successful control as optimal control
+        min_index = np.argmin(self.cost_history)
+        oc = self.control_history[min_index]
 
-            self.control = control0 + step * (-grad)
-            self.update_input()
-            self.simulate_forward()
+        print(f"Minimal cost found at iteration %s" % (min_index))
 
-            if self.zero_step_encountered:
-                break
+        self.control = oc
+        self.update_input()
+        self.cost_validation = self.compute_cost_noisy(self.M_validation)
+        print(f"Final cost validated with %s noise realizations : %s" % (self.M_validation, self.cost_validation))
 
-        if self.validate_per_step:
-            self.cost_validation = cost
-        else:
-            self.cost_validation = self.compute_cost_validation()
-            print(f"Final cost validated with %s noise realizations : %s" % (self.M_validation, self.cost_validation))
-
-    def compute_cost_validation(self):
+    def compute_cost_noisy(self, M):
         """Computes the average cost from M_validation noise realizations."""
         cost_validation = 0.0
-        for m in range(self.M_validation):
+        m = 0
+        while m < M:
             self.simulate_forward()
+            if np.isnan(self.get_xs()).any():
+                continue
             cost_validation += self.compute_total_cost()
-        return cost_validation / self.M_validation
+            m += 1
+        return cost_validation / M
 
-    def get_step_noisy(self, gradient):
-        """Computes the mean descent step for M noise realizations.
+    def step_size_noisy(self, cost_gradient):
+        """Use cost_gradient to avoid unnecessary re-computations (also of the adjoint state)
+        :param cost_gradient:
+        :type cost_gradient:
 
-        :param gradient: (mean) gradient of the respective iteration
-        :type: np.ndarray
-
-        :return:    Mean descent step size for M noise realizations.
+        :return:    Step size that got multiplied with the cost_gradient.
         :rtype:     float
         """
+        self.simulate_forward()
+        cost0 = self.compute_cost_noisy(self.M)
 
-        step = 0.0
-        n_steps = 0.0
+        factor = 0.5
+        step = self.step
+        counter = 0.0
+
         control0 = self.control
 
-        for m in range(self.M):
-            step_m = self.step_size(-gradient)
-            self.control = control0.copy()
+        while True:
+            # inplace updating of models x_ext bc. forward-sim relies on models parameters
+            self.control = control0 + step * cost_gradient
             self.update_input()
 
-            # sort out zero step sizes and average only over rest
-            if step_m > 0.0:
-                step += step_m
-                n_steps += 1
+            # input signal might be too high and produce diverging values in simulation
+            self.simulate_forward()
+            if np.isnan(self.get_xs()).any():
+                step *= factor * factor  # decrease step twice to avoid that other noise realizations diverge
+                self.step = step
+                print("diverging model output, decrease step size to ", step)
+                self.control = control0 + step * cost_gradient
+                self.update_input()
+            else:
+                break
 
-        # if step=0 in all M realizations, this will interrupt the optimization
-        if n_steps == 0.0:
-            self.zero_step_encountered = True
+        cost = self.compute_cost_noisy(self.M)
+        while cost > cost0:
+            step *= factor
+            counter += 1
 
-        return step / n_steps
+            # inplace updating of models x_ext bc. forward-sim relies on models parameters
+            self.control = control0 + step * cost_gradient
+            self.update_input()
+
+            cost = self.compute_cost_noisy(self.M)
+
+            if counter == self.count_step:
+                step = 0.0  # for later analysis only
+                self.control = control0
+                self.update_input()
+                self.zero_step_encountered = True
+
+        self.step_sizes_loops_history.append(counter)
+        self.step_sizes_history.append(step)
+
+        return step

@@ -126,7 +126,6 @@ class OcFhn(OC):
         M=1,
         M_validation=0,
         validate_per_step=False,
-        method=None,
     ):
         super().__init__(
             model,
@@ -140,7 +139,6 @@ class OcFhn(OC):
             M=M,
             M_validation=M_validation,
             validate_per_step=validate_per_step,
-            method=method,
         )
 
         assert self.model.name == "fhn"
@@ -162,11 +160,8 @@ class OcFhn(OC):
             assert (self.control[n, 0, :] == self.model.params["x_ext"][n, :]).all()
             assert (self.control[n, 1, :] == self.model.params["y_ext"][n, :]).all()
 
-        self.x_controls = self.model.params["x_ext"]  # save control signals throughout optimization iterations for
-        # later analysis
-
-        self.x_grads = np.array([])  # save gradients throughout optimization iterations for
-        # later analysis
+        # save control signals throughout optimization iterations for later analysis
+        # self.control_history.append(self.control)
 
     def get_xs(self):
         """Stack the initial condition with the simulation results for both populations."""
@@ -187,13 +182,9 @@ class OcFhn(OC):
             self.model.params["x_ext"] = self.control[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
             self.model.params["y_ext"] = self.control[:, 1, :].reshape(1, -1)  # in model's time integration.
 
-            self.x_controls = np.vstack((self.x_controls, self.control[:, 0, :].reshape(1, -1)))
-
         else:
             self.model.params["x_ext"] = self.control[:, 0, :]
             self.model.params["y_ext"] = self.control[:, 1, :]
-
-            self.x_controls = np.vstack((self.x_controls, self.control[:, 0, :]))
 
     def Dxdot(self):
         """4x4 Jacobian of systems dynamics wrt. to change of systems variables."""
