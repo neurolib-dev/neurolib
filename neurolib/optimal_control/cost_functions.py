@@ -72,12 +72,8 @@ def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval=(
     for n in range(x_target.shape[0]):
         for v in range(x_target.shape[1]):
             for t in range(interval[0], interval[1]):
-                derivative[n, v, t] = -w_p * (x_target[n, v, t] - x_sim[n, v, t])
+                derivative[n, v, t] = np.multiply(-w_p * (x_target[n, v, t] - x_sim[n, v, t]), precision_matrix[n, v])
 
-    for n in range(x_target.shape[0]):
-        for v in range(x_target.shape[1]):
-            for t in range(interval[0], interval[1]):
-                derivative[n, v, t] = np.multiply(derivative[n, v, t], precision_matrix[n, v])
     return derivative
 
 
