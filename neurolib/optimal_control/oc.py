@@ -33,7 +33,7 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
     fx_fullstate = np.zeros(state_dim)
     fx_fullstate[:, :2, :] = fx.copy()
 
-    for ind in range(T - 2, 0, -1):
+    for ind in range(T - 2, -1, -1):
         for n in range(N):
             der = fx_fullstate[n, :, ind + 1].copy()
             for k in range(len(der)):
@@ -249,7 +249,6 @@ class OC:
             self.target,
             self.get_xs(),
             self.w_p,
-            self.N,
             self.precision_matrix,
             interval=self.precision_cost_interval,
         )
