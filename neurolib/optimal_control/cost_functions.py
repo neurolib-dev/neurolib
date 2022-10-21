@@ -3,7 +3,7 @@ import numba
 
 
 @numba.njit
-def precision_cost(x_target, x_sim, w_p, precision_matrix, interval=(0, None)):
+def precision_cost(x_target, x_sim, w_p, precision_matrix, dt, interval=(0, None)):
     """Summed squared difference between target and simulation within specified time interval weighted by w_p.
 
     :param x_target:    N x V x T array that contains the target time series.
@@ -15,9 +15,12 @@ def precision_cost(x_target, x_sim, w_p, precision_matrix, interval=(0, None)):
     :param w_p:         Weight that is multiplied with the precision cost.
     :type w_p:          float
 
-    :param precision_matrix: N x V binary matrix that defines nodes and channels of precision measurement, defaults to
-                                 None
+    :param precision_matrix: N x V binary matrix that defines nodes and channels of precision measurement. Defaults to
+                                 None.
     :type precision_matrix:  np.ndarray
+
+    :param dt:  Time step.
+    :type dt:   float
 
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                         dimension. Default is full time series, defaults to (0, None).
@@ -37,7 +40,7 @@ def precision_cost(x_target, x_sim, w_p, precision_matrix, interval=(0, None)):
             for t in range(interval[0], interval[1]):
                 cost += precision_matrix[n, v] * (x_target[n, v, t] - x_sim[n, v, t]) ** 2
 
-    return w_p * 0.5 * cost
+    return w_p * 0.5 * cost * dt
 
 
 @numba.njit
@@ -78,7 +81,7 @@ def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval=(
 
 
 @numba.njit
-def energy_cost(u, w_2):
+def energy_cost(u, w_2, dt):
     """
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
@@ -86,10 +89,13 @@ def energy_cost(u, w_2):
     :param w_2: Weight that is multiplied with the W2 ("energy") cost.
     :type w_2:  float
 
+    :param dt:  Time step.
+    :type dt:   float
+
     :return:    W2 cost of the control.
     :rtype:     float
     """
-    return w_2 * 0.5 * np.sum(u**2.0)
+    return w_2 * 0.5 * np.sum(u**2.0) * dt
 
 
 @numba.njit

@@ -282,9 +282,10 @@ class OC:
             self.get_xs(),
             self.w_p,
             self.precision_matrix,
+            self.dt,
             interval=self.precision_cost_interval,
         )
-        energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2)
+        energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2, dt=self.dt)
         return precision_cost + energy_cost
 
     @abc.abstractmethod
