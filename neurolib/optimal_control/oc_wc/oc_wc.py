@@ -248,15 +248,17 @@ class OcWc(OC):
             if self.model.params["exc_ext"].ndim == 1:
                 print("not implemented yet")
             else:
-                self.control = np.concatenate((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=0)[
+                self.background = np.concatenate((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=0)[
                     np.newaxis, :, :
                 ]
         else:
-            self.control = np.stack((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=1)
+            self.background = np.stack((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=1)
 
         for n in range(self.N):
-            assert (self.control[n, 0, :] == self.model.params["exc_ext"][n, :]).all()
-            assert (self.control[n, 1, :] == self.model.params["inh_ext"][n, :]).all()
+            assert (self.background[n, 0, :] == self.model.params["exc_ext"][n, :]).all()
+            assert (self.background[n, 1, :] == self.model.params["inh_ext"][n, :]).all()
+
+        self.control = np.zeros((self.background.shape))
 
     def get_xs(self):
         """Stack the initial condition with the simulation results for both populations."""
@@ -274,14 +276,15 @@ class OcWc(OC):
         """Update the parameters in self.model according to the current control such that self.simulate_forward
         operates with the appropriate control signal.
         """
+        input = self.background + self.control
         # ToDo: find elegant way to combine the cases
         if self.N == 1:
-            self.model.params["exc_ext"] = self.control[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
-            self.model.params["inh_ext"] = self.control[:, 1, :].reshape(1, -1)  # in model's time integration.
+            self.model.params["exc_ext"] = input[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
+            self.model.params["inh_ext"] = input[:, 1, :].reshape(1, -1)  # in model's time integration.
 
         else:
-            self.model.params["exc_ext"] = self.control[:, 0, :]
-            self.model.params["inh_ext"] = self.control[:, 1, :]
+            self.model.params["exc_ext"] = input[:, 0, :]
+            self.model.params["inh_ext"] = input[:, 1, :]
 
     def Dxdot(self):
         """4x4 Jacobian of systems dynamics wrt. to change of systems variables."""
@@ -295,9 +298,9 @@ class OcWc(OC):
         i = xs[:, 1, :]
         nw_e = compute_nw_input(self.N, self.T, self.model.params.K_gl, self.model.Cmat, self.Dmat_ndt, e)
 
-        control = self.control
-        ue = control[:, 0, :]
-        ui = control[:, 1, :]
+        input = self.background + self.control
+        ue = input[:, 0, :]
+        ui = input[:, 1, :]
 
         return Duh(
             self.N,
@@ -344,7 +347,7 @@ class OcWc(OC):
             self.dim_vars,
             self.T,
             self.get_xs(),
-            self.control,
+            self.background + self.control,
         )
 
     def compute_hx_nw(self):
@@ -357,7 +360,7 @@ class OcWc(OC):
         xs = self.get_xs()
         e = xs[:, 0, :]
         i = xs[:, 1, :]
-        ue = self.control[:, 0, :]
+        ue = self.background[:, 0, :] + self.control[:, 0, :]
 
         return compute_hx_nw(
             self.model.params.K_gl,
