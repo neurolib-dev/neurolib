@@ -83,6 +83,35 @@ def update_control_with_limit(control, step, gradient, u_max):
     return control_new
 
 
+def convert_interval(interval, array_length):
+    """Turn indices into positive values only. It is assumed in any case, that the first index defines the start and
+       the second the stop index, both inclusive.
+    :param interval:    Tuple containing start and stop index. May contain negative indices or 'None'.
+    :type interval:     tuple
+    :param array_length:    Length of the array in the dimension, along which the 'interval' is defining the slice.
+    :type array_length:     int
+    :return:            Tuple containing two positive 'int' indicating the start- and stop-index (both inclusive) of the
+                        interval.
+    :rtype:             tuple
+    """
+
+    if interval[0] is None:
+        interval_0_new = 0
+    elif interval[0] < 0:
+        interval_0_new = array_length + interval[0]  # interval entry is negative
+    else:
+        interval_0_new = interval[0]
+
+    if interval[1] is None:
+        interval_1_new = array_length
+    elif interval[1] < 0:
+        interval_1_new = array_length + interval[1]  # interval entry is negative
+    else:
+        interval_1_new = interval[1]
+
+    return interval_0_new, interval_1_new
+
+
 class OC:
     def __init__(
         self,
@@ -92,7 +121,7 @@ class OC:
         w_2=1,
         maximum_control_strength=None,
         print_array=[],
-        precision_cost_interval=(0, None),
+        precision_cost_interval=(None, None),
         precision_matrix=None,
         control_matrix=None,
         M=1,
@@ -123,9 +152,9 @@ class OC:
                             Defaults to empty list `[]`.
         :type print_array:  list, optional
 
-        :param precision_cost_interval: [t_start, t_end]. Indices of start and end point (both inclusive) of the
+        :param precision_cost_interval: (t_start, t_end). Indices of start and end point (both inclusive) of the
                                         time interval in which the precision cost is evaluated. Default is full time
-                                        series. Defaults to (0, None).
+                                        series. Defaults to (None, None).
         :type precision_cost_interval:  tuple, optional
 
         :param precision_matrix: NxV binary matrix that defines nodes and channels of precision measurement, defaults to
@@ -135,7 +164,7 @@ class OC:
         :param control_matrix: NxV binary matrix that defines active control inputs, defaults to None
         :type control_matrix:  np.ndarray
 
-        :param M :                  Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
+        :param M:                   Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
         :type M:                    int, optional
 
         :param M_validation:        Number of noise realizations for validation (only used in stochastic case, M>1).
@@ -242,7 +271,7 @@ class OC:
 
         self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
-        self.precision_cost_interval = precision_cost_interval
+        self.precision_cost_interval = convert_interval(precision_cost_interval, self.T)
 
     @abc.abstractmethod
     def get_xs(self):
@@ -283,7 +312,7 @@ class OC:
             self.w_p,
             self.precision_matrix,
             self.dt,
-            interval=self.precision_cost_interval,
+            self.precision_cost_interval,
         )
         energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2, dt=self.dt)
         return precision_cost + energy_cost
@@ -325,7 +354,7 @@ class OC:
             self.get_xs(),
             self.w_p,
             self.precision_matrix,
-            interval=self.precision_cost_interval,
+            self.precision_cost_interval,
         )
 
         self.adjoint_state = solve_adjoint(hx, hx_nw, fx, self.state_dim, self.dt, self.N, self.T)

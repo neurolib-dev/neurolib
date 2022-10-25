@@ -23,16 +23,13 @@ def precision_cost(x_target, x_sim, w_p, precision_matrix, dt, interval=(0, None
     :type dt:   float
 
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
-                        dimension. Default is full time series, defaults to (0, None).
-    :type interval:     tuple, optional
+                        dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
+    :type interval:     tuple
 
     :return:            Precision cost for time interval.
     :rtype:             float
 
     """
-
-    if interval[1] is None:  # until and including the last entry along the time axis
-        interval = (interval[0], x_target.shape[2])
 
     cost = 0.0
     for n in range(x_target.shape[0]):
@@ -44,7 +41,7 @@ def precision_cost(x_target, x_sim, w_p, precision_matrix, dt, interval=(0, None
 
 
 @numba.njit
-def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval=(0, None)):
+def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval):
     """Derivative of precision cost wrt. to x_sim.
 
     :param x_target:    N x V x T array that contains the target time series.
@@ -61,14 +58,12 @@ def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval=(
     :type precision_matrix:  np.ndarray
 
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
-                        dimension. Default is full time series, defaults to (0, None).
-    :type interval:     tuple, optional
+                        dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
+    :type interval:     tuple
 
     :return:            Control-dimensions x T array of precision cost gradients.
     :rtype:             np.ndarray
     """
-    if interval[1] is None:  # until and including the last entry along the time axis
-        interval = (interval[0], x_target.shape[2])
 
     derivative = np.zeros(x_target.shape)
 
