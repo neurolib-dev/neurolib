@@ -81,7 +81,6 @@ class TestCostFunctions(unittest.TestCase):
         print(" Test precision cost derivative full timeseries for node and channel selection")
         w_p = 1
         N = 2
-        precision_cost_matrix = np.ones((N, 2))
         x_target0 = self.get_arbitrary_array()
         x_target1 = 2.0 * self.get_arbitrary_array()
         target = np.concatenate((x_target0, x_target1), axis=0)

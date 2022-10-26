@@ -226,6 +226,84 @@ class TestHopf(unittest.TestCase):
 
                             self.assertTrue(control_coincide)
 
+    def test_u_max_no_optimizations(self):
+        # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        hopf = HopfModel(Cmat=cmat, Dmat=dmat)
+        duration = 1.0
+        hopf.params.duration = duration
+
+        zero_input = ZeroInput().generate_input(duration=duration + hopf.params.dt, dt=hopf.params.dt)
+        input = np.copy(zero_input)
+
+        for t in range(input.shape[1]):
+            input[0, t] = np.sin(t)
+
+        hopf.params["y_ext"] = np.vstack([input, input])
+        hopf.params["x_ext"] = np.vstack([-input, 1.1 * input])
+
+        hopf.params["xs_init"] = np.vstack([0.0, 0.0])
+        hopf.params["ys_init"] = np.vstack([0.0, 0.0])
+
+        precision_mat = np.ones((hopf.params.N, len(hopf.state_vars)))
+        control_mat = np.ones((hopf.params.N, len(hopf.state_vars)))
+        target = np.ones((2, 2, input.shape[1]))
+
+        maximum_control_strength = 0.5
+
+        hopf_controlled = oc_hopf.OcHopf(
+            hopf,
+            target,
+            w_p=1,
+            w_2=1,
+            maximum_control_strength=maximum_control_strength,
+            precision_matrix=precision_mat,
+            control_matrix=control_mat,
+        )
+
+        self.assertTrue(np.max(np.abs(hopf_controlled.control) <= maximum_control_strength))
+
+    def test_u_max_after_optimizations(self):
+        # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
+        # Do one optimization step.
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        hopf = HopfModel(Cmat=cmat, Dmat=dmat)
+        duration = 1.0
+        hopf.params.duration = duration
+
+        zero_input = ZeroInput().generate_input(duration=duration + hopf.params.dt, dt=hopf.params.dt)
+        input = np.copy(zero_input)
+
+        for t in range(input.shape[1]):
+            input[0, t] = np.sin(t)
+
+        hopf.params["y_ext"] = np.vstack([input, input])
+        hopf.params["x_ext"] = np.vstack([-input, 1.1 * input])
+
+        hopf.params["xs_init"] = np.vstack([0.0, 0.0])
+        hopf.params["ys_init"] = np.vstack([0.0, 0.0])
+
+        precision_mat = np.ones((hopf.params.N, len(hopf.state_vars)))
+        control_mat = np.ones((hopf.params.N, len(hopf.state_vars)))
+        target = np.ones((2, 2, input.shape[1]))
+
+        maximum_control_strength = 0.5
+
+        hopf_controlled = oc_hopf.OcHopf(
+            hopf,
+            target,
+            w_p=1,
+            w_2=1,
+            maximum_control_strength=maximum_control_strength,
+            precision_matrix=precision_mat,
+            control_matrix=control_mat,
+        )
+
+        hopf_controlled.optimize(1)
+        self.assertTrue(np.max(np.abs(hopf_controlled.control) <= maximum_control_strength))
+
 
 if __name__ == "__main__":
     unittest.main()

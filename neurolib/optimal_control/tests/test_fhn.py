@@ -396,6 +396,84 @@ class TestFHN(unittest.TestCase):
 
         self.assertTrue(control_is_zero)
 
+    def test_u_max_no_optimizations(self):
+        # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        fhn = FHNModel(Cmat=cmat, Dmat=dmat)
+        duration = 1.0
+        fhn.params.duration = duration
+
+        zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
+        input = np.copy(zero_input)
+
+        for t in range(input.shape[1]):
+            input[0, t] = np.sin(t)
+
+        fhn.params["y_ext"] = np.vstack([input, input])
+        fhn.params["x_ext"] = np.vstack([-input, 1.1 * input])
+
+        fhn.params["xs_init"] = np.vstack([0.0, 0.0])
+        fhn.params["ys_init"] = np.vstack([0.0, 0.0])
+
+        precision_mat = np.ones((fhn.params.N, len(fhn.state_vars)))
+        control_mat = np.ones((fhn.params.N, len(fhn.state_vars)))
+        target = np.ones((2, 2, input.shape[1]))
+
+        maximum_control_strength = 0.5
+
+        fhn_controlled = oc_fhn.OcFhn(
+            fhn,
+            target,
+            w_p=1,
+            w_2=1,
+            maximum_control_strength=maximum_control_strength,
+            precision_matrix=precision_mat,
+            control_matrix=control_mat,
+        )
+
+        self.assertTrue(np.max(np.abs(fhn_controlled.control) <= maximum_control_strength))
+
+    def test_u_max_after_optimizations(self):
+        # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
+        # Do one optimization step.
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        fhn = FHNModel(Cmat=cmat, Dmat=dmat)
+        duration = 1.0
+        fhn.params.duration = duration
+
+        zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
+        input = np.copy(zero_input)
+
+        for t in range(input.shape[1]):
+            input[0, t] = np.sin(t)
+
+        fhn.params["y_ext"] = np.vstack([input, input])
+        fhn.params["x_ext"] = np.vstack([-input, 1.1 * input])
+
+        fhn.params["xs_init"] = np.vstack([0.0, 0.0])
+        fhn.params["ys_init"] = np.vstack([0.0, 0.0])
+
+        precision_mat = np.ones((fhn.params.N, len(fhn.state_vars)))
+        control_mat = np.ones((fhn.params.N, len(fhn.state_vars)))
+        target = np.ones((2, 2, input.shape[1]))
+
+        maximum_control_strength = 0.5
+
+        fhn_controlled = oc_fhn.OcFhn(
+            fhn,
+            target,
+            w_p=1,
+            w_2=1,
+            maximum_control_strength=maximum_control_strength,
+            precision_matrix=precision_mat,
+            control_matrix=control_mat,
+        )
+
+        fhn_controlled.optimize(1)
+        self.assertTrue(np.max(np.abs(fhn_controlled.control) <= maximum_control_strength))
+
 
 if __name__ == "__main__":
     unittest.main()
