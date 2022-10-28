@@ -84,3 +84,22 @@ class TestOC(unittest.TestCase):
         interval = (1, 7)  # arbitrary
         interval_converted = convert_interval(interval, array_length)
         self.assertTupleEqual(interval_converted, interval)
+
+    def test_convert_interval_wrong_order(self):
+        array_length = 10  # arbitrary
+        interval = (5, -7)  # arbitrary
+        self.assertRaises(AssertionError, convert_interval, interval, array_length)
+
+    def test_convert_interval_invalid_range_negative(self):
+        array_length = 10  # arbitrary
+        interval = (-11, 5)  # arbitrary
+        self.assertRaises(AssertionError, convert_interval, interval, array_length)
+
+    def test_convert_interval_invalid_range_positive(self):
+        array_length = 10  # arbitrary
+        interval = (9, 11)  # arbitrary
+        self.assertRaises(AssertionError, convert_interval, interval, array_length)
+
+
+if __name__ == "__main__":
+    unittest.main()

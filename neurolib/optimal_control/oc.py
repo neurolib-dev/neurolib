@@ -98,6 +98,7 @@ def convert_interval(interval, array_length):
     if interval[0] is None:
         interval_0_new = 0
     elif interval[0] < 0:
+        assert interval[0] > -array_length, "Interval is not specified in valid range."
         interval_0_new = array_length + interval[0]  # interval entry is negative
     else:
         interval_0_new = interval[0]
@@ -105,9 +106,13 @@ def convert_interval(interval, array_length):
     if interval[1] is None:
         interval_1_new = array_length
     elif interval[1] < 0:
+        assert interval[1] > -array_length, "Interval is not specified in valid range."
         interval_1_new = array_length + interval[1]  # interval entry is negative
     else:
         interval_1_new = interval[1]
+
+    assert interval_0_new < interval_1_new, "Order of indices for interval is not valid."
+    assert interval_1_new <= array_length, "Interval is not specified in valid range."
 
     return interval_0_new, interval_1_new
 
@@ -183,7 +188,7 @@ class OC:
         if self.model.getMaxDelay() > 0.0:
             print("Delay not yet implemented, please set delays to zero")
 
-        self.target = target
+        self.target = target  # ToDo: dimensions-check
 
         self.w_p = w_p
         self.w_2 = w_2
@@ -254,15 +259,11 @@ class OC:
 
         self.adjoint_state = np.zeros(self.state_dim)
 
-        # check correct specification of inputs
-        # ToDo: different models have different inputs
-        self.control = None
+        self.control = None  # Inputs are specified differently for each model.
 
         self.cost_history = []
         self.step_sizes_history = []
         self.step_sizes_loops_history = []
-
-        # ToDo: not "x" in other models
 
         # save control signals throughout optimization iterations for later analysis
         self.control_history = []
@@ -276,7 +277,6 @@ class OC:
     @abc.abstractmethod
     def get_xs(self):
         """Stack the initial condition with the simulation results for both populations."""
-        # ToDo: different for different models
         pass
 
     def simulate_forward(self):
@@ -301,7 +301,6 @@ class OC:
     @abc.abstractmethod
     def Du(self):
         """2x2 Jacobian of systems dynamics wrt. to I_ext (external control input)"""
-        # ToDo: model dependent
         pass
 
     def compute_total_cost(self):
@@ -330,7 +329,6 @@ class OC:
         :return: Array of length self.T containing 2x2-matrices
         :rtype: np.ndarray
         """
-        # ToDo: model dependent
         pass
 
     @abc.abstractmethod
@@ -340,7 +338,6 @@ class OC:
         :return: (N x self.T x (2x2) array
         :rtype: np.ndarray
         """
-        # ToDo: model dependent
         pass
 
     def solve_adjoint(self):
@@ -427,6 +424,15 @@ class OC:
         :type n_max_iterations: int
 
         """
+
+        self.precision_cost_interval = convert_interval(
+            self.precision_cost_interval, self.T
+        )  # To avoid issues in repeated executions.
+
+        self.control = update_control_with_limit(
+            self.control, 0.0, np.zeros(self.control.shape), self.maximum_control_strength
+        )  # To avoid issues in repeated executions.
+
         if self.M == 1:
             print("Compute control for a deterministic system")
             return self.optimize_deterministic(n_max_iterations)
@@ -448,8 +454,6 @@ class OC:
         print(f"Cost in iteration 0: %s" % (cost))
         if len(self.cost_history) == 0:  # add only if control model has not yet been optimized
             self.cost_history.append(cost)
-
-        i = 0
 
         for i in range(1, n_max_iterations + 1):
             grad = self.compute_gradient()
@@ -508,7 +512,7 @@ class OC:
             while count < self.count_noisy_step:
                 count += 1
                 self.zero_step_encountered = False
-                step = self.step_size_noisy(-grad)
+                _ = self.step_size_noisy(-grad)
                 if not self.zero_step_encountered:
                     consecutive_zero_step = 0
                     break
