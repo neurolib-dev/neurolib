@@ -95,7 +95,7 @@ class Signal:
         if not filename.endswith(NC_EXT):
             filename += NC_EXT
         # load NC file
-        xarray = xr.load_dataarray(filename, engine="netcdf4")
+        xarray = xr.load_dataarray(filename)
         # init class
         signal = cls(xarray)
         # if nc file has attributes, copy them to signal class
