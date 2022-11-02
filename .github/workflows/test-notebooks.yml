@@ -24,7 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install treon wheel setuptools jupyterlab matplotlib seaborn
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip uninstall importlib-metadata
+          pip uninstall -y importlib-metadata
           pip install "importlib-metadata<5.0"
           pip install .
       - name: Test notebooks with treon 🧪
