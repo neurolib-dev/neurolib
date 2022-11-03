@@ -309,7 +309,7 @@ def getPowerSpectrum(activity, dt, maxfr=70, spectrum_windowsize=1.0, normalize=
     f, Pxx_spec = scipy.signal.welch(
         activity,
         1000 / dt,
-        window="hanning",
+        window="hann",
         nperseg=int(spectrum_windowsize * 1000 / dt),
         scaling="spectrum",
     )
