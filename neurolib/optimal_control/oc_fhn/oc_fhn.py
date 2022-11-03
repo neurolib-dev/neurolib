@@ -112,6 +112,34 @@ def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
     return -hx_nw
 
 
+@numba.njit
+def compute_gradient(N, dim_out, T, fk, adjoint_state, control_matrix, duh):
+    """
+
+    :param N:       number of nodes in the network
+    :type N:        int
+    :param dim_out: number of 'output variables' of the model
+    :type dim_out:  int
+    :param T:       length of simulation (time dimension)
+    :type T:        int
+    :param fk:      Derivative of the cost functionals wrt. to the control signal.
+    :type fk:   np.ndarray of shape N x V x T
+
+    :type adjoint_state: np.ndarray of shape N x V x T
+
+    :type control_matrix: np.ndarray of shape N x V
+    :param duh: Jacobian of systems dynamics wrt. to I_ext (external control input)
+    :type duh:  np.ndarray of shape V x V
+
+    """
+    grad = np.zeros(fk.shape)
+    for n in range(N):
+        for v in range(dim_out):
+            for t in range(T):
+                grad[n, v, t] = fk[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * duh[v, v]
+    return grad
+
+
 class OcFhn(OC):
     def __init__(
         self,
@@ -192,7 +220,7 @@ class OcFhn(OC):
         """4x4 Jacobian of systems dynamics wrt. to change of systems variables."""
         raise NotImplementedError  # return np.eye(4)
 
-    def Du(self):
+    def Duh(self):
         """4x4 Jacobian of systems dynamics wrt. to I_ext (external control input)"""
         return np.array([[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
 
@@ -233,15 +261,9 @@ class OcFhn(OC):
         """
         Du @ fk + adjoint_k.T @ Du @ h
         """
-        # ToDo: model specific due to slicing '[:2, :]'
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
 
-        duh = self.Du()
+        duh = self.Duh()
 
-        grad = np.zeros(fk.shape)
-        for n in range(self.N):
-            for v in range(self.dim_out):
-                for t in range(self.T):
-                    grad[n, v, t] = fk[n, v, t] + self.adjoint_state[n, v, t] * self.control_matrix[n, v] * duh[v, v]
-        return grad
+        return compute_gradient(self.N, self.dim_out, self.T, fk, self.adjoint_state, self.control_matrix, duh)
