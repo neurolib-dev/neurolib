@@ -1,4 +1,4 @@
-from neurolib.optimal_control.oc import OC
+from neurolib.optimal_control.oc import OC, update_control_with_limit
 from neurolib.optimal_control import cost_functions
 import numpy as np
 import numba
@@ -145,11 +145,11 @@ class OcFhn(OC):
         self,
         model,
         target,
-        w_p=1,
-        w_2=1,
+        w_p=1.0,
+        w_2=1.0,
         maximum_control_strength=None,
         print_array=[],
-        precision_cost_interval=(0, None),
+        precision_cost_interval=(None, None),
         precision_matrix=None,
         control_matrix=None,
         M=1,
@@ -180,15 +180,17 @@ class OcFhn(OC):
             if self.model.params["x_ext"].ndim == 1:
                 print("not implemented yet")
             else:
-                self.control = np.concatenate((self.model.params["x_ext"], self.model.params["y_ext"]), axis=0)[
+                control = np.concatenate((self.model.params["x_ext"], self.model.params["y_ext"]), axis=0)[
                     np.newaxis, :, :
                 ]
         else:
-            self.control = np.stack((self.model.params["x_ext"], self.model.params["y_ext"]), axis=1)
+            control = np.stack((self.model.params["x_ext"], self.model.params["y_ext"]), axis=1)
 
         for n in range(self.N):
-            assert (self.control[n, 0, :] == self.model.params["x_ext"][n, :]).all()
-            assert (self.control[n, 1, :] == self.model.params["y_ext"][n, :]).all()
+            assert (control[n, 0, :] == self.model.params["x_ext"][n, :]).all()
+            assert (control[n, 1, :] == self.model.params["y_ext"][n, :]).all()
+
+        self.control = update_control_with_limit(control, 0.0, np.zeros(control.shape), self.maximum_control_strength)
 
         # save control signals throughout optimization iterations for later analysis
         # self.control_history.append(self.control)

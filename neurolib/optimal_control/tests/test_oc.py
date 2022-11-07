@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from neurolib.optimal_control.oc import solve_adjoint, update_control_with_limit
+from neurolib.optimal_control.oc import solve_adjoint, update_control_with_limit, convert_interval
 
 
 class TestOC(unittest.TestCase):
@@ -66,3 +66,40 @@ class TestOC(unittest.TestCase):
         control_limited = update_control_with_limit(control, step, cost_gradient, u_max)
 
         self.assertTrue(np.all(np.abs(control_limited) <= u_max))
+
+    def test_convert_interval_none(self):
+        array_length = 10  # arbitrary
+        interval = (None, None)
+        interval_converted = convert_interval(interval, array_length)
+        self.assertTupleEqual(interval_converted, (0, array_length))
+
+    def test_convert_interval_negative(self):
+        array_length = 10  # arbitrary
+        interval = (-6, -2)
+        interval_converted = convert_interval(interval, array_length)
+        self.assertTupleEqual(interval_converted, (4, 8))
+
+    def test_convert_interval_unchanged(self):
+        array_length = 10  # arbitrary
+        interval = (1, 7)  # arbitrary
+        interval_converted = convert_interval(interval, array_length)
+        self.assertTupleEqual(interval_converted, interval)
+
+    def test_convert_interval_wrong_order(self):
+        array_length = 10  # arbitrary
+        interval = (5, -7)  # arbitrary
+        self.assertRaises(AssertionError, convert_interval, interval, array_length)
+
+    def test_convert_interval_invalid_range_negative(self):
+        array_length = 10  # arbitrary
+        interval = (-11, 5)  # arbitrary
+        self.assertRaises(AssertionError, convert_interval, interval, array_length)
+
+    def test_convert_interval_invalid_range_positive(self):
+        array_length = 10  # arbitrary
+        interval = (9, 11)  # arbitrary
+        self.assertRaises(AssertionError, convert_interval, interval, array_length)
+
+
+if __name__ == "__main__":
+    unittest.main()
