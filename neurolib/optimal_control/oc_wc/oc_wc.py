@@ -6,11 +6,29 @@ import numba
 
 @numba.njit
 def S(x, a, mu):
+    """Logistic function.
+
+    :type x:    float
+    :param a:   Slope parameter.
+    :typa a:    float
+    :param mu:  Inflection point.
+    :type mu:   float
+    :rtype:     float
+    """
     return 1.0 / (1.0 + np.exp(-a * (x - mu)))
 
 
 @numba.njit
 def S_der(x, a, mu):
+    """Derivative of logistic function
+
+    :type x:    float
+    :param a:   Slope parameter.
+    :typa a:    float
+    :param mu:  Inflection point.
+    :type mu:   float
+    :rtype:     float
+    """
     return (a * np.exp(-a * (x - mu))) / (1.0 + np.exp(-a * (x - mu))) ** 2
 
 
@@ -35,6 +53,10 @@ def Duh(
     e,
     i,
 ):
+    """Jacobian of systems dynamics wrt. to I_ext (external control input)
+
+    :rtype:     np.ndarray of shape N x V x V x T
+    """
     duh = np.zeros((N, V, V, T))
     for t in range(T):
         for n in range(N):
@@ -43,6 +65,19 @@ def Duh(
             input_inh = c_excinh * e[n, t] - c_inhinh * i[n, t] + ui[n, t]
             duh[n, 1, 1, t] = -(1.0 - i[n, t]) * S_der(input_inh, a_inh, mu_inh) / tau_inh
     return duh
+
+
+@numba.njit
+def compute_gradient(N, dim_out, T, fk, adjoint_state, control_matrix, duh):
+    """Compute cost gradient."""
+    grad = np.zeros(fk.shape)
+
+    for n in range(N):
+        for v in range(dim_out):
+            for t in range(T):
+                grad[n, v, t] = fk[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * duh[n, v, v, t]
+
+    return grad
 
 
 @numba.njit
@@ -100,8 +135,22 @@ def compute_hx(
 ):
     """Jacobians for each time step.
 
-    :param tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh, K_gl, cmat, dmat_ndt:   model parameters
+    :param tau_exc,
+            tau_inh,
+            a_exc,
+            a_inh,
+            mu_exc,
+            mu_inh,
+            c_excexc,
+            c_inhexc,
+            c_excinh,
+            c_inhinh,
+            K_gl,
+            cmat:   Wilson-Cowan model parameters
     :type :    float
+
+    :param dmat_ndt:   Wilson-Cowan model parameters, delay matrix in multiples of dt.
+    :type dmat_ndt:    np.ndarray of shape NxN
 
     :param N:           number of nodes in the network
     :type N:            int
@@ -148,7 +197,10 @@ def compute_hx(
 
 @numba.njit
 def compute_nw_input(N, T, K_gl, cmat, dmat_ndt, E):
+    """Compute input by other nodes of network into each node at every timestep.
 
+    :rytpe: np.ndarray of shape N x T
+    """
     nw_input = np.zeros((N, T))
 
     for t in range(1, T):
@@ -177,7 +229,7 @@ def compute_hx_nw(
 ):
     """Jacobians for network connectivity in all time steps.
 
-    :param K_gl:    model parameter.
+    :param K_gl:    Global coupling.
     :type K_gl:     float
 
     :param cmat:    model parameter, connectivity matrix.
@@ -382,17 +434,8 @@ class OcWc(OC):
         """
         Du @ fk + adjoint_k.T @ Du @ h
         """
-        # ToDo: model specific due to slicing '[:2, :]'
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
-
-        grad = np.zeros(fk.shape)
         duh = self.Duh()
-        for n in range(self.N):
-            for v in range(self.dim_out):
-                for t in range(self.T):
-                    grad[n, v, t] = (
-                        fk[n, v, t] + self.adjoint_state[n, v, t] * self.control_matrix[n, v] * duh[n, v, v, t]
-                    )
 
-        return grad
+        return compute_gradient(self.N, self.dim_out, self.T, fk, self.adjoint_state, self.control_matrix, duh)

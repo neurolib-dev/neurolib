@@ -280,8 +280,8 @@ class OC:
         pass
 
     @abc.abstractmethod
-    def Du(self):
-        """2x2 Jacobian of systems dynamics wrt. to I_ext (external control input)"""
+    def Duh(self):
+        """Jacobian of systems dynamics wrt. to I_ext (external control input)"""
         # ToDo: model dependent
         pass
 
@@ -300,7 +300,7 @@ class OC:
     @abc.abstractmethod
     def compute_gradient(self):
         """Du @ fk + adjoint_k.T @ Du @ h"""
-        # ToDo: model dependent due to slicing '[:2, :]'
+        # ToDo: model dependent
         pass
 
     @abc.abstractmethod
