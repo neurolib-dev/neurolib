@@ -203,7 +203,6 @@ def compute_hx_nw(
 
     for t in range(T):
         for n1 in range(N):
-            input_exc = c_excexc * e[n1, t] - c_inhexc * i[n1, t] + nw_e[n1, t] + ue[n1, t]
             for n2 in range(N):
                 hx_nw[n1, n2, t, 0, 0] = (S_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]) / tau_exc
 
