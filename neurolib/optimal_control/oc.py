@@ -270,7 +270,6 @@ class OC:
 
         # check correct specification of inputs
         # ToDo: different models have different inputs
-        self.background = None
         self.control = None
 
         self.cost_history = []
