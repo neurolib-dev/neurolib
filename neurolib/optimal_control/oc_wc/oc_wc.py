@@ -69,7 +69,24 @@ def Duh(
 
 @numba.njit
 def compute_gradient(N, dim_out, T, fk, adjoint_state, control_matrix, duh):
-    """Compute cost gradient."""
+    """Compute the gradient of the total cost wrt. to the control signals.
+    :param N:       number of nodes in the network
+    :type N:        int
+    :param dim_out: number of 'output variables' of the model
+    :type dim_out:  int
+    :param T:       length of simulation (time dimension)
+    :type T:        int
+    :param fk:      Derivative of the cost functionals wrt. to the control signal.
+    :type fk:   np.ndarray of shape N x V x T
+    :param adjoint_state:
+    :type adjoint_state: np.ndarray of shape N x V x T
+    :param control_matrix: Binary matrix that defines nodes and variables where control inputs are active, defaults to None.
+    :type control_matrix:  np.ndarray of shape N x V
+    :param duh: Jacobian of systems dynamics wrt. to I_ext (external control input)
+    :type duh:  np.ndarray of shape V x V
+    :return: The gradient of the total cost wrt. to the control.
+    :rtype: np.ndarray of shape N x V x T
+    """
     grad = np.zeros(fk.shape)
 
     for n in range(N):
@@ -262,6 +279,11 @@ def compute_hx_nw(
 
 
 class OcWc(OC):
+    """
+    :param model:
+    :type model: neurolib.models.wc.model.WCModel
+    """
+
     def __init__(
         self,
         model,
@@ -269,7 +291,7 @@ class OcWc(OC):
         w_p=1,
         w_2=1,
         print_array=[],
-        precision_cost_interval=(0, None),
+        precision_cost_interval=(None, None),
         precision_matrix=None,
         control_matrix=None,
         M=1,
@@ -295,6 +317,7 @@ class OcWc(OC):
         assert self.T == self.model.params["exc_ext"].shape[1]
         assert self.T == self.model.params["inh_ext"].shape[1]
 
+        # ToDo: here, a method like neurolib.model_utils.adjustArrayShape() should be applied!
         if self.N == 1:  # single-node model
             if self.model.params["exc_ext"].ndim == 1:
                 print("not implemented yet")

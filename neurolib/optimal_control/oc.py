@@ -6,7 +6,129 @@ import logging
 import copy
 
 
-# compared loops agains "@", "np.matmul" and "np.dot": loops ~factor 3.5 faster
+def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, cost_gradient):
+    """Find a step size which leads to improved cost given the gradient. The step size is iteratively decreased.
+    :param controlled_model: Instance of optimal control object.
+    :type controlled_model:  neurolib.optimal_control.oc.OC
+    :param cost:    Cost after applying control update according to gradient with first valid step size (numerically
+                    stable).
+    :type cost:     float
+    :param cost0:   Cost without updating the control.
+    :type cost0:    float
+    :param step:    Step size initial to the iterative decreasing.
+    :type step:     float
+    :param control0:    The unchanged control signal.
+    :type control0:     np.ndarray N x V x T
+    :param factor_down:  Factor the step size is scaled with in each iteration until cost is improved.
+    :type factor_down:   float
+    :param cost_gradient:   Gradient of the total cost wrt. to the control signal.
+    :type cost_gradient:    np.ndarray of shape N x V x T
+    :return:    The selected step size and the count-variable how often step-adjustment-loop was executed.
+    :rtype:     tuple[float, int]
+    """
+    counter = 0
+
+    while cost > cost0:  # Decrease the step size until first step size is found where cost is improved.
+        step *= factor_down  # Decrease step size.
+        counter += 1
+
+        # Inplace updating of models control bc. forward-sim relies on models parameters.
+        controlled_model.control = update_control_with_limit(
+            control0, step, cost_gradient, controlled_model.maximum_control_strength
+        )
+        controlled_model.update_input()
+
+        # Simulate with control updated according to new step and evaluate cost.
+        controlled_model.simulate_forward()
+        cost = controlled_model.compute_total_cost()
+
+        if counter == controlled_model.count_step:  # Exit if the maximum search depth is reached without improvement of
+            # cost.
+            step = 0.0  # For later analysis only.
+            controlled_model.control = update_control_with_limit(
+                control0, 0.0, np.zeros(control0.shape), controlled_model.maximum_control_strength
+            )
+            controlled_model.update_input()
+            # logging.warning("Zero step encoutered, stop bisection")
+            if controlled_model.M == 1:
+                controlled_model.zero_step_encountered = True
+            break
+
+    return step, counter
+
+
+def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost_gradient):
+    """Find the largest step size which leads to the biggest improvement of cost given the gradient. The step size is
+        iteratively increased.
+    :param controlled_model: Instance of optimal control object.
+    :type controlled_model:  neurolib.optimal_control.oc.OC
+    :param cost:    Cost after applying control update according to gradient with first valid step size (numerically
+                    stable).
+    :type cost:     float
+    :param cost0:   Cost without updating the control.
+    :type cost0:    float
+    :param step:    Step size initial to the iterative decreasing.
+    :type step:     float
+    :param control0:    The unchanged control signal.
+    :type control0:     np.ndarray N x V x T
+    :param factor_up:  Factor the step size is scaled with in each iteration while the cost keeps improving.
+    :type factor_up:   float
+    :param cost_gradient:   Gradient of the total cost wrt. to the control signal.
+    :type cost_gradient:    np.ndarray of shape N x V x T
+    :return:    The selected step size and the count-variable how often step-adjustment-loop was executed.
+    :rtype:     tuple[float, int]
+    """
+    cost_prev = cost0
+    counter = 0
+
+    while cost < cost_prev:  # Increase the step size as long as the cost is improving.
+        step *= factor_up
+        counter += 1
+
+        # Inplace updating of models control bc. forward-sim relies on models parameters
+        controlled_model.control = update_control_with_limit(
+            control0, step, cost_gradient, controlled_model.maximum_control_strength
+        )
+        controlled_model.update_input()
+
+        controlled_model.simulate_forward()
+        if np.isnan(
+            controlled_model.get_xs()
+        ).any():  # Go back to last step (that was numerically stable and improved cost)
+            # and exit.
+            logging.info("Increasing step encountered NAN.")
+            step /= factor_up  # Undo the last step update by inverse operation.
+            controlled_model.control = update_control_with_limit(
+                control0, step, cost_gradient, controlled_model.maximum_control_strength
+            )
+            controlled_model.update_input()
+            break
+
+        else:
+
+            cost = controlled_model.compute_total_cost()
+
+            if cost > cost_prev:  # If the cost increases: go back to last step (that resulted in best cost until
+                # then) and exit.
+                step /= factor_up  # Undo the last step update by inverse operation.
+                controlled_model.control = update_control_with_limit(
+                    control0, step, cost_gradient, controlled_model.maximum_control_strength
+                )
+                controlled_model.update_input()
+                break
+
+            else:
+                cost_prev = cost  # Memorize cost with this step size for comparison in next step-update.
+
+            if counter == controlled_model.count_step:
+                # Terminate step size search at count limit, exit with the highest found, valid and best performing step
+                # size.
+                break
+
+    return step, counter
+
+
+# compared loops against "@", "np.matmul" and "np.dot": loops ~factor 3.5 faster
 @numba.njit
 def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
     """Backwards integration of the adjoint state.
@@ -25,7 +147,7 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
     :param T:           length of simulation (time dimension)
     :type T:            int
 
-    :return:            adjoint state.
+    :return:            Adjoint state.
     :rtype:             np.ndarray of shape `state_dim`
     """
     # ToDo: generalize, not only precision cost
@@ -83,6 +205,7 @@ def update_control_with_limit(control, step, gradient, u_max):
     return control_new
 
 
+# @numba.njit  # ToDo: check why tests suddenly fail when jitted.
 def convert_interval(interval, array_length):
     """Turn indices into positive values only. It is assumed in any case, that the first index defines the start and
        the second the stop index, both inclusive.
@@ -166,8 +289,9 @@ class OC:
                                  None
         :type precision_matrix:  np.ndarray
 
-        :param control_matrix: NxV binary matrix that defines active control inputs, defaults to None
-        :type control_matrix:  np.ndarray
+        :param control_matrix:  Binary matrix that defines nodes and variables where control inputs are active, defaults
+                                to None.
+        :type control_matrix:   np.ndarray of shape N x V
 
         :param M:                   Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
         :type M:                    int, optional
@@ -194,9 +318,7 @@ class OC:
         self.w_2 = w_2
         self.maximum_control_strength = maximum_control_strength
 
-        self.step = 10.0
-        if self.model.name == "wc":
-            self.step = 1000.0
+        self.step = 10.0  # Initial step size in first optimization iteration.
         self.count_noisy_step = 10
         self.count_step = 20
 
@@ -268,9 +390,7 @@ class OC:
 
         self.adjoint_state = np.zeros(self.state_dim)
 
-        # check correct specification of inputs
-        # ToDo: different models have different inputs
-        self.control = None
+        self.control = None  # Is implemented in derived classes.
 
         self.cost_history = []
         self.step_sizes_history = []
@@ -316,7 +436,10 @@ class OC:
         pass
 
     def compute_total_cost(self):
-        """Compute the total cost as weighted sum precision of precision and L2 term."""
+        """Compute the total cost as weighted sum precision of precision and L2 term.
+
+        :rtype: float
+        """
         precision_cost = cost_functions.precision_cost(
             self.target,
             self.get_xs(),
@@ -368,60 +491,67 @@ class OC:
 
         self.adjoint_state = solve_adjoint(hx, hx_nw, fx, self.state_dim, self.dt, self.N, self.T)
 
-    def step_size(self, cost_gradient):
-        """Use cost_gradient to avoid unnecessary re-computations (also of the adjoint state)
-        :param cost_gradient:
-        :type cost_gradient:
+    def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):
+        """Iteratively decrease step size until cost is improved."""
+        return decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient)
 
+    def increase_step(self, cost, cost0, step, control0, factor_up, cost_gradient):
+        """Iteratively increase step size while cost is improving."""
+        return increase_step(self, cost, cost0, step, control0, factor_up, cost_gradient)
+
+    def step_size(self, cost_gradient):
+        """Adaptively choose a step size for control update.
+            Uses "cost_gradient" to avoid unnecessary re-computations (also of the adjoint state).
+        :param cost_gradient:   Gradient of the total cost wrt. to control.
+        :type cost_gradient:    np.ndarray of shape N x V x T
         :return:    Step size that got multiplied with the cost_gradient.
         :rtype:     float
         """
         self.simulate_forward()
-        cost0 = self.compute_total_cost()
-        factor = 0.5
-        step = self.step
-        counter = 0.0
+        cost0 = self.compute_total_cost()  # Current cost without updating the control according to the "cost_gradient".
+        factor_down = 0.5  # Factor for adaptive step size reduction.
+        factor_up = 2.0  # Factor for adaptive step size increment.
+        step = self.step  # Load step size of last optimization-iteration as initial guess.
 
-        control0 = self.control
+        control0 = self.control  # Memorize unchanged control throughout step-size computation.
 
-        while True:
-            # inplace updating of models x_ext bc. forward-sim relies on models parameters
+        while True:  # Reduce the step size, if numerical instability occurs in the forward-simulation.
+            # inplace updating of models control bc. forward-sim relies on models parameters
             self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
             self.update_input()
 
-            # input signal might be too high and produce diverging values in simulation
+            # Input signal might be too high and produce diverging values in simulation.
             self.simulate_forward()
-            if np.isnan(self.get_xs()).any():
-                step *= factor
+
+            if np.isnan(self.get_xs()).any():  # Detect numerical instability due to too large control update.
+                step *= factor_down
                 self.step = step
-                print("diverging model output, decrease step size to ", step)
+                print(f"Diverging model output, decrease step size to {step}.")
                 self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
                 self.update_input()
             else:
                 break
 
-        cost = self.compute_total_cost()
-        while cost > cost0:
-            step *= factor
-            counter += 1
+        cost = self.compute_total_cost()  # Cost after applying control update according to gradient with first valid
+        # step size (numerically stable).
+        if (
+            cost > cost0
+        ):  # If the cost choosing the first (stable) step size is no improvement, reduce step size by bisection.
+            step, counter = self.decrease_step(cost, cost0, step, control0, factor_down, cost_gradient)
 
-            # inplace updating of models x_ext bc. forward-sim relies on models parameters
-            self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
-            self.update_input()
+        elif (
+            cost < cost0
+        ):  # If the cost is improved with the first (stable) step size, search for larger steps with even better
+            # reduction of cost.
 
-            self.simulate_forward()
-            cost = self.compute_total_cost()
+            step, counter = self.increase_step(cost, cost0, step, control0, factor_up, cost_gradient)
 
-            if counter == self.count_step:
-                step = 0.0  # for later analysis only
-                self.control = update_control_with_limit(
-                    control0, 0.0, np.zeros(control0.shape), self.maximum_control_strength
-                )
-                self.update_input()
-                # logging.warning("Zero step encoutered, stop bisection")
-                if self.M == 1:
-                    self.zero_step_encountered = True
-                break
+        else:  # Remark: might be included as part of adaptive search for further improvement.
+            step = 0.0  # For later analysis only.
+            if self.M == 1:
+                self.zero_step_encountered = True
+
+        self.step = step  # Memorize the last step size for the next optimization step with next gradient.
 
         self.step_sizes_loops_history.append(counter)
         self.step_sizes_history.append(step)
@@ -439,7 +569,7 @@ class OC:
 
         self.precision_cost_interval = convert_interval(
             self.precision_cost_interval, self.T
-        )  # To avoid issues in repeated executions.
+        )  # Assure check in repeated calls of ".optimize()".
 
         self.control = update_control_with_limit(
             self.control, 0.0, np.zeros(self.control.shape), self.maximum_control_strength
@@ -597,7 +727,7 @@ class OC:
         control0 = self.control
 
         while True:
-            # inplace updating of models x_ext bc. forward-sim relies on models parameters
+            # inplace updating of models control bc. forward-sim relies on models parameters
             self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
             self.update_input()
 
@@ -617,7 +747,7 @@ class OC:
             step *= factor
             counter += 1
 
-            # inplace updating of models x_ext bc. forward-sim relies on models parameters
+            # inplace updating of models control bc. forward-sim relies on models parameters
             self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
             self.update_input()
 
