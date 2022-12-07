@@ -49,9 +49,8 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
                 control0, 0.0, np.zeros(control0.shape), controlled_model.maximum_control_strength
             )
             controlled_model.update_input()
-            # logging.warning("Zero step encoutered, stop bisection")
-            if controlled_model.M == 1:
-                controlled_model.zero_step_encountered = True
+
+            controlled_model.zero_step_encountered = True
             break
 
     return step, counter
@@ -548,8 +547,8 @@ class OC:
 
         else:  # Remark: might be included as part of adaptive search for further improvement.
             step = 0.0  # For later analysis only.
-            if self.M == 1:
-                self.zero_step_encountered = True
+            counter = 0
+            self.zero_step_encountered = True
 
         self.step = step  # Memorize the last step size for the next optimization step with next gradient.
 

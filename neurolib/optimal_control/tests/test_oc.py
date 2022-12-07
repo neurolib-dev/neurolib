@@ -30,7 +30,10 @@ class TestOC(unittest.TestCase):
     @staticmethod
     def get_arbitrary_array():
         """2x2x10 array filled with arbitrary positive and negative values and +/-np.inf. Besides +/-np.inf all values
-        fall in the range [-5., 5.]."""
+            fall in the range [-5., 5.].
+        :return: An array with arbitrary float and np.inf values.
+        :rtype:  np.ndarray of shape 2 x 2 x 10
+        """
         return np.array(
             [
                 [
@@ -44,13 +47,15 @@ class TestOC(unittest.TestCase):
             ]
         )
 
-    def test_solve_adjoint(self):
-        # ToDo: Implement test for the solve_adjoint-function.
-        pass
-
-    def test_step_size(self):
-        # Run the test with an instance of an arbitrary derived class.
-        # This test case is not specific to any step size algorithm or initial step size.
+    @staticmethod
+    def get_deterministic_wilson_cowan_test_setup():
+        """ Run a Wilson-Cowan model with default parameters for five time steps, use simulated time series to create
+            a modified target. Set the inputs to the model to zero.
+        :return: Instance of the Wilson-Cowan model with external inputs set to zero and duration of five time steps.
+                 Target time series for exc- and inh- variable. The exc-variable is modified to be double the values
+                 compared to obtained time series by simulating the model with default parameters.
+        :rtype:  Tuple[neurolib.models.wc.model.WCModel, np.array]
+        """
         model = WCModel()
         dt = model.params["dt"]
         duration = 5 * dt
@@ -67,16 +72,44 @@ class TestOC(unittest.TestCase):
 
         target[0, 0, :] = target[0, 0, :] * 2.0
 
+        model.params["exc_ext"] = ZeroInput().generate_input(duration=duration + dt, dt=dt)
+        model.params["inh_ext"] = ZeroInput().generate_input(duration=duration + dt, dt=dt)
+
+        return model, target
+
+    def test_solve_adjoint(self):
+        # ToDo: Implement test for the solve_adjoint-function.
+        pass
+
+    def test_step_size(self):
+        # Run the test with an instance of an arbitrary derived class.
+        # This test case is not specific to any step size algorithm or initial step size.
+
+        model, target = self.get_deterministic_wilson_cowan_test_setup()
+
         prec_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
         prec_mat[0, 0] = 1
         control_mat[0, 1] = 1
-        model.params["exc_ext"] = ZeroInput().generate_input(duration=duration + dt, dt=dt)
-        model.params["inh_ext"] = ZeroInput().generate_input(duration=duration + dt, dt=dt)
 
         model_controlled = OcWc(model, target, w_p=1, w_2=0, precision_matrix=prec_mat, control_matrix=control_mat)
 
         self.assertTrue(model_controlled.step_size(-model_controlled.compute_gradient()) > 0.0)
+
+    def test_step_size_no_step(self):
+        # Run the test with an instance of an arbitrary derived class.
+        # Checks that for a zero-gradient no step is performed (i.e. step-size=0).
+
+        model, target = self.get_deterministic_wilson_cowan_test_setup()
+
+        prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+        control_mat = np.zeros((model.params.N, len(model.state_vars)))
+        prec_mat[0, 0] = 1
+        control_mat[0, 1] = 1
+
+        model_controlled = OcWc(model, target, w_p=1, w_2=0, precision_matrix=prec_mat, control_matrix=control_mat)
+
+        self.assertTrue(model_controlled.step_size(-np.zeros(target.shape)) == 0.0)
 
     def test_update_control_with_limit_no_limit(self):
         # Test for the control to be unchanged, if no limit is set.
