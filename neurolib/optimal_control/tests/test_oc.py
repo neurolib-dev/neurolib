@@ -49,7 +49,7 @@ class TestOC(unittest.TestCase):
 
     @staticmethod
     def get_deterministic_wilson_cowan_test_setup():
-        """ Run a Wilson-Cowan model with default parameters for five time steps, use simulated time series to create
+        """Run a Wilson-Cowan model with default parameters for five time steps, use simulated time series to create
             a modified target. Set the inputs to the model to zero.
         :return: Instance of the Wilson-Cowan model with external inputs set to zero and duration of five time steps.
                  Target time series for exc- and inh- variable. The exc-variable is modified to be double the values

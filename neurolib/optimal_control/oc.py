@@ -8,6 +8,10 @@ import copy
 
 def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, cost_gradient):
     """Find a step size which leads to improved cost given the gradient. The step size is iteratively decreased.
+
+        The control-inputs are updated in place according to the found step size via the
+        "controlled_model.update_input()" call.
+
     :param controlled_model: Instance of optimal control object.
     :type controlled_model:  neurolib.optimal_control.oc.OC
     :param cost:    Cost after applying control update according to gradient with first valid step size (numerically
@@ -26,6 +30,11 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
     :return:    The selected step size and the count-variable how often step-adjustment-loop was executed.
     :rtype:     tuple[float, int]
     """
+    if controlled_model.M > 1:
+        noisy = True
+    else:
+        noisy = False
+
     counter = 0
 
     while cost > cost0:  # Decrease the step size until first step size is found where cost is improved.
@@ -40,7 +49,11 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
 
         # Simulate with control updated according to new step and evaluate cost.
         controlled_model.simulate_forward()
-        cost = controlled_model.compute_total_cost()
+
+        if noisy:
+            cost = controlled_model.compute_cost_noisy(controlled_model.M)
+        else:
+            cost = controlled_model.compute_total_cost()
 
         if counter == controlled_model.count_step:  # Exit if the maximum search depth is reached without improvement of
             # cost.
@@ -59,6 +72,10 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
 def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost_gradient):
     """Find the largest step size which leads to the biggest improvement of cost given the gradient. The step size is
         iteratively increased.
+
+        The control-inputs are updated in place according to the found step size via the
+        "controlled_model.update_input()" call.
+
     :param controlled_model: Instance of optimal control object.
     :type controlled_model:  neurolib.optimal_control.oc.OC
     :param cost:    Cost after applying control update according to gradient with first valid step size (numerically
@@ -77,6 +94,11 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
     :return:    The selected step size and the count-variable how often step-adjustment-loop was executed.
     :rtype:     tuple[float, int]
     """
+    if controlled_model.M > 1:
+        noisy = True
+    else:
+        noisy = False
+
     cost_prev = cost0
     counter = 0
 
@@ -105,7 +127,10 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
 
         else:
 
-            cost = controlled_model.compute_total_cost()
+            if noisy:
+                cost = controlled_model.compute_cost_noisy(controlled_model.M)
+            else:
+                cost = controlled_model.compute_total_cost()
 
             if cost > cost_prev:  # If the cost increases: go back to last step (that resulted in best cost until
                 # then) and exit.
@@ -317,10 +342,6 @@ class OC:
         self.w_2 = w_2
         self.maximum_control_strength = maximum_control_strength
 
-        self.step = 10.0  # Initial step size in first optimization iteration.
-        self.count_noisy_step = 10
-        self.count_step = 20
-
         self.N = self.model.params.N
 
         self.dim_vars = len(self.model.state_vars)
@@ -354,6 +375,17 @@ class OC:
 
         self.M = max(1, M)
         self.M_validation = M_validation
+
+        self.step = 10.0  # Initial step size in first optimization iteration.
+        self.count_noisy_step = 10
+        self.count_step = 20
+
+        if self.M > 1:
+            self.factor_down = 0.25  # Factor for adaptive step size reduction.
+        else:
+            self.factor_down = 0.5  # Factor for adaptive step size reduction.
+        self.factor_up = 2.0  # Factor for adaptive step size increment.
+
         self.cost_validation = 0.0
         self.validate_per_step = validate_per_step
 
@@ -506,10 +538,19 @@ class OC:
         :return:    Step size that got multiplied with the cost_gradient.
         :rtype:     float
         """
+        if self.M > 1:
+            noisy = True
+        else:
+            noisy = False
+
         self.simulate_forward()
-        cost0 = self.compute_total_cost()  # Current cost without updating the control according to the "cost_gradient".
-        factor_down = 0.5  # Factor for adaptive step size reduction.
-        factor_up = 2.0  # Factor for adaptive step size increment.
+        if noisy:
+            cost0 = self.compute_cost_noisy(self.M)
+        else:
+            cost0 = (
+                self.compute_total_cost()
+            )  # Current cost without updating the control according to the "cost_gradient".
+
         step = self.step  # Load step size of last optimization-iteration as initial guess.
 
         control0 = self.control  # Memorize unchanged control throughout step-size computation.
@@ -523,27 +564,31 @@ class OC:
             self.simulate_forward()
 
             if np.isnan(self.get_xs()).any():  # Detect numerical instability due to too large control update.
-                step *= factor_down
+                step *= self.factor_down
                 self.step = step
                 print(f"Diverging model output, decrease step size to {step}.")
                 self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
                 self.update_input()
             else:
                 break
-
-        cost = self.compute_total_cost()  # Cost after applying control update according to gradient with first valid
+        if noisy:
+            cost = self.compute_cost_noisy(self.M)
+        else:
+            cost = (
+                self.compute_total_cost()
+            )  # Cost after applying control update according to gradient with first valid
         # step size (numerically stable).
         if (
             cost > cost0
         ):  # If the cost choosing the first (stable) step size is no improvement, reduce step size by bisection.
-            step, counter = self.decrease_step(cost, cost0, step, control0, factor_down, cost_gradient)
+            step, counter = self.decrease_step(cost, cost0, step, control0, self.factor_down, cost_gradient)
 
         elif (
             cost < cost0
         ):  # If the cost is improved with the first (stable) step size, search for larger steps with even better
             # reduction of cost.
 
-            step, counter = self.increase_step(cost, cost0, step, control0, factor_up, cost_gradient)
+            step, counter = self.increase_step(cost, cost0, step, control0, self.factor_up, cost_gradient)
 
         else:  # Remark: might be included as part of adaptive search for further improvement.
             step = 0.0  # For later analysis only.
@@ -559,11 +604,12 @@ class OC:
 
     def optimize(self, n_max_iterations):
         """Optimization method
-            chose from deterministic (M=1) or one of several stochastic (M>1) approaches
+            Choose deterministic (M=1 noise realizations) or stochastic (M>1 noise realizations) approach.
 
-        :param n_max_iterations: maximum number of iterations of gradient descent
-        :type n_max_iterations: int
+            The control-inputs are updated in place throughout the optimization.
 
+        :param n_max_iterations: Maximum number of iterations of gradient descent.
+        :type n_max_iterations:  int
         """
 
         self.precision_cost_interval = convert_interval(
