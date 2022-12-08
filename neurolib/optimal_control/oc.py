@@ -380,10 +380,7 @@ class OC:
         self.count_noisy_step = 10
         self.count_step = 20
 
-        if self.M > 1:
-            self.factor_down = 0.25  # Factor for adaptive step size reduction.
-        else:
-            self.factor_down = 0.5  # Factor for adaptive step size reduction.
+        self.factor_down = 0.5  # Factor for adaptive step size reduction.
         self.factor_up = 2.0  # Factor for adaptive step size increment.
 
         self.cost_validation = 0.0
@@ -564,7 +561,7 @@ class OC:
             self.simulate_forward()
 
             if np.isnan(self.get_xs()).any():  # Detect numerical instability due to too large control update.
-                step *= self.factor_down
+                step *= self.factor_down**2    # Double the step for faster search of stable region.
                 self.step = step
                 print(f"Diverging model output, decrease step size to {step}.")
                 self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
@@ -699,7 +696,7 @@ class OC:
             while count < self.count_noisy_step:
                 count += 1
                 self.zero_step_encountered = False
-                _ = self.step_size_noisy(-grad)
+                _ = self.step_size(-grad)
                 if not self.zero_step_encountered:
                     consecutive_zero_step = 0
                     break
@@ -753,60 +750,3 @@ class OC:
             cost_validation += self.compute_total_cost()
             m += 1
         return cost_validation / M
-
-    def step_size_noisy(self, cost_gradient):
-        """Use cost_gradient to avoid unnecessary re-computations (also of the adjoint state)
-        :param cost_gradient:
-        :type cost_gradient:
-
-        :return:    Step size that got multiplied with the cost_gradient.
-        :rtype:     float
-        """
-        self.simulate_forward()
-        cost0 = self.compute_cost_noisy(self.M)
-
-        factor = 0.5
-        step = self.step
-        counter = 0.0
-
-        control0 = self.control
-
-        while True:
-            # inplace updating of models control bc. forward-sim relies on models parameters
-            self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
-            self.update_input()
-
-            # input signal might be too high and produce diverging values in simulation
-            self.simulate_forward()
-            if np.isnan(self.get_xs()).any():
-                step *= factor * factor  # decrease step twice to avoid that other noise realizations diverge
-                self.step = step
-                print("diverging model output, decrease step size to ", step)
-                self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
-                self.update_input()
-            else:
-                break
-
-        cost = self.compute_cost_noisy(self.M)
-        while cost > cost0:
-            step *= factor
-            counter += 1
-
-            # inplace updating of models control bc. forward-sim relies on models parameters
-            self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
-            self.update_input()
-
-            cost = self.compute_cost_noisy(self.M)
-
-            if counter == self.count_step:
-                step = 0.0  # for later analysis only
-                self.control = update_control_with_limit(
-                    control0, 0.0, np.zeros(control0.shape), self.maximum_control_strength
-                )
-                self.update_input()
-                self.zero_step_encountered = True
-
-        self.step_sizes_loops_history.append(counter)
-        self.step_sizes_history.append(step)
-
-        return step

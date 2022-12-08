@@ -123,7 +123,7 @@ class TestFHNNoisy(unittest.TestCase):
 
         N = 3
         dmat = np.zeros((N, N))  # no delay
-        cmat = np.array([[0.0, 1.0, 2.0], [3.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
+        cmat = np.array([[0.0, 0.5, 1.0], [1.0, 0.0, 0.33], [0.0, 1.0, 0.0]])
 
         fhn = FHNModel(Cmat=cmat, Dmat=dmat)
 
