@@ -5,30 +5,24 @@ import numba
 @numba.njit
 def precision_cost(x_target, x_sim, w_p, precision_matrix, dt, interval=(0, None)):
     """Summed squared difference between target and simulation within specified time interval weighted by w_p.
+       Penalizes deviation from the target.
 
     :param x_target:    N x V x T array that contains the target time series.
     :type x_target:     np.ndarray
-
     :param x_sim:       N x V x T array that contains the simulated time series.
     :type x_sim:        np.ndarray
-
     :param w_p:         Weight that is multiplied with the precision cost.
     :type w_p:          float
-
     :param precision_matrix: N x V binary matrix that defines nodes and channels of precision measurement. Defaults to
-                                 None.
+                             None.
     :type precision_matrix:  np.ndarray
-
-    :param dt:  Time step.
-    :type dt:   float
-
+    :param dt:          Time step.
+    :type dt:           float
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                         dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:     tuple
-
     :return:            Precision cost for time interval.
     :rtype:             float
-
     """
 
     cost = 0.0
@@ -42,25 +36,20 @@ def precision_cost(x_target, x_sim, w_p, precision_matrix, dt, interval=(0, None
 
 @numba.njit
 def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval):
-    """Derivative of precision cost wrt. to x_sim.
+    """Derivative of 'precision_cost' wrt. to 'x_sim'.
 
     :param x_target:    N x V x T array that contains the target time series.
     :type x_target:     np.ndarray
-
     :param x_sim:       N x V x T array that contains the simulated time series.
     :type x_sim:        np.ndarray
-
     :param w_p:         Weight that is multiplied with the precision cost.
     :type w_p:          float
-
     :param precision_matrix: N x V binary matrix that defines nodes and channels of precision measurement, defaults to
                                  None
     :type precision_matrix:  np.ndarray
-
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                         dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:     tuple
-
     :return:            Control-dimensions x T array of precision cost gradients.
     :rtype:             np.ndarray
     """
@@ -77,17 +66,15 @@ def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval):
 
 @numba.njit
 def energy_cost(u, w_2, dt):
-    """
+    """'Energy' or 'L2' cost. Penalizes for control strength.
+
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
-
-    :param w_2: Weight that is multiplied with the W2 ("energy") cost.
+    :param w_2: Weight that is multiplied with the L2 ("energy") cost.
     :type w_2:  float
-
     :param dt:  Time step.
     :type dt:   float
-
-    :return:    W2 cost of the control.
+    :return:    L2 cost of the control.
     :rtype:     float
     """
     return w_2 * 0.5 * np.sum(u**2.0) * dt
@@ -95,14 +82,13 @@ def energy_cost(u, w_2, dt):
 
 @numba.njit
 def derivative_energy_cost(u, w_2):
-    """
+    """Derivative of the 'energy_cost' wrt. to the control 'u'.
+
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
-
-    :param w_2: Weight that is multiplied with the W2 ("energy") cost.
+    :param w_2: Weight that is multiplied with the L2 ("energy") cost.
     :type w_2:  float
-
-    :return :   Control-dimensions x T array of W2-cost gradients.
+    :return:    Control-dimensions x T array of L2-cost gradients.
     :rtype:     np.ndarray
     """
     return w_2 * u
