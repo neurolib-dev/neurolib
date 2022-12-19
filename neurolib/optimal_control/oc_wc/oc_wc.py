@@ -5,12 +5,12 @@ import numba
 
 
 @numba.njit
-def S(x, a, mu):
-    """Logistic function.
+def logistic(x, a, mu):
+    """Logistic function evaluated at point 'x'.
 
     :type x:    float
     :param a:   Slope parameter.
-    :typa a:    float
+    :type a:    float
     :param mu:  Inflection point.
     :type mu:   float
     :rtype:     float
@@ -19,8 +19,8 @@ def S(x, a, mu):
 
 
 @numba.njit
-def S_der(x, a, mu):
-    """Derivative of logistic function
+def logistic_der(x, a, mu):
+    """Derivative of logistic function, evaluated at point 'x'.
 
     :type x:    float
     :param a:   Slope parameter.
@@ -53,7 +53,7 @@ def Duh(
     e,
     i,
 ):
-    """Jacobian of systems dynamics wrt. to I_ext (external control input)
+    """Jacobian of systems dynamics wrt. to external inputs (control signals).
 
     :rtype:     np.ndarray of shape N x V x V x T
     """
@@ -61,147 +61,133 @@ def Duh(
     for t in range(T):
         for n in range(N):
             input_exc = c_excexc * e[n, t] - c_inhexc * i[n, t] + nw_e[n, t] + ue[n, t]
-            duh[n, 0, 0, t] = -(1.0 - e[n, t]) * S_der(input_exc, a_exc, mu_exc) / tau_exc
+            duh[n, 0, 0, t] = -(1.0 - e[n, t]) * logistic_der(input_exc, a_exc, mu_exc) / tau_exc
             input_inh = c_excinh * e[n, t] - c_inhinh * i[n, t] + ui[n, t]
-            duh[n, 1, 1, t] = -(1.0 - i[n, t]) * S_der(input_inh, a_inh, mu_inh) / tau_inh
+            duh[n, 1, 1, t] = -(1.0 - i[n, t]) * logistic_der(input_inh, a_inh, mu_inh) / tau_inh
     return duh
 
 
 @numba.njit
-def compute_gradient(N, dim_out, T, fk, adjoint_state, control_matrix, duh):
-    """Compute the gradient of the total cost wrt. to the control signals.
-    :param N:       number of nodes in the network
+def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
+    """Compute the gradient of the total cost wrt. to the control signals (explicitly and implicitly) given the adjoint
+       state, the Jacobian of the total cost wrt. to explicit control contributions and the Jacobian of the dynamics
+       wrt. to explicit control contributions.
+
+    :param N:       Number of nodes in the network.
     :type N:        int
-    :param dim_out: number of 'output variables' of the model
+    :param dim_out: Number of 'output variables' of the model.
     :type dim_out:  int
-    :param T:       length of simulation (time dimension)
+    :param T:       Length of simulation (time dimension).
     :type T:        int
-    :param fk:      Derivative of the cost functionals wrt. to the control signal.
-    :type fk:   np.ndarray of shape N x V x T
-    :param adjoint_state:
-    :type adjoint_state: np.ndarray of shape N x V x T
-    :param control_matrix: Binary matrix that defines nodes and variables where control inputs are active, defaults to None.
-    :type control_matrix:  np.ndarray of shape N x V
-    :param duh: Jacobian of systems dynamics wrt. to I_ext (external control input)
-    :type duh:  np.ndarray of shape V x V
-    :return: The gradient of the total cost wrt. to the control.
-    :rtype: np.ndarray of shape N x V x T
+    :param df_du:      Derivative of the cost wrt. to the explicit control contributions to cost functionals.
+    :type df_du:       np.ndarray of shape N x V x T
+    :param adjoint_state:   Solution of the adjoint equation.
+    :type adjoint_state:    np.ndarray of shape N x V x T
+    :param control_matrix:  Binary matrix that defines nodes and variables where control inputs are active, defaults to
+                            None.
+    :type control_matrix:   np.ndarray of shape N x V
+    :param d_du:    Jacobian of systems dynamics wrt. to I_ext (external control input)
+    :type d_du:     np.ndarray of shape V x V
+    :return:        The gradient of the total cost wrt. to the control.
+    :rtype:         np.ndarray of shape N x V x T
     """
-    grad = np.zeros(fk.shape)
+    grad = np.zeros(df_du.shape)
 
     for n in range(N):
         for v in range(dim_out):
             for t in range(T):
-                grad[n, v, t] = fk[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * duh[n, v, v, t]
+                grad[n, v, t] = df_du[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * d_du[n, v, v, t]
 
     return grad
 
 
 @numba.njit
-def jacobian_wc(
-    tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh, nw_e, e, i, ue, ui, V
-):
+def jacobian_wc(wc_model_params, nw_e, e, i, ue, ui, V):
     """Jacobian of the WC dynamical system.
-    :param tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh:   WC model parameter.
-    :type tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh:    float
 
-
-    :param e, i:       Value of the E-/ I-variable at specific time
-    :type e, i:        float
-
-    :param V:           number of system variables
-    :type V:            int
-
-    :return:        Jacobian matrix.
-    :rtype:         np.ndarray of dimensions 2x2
+    :param wc_model_params: Tuple of parameters in the WCModel in order (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh,
+                            c_excexc, c_inhexc, c_excinh, c_inhinh). All parameters of type 'float'.
+    :type wc_model_params: tuple
+    :param  nw_e:   N x T input of network into each node's 'exc'
+    :type  nw_e:    np.ndarray
+    :param e:       Value of the E-variable at specific time.
+    :type e:        float
+    :param i:       Value of the I-variable at specific time.
+    :type i:        float
+    :param ue:      N x T combined input of 'background' and 'control' into 'exc'.
+    :type ue:       np.ndarray
+    :param ui:      N x T combined input of 'background' and 'control' into 'inh'.
+    :type ui:       np.ndarray
+    :param V:       Number of system variables.
+    :type V:        int
+    :return:        4 x 4 Jacobian matrix.
+    :rtype:         np.ndarray
     """
+
+    (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh) = wc_model_params
+
     jacobian = np.zeros((V, V))
     input_exc = c_excexc * e - c_inhexc * i + nw_e + ue
     jacobian[0, 0] = (
-        -(-1.0 - S(input_exc, a_exc, mu_exc) + (1.0 - e) * c_excexc * S_der(input_exc, a_exc, mu_exc)) / tau_exc
+        -(-1.0 - logistic(input_exc, a_exc, mu_exc) + (1.0 - e) * c_excexc * logistic_der(input_exc, a_exc, mu_exc))
+        / tau_exc
     )
-    jacobian[0, 1] = -((1.0 - e) * (-c_inhexc) * S_der(input_exc, a_exc, mu_exc)) / tau_exc
+    jacobian[0, 1] = -((1.0 - e) * (-c_inhexc) * logistic_der(input_exc, a_exc, mu_exc)) / tau_exc
     input_inh = c_excinh * e - c_inhinh * i + ui
-    jacobian[1, 0] = -((1.0 - e) * c_excinh * S_der(input_inh, a_inh, mu_inh)) / tau_inh
+    jacobian[1, 0] = -((1.0 - e) * c_excinh * logistic_der(input_inh, a_inh, mu_inh)) / tau_inh
     jacobian[1, 1] = (
-        -(-1.0 - S(input_inh, a_inh, mu_inh) + (1.0 - i) * (-c_inhinh) * S_der(input_inh, a_inh, mu_inh)) / tau_inh
+        -(-1.0 - logistic(input_inh, a_inh, mu_inh) + (1.0 - i) * (-c_inhinh) * logistic_der(input_inh, a_inh, mu_inh))
+        / tau_inh
     )
     return jacobian
 
 
 @numba.njit
 def compute_hx(
-    tau_exc,
-    tau_inh,
-    a_exc,
-    a_inh,
-    mu_exc,
-    mu_inh,
-    c_excexc,
-    c_inhexc,
-    c_excinh,
-    c_inhinh,
+    wc_model_params: tuple[float, float, float, float, float, float, float, float, float, float],
     K_gl,
     cmat,
     dmat_ndt,
     N,
     V,
     T,
-    xs,
+    dyn_vars,
     control,
 ):
-    """Jacobians for each time step.
+    """Jacobians of WCModel wrt. to the 'e'- and 'i'-variable for each time step.
 
-    :param tau_exc,
-            tau_inh,
-            a_exc,
-            a_inh,
-            mu_exc,
-            mu_inh,
-            c_excexc,
-            c_inhexc,
-            c_excinh,
-            c_inhinh,
-            K_gl,
-            cmat:   Wilson-Cowan model parameters
-    :type :    float
-
-    :param dmat_ndt:   Wilson-Cowan model parameters, delay matrix in multiples of dt.
-    :type dmat_ndt:    np.ndarray of shape NxN
-
-    :param N:           number of nodes in the network
+    :param wc_model_params: Tuple of parameters in the WCModel in order (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh,
+                            c_excexc, c_inhexc, c_excinh, c_inhinh). All parameters of type 'float'.
+    :type wc_model_params: tuple
+    :param K_gl:        Model parameter of global coupling strength.
+    :type K_gl:         float
+    :param cmat:        Model parameter, connectivity matrix.
+    :type cmat:         ndarray
+    :param dmat_ndt:    N x N delay matrix in multiples of dt.
+    :type dmat_ndt:     np.ndarray
+    :param N:           Number of nodes in the network.
     :type N:            int
-    :param V:           number of system variables
+    :param V:           Number of system variables.
     :type V:            int
-    :param T:           length of simulation (time dimension)
+    :param T:           Length of simulation (time dimension).
     :type T:            int
-
-    :param xs:  The jacobian of the FHN systems dynamics depends only on the constant parameters and the values of
-                    the x-population.
-    :type xs:   np.ndarray of shape 1xT
-
-    :return: array of length T containing 2x2-matrices
-    :rtype: np.ndarray of shape Tx2x2
+    :param dyn_vars:    N x V x T array containing all values of 'exc' and 'inh'.
+    :type dyn_vars:     np.ndarray
+    :param control:     N x 2 x T control inputs to 'exc' and 'inh'.
+    :type control:      np.ndarray
+    :return:            N x T x 4 x 4 Jacobians.
+    :rtype:             np.ndarray
     """
     hx = np.zeros((N, T, V, V))
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, xs[:, 0, :])
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, dyn_vars[:, 0, :])
 
     for n in range(N):
-        for t, e in enumerate(xs[n, 0, :]):
-            i = xs[n, 1, t]
+        for t, e in enumerate(dyn_vars[n, 0, :]):
+            i = dyn_vars[n, 1, t]
             ue = control[n, 0, t]
             ui = control[n, 1, t]
             hx[n, t, :, :] = jacobian_wc(
-                tau_exc,
-                tau_inh,
-                a_exc,
-                a_inh,
-                mu_exc,
-                mu_inh,
-                c_excexc,
-                c_inhexc,
-                c_excinh,
-                c_inhinh,
+                wc_model_params,
                 nw_e[n, t],
                 e,
                 i,
@@ -213,17 +199,30 @@ def compute_hx(
 
 
 @numba.njit
-def compute_nw_input(N, T, K_gl, cmat, dmat_ndt, E):
-    """Compute input by other nodes of network into each node at every timestep.
+def compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_values):
+    """Compute input by other nodes of network into each node's 'exc' population at every timestep.
 
-    :rytpe: np.ndarray of shape N x T
+    :param N:           Number of nodes in the network.
+    :type N:            int
+    :param T:           Length of simulation (time dimension).
+    :type T:            int
+    :param K_gl:        Model parameter of global coupling strength.
+    :type K_gl:         float
+    :param cmat:        Model parameter, connectivity matrix.
+    :type cmat:         ndarray
+    :param dmat_ndt:    N x N delay matrix in multiples of dt.
+    :type dmat_ndt:     np.ndarray
+    :param exc_values:  N x T array containing values of 'exc' of all nodes through time.
+    :type exc_values:   np.ndarray
+    :return:            N x T network inputs.
+    :rytpe:             np.ndarray
     """
     nw_input = np.zeros((N, T))
 
     for t in range(1, T):
         for n in range(N):
             for l in range(N):
-                nw_input[n, t] += K_gl * cmat[n, l] * (E[l, t - dmat_ndt[n, l] - 1])
+                nw_input[n, t] += K_gl * cmat[n, l] * (exc_values[l, t - dmat_ndt[n, l] - 1])
     return nw_input
 
 
@@ -246,24 +245,36 @@ def compute_hx_nw(
 ):
     """Jacobians for network connectivity in all time steps.
 
-    :param K_gl:    Global coupling.
-    :type K_gl:     float
-
-    :param cmat:    model parameter, connectivity matrix.
-    :type cmat:     ndarray
-
-    :param coupling: model parameter.
-    :type coupling:  string
-
-    :param N:           number of nodes in the network
+    :param K_gl:        Model parameter of global coupling strength.
+    :type K_gl:         float
+    :param cmat:        Model parameter, connectivity matrix.
+    :type cmat:         ndarray
+    :param dmat_ndt:    N x N delay matrix in multiples of dt.
+    :type dmat_ndt:     np.ndarray
+    :param N:           Number of nodes in the network.
     :type N:            int
-    :param V:           number of system variables
+    :param V:           Number of system variables.
     :type V:            int
-    :param T:           length of simulation (time dimension)
+    :param T:           Length of simulation (time dimension).
     :type T:            int
-
-    :return: Jacobians for network connectivity in all time steps.
-    :rtype: np.ndarray of shape NxNxTx4x4
+    :param e:       Value of the E-variable at specific time.
+    :type e:        float
+    :param i:       Value of the I-variable at specific time.
+    :type i:        float
+    :param ue:      N x T array of the total input received by 'exc' population in every node at any time.
+    :type ue:       np.ndarray
+    :param tau_exc: Excitatory time constant.
+    :type tau_exc:  float
+    :param a_exc:   Excitatory gain.
+    :type a_exc:    float
+    :param mu_exc:  Excitatory firing threshold.
+    :type mu_exc:   float
+    :param c_excexc: Local E-E coupling.
+    :type c_excexc:  float
+    :param c_inhexc: Local I-E coupling.
+    :type c_inhexc:  float
+    :return:         Jacobians for network connectivity in all time steps.
+    :rtype:          np.ndarray of shape N x N x T x 4 x 4
     """
     hx_nw = np.zeros((N, N, T, V, V))
 
@@ -273,14 +284,17 @@ def compute_hx_nw(
     for t in range(T):
         for n1 in range(N):
             for n2 in range(N):
-                hx_nw[n1, n2, t, 0, 0] = (S_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]) / tau_exc
+                hx_nw[n1, n2, t, 0, 0] = (logistic_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]) / tau_exc
 
     return -hx_nw
 
 
 class OcWc(OC):
-    """
-    :param model:
+    """Class for optimal control specific to neurolib's implementation of the two-population Wilson-Cowan model
+        ("WCmodel").
+
+    :param model: Instance of Wilson-Cowan model (can describe a single Wilson-Cowan node or a network of coupled
+                  Wilson-Cowan nodes. Remark: Currently only delay-free networks are supported.
     :type model: neurolib.models.wc.model.WCModel
     """
 
@@ -332,10 +346,14 @@ class OcWc(OC):
             assert (self.background[n, 0, :] == self.model.params["exc_ext"][n, :]).all()
             assert (self.background[n, 1, :] == self.model.params["inh_ext"][n, :]).all()
 
-        self.control = np.zeros((self.background.shape))
+        self.control = np.zeros((self.background.shape))  # control is of shape N x 2 x T, controls of 'exc' and 'inh'
 
     def get_xs(self):
-        """Stack the initial condition with the simulation results for both populations."""
+        """Stack the initial condition with the simulation results for both ('exc' and 'inh') populations.
+
+        :return: N x V x T array containing all values of 'exc' and 'inh'.
+        :rtype:  np.ndarray
+        """
         return np.concatenate(
             (
                 np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
@@ -347,7 +365,7 @@ class OcWc(OC):
         )
 
     def update_input(self):
-        """Update the parameters in self.model according to the current control such that self.simulate_forward
+        """Update the parameters in 'self.model' according to the current control such that 'self.simulate_forward'
         operates with the appropriate control signal.
         """
         input = self.background + self.control
@@ -361,11 +379,16 @@ class OcWc(OC):
             self.model.params["inh_ext"] = input[:, 1, :]
 
     def Dxdot(self):
-        """4x4 Jacobian of systems dynamics wrt. to change of systems variables."""
+        """4 x 4 Jacobian of systems dynamics wrt. to change of systems variables."""
+        # Currently not explicitly required since it is identity matrix.
         raise NotImplementedError  # return np.eye(4)
 
     def Duh(self):
-        """Nx4x4xT Jacobian of systems dynamics wrt. to external control input"""
+        """Jacobian of systems dynamics wrt. to external control input.
+
+        :return:    N x 4 x 4 x T Jacobians.
+        :rtype:     np.ndarray
+        """
 
         xs = self.get_xs()
         e = xs[:, 0, :]
@@ -398,22 +421,24 @@ class OcWc(OC):
         )
 
     def compute_hx(self):
-        """Jacobians for each time step.
+        """Jacobians of WCModel wrt. to the 'e'- and 'i'-variable for each time step.
 
-        :return: Array of length self.T containing 4x4-matrices
-        :rtype: np.ndarray
+        :return:    N x T x 4 x 4 Jacobians.
+        :rtype:     np.ndarray
         """
         return compute_hx(
-            self.model.params.tau_exc,
-            self.model.params.tau_inh,
-            self.model.params.a_exc,
-            self.model.params.a_inh,
-            self.model.params.mu_exc,
-            self.model.params.mu_inh,
-            self.model.params.c_excexc,
-            self.model.params.c_inhexc,
-            self.model.params.c_excinh,
-            self.model.params.c_inhinh,
+            (
+                self.model.params.tau_exc,
+                self.model.params.tau_inh,
+                self.model.params.a_exc,
+                self.model.params.a_inh,
+                self.model.params.mu_exc,
+                self.model.params.mu_inh,
+                self.model.params.c_excexc,
+                self.model.params.c_inhexc,
+                self.model.params.c_excinh,
+                self.model.params.c_inhinh,
+            ),
             self.model.params.K_gl,
             self.model.Cmat,
             self.Dmat_ndt,
@@ -454,11 +479,17 @@ class OcWc(OC):
         )
 
     def compute_gradient(self):
-        """
-        Du @ fk + adjoint_k.T @ Du @ h
+        """Compute the gradient of the total cost wrt. to the control signals. This is achieved by first, solving the
+           adjoint equation backwards in time. Second, derivatives of the cost wrt. to explicit control variables are
+           evaluated as well as the Jacobians of the dynamics wrt. to explicit control. Then the decent direction /
+           gradient of the cost wrt. to control (in its explicit form AND IMPLICIT FORM) is computed.
+
+        :return:        The gradient of the total cost wrt. to the control.
+        :rtype:         np.ndarray of shape N x V x T
         """
         self.solve_adjoint()
-        fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
+
+        df_du = cost_functions.derivative_energy_cost(self.control, self.w_2)
         duh = self.Duh()
 
-        return compute_gradient(self.N, self.dim_out, self.T, fk, self.adjoint_state, self.control_matrix, duh)
+        return compute_gradient(self.N, self.dim_out, self.T, df_du, self.adjoint_state, self.control_matrix, duh)

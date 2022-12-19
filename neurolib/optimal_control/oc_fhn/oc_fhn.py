@@ -24,8 +24,8 @@ def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
     :type x:        float
     :param V:       Number of system variables.
     :type V:        int
-    :return:        Jacobian matrix.
-    :rtype:         np.ndarray of dimensions 4 x 4
+    :return:        4 x 4 Jacobian matrix.
+    :rtype:         np.ndarray
     """
     jacobian = np.zeros((V, V))
     jacobian[0, :2] = [3 * alpha * x**2 - 2 * beta * x - gamma, 1]
@@ -70,11 +70,11 @@ def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, dyn_vars):
 def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
     """Jacobians for network connectivity in all time steps.
 
-    :param K_gl:     FHN model parameter.
+    :param K_gl:     Model parameter of global coupling strength.
     :type K_gl:      float
-    :param cmat:     FHN model parameter, connectivity matrix.
+    :param cmat:     Model parameter, connectivity matrix.
     :type cmat:      ndarray
-    :param coupling: FHN model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
+    :param coupling: Model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
     :type coupling:  str
     :param N:        Number of nodes in the network.
     :type N:         int
@@ -89,7 +89,7 @@ def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
 
     for n1 in range(N):
         for n2 in range(N):
-            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
+            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]  # term corresponding to additive coupling
             if coupling == "diffusive":
                 hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
 
@@ -189,7 +189,7 @@ class OcFhn(OC):
         self.control = update_control_with_limit(control, 0.0, np.zeros(control.shape), self.maximum_control_strength)
 
     def get_xs(self):
-        """Stack the initial condition with the simulation results for dynamic variables of FHN Model.
+        """Stack the initial condition with the simulation results for dynamic variables 'x' and 'y' of FHN Model.
 
         :rtype:     np.ndarray of shape N x V x T
         """
@@ -215,12 +215,12 @@ class OcFhn(OC):
             self.model.params["y_ext"] = self.control[:, 1, :]
 
     def Dxdot(self):
-        """4x4 Jacobian of systems dynamics wrt. to change of systems variables."""
+        """4 x 4 Jacobian of systems dynamics wrt. to change of systems variables."""
         # Currently not explicitly required since it is identity matrix.
         raise NotImplementedError  # return np.eye(4)
 
     def Duh(self):
-        """4x4 Jacobian of systems dynamics wrt. to external inputs (control signals) to all 'state_vars'. There are no
+        """4 x 4 Jacobian of systems dynamics wrt. to external inputs (control signals) to all 'state_vars'. There are no
            inputs to the noise variables 'x_ou' and 'y_ou' in the model.
 
         :rtype:     np.ndarray of shape 4 x 4
@@ -249,7 +249,7 @@ class OcFhn(OC):
         """Jacobians for each time step for the network coupling.
 
         :return:    Jacobians for network connectivity in all time steps.
-        :rtype:     np.ndarray of shape N x N x T x (4x4)
+        :rtype:     np.ndarray of shape N x N x T x 4 x 4
         """
         return compute_hx_nw(
             self.model.params["K_gl"],
