@@ -134,7 +134,7 @@ def jacobian_wc(wc_model_params, nw_e, e, i, ue, ui, V):
     )
     jacobian[0, 1] = -((1.0 - e) * (-c_inhexc) * logistic_der(input_exc, a_exc, mu_exc)) / tau_exc
     input_inh = c_excinh * e - c_inhinh * i + ui
-    jacobian[1, 0] = -((1.0 - e) * c_excinh * logistic_der(input_inh, a_inh, mu_inh)) / tau_inh
+    jacobian[1, 0] = -((1.0 - i) * c_excinh * logistic_der(input_inh, a_inh, mu_inh)) / tau_inh
     jacobian[1, 1] = (
         -(-1.0 - logistic(input_inh, a_inh, mu_inh) + (1.0 - i) * (-c_inhinh) * logistic_der(input_inh, a_inh, mu_inh))
         / tau_inh
