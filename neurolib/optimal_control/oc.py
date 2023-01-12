@@ -180,16 +180,11 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     fx_fullstate[:, :2, :] = fx.copy()
 
     for ind in range(T - 2, -1, -1):
-        # print("----- t = ", ind)
         for n in range(N):
             der = fx_fullstate[n, :, ind + 1].copy()
-            # if n in []:
-            #    print(ind, der)
             for k in range(len(der)):
                 for i in range(len(der)):
                     der[k] += adjoint_state[n, i, ind + 1] * hx[n, ind + 1][i, k]
-            # if n in []:
-            #    print(ind, der)
             for n2 in range(N):
                 if ind + 1 + dmat_ndt[n2, n] > T - 2:
                     continue
@@ -515,10 +510,6 @@ class OC:
         """Backwards integration of the adjoint state."""
         hx = self.compute_hx()
         hx_nw = self.compute_hx_nw()
-
-        # print(hx_nw[0, :, :, 0, 0])
-        # print("--")
-        # print(hx_nw[1, :, :, 0, 0])
 
         # ToDo: generalize, not only precision cost
         fx = cost_functions.derivative_precision_cost(
