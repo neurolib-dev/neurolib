@@ -7,7 +7,8 @@ from neurolib.utils.stimulus import ZeroInput
 from neurolib.optimal_control import oc_hopf
 from numpy.random import RandomState, SeedSequence, MT19937
 
-limit_diff = 1e-4
+global LIMIT_DIFF
+LIMIT_DIFF = 1e-4
 
 
 class TestHopf(unittest.TestCase):
@@ -84,7 +85,7 @@ class TestHopf(unittest.TestCase):
                         np.abs(control[0, 1, :] - input[0, :]),
                     ]
 
-                if np.amax(c_diff) < limit_diff:
+                if np.amax(c_diff) < LIMIT_DIFF:
                     control_coincide = True
                     break
 
@@ -203,7 +204,7 @@ class TestHopf(unittest.TestCase):
                             )
 
                             control_coincide = False
-                            lim = limit_diff
+                            lim = LIMIT_DIFF
                             if p_channel == 1 or c_channel == 1:
                                 lim *= 4000  # for internal purposes: 1000, for simple testing: 4000
 
@@ -217,56 +218,111 @@ class TestHopf(unittest.TestCase):
                                     control_coincide = True
                                     break
 
-                                # TODO: remove when step size function is improved
-                                mean_step = np.mean(hopf_controlled.step_sizes_history[:-1][-iterations:])
-                                if mean_step > 0.75 * hopf_controlled.step:
-                                    hopf_controlled.step *= 2.0
-                                elif mean_step < 0.5 * hopf_controlled.step:
-                                    hopf_controlled.step /= 2.0
-
                             self.assertTrue(control_coincide)
 
-    def test_u_max_no_optimizations(self):
-        # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
-        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
-        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
-        hopf = HopfModel(Cmat=cmat, Dmat=dmat)
+    # tests if the control from OC computation coincides with a random input used for target forward-simulation
+    # delayed network case
+    def test_twonode_delay_oc(self):
+        print("Test OC in delayed 2-node network")
+
         duration = 1.0
+        a = 5.0
+
+        delay = np.random.uniform(0.1, 0.4)
+
+        cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [delay, 0.0]])
+
+        hopf = HopfModel(Cmat=cmat, Dmat=dmat)
+
+        prec_mat = np.zeros((hopf.params.N, len(hopf.output_vars)))
+        control_mat = np.zeros((hopf.params.N, len(hopf.state_vars)))
+
+        control_mat[0, 0] = 1.0
+        prec_mat[1, 0] = 1.0
+
         hopf.params.duration = duration
 
-        zero_input = ZeroInput().generate_input(duration=duration + hopf.params.dt, dt=hopf.params.dt)
+        # change parameters for faster convergence
+        hopf.params.K_gl = 1.0
+        # change parameters for shorter test simulation time
+        hopf.params.signalV = 1.0
+
+        zero_input = ZeroInput().generate_input(duration=hopf.params.duration + hopf.params.dt, dt=hopf.params.dt)
         input = np.copy(zero_input)
 
-        for t in range(input.shape[1]):
-            input[0, t] = np.sin(t)
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
-        hopf.params["y_ext"] = np.vstack([input, input])
-        hopf.params["x_ext"] = np.vstack([-input, 1.1 * input])
+        for t in range(1, input.shape[1] - 7):  # leave last inputs zero so signal can be reproduced despite delay
+            input[0, t] = rs.uniform(-a, a)
 
-        hopf.params["xs_init"] = np.vstack([0.0, 0.0])
-        hopf.params["ys_init"] = np.vstack([0.0, 0.0])
+        hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
+        hopf.params["x_ext"] = np.vstack([zero_input, zero_input])
 
-        precision_mat = np.ones((hopf.params.N, len(hopf.state_vars)))
-        control_mat = np.ones((hopf.params.N, len(hopf.state_vars)))
-        target = np.ones((2, 2, input.shape[1]))
+        hopf.params["x_ext"] = np.vstack([input, zero_input])
+        hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
 
-        maximum_control_strength = 0.5
+        zeroinit = np.zeros((5))
 
-        hopf_controlled = oc_hopf.OcHopf(
-            hopf,
-            target,
-            w_p=1,
-            w_2=1,
-            maximum_control_strength=maximum_control_strength,
-            precision_matrix=precision_mat,
-            control_matrix=control_mat,
+        hopf.params["xs_init"] = np.vstack([zeroinit, zeroinit])
+        hopf.params["ys_init"] = np.vstack([zeroinit, zeroinit])
+
+        hopf.run()
+
+        self.assertTrue(np.amax(hopf.params.Dmat_ndt) >= 1)
+
+        target = np.concatenate(
+            (
+                np.stack(
+                    (hopf.params["xs_init"][:, -1], hopf.params["ys_init"][:, -1]),
+                    axis=1,
+                )[:, :, np.newaxis],
+                np.stack((hopf.x, hopf.y), axis=1),
+            ),
+            axis=2,
         )
 
-        self.assertTrue(np.max(np.abs(hopf_controlled.control) <= maximum_control_strength))
+        hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
+        hopf.params["x_ext"] = np.vstack([zero_input, zero_input])
 
-    def test_u_max_after_optimizations(self):
-        # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
+        hopf_controlled = oc_hopf.OcHopf(
+            hopf,
+            target,
+            w_p=1,
+            w_2=0,
+            control_matrix=control_mat,
+            precision_matrix=prec_mat,
+        )
+
+        dmat_oc = hopf_controlled.Dmat_ndt
+        self.assertTrue((hopf.params.Dmat_ndt == dmat_oc).all())
+
+        control_coincide = False
+
+        iterations = 4000
+        for i in range(100):
+            hopf_controlled.optimize(iterations)
+            control = hopf_controlled.control
+
+            # last few entries of adjoint_state[0,0,:] are zero
+            self.assertTrue(
+                np.amax(
+                    np.abs(hopf_controlled.adjoint_state[0, 0, -np.around(np.amax(hopf.params.Dmat_ndt)).astype(int) :])
+                )
+                == 0.0
+            )
+
+            c_diff_max = np.amax(np.abs(control[0, 0, :] - input[0, :]))
+            if c_diff_max < LIMIT_DIFF:
+                control_coincide = True
+                break
+
+        self.assertTrue(control_coincide)
+
+    def test_get_xs(self):
+        # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
         # Do one optimization step.
+
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
         hopf = HopfModel(Cmat=cmat, Dmat=dmat)
@@ -282,27 +338,25 @@ class TestHopf(unittest.TestCase):
         hopf.params["y_ext"] = np.vstack([input, input])
         hopf.params["x_ext"] = np.vstack([-input, 1.1 * input])
 
-        hopf.params["xs_init"] = np.vstack([0.0, 0.0])
-        hopf.params["ys_init"] = np.vstack([0.0, 0.0])
+        initind = 5
 
-        precision_mat = np.ones((hopf.params.N, len(hopf.state_vars)))
-        control_mat = np.ones((hopf.params.N, len(hopf.state_vars)))
+        zeroinit = np.zeros((initind))
+
+        hopf.params["xs_init"] = np.vstack([zeroinit, zeroinit])
+        hopf.params["ys_init"] = np.vstack([zeroinit, zeroinit])
+
         target = np.ones((2, 2, input.shape[1]))
-
-        maximum_control_strength = 0.5
 
         hopf_controlled = oc_hopf.OcHopf(
             hopf,
             target,
             w_p=1,
             w_2=1,
-            maximum_control_strength=maximum_control_strength,
-            precision_matrix=precision_mat,
-            control_matrix=control_mat,
         )
 
         hopf_controlled.optimize(1)
-        self.assertTrue(np.max(np.abs(hopf_controlled.control) <= maximum_control_strength))
+        xs = hopf_controlled.get_xs()
+        self.assertTrue(xs.shape == target.shape)
 
 
 if __name__ == "__main__":

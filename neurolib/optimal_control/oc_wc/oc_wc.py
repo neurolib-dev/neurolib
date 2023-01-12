@@ -53,7 +53,7 @@ def Duh(
     e,
     i,
 ):
-    """Jacobian of systems dynamics wrt. to I_ext (external control input)
+    """Jacobian of systems dynamics wrt. to external control input
 
     :rtype:     np.ndarray of shape N x V x V x T
     """
@@ -148,6 +148,7 @@ def compute_hx(
     V,
     T,
     xs,
+    xs_delay,
     control,
 ):
     """Jacobians for each time step.
@@ -184,7 +185,7 @@ def compute_hx(
     :rtype: np.ndarray of shape Tx2x2
     """
     hx = np.zeros((N, T, V, V))
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, xs[:, 0, :])
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, xs_delay[:, 0, :])
 
     for n in range(N):
         for t, e in enumerate(xs[n, 0, :]):
@@ -224,6 +225,7 @@ def compute_nw_input(N, T, K_gl, cmat, dmat_ndt, E):
         for n in range(N):
             for l in range(N):
                 nw_input[n, t] += K_gl * cmat[n, l] * (E[l, t - dmat_ndt[n, l] - 1])
+                # nw_input[n, t] += K_gl * cmat[n, l] * (E[l, t - 1])
     return nw_input
 
 
@@ -237,6 +239,7 @@ def compute_hx_nw(
     T,
     e,
     i,
+    e_delay,
     ue,
     tau_exc,
     a_exc,
@@ -267,12 +270,12 @@ def compute_hx_nw(
     """
     hx_nw = np.zeros((N, N, T, V, V))
 
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, e)
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, e_delay)
     exc_input = c_excexc * e - c_inhexc * i + nw_e + ue
 
-    for t in range(T):
-        for n1 in range(N):
-            for n2 in range(N):
+    for n1 in range(N):
+        for n2 in range(N):
+            for t in range(T - 1):
                 hx_nw[n1, n2, t, 0, 0] = (S_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]) / tau_exc
 
     return -hx_nw
@@ -334,17 +337,65 @@ class OcWc(OC):
 
         self.control = np.zeros((self.background.shape))
 
+    def get_xs_delay(self):
+        """Stack the initial condition (last index) with the simulation results, with the initial contidion (all except last index) for both populations."""
+
+        if self.model.params["exc_init"].shape[1] == 1:
+            p1 = np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
+                :, :, np.newaxis
+            ]
+            xs = np.concatenate(
+                (
+                    p1,
+                    np.stack((self.model.exc, self.model.inh), axis=1),
+                ),
+                axis=2,
+            )
+        else:
+            p1 = np.stack((self.model.params["exc_init"][:, -1], self.model.params["inh_init"][:, -1]), axis=1)[
+                :, :, np.newaxis
+            ]
+            p3 = np.stack((self.model.params["exc_init"][:, :-1], self.model.params["inh_init"][:, :-1]), axis=1)
+            xs0 = np.concatenate(
+                (
+                    p1,
+                    np.stack((self.model.exc, self.model.inh), axis=1),
+                ),
+                axis=2,
+            )
+            xs = np.concatenate(
+                (xs0, p3),
+                axis=2,
+            )
+
+        return xs
+
     def get_xs(self):
         """Stack the initial condition with the simulation results for both populations."""
-        return np.concatenate(
-            (
-                np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
-                    :, :, np.newaxis
-                ],
-                np.stack((self.model.exc, self.model.inh), axis=1),
-            ),
-            axis=2,
-        )
+        if self.model.params["exc_init"].shape[1] == 1:
+            p1 = np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
+                :, :, np.newaxis
+            ]
+            xs = np.concatenate(
+                (
+                    p1,
+                    np.stack((self.model.exc, self.model.inh), axis=1),
+                ),
+                axis=2,
+            )
+        else:
+            p1 = np.stack((self.model.params["exc_init"][:, -1], self.model.params["inh_init"][:, -1]), axis=1)[
+                :, :, np.newaxis
+            ]
+            xs = np.concatenate(
+                (
+                    p1,
+                    np.stack((self.model.exc, self.model.inh), axis=1),
+                ),
+                axis=2,
+            )
+
+        return xs
 
     def update_input(self):
         """Update the parameters in self.model according to the current control such that self.simulate_forward
@@ -370,7 +421,9 @@ class OcWc(OC):
         xs = self.get_xs()
         e = xs[:, 0, :]
         i = xs[:, 1, :]
-        nw_e = compute_nw_input(self.N, self.T, self.model.params.K_gl, self.model.Cmat, self.Dmat_ndt, e)
+        xsd = self.get_xs_delay()
+        ed = xsd[:, 0, :]
+        nw_e = compute_nw_input(self.N, self.T, self.model.params.K_gl, self.model.Cmat, self.Dmat_ndt, ed)
 
         input = self.background + self.control
         ue = input[:, 0, :]
@@ -421,6 +474,7 @@ class OcWc(OC):
             self.dim_vars,
             self.T,
             self.get_xs(),
+            self.get_xs_delay(),
             self.background + self.control,
         )
 
@@ -434,6 +488,8 @@ class OcWc(OC):
         xs = self.get_xs()
         e = xs[:, 0, :]
         i = xs[:, 1, :]
+        xsd = self.get_xs_delay()
+        e_delay = xsd[:, 0, :]
         ue = self.background[:, 0, :] + self.control[:, 0, :]
 
         return compute_hx_nw(
@@ -445,6 +501,7 @@ class OcWc(OC):
             self.T,
             e,
             i,
+            e_delay,
             ue,
             self.model.params.tau_exc,
             self.model.params.a_exc,
@@ -460,5 +517,7 @@ class OcWc(OC):
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
         duh = self.Duh()
+
+        # print("duh = ", duh[0, 0, 0])
 
         return compute_gradient(self.N, self.dim_out, self.T, fk, self.adjoint_state, self.control_matrix, duh)

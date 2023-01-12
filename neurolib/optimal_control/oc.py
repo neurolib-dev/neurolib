@@ -154,7 +154,7 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
 
 # compared loops against "@", "np.matmul" and "np.dot": loops ~factor 3.5 faster
 @numba.njit
-def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
+def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     """Backwards integration of the adjoint state.
     :param hx: dh/dx    Jacobians for each time step.
     :type hx:           np.ndarray of shape Tx2x2
@@ -180,15 +180,27 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
     fx_fullstate[:, :2, :] = fx.copy()
 
     for ind in range(T - 2, -1, -1):
+        # print("----- t = ", ind)
         for n in range(N):
             der = fx_fullstate[n, :, ind + 1].copy()
+            # if n in []:
+            #    print(ind, der)
             for k in range(len(der)):
                 for i in range(len(der)):
                     der[k] += adjoint_state[n, i, ind + 1] * hx[n, ind + 1][i, k]
+            # if n in []:
+            #    print(ind, der)
             for n2 in range(N):
+                if ind + 1 + dmat_ndt[n, n2] > T - 2:
+                    continue
                 for k in range(len(der)):
                     for i in range(len(der)):
-                        der[k] += adjoint_state[n2, i, ind + 1] * hx_nw[n2, n, ind + 1][i, k]
+                        der[k] += (
+                            adjoint_state[n2, i, ind + 1 + dmat_ndt[n2, n]]
+                            * hx_nw[n2, n, ind + 1 + dmat_ndt[n2, n]][i, k]
+                        )
+            # if n in []:
+            #    print(ind, der)
             adjoint_state[n, :, ind] = adjoint_state[n, :, ind + 1] - der * dt
 
     return adjoint_state
@@ -333,9 +345,6 @@ class OC:
 
         self.model = copy.deepcopy(model)
 
-        if self.model.getMaxDelay() > 0.0:
-            print("Delay not yet implemented, please set delays to zero")
-
         self.target = target  # ToDo: dimensions-check
 
         self.w_p = w_p
@@ -417,6 +426,7 @@ class OC:
         )  # dimensions of state. Model has N network nodes, V state variables, T time points
 
         self.adjoint_state = np.zeros(self.state_dim)
+        self.gradient = np.zeros(self.state_dim)
 
         self.control = None  # Is implemented in derived classes.
 
@@ -508,6 +518,10 @@ class OC:
         hx = self.compute_hx()
         hx_nw = self.compute_hx_nw()
 
+        # print(hx_nw[0, :, :, 0, 0])
+        # print("--")
+        # print(hx_nw[1, :, :, 0, 0])
+
         # ToDo: generalize, not only precision cost
         fx = cost_functions.derivative_precision_cost(
             self.target,
@@ -517,7 +531,7 @@ class OC:
             self.precision_cost_interval,
         )
 
-        self.adjoint_state = solve_adjoint(hx, hx_nw, fx, self.state_dim, self.dt, self.N, self.T)
+        self.adjoint_state = solve_adjoint(hx, hx_nw, fx, self.state_dim, self.dt, self.N, self.T, self.Dmat_ndt)
 
     def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):
         """Iteratively decrease step size until cost is improved."""
@@ -561,7 +575,7 @@ class OC:
             self.simulate_forward()
 
             if np.isnan(self.get_xs()).any():  # Detect numerical instability due to too large control update.
-                step *= self.factor_down**2    # Double the step for faster search of stable region.
+                step *= self.factor_down**2  # Double the step for faster search of stable region.
                 self.step = step
                 print(f"Diverging model output, decrease step size to {step}.")
                 self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
@@ -640,13 +654,17 @@ class OC:
             self.cost_history.append(cost)
 
         for i in range(1, n_max_iterations + 1):
-            grad = self.compute_gradient()
+            self.gradient = self.compute_gradient()
+
+            # import matplotlib.pyplot as plt
+            # plt.plot(grad[0, 0, :])
+            # plt.show()
 
             if self.zero_step_encountered:
                 print(f"Converged in iteration %s with cost %s" % (i, cost))
                 break
 
-            self.step_size(-grad)
+            self.step_size(-self.gradient)
             self.simulate_forward()
 
             cost = self.compute_total_cost()
@@ -690,13 +708,13 @@ class OC:
 
         for i in range(1, n_max_iterations + 1):
 
-            grad = np.mean(grad_m, axis=0)
+            self.gradient = np.mean(grad_m, axis=0)
 
             count = 0
             while count < self.count_noisy_step:
                 count += 1
                 self.zero_step_encountered = False
-                _ = self.step_size(-grad)
+                _ = self.step_size(-self.gradient)
                 if not self.zero_step_encountered:
                     consecutive_zero_step = 0
                     break

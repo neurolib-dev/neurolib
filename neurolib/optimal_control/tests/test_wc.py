@@ -7,7 +7,8 @@ from neurolib.utils.stimulus import ZeroInput
 from neurolib.optimal_control import oc_wc
 from numpy.random import RandomState, SeedSequence, MT19937
 
-limit_diff = 1e-4
+global LIMIT_DIFF
+LIMIT_DIFF = 1e-4
 
 
 class TestWC(unittest.TestCase):
@@ -85,14 +86,7 @@ class TestWC(unittest.TestCase):
                         np.abs(control[0, 1, :] - input[0, :]),
                     ]
 
-                # TODO: remove when step size function is improved
-                mean_step = np.mean(wc_controlled.step_sizes_history[:-1][-iterations:])
-                if mean_step > 0.75 * wc_controlled.step:
-                    wc_controlled.step *= 2.0
-                elif mean_step < 0.5 * wc_controlled.step:
-                    wc_controlled.step /= 2.0
-
-                if np.amax(c_diff) < limit_diff:
+                if np.amax(c_diff) < LIMIT_DIFF:
                     control_coincide = True
                     break
 
@@ -211,7 +205,7 @@ class TestWC(unittest.TestCase):
                             )
 
                             control_coincide = False
-                            lim = limit_diff
+                            lim = LIMIT_DIFF
                             if p_channel == 1 or c_channel == 1:
                                 lim *= 4000  # for internal purposes: 1000, for simple testing: 4000
 
@@ -227,14 +221,110 @@ class TestWC(unittest.TestCase):
 
                                 print(c_diff_max)
 
-                                # TODO: remove when step size function is improved
-                                mean_step = np.mean(wc_controlled.step_sizes_history[:-1][-iterations:])
-                                if mean_step > 0.75 * wc_controlled.step:
-                                    wc_controlled.step *= 2.0
-                                elif mean_step < 0.5 * wc_controlled.step:
-                                    wc_controlled.step /= 2.0
-
                             self.assertTrue(control_coincide)
+
+    # tests if the control from OC computation coincides with a random input used for target forward-simulation
+    # delayed network case
+    def test_twonode_delay_oc(self):
+        print("Test OC in delayed 2-node network")
+
+        duration = 0.7
+        a = 5.0
+
+        delay = np.random.uniform(0.1, 0.4)
+
+        cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [delay, 0.0]])
+
+        wc = WCModel(Cmat=cmat, Dmat=dmat)
+
+        prec_mat = np.zeros((wc.params.N, len(wc.output_vars)))
+        control_mat = np.zeros((wc.params.N, len(wc.state_vars)))
+
+        control_mat[0, 0] = 1.0
+        prec_mat[1, 0] = 1.0
+
+        wc.params.duration = duration
+
+        # change parameters for faster convergence
+        wc.params.K_gl = 10.0
+        # change parameters for shorter test simulation time
+        wc.params.signalV = 1.0
+
+        zero_input = ZeroInput().generate_input(duration=wc.params.duration + wc.params.dt, dt=wc.params.dt)
+        input = np.copy(zero_input)
+
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+
+        for t in range(1, input.shape[1] - 5):  # leave last inputs zero so signal can be reproduced despite delay
+            input[0, t] = rs.uniform(-a, a)
+
+        wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
+        wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
+
+        wc.params["exc_ext"] = np.vstack([input, zero_input])
+        wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
+
+        zeroinit = np.zeros((5))
+
+        wc.params["exc_init"] = np.vstack([zeroinit, zeroinit])
+        wc.params["inh_init"] = np.vstack([zeroinit, zeroinit])
+
+        wc.run()
+
+        self.assertTrue(np.amax(wc.params.Dmat_ndt) >= 1)
+
+        target = np.concatenate(
+            (
+                np.stack(
+                    (wc.params["exc_init"][:, -1], wc.params["inh_init"][:, -1]),
+                    axis=1,
+                )[:, :, np.newaxis],
+                np.stack((wc.exc, wc.inh), axis=1),
+            ),
+            axis=2,
+        )
+
+        wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
+        wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
+
+        wc_controlled = oc_wc.OcWc(
+            wc,
+            target,
+            w_p=1,
+            w_2=0,
+            control_matrix=control_mat,
+            precision_matrix=prec_mat,
+        )
+
+        dmat_oc = wc_controlled.Dmat_ndt
+        self.assertTrue((wc.params.Dmat_ndt == dmat_oc).all())
+
+        control_coincide = False
+
+        iterations = 4000
+        for i in range(100):
+            wc_controlled.optimize(iterations)
+            control = wc_controlled.control
+
+            # last few entries of adjoint_state[0,0,:] are zero
+            self.assertTrue(
+                np.amax(
+                    np.abs(wc_controlled.adjoint_state[0, 0, -np.around(np.amax(wc.params.Dmat_ndt)).astype(int) :])
+                )
+                == 0.0
+            )
+
+            c_diff_max = np.amax(np.abs(control[0, 0, :] - input[0, :]))
+            print(c_diff_max)
+            print(control[0, 0, :])
+            print(input[0, :])
+            print(".............")
+            if c_diff_max < LIMIT_DIFF:
+                control_coincide = True
+                break
+
+        self.assertTrue(control_coincide)
 
 
 if __name__ == "__main__":

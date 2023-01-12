@@ -203,13 +203,28 @@ class OcFhn(OC):
 
     def get_xs(self):
         """Stack the initial condition with the simulation results for both populations."""
-        return np.concatenate(
-            (
-                np.concatenate((self.model.params["xs_init"], self.model.params["ys_init"]), axis=1)[:, :, np.newaxis],
-                np.stack((self.model.x, self.model.y), axis=1),
-            ),
-            axis=2,
-        )
+        if self.model.params["xs_init"].shape[1] == 1:
+            p1 = np.concatenate((self.model.params["xs_init"], self.model.params["ys_init"]), axis=1)[:, :, np.newaxis]
+            xs = np.concatenate(
+                (
+                    p1,
+                    np.stack((self.model.x, self.model.y), axis=1),
+                ),
+                axis=2,
+            )
+        else:
+            p1 = np.stack((self.model.params["xs_init"][:, -1], self.model.params["ys_init"][:, -1]), axis=1)[
+                :, :, np.newaxis
+            ]
+            xs = np.concatenate(
+                (
+                    p1,
+                    np.stack((self.model.x, self.model.y), axis=1),
+                ),
+                axis=2,
+            )
+
+        return xs
 
     def update_input(self):
         """Update the parameters in self.model according to the current control such that self.simulate_forward

@@ -7,8 +7,8 @@ from neurolib.utils.stimulus import ZeroInput
 from neurolib.optimal_control import oc_fhn
 from numpy.random import RandomState, SeedSequence, MT19937
 
-global limit_diff
-limit_diff = 1e-4
+global LIMIT_DIFF
+LIMIT_DIFF = 1e-4
 
 
 class TestFHN(unittest.TestCase):
@@ -85,7 +85,7 @@ class TestFHN(unittest.TestCase):
                         np.abs(control[0, 1, :] - input[0, :]),
                     ]
 
-                if np.amax(c_diff) < limit_diff:
+                if np.amax(c_diff) < LIMIT_DIFF:
                     control_coincide = True
                     break
 
@@ -206,7 +206,7 @@ class TestFHN(unittest.TestCase):
                             )
 
                             control_coincide = False
-                            lim = limit_diff
+                            lim = LIMIT_DIFF
                             if p_channel == 1 or c_channel == 1:
                                 lim *= 4000  # for internal purposes: 1000, for simple testing: 4000
 
@@ -220,14 +220,106 @@ class TestFHN(unittest.TestCase):
                                     control_coincide = True
                                     break
 
-                                # TODO: remove when step size function is improved
-                                mean_step = np.mean(fhn_controlled.step_sizes_history[:-1][-iterations:])
-                                if mean_step > 0.75 * fhn_controlled.step:
-                                    fhn_controlled.step *= 2.0
-                                elif mean_step < 0.5 * fhn_controlled.step:
-                                    fhn_controlled.step /= 2.0
-
                             self.assertTrue(control_coincide)
+
+    # tests if the control from OC computation coincides with a random input used for target forward-simulation
+    # delayed network case
+    def test_twonode_delay_oc(self):
+        print("Test OC in delayed 2-node network")
+
+        duration = 1.0
+        a = 5.0
+
+        delay = np.random.uniform(0.1, 0.4)
+
+        cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [delay, 0.0]])
+
+        fhn = FHNModel(Cmat=cmat, Dmat=dmat)
+
+        prec_mat = np.zeros((fhn.params.N, len(fhn.output_vars)))
+        control_mat = np.zeros((fhn.params.N, len(fhn.state_vars)))
+
+        control_mat[0, 0] = 1.0
+        prec_mat[1, 0] = 1.0
+
+        fhn.params.duration = duration
+
+        # change parameters for faster convergence
+        fhn.params.K_gl = 1.0
+        # change parameters for shorter test simulation time
+        fhn.params.signalV = 1.0
+
+        zero_input = ZeroInput().generate_input(duration=fhn.params.duration + fhn.params.dt, dt=fhn.params.dt)
+        input = np.copy(zero_input)
+
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+
+        for t in range(1, input.shape[1] - 7):  # leave last inputs zero so signal can be reproduced despite delay
+            input[0, t] = rs.uniform(-a, a)
+
+        fhn.params["y_ext"] = np.vstack([zero_input, zero_input])
+        fhn.params["x_ext"] = np.vstack([zero_input, zero_input])
+
+        fhn.params["x_ext"] = np.vstack([input, zero_input])
+        fhn.params["y_ext"] = np.vstack([zero_input, zero_input])
+
+        zeroinit = np.zeros((5))
+
+        fhn.params["xs_init"] = np.vstack([zeroinit, zeroinit])
+        fhn.params["ys_init"] = np.vstack([zeroinit, zeroinit])
+
+        fhn.run()
+
+        self.assertTrue(np.amax(fhn.params.Dmat_ndt) >= 1)
+
+        target = np.concatenate(
+            (
+                np.stack(
+                    (fhn.params["xs_init"][:, -1], fhn.params["ys_init"][:, -1]),
+                    axis=1,
+                )[:, :, np.newaxis],
+                np.stack((fhn.x, fhn.y), axis=1),
+            ),
+            axis=2,
+        )
+
+        fhn.params["y_ext"] = np.vstack([zero_input, zero_input])
+        fhn.params["x_ext"] = np.vstack([zero_input, zero_input])
+
+        fhn_controlled = oc_fhn.OcFhn(
+            fhn,
+            target,
+            w_p=1,
+            w_2=0,
+            control_matrix=control_mat,
+            precision_matrix=prec_mat,
+        )
+
+        dmat_oc = fhn_controlled.Dmat_ndt
+        self.assertTrue((fhn.params.Dmat_ndt == dmat_oc).all())
+
+        control_coincide = False
+
+        iterations = 4000
+        for i in range(100):
+            fhn_controlled.optimize(iterations)
+            control = fhn_controlled.control
+
+            # last few entries of adjoint_state[0,0,:] are zero
+            self.assertTrue(
+                np.amax(
+                    np.abs(fhn_controlled.adjoint_state[0, 0, -np.around(np.amax(fhn.params.Dmat_ndt)).astype(int) :])
+                )
+                == 0.0
+            )
+
+            c_diff_max = np.amax(np.abs(control[0, 0, :] - input[0, :]))
+            if c_diff_max < LIMIT_DIFF:
+                control_coincide = True
+                break
+
+        self.assertTrue(control_coincide)
 
     # test whether the control matrix restricts the computed control output
     def test_control_matrix(self):
@@ -337,7 +429,7 @@ class TestFHN(unittest.TestCase):
             control = fhn_controlled.control
 
             c_max = np.amax(np.abs(control))
-            if c_max < limit_diff:
+            if c_max < LIMIT_DIFF:
                 control_is_zero = True
                 break
 
@@ -390,7 +482,7 @@ class TestFHN(unittest.TestCase):
             control = fhn_controlled.control
 
             c_max = np.amax(np.abs(control))
-            if c_max < limit_diff:
+            if c_max < LIMIT_DIFF:
                 control_is_zero = True
                 break
 
@@ -473,6 +565,45 @@ class TestFHN(unittest.TestCase):
 
         fhn_controlled.optimize(1)
         self.assertTrue(np.max(np.abs(fhn_controlled.control) <= maximum_control_strength))
+
+    def test_get_xs(self):
+        # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
+        # Do one optimization step.
+
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        fhn = FHNModel(Cmat=cmat, Dmat=dmat)
+        duration = 1.0
+        fhn.params.duration = duration
+
+        zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
+        input = np.copy(zero_input)
+
+        for t in range(input.shape[1]):
+            input[0, t] = np.sin(t)
+
+        fhn.params["y_ext"] = np.vstack([input, input])
+        fhn.params["x_ext"] = np.vstack([-input, 1.1 * input])
+
+        initind = 5
+
+        zeroinit = np.zeros((initind))
+
+        fhn.params["xs_init"] = np.vstack([zeroinit, zeroinit])
+        fhn.params["ys_init"] = np.vstack([zeroinit, zeroinit])
+
+        target = np.ones((2, 2, input.shape[1]))
+
+        fhn_controlled = oc_fhn.OcFhn(
+            fhn,
+            target,
+            w_p=1,
+            w_2=1,
+        )
+
+        fhn_controlled.optimize(1)
+        xs = fhn_controlled.get_xs()
+        self.assertTrue(xs.shape == target.shape)
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ def plot_oc_singlenode(duration, dt, state, target, control, orig_input, cost_ar
     ax[0].plot(t_array, state[0, 1, :], label="y", color=color_y)
     ax[0].plot(t_array, target[0, 0, :], linestyle="dashed", label="Target x", color=color_x)
     ax[0].plot(t_array, target[0, 1, :], linestyle="dashed", label="Target y", color=color_y)
-    ax[0].legend()
+    ax[0].legend(loc="upper right")
     ax[0].set_title("Activity without stimulation and target activity")
 
     # Plot the target control signal (dashed line) and "initial" zero control signal
@@ -31,7 +31,7 @@ def plot_oc_singlenode(duration, dt, state, target, control, orig_input, cost_ar
     ax[1].plot(t_array, control[0, 1, :], label="stimulation y", color=color_y)
     ax[1].plot(t_array, orig_input[0, 0, :], linestyle="dashed", label="input x", color=color_x)
     ax[1].plot(t_array, orig_input[0, 1, :], linestyle="dashed", label="input y", color=color_y)
-    ax[1].legend()
+    ax[1].legend(loc="upper right")
     ax[1].set_title("Active stimulation and input stimulation")
 
     ax[2].plot(cost_array)
@@ -65,7 +65,7 @@ def plot_oc_network(
         ax[0, n].plot(t_array, state[n, 1, :], label="y", color=color_y)
         ax[0, n].plot(t_array, target[n, 0, :], linestyle="dashed", label="Target x", color=color_x)
         ax[0, n].plot(t_array, target[n, 1, :], linestyle="dashed", label="Target y", color=color_y)
-        ax[0, n].legend()
+        ax[0, n].legend(loc="upper right")
         ax[0, n].set_title(f"Activity and target, node %s" % (n))
 
         # Plot the target control signal (dashed line) and "initial" zero control signal
@@ -73,7 +73,7 @@ def plot_oc_network(
         ax[1, n].plot(t_array, control[n, 1, :], label="stimulation y", color=color_y)
         ax[1, n].plot(t_array, orig_input[n, 0, :], linestyle="dashed", label="input x", color=color_x)
         ax[1, n].plot(t_array, orig_input[n, 1, :], linestyle="dashed", label="input y", color=color_y)
-        ax[1, n].legend()
+        ax[1, n].legend(loc="upper right")
         ax[1, n].set_title(f"Stimulation and input, node %s" % (n))
 
     ax[2, 0].plot(cost_array)
