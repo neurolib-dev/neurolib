@@ -286,7 +286,6 @@ class OcFhn(OC):
         """
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
-
         duh = self.Duh()
 
         return compute_gradient(self.N, self.dim_out, self.T, fk, self.adjoint_state, self.control_matrix, duh)

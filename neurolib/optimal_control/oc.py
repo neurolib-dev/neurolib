@@ -191,7 +191,7 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
             # if n in []:
             #    print(ind, der)
             for n2 in range(N):
-                if ind + 1 + dmat_ndt[n, n2] > T - 2:
+                if ind + 1 + dmat_ndt[n2, n] > T - 2:
                     continue
                 for k in range(len(der)):
                     for i in range(len(der)):
@@ -199,8 +199,6 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
                             adjoint_state[n2, i, ind + 1 + dmat_ndt[n2, n]]
                             * hx_nw[n2, n, ind + 1 + dmat_ndt[n2, n]][i, k]
                         )
-            # if n in []:
-            #    print(ind, der)
             adjoint_state[n, :, ind] = adjoint_state[n, :, ind + 1] - der * dt
 
     return adjoint_state
@@ -580,6 +578,8 @@ class OC:
                 print(f"Diverging model output, decrease step size to {step}.")
                 self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
                 self.update_input()
+
+                break
             else:
                 break
         if noisy:
@@ -656,9 +656,9 @@ class OC:
         for i in range(1, n_max_iterations + 1):
             self.gradient = self.compute_gradient()
 
-            # import matplotlib.pyplot as plt
-            # plt.plot(grad[0, 0, :])
-            # plt.show()
+            if np.isnan(self.gradient).any():
+                print("nan in gradient, break")
+                break
 
             if self.zero_step_encountered:
                 print(f"Converged in iteration %s with cost %s" % (i, cost))
