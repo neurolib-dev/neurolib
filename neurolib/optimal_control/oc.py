@@ -8,7 +8,6 @@ import copy
 
 def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, cost_gradient):
     """Find a step size which leads to improved cost given the gradient. The step size is iteratively decreased.
-
         The control-inputs are updated in place according to the found step size via the
         "controlled_model.update_input()" call.
 
@@ -72,7 +71,6 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
 def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost_gradient):
     """Find the largest step size which leads to the biggest improvement of cost given the gradient. The step size is
         iteratively increased.
-
         The control-inputs are updated in place according to the found step size via the
         "controlled_model.update_input()" call.
 
@@ -152,25 +150,24 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
     return step, counter
 
 
-# compared loops against "@", "np.matmul" and "np.dot": loops ~factor 3.5 faster
 @numba.njit
 def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
     """Backwards integration of the adjoint state.
-    :param hx: dh/dx    Jacobians for each time step.
-    :type hx:           np.ndarray of shape Tx2x2
+
+    :param hx: dh/dx    Jacobians of systems dynamics wrt. to 'state_vars' for each time step.
+    :type hx:           np.ndarray
     :param hx_nw:       Jacobians for each time step for the network coupling.
     :type hx_nw:        np.ndarray
     :param fx: df/dx    Derivative of cost function wrt. to systems dynamics.
     :type fx:           np.ndarray
-    :param state_dim:   Dimensions of state (NxVxT).
+    :param state_dim:   Dimensions of state (N, V, T).
     :type state_dim:    tuple
     :param dt:          Time resolution of integration.
     :type dt:           float
-    :param N:           number of nodes in the network
+    :param N:           Number of nodes in the network.
     :type N:            int
-    :param T:           length of simulation (time dimension)
+    :param T:           Length of simulation (time dimension).
     :type T:            int
-
     :return:            Adjoint state.
     :rtype:             np.ndarray of shape `state_dim`
     """
@@ -179,37 +176,35 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T):
     fx_fullstate = np.zeros(state_dim)
     fx_fullstate[:, :2, :] = fx.copy()
 
-    for ind in range(T - 2, -1, -1):
+    for t in range(T - 2, -1, -1):
         for n in range(N):
-            der = fx_fullstate[n, :, ind + 1].copy()
+            der = fx_fullstate[n, :, t + 1].copy()
             for k in range(len(der)):
                 for i in range(len(der)):
-                    der[k] += adjoint_state[n, i, ind + 1] * hx[n, ind + 1][i, k]
+                    der[k] += adjoint_state[n, i, t + 1] * hx[n, t + 1][i, k]
             for n2 in range(N):
                 for k in range(len(der)):
                     for i in range(len(der)):
-                        der[k] += adjoint_state[n2, i, ind + 1] * hx_nw[n2, n, ind + 1][i, k]
-            adjoint_state[n, :, ind] = adjoint_state[n, :, ind + 1] - der * dt
+                        der[k] += adjoint_state[n2, i, t + 1] * hx_nw[n2, n, t + 1][i, k]
+            adjoint_state[n, :, t] = adjoint_state[n, :, t + 1] - der * dt
 
     return adjoint_state
 
 
 @numba.njit
 def update_control_with_limit(control, step, gradient, u_max):
-    """Computes the updated control signal. The absolute values of the new control are bounded by +/- u_max.
+    """Computes the updated control signal. The absolute values of the new control are bounded by +/- 'u_max'. If
+       'u_max' is 'None', no limit is applied.
+
     :param control:         N x V x T array. Control signals.
     :type control:          np.ndarray
-
     :param step:            Step size along the gradients.
     :type step:             float
-
     :param gradient:        N x V x T array of the gradients.
     :type gradient:         np.ndarray
-
     :param u_max:           Maximum absolute value allowed for the strength of the control signal.
     :type u_max:            float or None
-
-    :return:                N x V x T array containing the new control signal (updated according to 'step' and
+    :return:                N x V x T array containing the new control signal, updated according to 'step' and
                             'gradient' with the maximum absolute values being limited by 'u_max'.
     :rtype:                 np.ndarray
     """
@@ -229,10 +224,10 @@ def update_control_with_limit(control, step, gradient, u_max):
     return control_new
 
 
-# @numba.njit  # ToDo: check why tests suddenly fail when jitted.
 def convert_interval(interval, array_length):
     """Turn indices into positive values only. It is assumed in any case, that the first index defines the start and
        the second the stop index, both inclusive.
+
     :param interval:    Tuple containing start and stop index. May contain negative indices or 'None'.
     :type interval:     tuple
     :param array_length:    Length of the array in the dimension, along which the 'interval' is defining the slice.
@@ -242,21 +237,23 @@ def convert_interval(interval, array_length):
     :rtype:             tuple
     """
 
-    if interval[0] is None:
-        interval_0_new = 0
-    elif interval[0] < 0:
-        assert interval[0] > -array_length, "Interval is not specified in valid range."
-        interval_0_new = array_length + interval[0]  # interval entry is negative
-    else:
-        interval_0_new = interval[0]
+    (interval_0, interval_1) = interval
 
-    if interval[1] is None:
-        interval_1_new = array_length
-    elif interval[1] < 0:
-        assert interval[1] > -array_length, "Interval is not specified in valid range."
-        interval_1_new = array_length + interval[1]  # interval entry is negative
+    if interval_0 is None:
+        interval_0_new = 0
+    elif interval_0 < 0:
+        assert interval_0 > -array_length, "Interval is not specified in valid range."
+        interval_0_new = array_length + interval_0  # interval entry is negative
     else:
-        interval_1_new = interval[1]
+        interval_0_new = interval_0
+
+    if interval_1 is None:
+        interval_1_new = array_length
+    elif interval_1 < 0:
+        assert interval_1 > -array_length, "Interval is not specified in valid range."
+        interval_1_new = array_length + interval_1  # interval entry is negative
+    else:
+        interval_1_new = interval_1
 
     assert interval_0_new < interval_1_new, "Order of indices for interval is not valid."
     assert interval_1_new <= array_length, "Interval is not specified in valid range."
@@ -283,47 +280,36 @@ class OC:
         """
         Base class for optimal control. Model specific methods should be implemented in derived class for each model.
 
-        :param model:       An instance of neurolib's Model-class. Parameters like ".duration" and methods like ".run()"
+        :param model:       An instance of neurolib's Model-class. Parameters like '.duration' and methods like '.run()'
                             are used within the optimal control.
         :type model:        neurolib.models.model
-
-        :param target:      2xT matrix with [0, :] target of x-population and [1, :] target of y-population.
+        :param target:      Target time series of controllable variables.
         :type target:       np.ndarray
-
         :param w_p:         Weight of the precision cost term, defaults to 1.
         :type w_p:          float, optional
-
         :param w_2:         Weight of the L2 cost term, defaults to 1.
         :type w_2:          float, optional
-
         :param maximum_control_strength:    Maximum absolute value a control signal can take. No limitation of the
                                             absolute control strength if 'None'. Defaults to None.
         :type:                              float or None, optional
-
         :param print_array: Array of optimization-iteration-indices (starting at 1) in which cost is printed out.
                             Defaults to empty list `[]`.
         :type print_array:  list, optional
-
         :param precision_cost_interval: (t_start, t_end). Indices of start and end point (both inclusive) of the
                                         time interval in which the precision cost is evaluated. Default is full time
                                         series. Defaults to (None, None).
         :type precision_cost_interval:  tuple, optional
-
-        :param precision_matrix: NxV binary matrix that defines nodes and channels of precision measurement, defaults to
-                                 None
+        :param precision_matrix: N x V binary matrix that defines nodes and channels of precision measurement, defaults
+                                 to None.
         :type precision_matrix:  np.ndarray
-
-        :param control_matrix:  Binary matrix that defines nodes and variables where control inputs are active, defaults
-                                to None.
-        :type control_matrix:   np.ndarray of shape N x V
-
+        :param control_matrix:   N x V Binary matrix that defines nodes and variables where control inputs are active,
+                                 defaults to None.
+        :type control_matrix:    np.ndarray
         :param M:                   Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
         :type M:                    int, optional
-
         :param M_validation:        Number of noise realizations for validation (only used in stochastic case, M>1).
                                     Defaults to 0.
         :type M_validation:         int, optional
-
         :param validate_per_step:   True for validation in each iteration of the optimization, False for
                                     validation only after final optimization iteration (only used in stochastic case,
                                     M>1). Defaults to False.
@@ -350,9 +336,9 @@ class OC:
         if self.N > 1:  # check that coupling matrix has zero diagonal
             assert np.all(np.diag(self.model.Cmat) == 0.0)
         elif self.N == 1:
-            if type(self.model.Cmat) == type(None):
+            if isinstance(self.model.Cmat, type(None)):
                 self.model.Cmat = np.zeros((self.N, self.N))
-            if type(self.model.Dmat) == type(None):
+            if isinstance(self.model.Dmat, type(None)):
                 self.model.Dmat = np.zeros((self.N, self.N))
 
         self.Dmat_ndt = np.around(self.model.Dmat / self.model.params.dt).astype(int)
@@ -435,32 +421,30 @@ class OC:
 
     @abc.abstractmethod
     def get_xs(self):
-        """Stack the initial condition with the simulation results for both populations."""
+        """Stack the initial condition with the simulation results for controllable state variables."""
         pass
 
     def simulate_forward(self):
-        """Updates self.xs in accordance to the current self.control.
-        Results can be accessed with self.get_xs()
+        """Updates 'state_vars' of 'self.model' in accordance to the current 'self.control'. Results for the controllable state
+        variables can be accessed with self.get_xs()
         """
         self.model.run()
 
     @abc.abstractmethod
     def update_input(self):
-        """Update the parameters in self.model according to the current control such that self.simulate_forward
+        """Update the parameters in 'self.model' according to the current control such that self.simulate_forward
         operates with the appropriate control signal.
         """
         pass
 
     @abc.abstractmethod
     def Dxdot(self):
-        """2x2 Jacobian of systems dynamics wrt. to change of systems variables."""
-        # ToDo: model dependent
+        """V x V Jacobian of systems dynamics wrt. to change of all 'state_vars'."""
         pass
 
     @abc.abstractmethod
     def Duh(self):
-        """Jacobian of systems dynamics wrt. to I_ext (external control input)"""
-        # ToDo: model dependent
+        """Jacobian of systems dynamics wrt. to external inputs (control signals) to all 'state_vars'."""
         pass
 
     def compute_total_cost(self):
@@ -477,39 +461,36 @@ class OC:
             self.precision_cost_interval,
         )
         energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2, dt=self.dt)
-        return precision_cost + energy_cost
+        return precision_cost + energy_cost  # Further cost terms can be added here. Add corresponding derivatives
+        # elsewhere accordingly.
 
     @abc.abstractmethod
     def compute_gradient(self):
-        """Du @ fk + adjoint_k.T @ Du @ h"""
-        # ToDo: model dependent
+        """Compute the gradient of the total cost wrt. to the control signals. This is achieved by first, solving the
+        adjoint equation backwards in time. Second, derivatives of the cost wrt. to explicit control variables are
+        evaluated as well as the Jacobians of the dynamics wrt. to explicit control. Then the decent direction /
+        gradient of the cost wrt. to control (in its explicit form AND IMPLICIT FORM) is computed.
+        """
         pass
 
     @abc.abstractmethod
     def compute_hx(self):
-        """Jacobians for each time step.
-
-        :return: Array of length self.T containing 2x2-matrices
-        :rtype: np.ndarray
-        """
+        """Jacobians of model dynamics wrt. to its 'state_vars' at each time step."""
         pass
 
     @abc.abstractmethod
     def compute_hx_nw(self):
-        """Jacobians for each time step for the network coupling
-
-        :return: (N x self.T x (2x2) array
-        :rtype: np.ndarray
-        """
+        """Jacobians for each time step for the network coupling."""
         pass
 
     def solve_adjoint(self):
         """Backwards integration of the adjoint state."""
+
         hx = self.compute_hx()
         hx_nw = self.compute_hx_nw()
 
-        # ToDo: generalize, not only precision cost
-        fx = cost_functions.derivative_precision_cost(
+        # Derivative of cost wrt. to controllable 'state_vars'. Contributions of other costs might be added here.
+        df_dx = cost_functions.derivative_precision_cost(
             self.target,
             self.get_xs(),
             self.w_p,
@@ -517,7 +498,7 @@ class OC:
             self.precision_cost_interval,
         )
 
-        self.adjoint_state = solve_adjoint(hx, hx_nw, fx, self.state_dim, self.dt, self.N, self.T)
+        self.adjoint_state = solve_adjoint(hx, hx_nw, df_dx, self.state_dim, self.dt, self.N, self.T)
 
     def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):
         """Iteratively decrease step size until cost is improved."""
@@ -529,10 +510,10 @@ class OC:
 
     def step_size(self, cost_gradient):
         """Adaptively choose a step size for control update.
-            Uses "cost_gradient" to avoid unnecessary re-computations (also of the adjoint state).
-        :param cost_gradient:   Gradient of the total cost wrt. to control.
-        :type cost_gradient:    np.ndarray of shape N x V x T
-        :return:    Step size that got multiplied with the cost_gradient.
+
+        :param cost_gradient:   N x V x T gradient of the total cost wrt. to control.
+        :type cost_gradient:    np.ndarray
+        :return:    Step size that got multiplied with the 'cost_gradient'.
         :rtype:     float
         """
         if self.M > 1:
@@ -561,7 +542,7 @@ class OC:
             self.simulate_forward()
 
             if np.isnan(self.get_xs()).any():  # Detect numerical instability due to too large control update.
-                step *= self.factor_down**2    # Double the step for faster search of stable region.
+                step *= self.factor_down**2  # Double the step for faster search of stable region.
                 self.step = step
                 print(f"Diverging model output, decrease step size to {step}.")
                 self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
@@ -602,7 +583,6 @@ class OC:
     def optimize(self, n_max_iterations):
         """Optimization method
             Choose deterministic (M=1 noise realizations) or stochastic (M>1 noise realizations) approach.
-
             The control-inputs are updated in place throughout the optimization.
 
         :param n_max_iterations: Maximum number of iterations of gradient descent.
@@ -740,7 +720,10 @@ class OC:
         print(f"Final cost validated with %s noise realizations : %s" % (self.M_validation, self.cost_validation))
 
     def compute_cost_noisy(self, M):
-        """Computes the average cost from M_validation noise realizations."""
+        """Computes the average cost from 'M_validation' noise realizations.
+
+        :rtype: float
+        """
         cost_validation = 0.0
         m = 0
         while m < M:
