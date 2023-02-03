@@ -338,33 +338,35 @@ class OcWc(OC):
         self.control = np.zeros((self.background.shape))
 
     def get_xs_delay(self):
-        """Stack the initial condition (last index) with the simulation results, with the initial contidion (all except last index) for both populations."""
+        """Concatenates the initial conditions with simulated values and pads delay contributions at end. In the models
+        timeIntegration, these values can be accessed in a circular fashion in the time-indexing.
+        """
 
-        if self.model.params["exc_init"].shape[1] == 1:
-            p1 = np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
+        if self.model.params["exc_init"].shape[1] == 1:  # no delay
+            xs_begin = np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
                 :, :, np.newaxis
             ]
             xs = np.concatenate(
                 (
-                    p1,
+                    xs_begin,
                     np.stack((self.model.exc, self.model.inh), axis=1),
                 ),
                 axis=2,
             )
         else:
-            p1 = np.stack((self.model.params["exc_init"][:, -1], self.model.params["inh_init"][:, -1]), axis=1)[
+            xs_begin = np.stack((self.model.params["exc_init"][:, -1], self.model.params["inh_init"][:, -1]), axis=1)[
                 :, :, np.newaxis
             ]
-            p3 = np.stack((self.model.params["exc_init"][:, :-1], self.model.params["inh_init"][:, :-1]), axis=1)
-            xs0 = np.concatenate(
+            xs_end = np.stack((self.model.params["exc_init"][:, :-1], self.model.params["inh_init"][:, :-1]), axis=1)
+            xs = np.concatenate(
                 (
-                    p1,
+                    xs_begin,
                     np.stack((self.model.exc, self.model.inh), axis=1),
                 ),
                 axis=2,
             )
-            xs = np.concatenate(
-                (xs0, p3),
+            xs = np.concatenate(  # initial conditions for delay-steps are concatenated to the end of the array
+                (xs, xs_end),
                 axis=2,
             )
 
@@ -373,23 +375,23 @@ class OcWc(OC):
     def get_xs(self):
         """Stack the initial condition with the simulation results for both populations."""
         if self.model.params["exc_init"].shape[1] == 1:
-            p1 = np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
+            xs_begin = np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
                 :, :, np.newaxis
             ]
             xs = np.concatenate(
                 (
-                    p1,
+                    xs_begin,
                     np.stack((self.model.exc, self.model.inh), axis=1),
                 ),
                 axis=2,
             )
         else:
-            p1 = np.stack((self.model.params["exc_init"][:, -1], self.model.params["inh_init"][:, -1]), axis=1)[
+            xs_begin = np.stack((self.model.params["exc_init"][:, -1], self.model.params["inh_init"][:, -1]), axis=1)[
                 :, :, np.newaxis
             ]
             xs = np.concatenate(
                 (
-                    p1,
+                    xs_begin,
                     np.stack((self.model.exc, self.model.inh), axis=1),
                 ),
                 axis=2,
@@ -517,7 +519,5 @@ class OcWc(OC):
         self.solve_adjoint()
         fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
         duh = self.Duh()
-
-        # print("duh = ", duh[0, 0, 0])
 
         return compute_gradient(self.N, self.dim_out, self.T, fk, self.adjoint_state, self.control_matrix, duh)

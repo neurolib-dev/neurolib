@@ -179,13 +179,13 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     fx_fullstate = np.zeros(state_dim)
     fx_fullstate[:, :2, :] = fx.copy()
 
-    for ind in range(T - 2, -1, -1):
-        for n in range(N):
+    for ind in range(T - 2, -1, -1):  # backwards iteration including 0th index
+        for n in range(N):  # iterate through nodes
             der = fx_fullstate[n, :, ind + 1].copy()
             for k in range(len(der)):
                 for i in range(len(der)):
                     der[k] += adjoint_state[n, i, ind + 1] * hx[n, ind + 1][i, k]
-            for n2 in range(N):
+            for n2 in range(N):  # iterate through connectivity of current node "n"
                 if ind + 1 + dmat_ndt[n2, n] > T - 2:
                     continue
                 for k in range(len(der)):

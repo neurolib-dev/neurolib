@@ -228,10 +228,12 @@ class TestWC(unittest.TestCase):
     def test_twonode_delay_oc(self):
         print("Test OC in delayed 2-node network")
 
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+
         duration = 0.7
         a = 5.0
 
-        delay = np.random.uniform(0.1, 0.4)
+        delay = rs.uniform(0.1, 0.4)
 
         cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [delay, 0.0]])
@@ -254,13 +256,8 @@ class TestWC(unittest.TestCase):
         zero_input = ZeroInput().generate_input(duration=wc.params.duration + wc.params.dt, dt=wc.params.dt)
         input = np.copy(zero_input)
 
-        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
-
         for t in range(1, input.shape[1] - 5):  # leave last inputs zero so signal can be reproduced despite delay
             input[0, t] = rs.uniform(-a, a)
-
-        wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
-        wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
 
         wc.params["exc_ext"] = np.vstack([input, zero_input])
         wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
@@ -272,7 +269,7 @@ class TestWC(unittest.TestCase):
 
         wc.run()
 
-        self.assertTrue(np.amax(wc.params.Dmat_ndt) >= 1)
+        self.assertTrue(np.amax(wc.params.Dmat_ndt) >= 1)  # Relates to the given "delay" and time-discretization.
 
         target = np.concatenate(
             (
@@ -297,8 +294,7 @@ class TestWC(unittest.TestCase):
             precision_matrix=prec_mat,
         )
 
-        dmat_oc = wc_controlled.Dmat_ndt
-        self.assertTrue((wc.params.Dmat_ndt == dmat_oc).all())
+        self.assertTrue((wc.params.Dmat_ndt == wc_controlled.Dmat_ndt).all())
 
         control_coincide = False
 

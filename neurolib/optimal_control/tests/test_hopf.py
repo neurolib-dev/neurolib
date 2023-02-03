@@ -225,10 +225,12 @@ class TestHopf(unittest.TestCase):
     def test_twonode_delay_oc(self):
         print("Test OC in delayed 2-node network")
 
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+
         duration = 1.0
         a = 5.0
 
-        delay = np.random.uniform(0.1, 0.4)
+        delay = rs.uniform(0.1, 0.4)
 
         cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [delay, 0.0]])
@@ -251,13 +253,8 @@ class TestHopf(unittest.TestCase):
         zero_input = ZeroInput().generate_input(duration=hopf.params.duration + hopf.params.dt, dt=hopf.params.dt)
         input = np.copy(zero_input)
 
-        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
-
         for t in range(1, input.shape[1] - 7):  # leave last inputs zero so signal can be reproduced despite delay
             input[0, t] = rs.uniform(-a, a)
-
-        hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
-        hopf.params["x_ext"] = np.vstack([zero_input, zero_input])
 
         hopf.params["x_ext"] = np.vstack([input, zero_input])
         hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
@@ -269,7 +266,7 @@ class TestHopf(unittest.TestCase):
 
         hopf.run()
 
-        self.assertTrue(np.amax(hopf.params.Dmat_ndt) >= 1)
+        self.assertTrue(np.amax(hopf.params.Dmat_ndt) >= 1)  # Relates to the given "delay" and time-discretization.
 
         target = np.concatenate(
             (
@@ -294,8 +291,7 @@ class TestHopf(unittest.TestCase):
             precision_matrix=prec_mat,
         )
 
-        dmat_oc = hopf_controlled.Dmat_ndt
-        self.assertTrue((hopf.params.Dmat_ndt == dmat_oc).all())
+        self.assertTrue((hopf.params.Dmat_ndt == hopf_controlled.Dmat_ndt).all())
 
         control_coincide = False
 
