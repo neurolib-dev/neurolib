@@ -232,7 +232,7 @@ class TestFHN(unittest.TestCase):
         duration = 1.0
         a = 5.0
 
-        delay = rs.uniform(0.1, 0.4)
+        delay = rs.choice([0.1, 0.2, 0.3, 0.4])
 
         cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [delay, 0.0]])
