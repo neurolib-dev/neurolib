@@ -230,10 +230,10 @@ class TestWC(unittest.TestCase):
 
         rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
-        duration = 0.7
+        duration = 0.8
         a = 5.0
 
-        delay = rs.uniform(0.1, 0.4)
+        delay = rs.choice([0.1, 0.2, 0.3, 0.4])
 
         cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [delay, 0.0]])
@@ -256,7 +256,7 @@ class TestWC(unittest.TestCase):
         zero_input = ZeroInput().generate_input(duration=wc.params.duration + wc.params.dt, dt=wc.params.dt)
         input = np.copy(zero_input)
 
-        for t in range(1, input.shape[1] - 5):  # leave last inputs zero so signal can be reproduced despite delay
+        for t in range(1, input.shape[1] - 6):  # leave last inputs zero so signal can be reproduced despite delay
             input[0, t] = rs.uniform(-a, a)
 
         wc.params["exc_ext"] = np.vstack([input, zero_input])
@@ -312,10 +312,6 @@ class TestWC(unittest.TestCase):
             )
 
             c_diff_max = np.amax(np.abs(control[0, 0, :] - input[0, :]))
-            print(c_diff_max)
-            print(control[0, 0, :])
-            print(input[0, :])
-            print(".............")
             if c_diff_max < LIMIT_DIFF:
                 control_coincide = True
                 break
