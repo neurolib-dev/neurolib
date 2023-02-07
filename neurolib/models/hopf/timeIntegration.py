@@ -194,18 +194,12 @@ def timeIntegration_njit_elementwise(
             # diffusive coupling
             if coupling == 0:
                 for l in range(N):
-                    xs_input_d[no] += (
-                        K_gl
-                        * Cmat[no, l]
-                        * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
-                    )
+                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1] - ys[no, i - 1])
             # additive coupling
             elif coupling == 1:
                 for l in range(N):
-                    xs_input_d[no] += (
-                        K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
-                    )
+                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1])
 
             # Stuart-Landau / Hopf Oscillator
@@ -229,15 +223,91 @@ def timeIntegration_njit_elementwise(
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
             # Ornstein-Uhlenbeck process
-            x_ou[no] = (
-                x_ou[no]
-                + (x_ou_mean - x_ou[no]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_xs[no]
-            )  # mV/ms
-            y_ou[no] = (
-                y_ou[no]
-                + (y_ou_mean - y_ou[no]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_ys[no]
-            )  # mV/ms
+            x_ou[no] = x_ou[no] + (x_ou_mean - x_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
+            y_ou[no] = y_ou[no] + (y_ou_mean - y_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
 
     return t, xs, ys, x_ou, y_ou
+
+
+@numba.njit
+def jacobian_hopf(a, w, V, x, y):
+    """Jacobian of systems dynamics for Hopf model.
+    :param a:   Bifrucation parameter
+    :type a :   float
+    :param w:   Oscillation frequency parameter.
+    :type w:    float
+    :param V:   Number of state variables.
+    :type V:    int
+    :param x:   Activity of x-population at this time instance.
+    :type x:    float
+    :param y:   Activity of y-population at this time instance.
+    :type y:    float
+    """
+    jacobian = np.zeros((V, V))
+
+    jacobian[0, :2] = [-a + 3 * x**2 + y**2, 2 * x * y + w]
+    jacobian[1, :2] = [2 * x * y - w, -a + x**2 + 3 * y**2]
+
+    return jacobian
+
+
+@numba.njit
+def compute_hx(a, w, N, V, T, xs):
+    """Jacobians for each time step.
+    :param a:   Bifrucation parameter of the Hopf model.
+    :type a :   float
+    :param w:   Oscillation frequency parameter of the Hopf model.
+    :type w:    float
+    :param N:   Number of network nodes.
+    :type N:    int
+    :param V:   Number of state variables.
+    :type V:    int
+    :param T:   Number of time points.
+    :type T:    int
+    :param xs:  Time series of the activities (x and y population) in all nodes. x in Nx0xT and y in Nx1xT dimensions.
+    :type xs:   np.ndarray of shape Nx2xT
+    :return:    array of length T containing 2x2-matrices
+    :rtype:     np.ndarray of shape Tx2x2
+    """
+    hx = np.zeros((N, T, V, V))
+
+    for n in range(N):
+        for t in range(T):
+            x = xs[n, 0, t]
+            y = xs[n, 1, t]
+            hx[n, t, :, :] = jacobian_hopf(a, w, V, x, y)
+    return hx
+
+
+@numba.njit
+def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
+    """Jacobians for network connectivity in all time steps.
+
+    :param K_gl:    FHN model parameter.
+    :type K_gl:     float
+
+    :param cmat:    FHN model parameter, connectivity matrix.
+    :type cmat:     ndarray
+
+    :param coupling: FHN model parameter.
+    :type coupling:  string
+
+    :param N:           number of nodes in the network
+    :type N:            int
+    :param V:           number of system variables
+    :type V:            int
+    :param T:           length of simulation (time dimension)
+    :type T:            int
+
+    :return: Jacobians for network connectivity in all time steps.
+    :rtype: np.ndarray of shape NxNxTx4x4
+    """
+    hx_nw = np.zeros((N, N, T, V, V))
+
+    for n1 in range(N):
+        for n2 in range(N):
+            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
+            if coupling == "diffusive":
+                hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
+
+    return -hx_nw
