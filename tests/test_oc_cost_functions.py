@@ -1,5 +1,5 @@
 import unittest
-from neurolib.optimal_control import cost_functions
+from neurolib.control.optimal_control import cost_functions
 import numpy as np
 
 

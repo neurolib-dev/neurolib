@@ -4,7 +4,7 @@ import numpy as np
 
 from neurolib.models.fhn import FHNModel
 from neurolib.utils.stimulus import ZeroInput
-from neurolib.optimal_control import oc_fhn
+from neurolib.control.optimal_control import oc_fhn
 from numpy.random import RandomState, SeedSequence, MT19937
 
 global LIMIT_DIFF

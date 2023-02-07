@@ -1,7 +1,7 @@
 import abc
 import numba
 import numpy as np
-from neurolib.optimal_control import cost_functions
+from neurolib.control.optimal_control import cost_functions
 import logging
 import copy
 

@@ -2,30 +2,30 @@ import unittest
 
 import numpy as np
 
-from neurolib.models.wc import WCModel
+from neurolib.models.hopf import HopfModel
 from neurolib.utils.stimulus import ZeroInput
-from neurolib.optimal_control import oc_wc
+from neurolib.control.optimal_control import oc_hopf
 from numpy.random import RandomState, SeedSequence, MT19937
 
 global LIMIT_DIFF
 LIMIT_DIFF = 1e-4
 
 
-class TestWC(unittest.TestCase):
+class TestHopf(unittest.TestCase):
     """
-    Test wc in neurolib/optimal_control/
+    Test hopf in neurolib/optimal_control/
     """
 
     # tests if the control from OC computation coincides with a random input used for target forward-simulation
     # single-node case
     def test_onenode_oc(self):
         print("Test OC in single-node system")
-        wc = WCModel()
+        hopf = HopfModel()
 
         duration = 3.0
-        a = 1.0
+        a = 10.0
 
-        zero_input = ZeroInput().generate_input(duration=duration + wc.params.dt, dt=wc.params.dt)
+        zero_input = ZeroInput().generate_input(duration=duration + hopf.params.dt, dt=hopf.params.dt)
         input = np.copy(zero_input)
 
         rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
@@ -35,45 +35,44 @@ class TestWC(unittest.TestCase):
 
         for input_channel in [0, 1]:
 
-            prec_mat = np.zeros((wc.params.N, len(wc.output_vars)))
-            control_mat = np.zeros((wc.params.N, len(wc.state_vars)))
+            prec_mat = np.zeros((hopf.params.N, len(hopf.output_vars)))
+            control_mat = np.zeros((hopf.params.N, len(hopf.state_vars)))
             if input_channel == 0:
-                print("Input to E channel, measure in I channel")
-                prec_mat[0, 1] = 1.0  # only measure in I-channel in one channel
+                print("Input to x channel, measure in y channel")
+                prec_mat[0, 1] = 1.0  # only measure in y-channel in one channel
                 control_mat[0, 0] = 1.0  # only allow inputs to other channel
-                wc.params["exc_ext"] = input
-                wc.params["inh_ext"] = zero_input
+                hopf.params["x_ext"] = input
+                hopf.params["y_ext"] = zero_input
             elif input_channel == 1:
-                print("Input to I channel, measure in E channel")
-                prec_mat[0, 0] = 1.0  # only measure in E-channel in one channel
+                print("Input to y channel, measure in x channel")
+                prec_mat[0, 0] = 1.0  # only measure in y-channel in one channel
                 control_mat[0, 1] = 1.0  # only allow inputs to other channel
-                wc.params["exc_ext"] = zero_input
-                wc.params["inh_ext"] = input
+                hopf.params["x_ext"] = zero_input
+                hopf.params["y_ext"] = input
 
-            wc.params["duration"] = duration
-            wc.params["exc_init"] = np.array([[0.0]])
-            wc.params["inh_init"] = np.array([[0.0]])
+            hopf.params["duration"] = duration
+            hopf.params["xs_init"] = np.array([[0.0]])
+            hopf.params["ys_init"] = np.array([[0.0]])
 
-            wc.run()
+            hopf.run()
             target = np.concatenate(
                 (
-                    np.concatenate((wc.params["exc_init"], wc.params["inh_init"]), axis=1)[:, :, np.newaxis],
-                    np.stack((wc.exc, wc.inh), axis=1),
+                    np.concatenate((hopf.params["xs_init"], hopf.params["ys_init"]), axis=1)[:, :, np.newaxis],
+                    np.stack((hopf.x, hopf.y), axis=1),
                 ),
                 axis=2,
             )
 
-            wc.params["inh_ext"] = zero_input
-            wc.params["exc_ext"] = zero_input
+            hopf.params["y_ext"] = zero_input
+            hopf.params["x_ext"] = zero_input
 
-            wc_controlled = oc_wc.OcWc(wc, target, w_p=1, w_2=0)
+            hopf_controlled = oc_hopf.OcHopf(hopf, target, w_p=1, w_2=0)
 
             control_coincide = False
-            iterations = 4000
 
             for i in range(100):
-                wc_controlled.optimize(iterations)
-                control = wc_controlled.control
+                hopf_controlled.optimize(1000)
+                control = hopf_controlled.control
 
                 if input_channel == 0:
                     c_diff = [
@@ -124,36 +123,36 @@ class TestWC(unittest.TestCase):
                             else:
                                 cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
-                            wc = WCModel(Cmat=cmat, Dmat=dmat)
+                            hopf = HopfModel(Cmat=cmat, Dmat=dmat)
 
-                            prec_mat = np.zeros((wc.params.N, len(wc.output_vars)))
-                            control_mat = np.zeros((wc.params.N, len(wc.state_vars)))
+                            prec_mat = np.zeros((hopf.params.N, len(hopf.output_vars)))
+                            control_mat = np.zeros((hopf.params.N, len(hopf.state_vars)))
 
                             control_mat[c_node, c_channel] = 1.0
                             prec_mat[p_node, p_channel] = 1.0
 
-                            wc.params.duration = duration
-                            wc.params.coupling = coupling
+                            hopf.params.duration = duration
+                            hopf.params.coupling = coupling
 
                             # change parameters for faster convergence
-                            wc.params.K_gl = 1.0
+                            hopf.params.K_gl = 1.0
 
                             # high parameter value will cause numerical problems for certain settings
                             if p_channel == 1:
-                                wc.params.K_gl = 10.0
+                                hopf.params.K_gl = 10.0
                                 if coupling == "additive":
                                     if bi_dir_connectivity == 0:
-                                        wc.params.K_gl = 20.0
+                                        hopf.params.K_gl = 20.0
                                 elif coupling == "diffusive":
-                                    wc.params.K_gl = 5.0
+                                    hopf.params.K_gl = 5.0
                             if c_channel == 1:
                                 if bi_dir_connectivity == 0 and coupling == "additive":
-                                    wc.params.K_gl = 20.0
+                                    hopf.params.K_gl = 20.0
                                 if p_channel == 1:
-                                    wc.params.duration = 0.5
+                                    hopf.params.duration = 0.5
 
                             zero_input = ZeroInput().generate_input(
-                                duration=wc.params.duration + wc.params.dt, dt=wc.params.dt
+                                duration=hopf.params.duration + hopf.params.dt, dt=hopf.params.dt
                             )
                             input = np.copy(zero_input)
 
@@ -162,41 +161,41 @@ class TestWC(unittest.TestCase):
                             for t in range(1, input.shape[1] - 4):
                                 input[0, t] = rs.uniform(-a, a)
 
-                            wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
-                            wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
+                            hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
+                            hopf.params["x_ext"] = np.vstack([zero_input, zero_input])
 
                             if c_channel == 0:
                                 if c_node == 0:
-                                    wc.params["exc_ext"] = np.vstack([input, zero_input])
+                                    hopf.params["x_ext"] = np.vstack([input, zero_input])
                                 else:
-                                    wc.params["exc_ext"] = np.vstack([zero_input, input])
+                                    hopf.params["x_ext"] = np.vstack([zero_input, input])
                             else:
                                 if c_node == 0:
-                                    wc.params["inh_ext"] = np.vstack([input, zero_input])
+                                    hopf.params["y_ext"] = np.vstack([input, zero_input])
                                 else:
-                                    wc.params["inh_ext"] = np.vstack([zero_input, input])
+                                    hopf.params["y_ext"] = np.vstack([zero_input, input])
 
-                            wc.params["exc_init"] = np.vstack([0.0, 0.0])
-                            wc.params["inh_init"] = np.vstack([0.0, 0.0])
+                            hopf.params["xs_init"] = np.vstack([0.0, 0.0])
+                            hopf.params["ys_init"] = np.vstack([0.0, 0.0])
 
-                            wc.run()
+                            hopf.run()
 
                             target = np.concatenate(
                                 (
                                     np.concatenate(
-                                        (wc.params["exc_init"], wc.params["inh_init"]),
+                                        (hopf.params["xs_init"], hopf.params["ys_init"]),
                                         axis=1,
                                     )[:, :, np.newaxis],
-                                    np.stack((wc.exc, wc.inh), axis=1),
+                                    np.stack((hopf.x, hopf.y), axis=1),
                                 ),
                                 axis=2,
                             )
 
-                            wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
-                            wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
+                            hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
+                            hopf.params["x_ext"] = np.vstack([zero_input, zero_input])
 
-                            wc_controlled = oc_wc.OcWc(
-                                wc,
+                            hopf_controlled = oc_hopf.OcHopf(
+                                hopf,
                                 target,
                                 w_p=1,
                                 w_2=0,
@@ -211,15 +210,13 @@ class TestWC(unittest.TestCase):
 
                             iterations = 4000
                             for i in range(100):
-                                wc_controlled.optimize(iterations)
-                                control = wc_controlled.control
+                                hopf_controlled.optimize(iterations)
+                                control = hopf_controlled.control
 
                                 c_diff_max = np.amax(np.abs(control[c_node, c_channel, :] - input[0, :]))
                                 if c_diff_max < lim:
                                     control_coincide = True
                                     break
-
-                                print(c_diff_max)
 
                             self.assertTrue(control_coincide)
 
@@ -230,7 +227,7 @@ class TestWC(unittest.TestCase):
 
         rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
-        duration = 0.8
+        duration = 1.0
         a = 5.0
 
         delay = rs.choice([0.1, 0.2, 0.3, 0.4])
@@ -238,55 +235,55 @@ class TestWC(unittest.TestCase):
         cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [delay, 0.0]])
 
-        wc = WCModel(Cmat=cmat, Dmat=dmat)
+        hopf = HopfModel(Cmat=cmat, Dmat=dmat)
 
-        prec_mat = np.zeros((wc.params.N, len(wc.output_vars)))
-        control_mat = np.zeros((wc.params.N, len(wc.state_vars)))
+        prec_mat = np.zeros((hopf.params.N, len(hopf.output_vars)))
+        control_mat = np.zeros((hopf.params.N, len(hopf.state_vars)))
 
         control_mat[0, 0] = 1.0
         prec_mat[1, 0] = 1.0
 
-        wc.params.duration = duration
+        hopf.params.duration = duration
 
         # change parameters for faster convergence
-        wc.params.K_gl = 10.0
+        hopf.params.K_gl = 1.0
         # change parameters for shorter test simulation time
-        wc.params.signalV = 1.0
+        hopf.params.signalV = 1.0
 
-        zero_input = ZeroInput().generate_input(duration=wc.params.duration + wc.params.dt, dt=wc.params.dt)
+        zero_input = ZeroInput().generate_input(duration=hopf.params.duration + hopf.params.dt, dt=hopf.params.dt)
         input = np.copy(zero_input)
 
-        for t in range(1, input.shape[1] - 6):  # leave last inputs zero so signal can be reproduced despite delay
+        for t in range(1, input.shape[1] - 7):  # leave last inputs zero so signal can be reproduced despite delay
             input[0, t] = rs.uniform(-a, a)
 
-        wc.params["exc_ext"] = np.vstack([input, zero_input])
-        wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
+        hopf.params["x_ext"] = np.vstack([input, zero_input])
+        hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
 
         zeroinit = np.zeros((5))
 
-        wc.params["exc_init"] = np.vstack([zeroinit, zeroinit])
-        wc.params["inh_init"] = np.vstack([zeroinit, zeroinit])
+        hopf.params["xs_init"] = np.vstack([zeroinit, zeroinit])
+        hopf.params["ys_init"] = np.vstack([zeroinit, zeroinit])
 
-        wc.run()
+        hopf.run()
 
-        self.assertTrue(np.amax(wc.params.Dmat_ndt) >= 1)  # Relates to the given "delay" and time-discretization.
+        self.assertTrue(np.amax(hopf.params.Dmat_ndt) >= 1)  # Relates to the given "delay" and time-discretization.
 
         target = np.concatenate(
             (
                 np.stack(
-                    (wc.params["exc_init"][:, -1], wc.params["inh_init"][:, -1]),
+                    (hopf.params["xs_init"][:, -1], hopf.params["ys_init"][:, -1]),
                     axis=1,
                 )[:, :, np.newaxis],
-                np.stack((wc.exc, wc.inh), axis=1),
+                np.stack((hopf.x, hopf.y), axis=1),
             ),
             axis=2,
         )
 
-        wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
-        wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
+        hopf.params["y_ext"] = np.vstack([zero_input, zero_input])
+        hopf.params["x_ext"] = np.vstack([zero_input, zero_input])
 
-        wc_controlled = oc_wc.OcWc(
-            wc,
+        hopf_controlled = oc_hopf.OcHopf(
+            hopf,
             target,
             w_p=1,
             w_2=0,
@@ -294,19 +291,19 @@ class TestWC(unittest.TestCase):
             precision_matrix=prec_mat,
         )
 
-        self.assertTrue((wc.params.Dmat_ndt == wc_controlled.Dmat_ndt).all())
+        self.assertTrue((hopf.params.Dmat_ndt == hopf_controlled.Dmat_ndt).all())
 
         control_coincide = False
 
         iterations = 4000
         for i in range(100):
-            wc_controlled.optimize(iterations)
-            control = wc_controlled.control
+            hopf_controlled.optimize(iterations)
+            control = hopf_controlled.control
 
             # last few entries of adjoint_state[0,0,:] are zero
             self.assertTrue(
                 np.amax(
-                    np.abs(wc_controlled.adjoint_state[0, 0, -np.around(np.amax(wc.params.Dmat_ndt)).astype(int) :])
+                    np.abs(hopf_controlled.adjoint_state[0, 0, -np.around(np.amax(hopf.params.Dmat_ndt)).astype(int) :])
                 )
                 == 0.0
             )
@@ -317,6 +314,45 @@ class TestWC(unittest.TestCase):
                 break
 
         self.assertTrue(control_coincide)
+
+    def test_get_xs(self):
+        # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
+        # Do one optimization step.
+
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        hopf = HopfModel(Cmat=cmat, Dmat=dmat)
+        duration = 1.0
+        hopf.params.duration = duration
+
+        zero_input = ZeroInput().generate_input(duration=duration + hopf.params.dt, dt=hopf.params.dt)
+        input = np.copy(zero_input)
+
+        for t in range(input.shape[1]):
+            input[0, t] = np.sin(t)
+
+        hopf.params["y_ext"] = np.vstack([input, input])
+        hopf.params["x_ext"] = np.vstack([-input, 1.1 * input])
+
+        initind = 5
+
+        zeroinit = np.zeros((initind))
+
+        hopf.params["xs_init"] = np.vstack([zeroinit, zeroinit])
+        hopf.params["ys_init"] = np.vstack([zeroinit, zeroinit])
+
+        target = np.ones((2, 2, input.shape[1]))
+
+        hopf_controlled = oc_hopf.OcHopf(
+            hopf,
+            target,
+            w_p=1,
+            w_2=1,
+        )
+
+        hopf_controlled.optimize(1)
+        xs = hopf_controlled.get_xs()
+        self.assertTrue(xs.shape == target.shape)
 
 
 if __name__ == "__main__":

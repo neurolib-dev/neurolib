@@ -1,5 +1,5 @@
-from neurolib.optimal_control.oc import OC
-from neurolib.optimal_control import cost_functions
+from neurolib.control.optimal_control.oc import OC
+from neurolib.control.optimal_control import cost_functions
 import numpy as np
 import numba
 

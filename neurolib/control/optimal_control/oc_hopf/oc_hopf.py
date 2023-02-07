@@ -1,80 +1,56 @@
-from neurolib.optimal_control.oc import OC, update_control_with_limit
-from neurolib.optimal_control import cost_functions
-import numpy as np
+from neurolib.control.optimal_control.oc import OC, update_control_with_limit
+from neurolib.control.optimal_control import cost_functions
 import numba
+import numpy as np
 
 
 @numba.njit
-def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
-    """Jacobian of the FHN dynamical system.
-    :param alpha:   FHN model parameter.
-    :type alpha:    float
-
-    :param beta:    FHN model parameter.
-    :type beta:     float
-
-    :param gamma:   FHN model parameter.
-    :type gamma:    float
-
-    :param tau:     FHN model parameter.
-    :type tau:      float
-
-    :param epsilon: FHN model parameter.
-    :type epsilon:  float
-
-    :param x:       Value of the x-population in the FHN model at a specific time step.
-    :type x:        float
-
-    :param V:           number of system variables
-    :type V:            int
-
-    :return:        Jacobian matrix.
-    :rtype:         np.ndarray of dimensions 2x2
+def jacobian_hopf(a, w, V, x, y):
+    """Jacobian of systems dynamics for Hopf model.
+    :param a:   Bifrucation parameter
+    :type a :   float
+    :param w:   Oscillation frequency parameter.
+    :type w:    float
+    :param V:   Number of state variables.
+    :type V:    int
+    :param x:   Activity of x-population at this time instance.
+    :type x:    float
+    :param y:   Activity of y-population at this time instance.
+    :type y:    float
     """
     jacobian = np.zeros((V, V))
-    jacobian[0, :2] = [3 * alpha * x**2 - 2 * beta * x - gamma, 1]
-    jacobian[1, :2] = [-1 / tau, epsilon / tau]
+
+    jacobian[0, :2] = [-a + 3 * x**2 + y**2, 2 * x * y + w]
+    jacobian[1, :2] = [2 * x * y - w, -a + x**2 + 3 * y**2]
+
     return jacobian
 
 
 @numba.njit
-def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, xs):
+def compute_hx(a, w, N, V, T, xs):
     """Jacobians for each time step.
-
-    :param alpha:   FHN model parameter.
-    :type alpha:    float
-
-    :param beta:    FHN model parameter.
-    :type beta:     float
-
-    :param gamma:   FHN model parameter.
-    :type gamma:    float
-
-    :param tau:     FHN model parameter.
-    :type tau:      float
-
-    :param epsilon: FHN model parameter.
-    :type epsilon:  float
-
-    :param N:           number of nodes in the network
-    :type N:            int
-    :param V:           number of system variables
-    :type V:            int
-    :param T:           length of simulation (time dimension)
-    :type T:            int
-
-    :param xs:  The jacobian of the FHN systems dynamics depends only on the constant parameters and the values of
-                    the x-population.
-    :type xs:   np.ndarray of shape 1xT
-
-    :return: array of length T containing 2x2-matrices
-    :rtype: np.ndarray of shape Tx2x2
+    :param a:   Bifrucation parameter of the Hopf model.
+    :type a :   float
+    :param w:   Oscillation frequency parameter of the Hopf model.
+    :type w:    float
+    :param N:   Number of network nodes.
+    :type N:    int
+    :param V:   Number of state variables.
+    :type V:    int
+    :param T:   Number of time points.
+    :type T:    int
+    :param xs:  Time series of the activities (x and y population) in all nodes. x in Nx0xT and y in Nx1xT dimensions.
+    :type xs:   np.ndarray of shape Nx2xT
+    :return:    array of length T containing 2x2-matrices
+    :rtype:     np.ndarray of shape Tx2x2
     """
     hx = np.zeros((N, T, V, V))
 
     for n in range(N):
-        for ind, x in enumerate(xs[n, 0, :]):
-            hx[n, ind, :, :] = jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V)
+        for t in range(T):
+            x = xs[n, 0, t]
+            y = xs[n, 1, t]
+            hx[n, t, :, :] = jacobian_hopf(a, w, V, x, y)
     return hx
 
 
@@ -137,15 +113,28 @@ def compute_gradient(N, dim_out, T, fk, adjoint_state, control_matrix, duh):
         for v in range(dim_out):
             for t in range(T):
                 grad[n, v, t] = fk[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * duh[v, v]
+
+    if np.isnan(adjoint_state).any():
+        print("nan in adjoint")
+    if np.isnan(fk).any():
+        print("nan in fk")
+    if np.isnan(duh).any():
+        print("nan in duh")
+    if np.isnan(control_matrix).any():
+        print("nan in control_matrix")
+    if np.isnan(grad).any():
+        print("nan in grad")
+
     return grad
 
 
-class OcFhn(OC):
+class OcHopf(OC):
     """
     :param model:
-    :type model: neurolib.models.fhn.model.FHNModel
+    :type model: neurolib.models.hopf.model.HopfModel
     """
 
+    # Remark: very similar to FHN!
     def __init__(
         self,
         model,
@@ -176,7 +165,7 @@ class OcFhn(OC):
             validate_per_step=validate_per_step,
         )
 
-        assert self.model.name == "fhn"
+        assert self.model.name == "hopf"
 
         assert self.T == self.model.params["x_ext"].shape[1]
         assert self.T == self.model.params["y_ext"].shape[1]
@@ -254,11 +243,8 @@ class OcFhn(OC):
         :rtype: np.ndarray
         """
         return compute_hx(
-            self.model.params["alpha"],
-            self.model.params["beta"],
-            self.model.params["gamma"],
-            self.model.params["tau"],
-            self.model.params["epsilon"],
+            self.model.params.a,
+            self.model.params.w,
             self.N,
             self.dim_vars,
             self.T,

@@ -1,14 +1,14 @@
 import unittest
 import numpy as np
-from neurolib.optimal_control.oc import solve_adjoint, update_control_with_limit, convert_interval
-from neurolib.optimal_control.oc_wc import OcWc
+from neurolib.control.optimal_control.oc import solve_adjoint, update_control_with_limit, convert_interval
+from neurolib.control.optimal_control.oc_wc import OcWc
 from neurolib.models.wc import WCModel
 from neurolib.utils.stimulus import ZeroInput
 
 
 class TestOC(unittest.TestCase):
     """
-    Test functions in neurolib/optimal_control/oc.py
+    Test functions in neurolib/control/optimal_control/oc.py
     """
 
     @staticmethod
