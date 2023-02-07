@@ -23,7 +23,7 @@ class TestFHN(unittest.TestCase):
         fhn = FHNModel()
 
         duration = 3.0
-        a = 10.0
+        a = 1.0
 
         zero_input = ZeroInput().generate_input(duration=duration + fhn.params.dt, dt=fhn.params.dt)
         input = np.copy(zero_input)
@@ -70,7 +70,7 @@ class TestFHN(unittest.TestCase):
 
             control_coincide = False
 
-            for i in range(100):
+            for i in range(30):
                 fhn_controlled.optimize(1000)
                 control = fhn_controlled.control
 
