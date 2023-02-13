@@ -567,10 +567,6 @@ class OC:
                 step *= self.factor_down**2  # Double the step for faster search of stable region.
                 self.step = step
                 print(f"Diverging model output, decrease step size to {step}.")
-                self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
-                self.update_input()
-
-                break
             else:
                 break
         if noisy:
