@@ -231,8 +231,10 @@ def timeIntegration_njit_elementwise(
 
 @numba.njit
 def jacobian_hopf(a, w, V, x, y):
-    """Jacobian of systems dynamics for Hopf model.
-    :param a:   Bifrucation parameter
+    """Jacobian of a single node of the Hopf models dynamical system wrt. to its 'state_vars' ('x', 'y', 'x_ou',
+       'y_ou').
+
+    :param a:   Bifurcation parameter
     :type a :   float
     :param w:   Oscillation frequency parameter.
     :type w:    float
@@ -242,6 +244,8 @@ def jacobian_hopf(a, w, V, x, y):
     :type x:    float
     :param y:   Activity of y-population at this time instance.
     :type y:    float
+    :return:    4 x 4 Jacobian matrix.
+    :rtype:     np.ndarray
     """
     jacobian = np.zeros((V, V))
 
@@ -252,9 +256,10 @@ def jacobian_hopf(a, w, V, x, y):
 
 
 @numba.njit
-def compute_hx(a, w, N, V, T, xs):
-    """Jacobians for each time step.
-    :param a:   Bifrucation parameter of the Hopf model.
+def compute_hx(a, w, N, V, T, dyn_vars):
+    """Jacobians of the Hopf model wrt. to its 'state_vars' at each time step.
+
+    :param a:   Bifurcation parameter of the Hopf model.
     :type a :   float
     :param w:   Oscillation frequency parameter of the Hopf model.
     :type w:    float
@@ -262,19 +267,20 @@ def compute_hx(a, w, N, V, T, xs):
     :type N:    int
     :param V:   Number of state variables.
     :type V:    int
-    :param T:   Number of time points.
+    :param T:   Length of simulation (time dimension).
     :type T:    int
-    :param xs:  Time series of the activities (x and y population) in all nodes. x in Nx0xT and y in Nx1xT dimensions.
-    :type xs:   np.ndarray of shape Nx2xT
-    :return:    array of length T containing 2x2-matrices
-    :rtype:     np.ndarray of shape Tx2x2
+    :param dyn_vars:  Time series of the activities ('x'- and 'y'-population) in all nodes. 'x' in N x 0 x T and 'y' in
+                      N x 1 x T dimensions.
+    :type dyn_vars:   np.ndarray of shape N x 2 x T
+    :return:          Array that contains Jacobians for all nodes in all time steps.
+    :rtype:           np.ndarray of shape N x T x 4 x 4
     """
     hx = np.zeros((N, T, V, V))
 
     for n in range(N):
         for t in range(T):
-            x = xs[n, 0, t]
-            y = xs[n, 1, t]
+            x = dyn_vars[n, 0, t]
+            y = dyn_vars[n, 1, t]
             hx[n, t, :, :] = jacobian_hopf(a, w, V, x, y)
     return hx
 
@@ -283,30 +289,26 @@ def compute_hx(a, w, N, V, T, xs):
 def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
     """Jacobians for network connectivity in all time steps.
 
-    :param K_gl:    FHN model parameter.
-    :type K_gl:     float
-
-    :param cmat:    FHN model parameter, connectivity matrix.
-    :type cmat:     ndarray
-
-    :param coupling: FHN model parameter.
-    :type coupling:  string
-
-    :param N:           number of nodes in the network
+    :param K_gl:        Model parameter of global coupling strength.
+    :type K_gl:         float
+    :param cmat:        Model parameter, connectivity matrix.
+    :type cmat:         ndarray
+    :param coupling:    Model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
+    :type coupling:     str
+    :param N:           Number of nodes in the network.
     :type N:            int
-    :param V:           number of system variables
+    :param V:           Number of system variables.
     :type V:            int
-    :param T:           length of simulation (time dimension)
+    :param T:           Length of simulation (time dimension).
     :type T:            int
-
-    :return: Jacobians for network connectivity in all time steps.
-    :rtype: np.ndarray of shape NxNxTx4x4
+    :return:            Jacobians for network connectivity in all time steps.
+    :rtype:             np.ndarray of shape N x N x T x 4 x 4
     """
     hx_nw = np.zeros((N, N, T, V, V))
 
     for n1 in range(N):
         for n2 in range(N):
-            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
+            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]  # term corresponding to additive coupling
             if coupling == "diffusive":
                 hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
 

@@ -6,36 +6,40 @@ from neurolib.models.hopf.timeIntegration import compute_hx, compute_hx_nw
 
 
 @numba.njit
-def compute_gradient(N, dim_out, T, fk, adjoint_state, control_matrix, duh):
-    """Compute the gradient of the total cost wrt. to the control signals.
-    :param N:       number of nodes in the network
+def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
+    """Compute the gradient of the total cost wrt. to the control signals (explicitly and implicitly) given the adjoint
+       state, the Jacobian of the total cost wrt. to explicit control contributions and the Jacobian of the dynamics
+       wrt. to explicit control contributions.
+
+    :param N:       Number of nodes in the network.
     :type N:        int
-    :param dim_out: number of 'output variables' of the model
+    :param dim_out: Number of 'output variables' of the model.
     :type dim_out:  int
-    :param T:       length of simulation (time dimension)
+    :param T:       Length of simulation (time dimension).
     :type T:        int
-    :param fk:      Derivative of the cost functionals wrt. to the control signal.
-    :type fk:   np.ndarray of shape N x V x T
-    :param adjoint_state:
-    :type adjoint_state: np.ndarray of shape N x V x T
-    :param control_matrix: Binary matrix that defines nodes and variables where control inputs are active, defaults to None.
+    :param df_du:   Derivative of the cost wrt. to the explicit control contributions to cost functionals.
+    :type df_du:    np.ndarray of shape N x V x T
+    :param adjoint_state:  Solution of the adjoint equation.
+    :type adjoint_state:   np.ndarray of shape N x V x T
+    :param control_matrix: Binary matrix that defines nodes and variables where control inputs are active, defaults to
+                           None.
     :type control_matrix:  np.ndarray of shape N x V
-    :param duh: Jacobian of systems dynamics wrt. to I_ext (external control input)
-    :type duh:  np.ndarray of shape V x V
-    :return: The gradient of the total cost wrt. to the control.
-    :rtype: np.ndarray of shape N x V x T
+    :param d_du:     Jacobian of systems dynamics wrt. to the external inputs (control).
+    :type d_du:      np.ndarray of shape V x V
+    :return:         The gradient of the total cost wrt. to the control.
+    :rtype:          np.ndarray of shape N x V x T
     """
-    grad = np.zeros(fk.shape)
+    grad = np.zeros(df_du.shape)
     for n in range(N):
         for v in range(dim_out):
             for t in range(T):
-                grad[n, v, t] = fk[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * duh[v, v]
+                grad[n, v, t] = df_du[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * d_du[v, v]
 
     if np.isnan(adjoint_state).any():
         print("nan in adjoint")
-    if np.isnan(fk).any():
+    if np.isnan(df_du).any():
         print("nan in fk")
-    if np.isnan(duh).any():
+    if np.isnan(d_du).any():
         print("nan in duh")
     if np.isnan(control_matrix).any():
         print("nan in control_matrix")
@@ -46,8 +50,10 @@ def compute_gradient(N, dim_out, T, fk, adjoint_state, control_matrix, duh):
 
 
 class OcHopf(OC):
-    """
-    :param model:
+    """Class for optimal control specific to neurolib's implementation of the Stuart-Landau model with Hopf
+        bifurcation ("Hopf model").
+
+    :param model: Instance of Hopf model (can describe a single Hopf node or a network of coupled Hopf nodes.
     :type model: neurolib.models.hopf.model.HopfModel
     """
 
@@ -108,7 +114,10 @@ class OcHopf(OC):
         # self.control_history.append(self.control)
 
     def get_xs(self):
-        """Stack the initial condition with the simulation results for both populations."""
+        """Stack the initial condition with the simulation results for dynamic variables 'x' and 'y' of Hopf model.
+
+        :rtype:     np.ndarray of shape N x V x T
+        """
         if self.model.params["xs_init"].shape[1] == 1:
             p1 = np.concatenate((self.model.params["xs_init"], self.model.params["ys_init"]), axis=1)[:, :, np.newaxis]
             xs = np.concatenate(
@@ -133,7 +142,7 @@ class OcHopf(OC):
         return xs
 
     def update_input(self):
-        """Update the parameters in self.model according to the current control such that self.simulate_forward
+        """Update the parameters in 'self.model' according to the current control such that 'self.simulate_forward'
         operates with the appropriate control signal.
         """
         # ToDo: find elegant way to combine the cases
@@ -146,18 +155,23 @@ class OcHopf(OC):
             self.model.params["y_ext"] = self.control[:, 1, :]
 
     def Dxdot(self):
-        """4x4 Jacobian of systems dynamics wrt. to change of systems variables."""
+        """4 x 4 Jacobian of systems dynamics wrt. to change of systems variables."""
+        # Currently not explicitly required since it is identity matrix.
         raise NotImplementedError  # return np.eye(4)
 
     def Duh(self):
-        """4x4 Jacobian of systems dynamics wrt. to I_ext (external control input)"""
+        """4 x 4 Jacobian of systems dynamics wrt. to external inputs (control signals) to all 'state_vars'. There are no
+           inputs to the noise variables 'x_ou' and 'y_ou' in the model.
+
+        :rtype:     np.ndarray of shape 4 x 4
+        """
         return np.array([[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
 
     def compute_hx(self):
-        """Jacobians for each time step.
+        """Jacobians of Hopf model wrt. to its 'state_vars' at each time step.
 
-        :return: Array of length self.T containing 4x4-matrices
-        :rtype: np.ndarray
+        :return:        Array that contains Jacobians for all nodes in all time steps.
+        :rtype:         np.ndarray of shape N x T x 4 x 4
         """
         return compute_hx(
             self.model.params.a,
@@ -171,8 +185,8 @@ class OcHopf(OC):
     def compute_hx_nw(self):
         """Jacobians for each time step for the network coupling.
 
-        :return: N x N x T x (4x4) array
-        :rtype: np.ndarray
+        :return:    Jacobians for network connectivity in all time steps.
+        :rtype:     np.ndarray of shape N x N x T x (4x4)
         """
         return compute_hx_nw(
             self.model.params["K_gl"],
@@ -184,11 +198,17 @@ class OcHopf(OC):
         )
 
     def compute_gradient(self):
-        """
-        Du @ fk + adjoint_k.T @ Du @ h
+        """Compute the gradient of the total cost wrt. to the control signals. This is achieved by first, solving the
+           adjoint equation backwards in time. Second, derivatives of the cost wrt. to explicit control variables are
+           evaluated as well as the Jacobians of the dynamics wrt. to explicit control. Then the decent direction /
+           gradient of the cost wrt. to control (in its explicit form AND IMPLICIT FORM) is computed.
+
+        :return:         The gradient of the total cost wrt. to the control.
+        :rtype:          np.ndarray of shape N x V x T
         """
         self.solve_adjoint()
-        fk = cost_functions.derivative_energy_cost(self.control, self.w_2)
-        duh = self.Duh()
+        df_du = cost_functions.derivative_energy_cost(self.control, self.w_2)  # Remark: at the current state, only the
+        # "energy" (L2) cost explicitly depends on the control signal. Further contributions can be added here.
+        d_du = self.Duh()
 
-        return compute_gradient(self.N, self.dim_out, self.T, fk, self.adjoint_state, self.control_matrix, duh)
+        return compute_gradient(self.N, self.dim_out, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)
