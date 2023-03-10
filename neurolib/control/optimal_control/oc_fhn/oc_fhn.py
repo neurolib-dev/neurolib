@@ -91,9 +91,6 @@ class OcFhn(OC):
 
         self.control = update_control_with_limit(control, 0.0, np.zeros(control.shape), self.maximum_control_strength)
 
-        # save control signals throughout optimization iterations for later analysis
-        # self.control_history.append(self.control)
-
     def get_xs(self):
         """Stack the initial condition with the simulation results for both populations."""
         if self.model.params["xs_init"].shape[1] == 1:

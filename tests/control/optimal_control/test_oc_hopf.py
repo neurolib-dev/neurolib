@@ -315,9 +315,9 @@ class TestHopf(unittest.TestCase):
 
         self.assertTrue(control_coincide)
 
+    # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
     def test_get_xs(self):
-        # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
-        # Do one optimization step.
+        print("Test state shape agrees with target shape")
 
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay

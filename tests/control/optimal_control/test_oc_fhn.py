@@ -484,8 +484,10 @@ class TestFHN(unittest.TestCase):
 
         self.assertTrue(control_is_zero)
 
+    # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
     def test_u_max_no_optimizations(self):
-        # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
+        print("Test maximum control strength in initialization.")
+
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
         fhn = FHNModel(Cmat=cmat, Dmat=dmat)
@@ -522,9 +524,9 @@ class TestFHN(unittest.TestCase):
 
         self.assertTrue(np.max(np.abs(fhn_controlled.control) <= maximum_control_strength))
 
+    # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
     def test_u_max_after_optimizations(self):
-        # Arbitrary network and control setting, initial control violates the maximum absolute criterion.
-        # Do one optimization step.
+        print("Test maximum control strength after optimization.")
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
         fhn = FHNModel(Cmat=cmat, Dmat=dmat)
@@ -562,9 +564,9 @@ class TestFHN(unittest.TestCase):
         fhn_controlled.optimize(1)
         self.assertTrue(np.max(np.abs(fhn_controlled.control) <= maximum_control_strength))
 
+    # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
     def test_get_xs(self):
-        # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
-        # Do one optimization step.
+        print("Test state shape agrees with target shape")
 
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay

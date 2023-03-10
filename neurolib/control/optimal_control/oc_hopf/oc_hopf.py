@@ -31,17 +31,6 @@ def compute_gradient(N, dim_out, T, fk, adjoint_state, control_matrix, duh):
             for t in range(T):
                 grad[n, v, t] = fk[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * duh[v, v]
 
-    if np.isnan(adjoint_state).any():
-        print("nan in adjoint")
-    if np.isnan(fk).any():
-        print("nan in fk")
-    if np.isnan(duh).any():
-        print("nan in duh")
-    if np.isnan(control_matrix).any():
-        print("nan in control_matrix")
-    if np.isnan(grad).any():
-        print("nan in grad")
-
     return grad
 
 
