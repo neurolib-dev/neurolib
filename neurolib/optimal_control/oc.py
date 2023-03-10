@@ -357,7 +357,7 @@ class OC:
             if type(self.model.Dmat) == type(None):
                 self.model.Dmat = np.zeros((self.N, self.N))
 
-        self.Dmat_ndt = np.around(self.model.Dmat / self.model.params.dt).astype(int)
+        self.Dmat_ndt = np.around(self.model.params.Dmat_ndt)
 
         self.precision_matrix = precision_matrix
         if isinstance(self.precision_matrix, type(None)):
