@@ -379,7 +379,7 @@ class OC:
 
         self.step = 10.0  # Initial step size in first optimization iteration.
         self.count_noisy_step = 10
-        self.count_step = 20
+        self.count_step = 30
 
         self.factor_down = 0.5  # Factor for adaptive step size reduction.
         self.factor_up = 2.0  # Factor for adaptive step size increment.
@@ -640,12 +640,6 @@ class OC:
 
         for i in range(1, n_max_iterations + 1):
             self.gradient = self.compute_gradient()
-
-            import matplotlib.pyplot as plt
-
-            # plt.plot(self.gradient[0, 0, :])
-            # plt.plot(self.gradient[0, 1, :])
-            # plt.show()
 
             if np.isnan(self.gradient).any():
                 print("nan in gradient, break")
