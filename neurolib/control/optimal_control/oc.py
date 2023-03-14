@@ -357,7 +357,7 @@ class OC:
             if type(self.model.Dmat) == type(None):
                 self.model.Dmat = np.zeros((self.N, self.N))
 
-        self.Dmat_ndt = np.around(self.model.Dmat / self.model.params.dt).astype(int)
+        self.Dmat_ndt = np.around(self.model.params.Dmat_ndt)
 
         self.precision_matrix = precision_matrix
         if isinstance(self.precision_matrix, type(None)):
@@ -567,10 +567,6 @@ class OC:
                 step *= self.factor_down**2  # Double the step for faster search of stable region.
                 self.step = step
                 print(f"Diverging model output, decrease step size to {step}.")
-                self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
-                self.update_input()
-
-                break
             else:
                 break
         if noisy:
