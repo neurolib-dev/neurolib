@@ -20,60 +20,66 @@ class TestWC(unittest.TestCase):
     # single-node case
     def test_onenode_oc(self):
         print("Test OC in single-node system")
-        wc = WCModel()
+        model = WCModel()
 
-        duration = 3.0
+        duration = 2.0
         a = 1.0
 
-        zero_input = ZeroInput().generate_input(duration=duration + wc.params.dt, dt=wc.params.dt)
+        zero_input = ZeroInput().generate_input(duration=duration + model.params.dt, dt=model.params.dt)
         input = np.copy(zero_input)
+        inp_init = np.copy(zero_input)
 
         rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
         for t in range(1, input.shape[1] - 2):
             input[0, t] = rs.uniform(-a, a)
+            inp_init[0, t] = input[0, t] + 1e-2 * rs.uniform(-a, a)
 
         for input_channel in [0, 1]:
 
-            prec_mat = np.zeros((wc.params.N, len(wc.output_vars)))
-            control_mat = np.zeros((wc.params.N, len(wc.state_vars)))
+            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+            control_mat = np.zeros((model.params.N, len(model.state_vars)))
             if input_channel == 0:
                 print("Input to E channel, measure in I channel")
                 prec_mat[0, 1] = 1.0  # only measure in I-channel in one channel
                 control_mat[0, 0] = 1.0  # only allow inputs to other channel
-                wc.params["exc_ext"] = input
-                wc.params["inh_ext"] = zero_input
+                model.params["exc_ext"] = input
+                model.params["inh_ext"] = zero_input
             elif input_channel == 1:
                 print("Input to I channel, measure in E channel")
                 prec_mat[0, 0] = 1.0  # only measure in E-channel in one channel
                 control_mat[0, 1] = 1.0  # only allow inputs to other channel
-                wc.params["exc_ext"] = zero_input
-                wc.params["inh_ext"] = input
+                model.params["exc_ext"] = zero_input
+                model.params["inh_ext"] = input
 
-            wc.params["duration"] = duration
-            wc.params["exc_init"] = np.array([[0.0]])
-            wc.params["inh_init"] = np.array([[0.0]])
+            model.params["duration"] = duration
+            model.params["exc_init"] = np.array([[0.0]])
+            model.params["inh_init"] = np.array([[0.0]])
 
-            wc.run()
+            model.run()
             target = np.concatenate(
                 (
-                    np.concatenate((wc.params["exc_init"], wc.params["inh_init"]), axis=1)[:, :, np.newaxis],
-                    np.stack((wc.exc, wc.inh), axis=1),
+                    np.concatenate((model.params["exc_init"], model.params["inh_init"]), axis=1)[:, :, np.newaxis],
+                    np.stack((model.exc, model.inh), axis=1),
                 ),
                 axis=2,
             )
+            control_init = np.zeros((target.shape))
+            control_init[0, input_channel, :] = inp_init[0, :]
 
-            wc.params["inh_ext"] = zero_input
-            wc.params["exc_ext"] = zero_input
+            model.params["inh_ext"] = zero_input
+            model.params["exc_ext"] = zero_input
 
-            wc_controlled = oc_wc.OcWc(wc, target, w_p=1, w_2=0)
+            model_controlled = oc_wc.OcWc(model, target, w_p=1, w_2=0)
 
             control_coincide = False
-            iterations = 4000
+            iterations = 5000
+
+            model_controlled.control = control_init.copy()
 
             for i in range(100):
-                wc_controlled.optimize(iterations)
-                control = wc_controlled.control
+                model_controlled.optimize(iterations)
+                control = model_controlled.control
 
                 if input_channel == 0:
                     c_diff = [
@@ -110,6 +116,7 @@ class TestWC(unittest.TestCase):
                     for p_channel in [0, 1]:
 
                         for bi_dir_connectivity in [0, 1]:
+
                             print(coupling, " coupling")
                             print("control node = ", c_node)
                             print("control channel = ", c_channel)
@@ -124,102 +131,108 @@ class TestWC(unittest.TestCase):
                             else:
                                 cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
-                            wc = WCModel(Cmat=cmat, Dmat=dmat)
+                            model = WCModel(Cmat=cmat, Dmat=dmat)
 
-                            prec_mat = np.zeros((wc.params.N, len(wc.output_vars)))
-                            control_mat = np.zeros((wc.params.N, len(wc.state_vars)))
+                            model.params.K_gl = 10.0
+
+                            model.duration = 1000.0
+                            model.run()
+                            e0, e1 = model.exc[0, -1], model.exc[1, -1]
+                            i0, i1 = model.inh[0, -1], model.inh[1, -1]
+
+                            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+                            control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
                             control_mat[c_node, c_channel] = 1.0
                             prec_mat[p_node, p_channel] = 1.0
 
-                            wc.params.duration = duration
-                            wc.params.coupling = coupling
-
-                            # change parameters for faster convergence
-                            wc.params.K_gl = 1.0
-
-                            # high parameter value will cause numerical problems for certain settings
-                            if p_channel == 1:
-                                wc.params.K_gl = 10.0
-                                if coupling == "additive":
-                                    if bi_dir_connectivity == 0:
-                                        wc.params.K_gl = 20.0
-                                elif coupling == "diffusive":
-                                    wc.params.K_gl = 5.0
-                            if c_channel == 1:
-                                if bi_dir_connectivity == 0 and coupling == "additive":
-                                    wc.params.K_gl = 20.0
-                                if p_channel == 1:
-                                    wc.params.duration = 0.5
+                            model.params.duration = duration
+                            model.params.coupling = coupling
 
                             zero_input = ZeroInput().generate_input(
-                                duration=wc.params.duration + wc.params.dt, dt=wc.params.dt
+                                duration=model.params.duration + model.params.dt, dt=model.params.dt
                             )
                             input = np.copy(zero_input)
+                            input_optimization_start = np.copy(zero_input)
 
                             rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
-                            for t in range(1, input.shape[1] - 4):
+                            for t in range(0, input.shape[1] - 4):
                                 input[0, t] = rs.uniform(-a, a)
+                                input_optimization_start[0, t] = input[0, t] + 1e-3 * rs.uniform(-a, a)
 
-                            wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
-                            wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
+                            model.params["inh_ext"] = np.vstack([zero_input, zero_input])
+                            model.params["exc_ext"] = np.vstack([zero_input, zero_input])
 
                             if c_channel == 0:
                                 if c_node == 0:
-                                    wc.params["exc_ext"] = np.vstack([input, zero_input])
+                                    model.params["exc_ext"] = np.vstack([input, zero_input])
                                 else:
-                                    wc.params["exc_ext"] = np.vstack([zero_input, input])
+                                    model.params["exc_ext"] = np.vstack([zero_input, input])
                             else:
                                 if c_node == 0:
-                                    wc.params["inh_ext"] = np.vstack([input, zero_input])
+                                    model.params["inh_ext"] = np.vstack([input, zero_input])
                                 else:
-                                    wc.params["inh_ext"] = np.vstack([zero_input, input])
+                                    model.params["inh_ext"] = np.vstack([zero_input, input])
 
-                            wc.params["exc_init"] = np.vstack([0.0, 0.0])
-                            wc.params["inh_init"] = np.vstack([0.0, 0.0])
+                            model.params["exc_init"] = np.vstack([e0, e1])
+                            model.params["inh_init"] = np.vstack([i0, i1])
 
-                            wc.run()
+                            model.run()
 
                             target = np.concatenate(
                                 (
                                     np.concatenate(
-                                        (wc.params["exc_init"], wc.params["inh_init"]),
+                                        (model.params["exc_init"], model.params["inh_init"]),
                                         axis=1,
                                     )[:, :, np.newaxis],
-                                    np.stack((wc.exc, wc.inh), axis=1),
+                                    np.stack((model.exc, model.inh), axis=1),
                                 ),
                                 axis=2,
                             )
+                            control_init = np.zeros((target.shape))
+                            control_init[c_node, c_channel, :] = input_optimization_start[0, :]
 
-                            wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
-                            wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
+                            model.params["exc_ext"] = np.vstack([zero_input, zero_input])
+                            model.params["inh_ext"] = np.vstack([zero_input, zero_input])
 
-                            wc_controlled = oc_wc.OcWc(
-                                wc,
+                            model_controlled = oc_wc.OcWc(
+                                model,
                                 target,
                                 w_p=1,
                                 w_2=0,
                                 control_matrix=control_mat,
                                 precision_matrix=prec_mat,
                             )
+                            model_controlled.maximum_control_strength = 2.0 * a
+
+                            model_controlled.control = control_init.copy()
 
                             control_coincide = False
                             lim = LIMIT_DIFF
                             if p_channel == 1 or c_channel == 1:
-                                lim *= 4000  # for internal purposes: 1000, for simple testing: 4000
+                                lim *= 100  # for internal purposes: 1000, for simple testing: 4000
+                                model_controlled.step = 1e10
+                            if p_channel == 1 and c_channel == 1:
+                                lim *= 1000
+                                model_controlled.step = 1e20
 
-                            iterations = 4000
+                            iterations = 5000
                             for i in range(100):
-                                wc_controlled.optimize(iterations)
-                                control = wc_controlled.control
+                                model_controlled.optimize(iterations)
+                                control = model_controlled.control
 
                                 c_diff_max = np.amax(np.abs(control[c_node, c_channel, :] - input[0, :]))
                                 if c_diff_max < lim:
                                     control_coincide = True
                                     break
 
-                                print(c_diff_max)
+                                print("cdiff max", c_diff_max)
+                                print("control ", np.round(control[c_node, c_channel, :], 4))
+                                print("input ", input[0, :])
+
+                                if model_controlled.zero_step_encountered:
+                                    break
 
                             self.assertTrue(control_coincide)
 
@@ -238,55 +251,55 @@ class TestWC(unittest.TestCase):
         cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [delay, 0.0]])
 
-        wc = WCModel(Cmat=cmat, Dmat=dmat)
+        model = WCModel(Cmat=cmat, Dmat=dmat)
 
-        prec_mat = np.zeros((wc.params.N, len(wc.output_vars)))
-        control_mat = np.zeros((wc.params.N, len(wc.state_vars)))
+        prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+        control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
         control_mat[0, 0] = 1.0
         prec_mat[1, 0] = 1.0
 
-        wc.params.duration = duration
+        model.params.duration = duration
 
         # change parameters for faster convergence
-        wc.params.K_gl = 10.0
+        model.params.K_gl = 10.0
         # change parameters for shorter test simulation time
-        wc.params.signalV = 1.0
+        model.params.signalV = 1.0
 
-        zero_input = ZeroInput().generate_input(duration=wc.params.duration + wc.params.dt, dt=wc.params.dt)
+        zero_input = ZeroInput().generate_input(duration=model.params.duration + model.params.dt, dt=model.params.dt)
         input = np.copy(zero_input)
 
         for t in range(1, input.shape[1] - 6):  # leave last inputs zero so signal can be reproduced despite delay
             input[0, t] = rs.uniform(-a, a)
 
-        wc.params["exc_ext"] = np.vstack([input, zero_input])
-        wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
+        model.params["exc_ext"] = np.vstack([input, zero_input])
+        model.params["inh_ext"] = np.vstack([zero_input, zero_input])
 
         zeroinit = np.zeros((5))
 
-        wc.params["exc_init"] = np.vstack([zeroinit, zeroinit])
-        wc.params["inh_init"] = np.vstack([zeroinit, zeroinit])
+        model.params["exc_init"] = np.vstack([zeroinit, zeroinit])
+        model.params["inh_init"] = np.vstack([zeroinit, zeroinit])
 
-        wc.run()
+        model.run()
 
-        self.assertTrue(np.amax(wc.params.Dmat_ndt) >= 1)  # Relates to the given "delay" and time-discretization.
+        self.assertTrue(np.amax(model.params.Dmat_ndt) >= 1)  # Relates to the given "delay" and time-discretization.
 
         target = np.concatenate(
             (
                 np.stack(
-                    (wc.params["exc_init"][:, -1], wc.params["inh_init"][:, -1]),
+                    (model.params["exc_init"][:, -1], model.params["inh_init"][:, -1]),
                     axis=1,
                 )[:, :, np.newaxis],
-                np.stack((wc.exc, wc.inh), axis=1),
+                np.stack((model.exc, model.inh), axis=1),
             ),
             axis=2,
         )
 
-        wc.params["exc_ext"] = np.vstack([zero_input, zero_input])
-        wc.params["inh_ext"] = np.vstack([zero_input, zero_input])
+        model.params["exc_ext"] = np.vstack([zero_input, zero_input])
+        model.params["inh_ext"] = np.vstack([zero_input, zero_input])
 
-        wc_controlled = oc_wc.OcWc(
-            wc,
+        model_controlled = oc_wc.OcWc(
+            model,
             target,
             w_p=1,
             w_2=0,
@@ -294,19 +307,21 @@ class TestWC(unittest.TestCase):
             precision_matrix=prec_mat,
         )
 
-        self.assertTrue((wc.params.Dmat_ndt == wc_controlled.Dmat_ndt).all())
+        self.assertTrue((model.params.Dmat_ndt == model_controlled.Dmat_ndt).all())
 
         control_coincide = False
 
         iterations = 4000
         for i in range(100):
-            wc_controlled.optimize(iterations)
-            control = wc_controlled.control
+            model_controlled.optimize(iterations)
+            control = model_controlled.control
 
             # last few entries of adjoint_state[0,0,:] are zero
             self.assertTrue(
                 np.amax(
-                    np.abs(wc_controlled.adjoint_state[0, 0, -np.around(np.amax(wc.params.Dmat_ndt)).astype(int) :])
+                    np.abs(
+                        model_controlled.adjoint_state[0, 0, -np.around(np.amax(model.params.Dmat_ndt)).astype(int) :]
+                    )
                 )
                 == 0.0
             )

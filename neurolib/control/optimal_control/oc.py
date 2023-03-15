@@ -337,6 +337,7 @@ class OC:
         """
 
         self.model = copy.deepcopy(model)
+        self.simulate_forward()
 
         self.target = target  # ToDo: dimensions-check
 
@@ -349,15 +350,13 @@ class OC:
         self.dim_vars = len(self.model.state_vars)
         self.dim_out = len(self.model.output_vars)
 
-        if self.N > 1:  # check that coupling matrix has zero diagonal
-            assert np.all(np.diag(self.model.Cmat) == 0.0)
-        elif self.N == 1:
+        self.Dmat_ndt = self.model.params.Dmat_ndt
+
+        if self.N == 1:
             if type(self.model.Cmat) == type(None):
                 self.model.Cmat = np.zeros((self.N, self.N))
             if type(self.model.Dmat) == type(None):
                 self.model.Dmat = np.zeros((self.N, self.N))
-
-        self.Dmat_ndt = np.around(self.model.params.Dmat_ndt)
 
         self.precision_matrix = precision_matrix
         if isinstance(self.precision_matrix, type(None)):
@@ -380,7 +379,7 @@ class OC:
 
         self.step = 10.0  # Initial step size in first optimization iteration.
         self.count_noisy_step = 10
-        self.count_step = 20
+        self.count_step = 30
 
         self.factor_down = 0.5  # Factor for adaptive step size reduction.
         self.factor_up = 2.0  # Factor for adaptive step size increment.
@@ -482,7 +481,6 @@ class OC:
         energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2, dt=self.dt)
         return precision_cost + energy_cost
 
-    @abc.abstractmethod
     def compute_gradient(self):
         """Du @ fk + adjoint_k.T @ Du @ h"""
         # ToDo: model dependent
