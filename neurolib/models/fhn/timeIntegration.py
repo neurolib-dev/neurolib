@@ -251,30 +251,26 @@ def timeIntegration_njit_elementwise(
 
 @numba.njit
 def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
-    """Jacobian of the FHN dynamical system.
+    """Jacobian of a single node of the FHN dynamical system wrt. to its 'state_vars' ('x', 'y', 'x_ou', 'y_ou'). The
+       Jacobian of the FHN systems dynamics depends only on the constant model parameters and the values of the 'x'-
+       population.
+
     :param alpha:   FHN model parameter.
     :type alpha:    float
-
     :param beta:    FHN model parameter.
     :type beta:     float
-
     :param gamma:   FHN model parameter.
     :type gamma:    float
-
     :param tau:     FHN model parameter.
     :type tau:      float
-
     :param epsilon: FHN model parameter.
     :type epsilon:  float
-
-    :param x:       Value of the x-population in the FHN model at a specific time step.
+    :param x:       Value of the 'x'-population in the FHN node at a specific time step.
     :type x:        float
-
-    :param V:           number of system variables
-    :type V:            int
-
-    :return:        Jacobian matrix.
-    :rtype:         np.ndarray of dimensions 2x2
+    :param V:       Number of system variables.
+    :type V:        int
+    :return:        4 x 4 Jacobian matrix.
+    :rtype:         np.ndarray
     """
     jacobian = np.zeros((V, V))
     jacobian[0, :2] = [3 * alpha * x**2 - 2 * beta * x - gamma, 1]
@@ -283,42 +279,34 @@ def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
 
 
 @numba.njit
-def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, xs):
-    """Jacobians for each time step.
+def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, dyn_vars):
+    """Jacobians  of FHN model wrt. to its 'state_vars' at each time step.
 
     :param alpha:   FHN model parameter.
     :type alpha:    float
-
     :param beta:    FHN model parameter.
     :type beta:     float
-
     :param gamma:   FHN model parameter.
     :type gamma:    float
-
     :param tau:     FHN model parameter.
     :type tau:      float
-
     :param epsilon: FHN model parameter.
     :type epsilon:  float
-
-    :param N:           number of nodes in the network
-    :type N:            int
-    :param V:           number of system variables
-    :type V:            int
-    :param T:           length of simulation (time dimension)
-    :type T:            int
-
-    :param xs:  The jacobian of the FHN systems dynamics depends only on the constant parameters and the values of
-                    the x-population.
-    :type xs:   np.ndarray of shape 1xT
-
-    :return: array of length T containing 2x2-matrices
-    :rtype: np.ndarray of shape Tx2x2
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of system variables.
+    :type V:        int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
+    :param dyn_vars:      Values of the 'x' and 'y' variable of FHN of all nodes through time.
+    :type dyn_vars:       np.ndarray of shape N x 2 x T
+    :return:        Array that contains Jacobians for all nodes in all time steps.
+    :rtype:         np.ndarray of shape N x T x 4 x 4
     """
     hx = np.zeros((N, T, V, V))
 
-    for n in range(N):
-        for ind, x in enumerate(xs[n, 0, :]):
+    for n in range(N):  # Iterate through nodes.
+        for ind, x in enumerate(dyn_vars[n, 0, :]):  # Pick value of x-variable at each time step.
             hx[n, ind, :, :] = jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V)
     return hx
 
@@ -327,30 +315,26 @@ def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, xs):
 def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
     """Jacobians for network connectivity in all time steps.
 
-    :param K_gl:    FHN model parameter.
-    :type K_gl:     float
-
-    :param cmat:    FHN model parameter, connectivity matrix.
-    :type cmat:     ndarray
-
-    :param coupling: FHN model parameter.
-    :type coupling:  string
-
-    :param N:           number of nodes in the network
-    :type N:            int
-    :param V:           number of system variables
-    :type V:            int
-    :param T:           length of simulation (time dimension)
-    :type T:            int
-
-    :return: Jacobians for network connectivity in all time steps.
-    :rtype: np.ndarray of shape NxNxTx4x4
+    :param K_gl:     Model parameter of global coupling strength.
+    :type K_gl:      float
+    :param cmat:     Model parameter, connectivity matrix.
+    :type cmat:      ndarray
+    :param coupling: Model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
+    :type coupling:  str
+    :param N:        Number of nodes in the network.
+    :type N:         int
+    :param V:        Number of system variables.
+    :type V:         int
+    :param T:        Length of simulation (time dimension).
+    :type T:         int
+    :return:         Jacobians for network connectivity in all time steps.
+    :rtype:          np.ndarray of shape N x N x T x 4 x 4
     """
     hx_nw = np.zeros((N, N, T, V, V))
 
     for n1 in range(N):
         for n2 in range(N):
-            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]
+            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]  # term corresponding to additive coupling
             if coupling == "diffusive":
                 hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
 
