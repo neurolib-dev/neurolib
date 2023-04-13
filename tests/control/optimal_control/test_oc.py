@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import neurolib
 from neurolib.control.optimal_control.oc import solve_adjoint, update_control_with_limit, convert_interval
 from neurolib.control.optimal_control.oc_wc import OcWc
 from neurolib.models.wc import WCModel
@@ -89,12 +90,12 @@ class TestOC(unittest.TestCase):
 
         model, target = self.get_deterministic_wilson_cowan_test_setup()
 
-        prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
-        prec_mat[0, 0] = 1
+        cost_mat[0, 0] = 1
         control_mat[0, 1] = 1
 
-        model_controlled = OcWc(model, target, w_p=1, w_2=0, precision_matrix=prec_mat, control_matrix=control_mat)
+        model_controlled = OcWc(model, target, weights=None, cost_matrix=cost_mat, control_matrix=control_mat)
 
         self.assertTrue(model_controlled.step_size(-model_controlled.compute_gradient()) > 0.0)
 
@@ -106,12 +107,12 @@ class TestOC(unittest.TestCase):
 
         model, target = self.get_deterministic_wilson_cowan_test_setup()
 
-        prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
-        prec_mat[0, 0] = 1
+        cost_mat[0, 0] = 1
         control_mat[0, 1] = 1
 
-        model_controlled = OcWc(model, target, w_p=1, w_2=0, precision_matrix=prec_mat, control_matrix=control_mat)
+        model_controlled = OcWc(model, target, weights=None, cost_matrix=cost_mat, control_matrix=control_mat)
 
         self.assertTrue(model_controlled.step_size(-np.zeros(target.shape)) == 0.0)
 

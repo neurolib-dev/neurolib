@@ -70,7 +70,7 @@ class TestFHN(unittest.TestCase):
             model.params["y_ext"] = zero_input
             model.params["x_ext"] = zero_input
 
-            model_controlled = oc_fhn.OcFhn(model, target, w_p=1, w_2=0)
+            model_controlled = oc_fhn.OcFhn(model, target)
             model_controlled.control = control_init.copy()
 
             control_coincide = False
@@ -132,11 +132,11 @@ class TestFHN(unittest.TestCase):
 
                             model = FHNModel(Cmat=cmat, Dmat=dmat)
 
-                            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+                            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
                             control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
                             control_mat[c_node, c_channel] = 1.0
-                            prec_mat[p_node, p_channel] = 1.0
+                            cost_mat[p_node, p_channel] = 1.0
 
                             model.params.duration = duration
                             model.params.coupling = coupling
@@ -194,10 +194,8 @@ class TestFHN(unittest.TestCase):
                             model_controlled = oc_fhn.OcFhn(
                                 model,
                                 target,
-                                w_p=1,
-                                w_2=0,
                                 control_matrix=control_mat,
-                                precision_matrix=prec_mat,
+                                cost_matrix=cost_mat,
                             )
 
                             model_controlled.control = control_init.copy()
@@ -237,11 +235,11 @@ class TestFHN(unittest.TestCase):
 
         model = FHNModel(Cmat=cmat, Dmat=dmat)
 
-        prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
         control_mat[0, 0] = 1.0
-        prec_mat[1, 0] = 1.0
+        cost_mat[1, 0] = 1.0
 
         model.params.duration = duration
 
@@ -285,10 +283,8 @@ class TestFHN(unittest.TestCase):
         model_controlled = oc_fhn.OcFhn(
             model,
             target,
-            w_p=1,
-            w_2=0,
             control_matrix=control_mat,
-            precision_matrix=prec_mat,
+            cost_matrix=cost_mat,
         )
 
         self.assertTrue((model.params.Dmat_ndt == model_controlled.Dmat_ndt).all())
@@ -371,8 +367,6 @@ class TestFHN(unittest.TestCase):
                 model_controlled = oc_fhn.OcFhn(
                     model,
                     target,
-                    w_p=1,
-                    w_2=0,
                     control_matrix=control_mat,
                 )
 
@@ -417,7 +411,9 @@ class TestFHN(unittest.TestCase):
             axis=2,
         )
 
-        model_controlled = oc_fhn.OcFhn(model, target, w_p=0, w_2=1)
+        model_controlled = oc_fhn.OcFhn(model, target)
+        model_controlled.weights["w_p"] = 0.0
+        model_controlled.weights["w_2"] = 1.0
         control_is_zero = False
 
         for i in range(100):
@@ -434,7 +430,7 @@ class TestFHN(unittest.TestCase):
     # tests if the OC computation returns zero control when w_p = 0
     # 3-node network case
     def test_3n_wp0(self):
-        print("Test OC for w_p = 0 in single-node model")
+        print("Test OC for w_p = 0 in 3-node model")
 
         N = 3
         dmat = np.zeros((N, N))  # no delay
@@ -470,7 +466,9 @@ class TestFHN(unittest.TestCase):
             axis=2,
         )
 
-        model_controlled = oc_fhn.OcFhn(model, target, w_p=0, w_2=1)
+        model_controlled = oc_fhn.OcFhn(model, target)
+        model_controlled.weights["w_p"] = 0.0
+        model_controlled.weights["w_2"] = 1.0
         control_is_zero = False
 
         for i in range(100):
@@ -506,7 +504,7 @@ class TestFHN(unittest.TestCase):
         model.params["xs_init"] = np.vstack([0.0, 0.0])
         model.params["ys_init"] = np.vstack([0.0, 0.0])
 
-        precision_mat = np.ones((model.params.N, len(model.state_vars)))
+        cost_mat = np.ones((model.params.N, len(model.output_vars)))
         control_mat = np.ones((model.params.N, len(model.state_vars)))
         target = np.ones((2, 2, input.shape[1]))
 
@@ -515,10 +513,8 @@ class TestFHN(unittest.TestCase):
         model_controlled = oc_fhn.OcFhn(
             model,
             target,
-            w_p=1,
-            w_2=1,
             maximum_control_strength=maximum_control_strength,
-            precision_matrix=precision_mat,
+            cost_matrix=cost_mat,
             control_matrix=control_mat,
         )
 
@@ -545,8 +541,8 @@ class TestFHN(unittest.TestCase):
         model.params["xs_init"] = np.vstack([0.0, 0.0])
         model.params["ys_init"] = np.vstack([0.0, 0.0])
 
-        precision_mat = np.ones((model.params.N, len(model.state_vars)))
-        control_mat = np.ones((model.params.N, len(model.state_vars)))
+        cost_mat = np.ones((model.params.N, len(model.output_vars)))
+        control_mat = np.ones((model.params.N, len(model.output_vars)))
         target = np.ones((2, 2, input.shape[1]))
 
         maximum_control_strength = 0.5
@@ -554,10 +550,8 @@ class TestFHN(unittest.TestCase):
         model_controlled = oc_fhn.OcFhn(
             model,
             target,
-            w_p=1,
-            w_2=1,
             maximum_control_strength=maximum_control_strength,
-            precision_matrix=precision_mat,
+            cost_matrix=cost_mat,
             control_matrix=control_mat,
         )
 
@@ -592,12 +586,7 @@ class TestFHN(unittest.TestCase):
 
         target = np.ones((2, 2, input.shape[1]))
 
-        model_controlled = oc_fhn.OcFhn(
-            model,
-            target,
-            w_p=1,
-            w_2=1,
-        )
+        model_controlled = oc_fhn.OcFhn(model, target)
 
         model_controlled.optimize(1)
         xs = model_controlled.get_xs()

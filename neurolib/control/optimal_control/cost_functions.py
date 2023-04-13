@@ -3,7 +3,66 @@ import numba
 
 
 @numba.njit
-def precision_cost(x_target, x_sim, w_p, precision_matrix, dt, interval=(0, None)):
+def accuracy_cost(x, target_timeseries, weights, cost_matrix, dt, interval=(0, None)):
+    """Total cost related to the accuracy, weighted sum of contributions.
+
+    :param x:               State of dynamical system.
+    :type x:                np.ndarray
+    :param target_timeseries:    Target state.
+    :type target_timeseries:     np.darray
+    :param weights:         Dictionary of weights.
+    :type weights:          dictionary
+    :param cost_matrix:     Matrix of channels to take into account
+    :type cost_matrix:      ndarray
+    :param dt:              Time step.
+    :type dt:               float
+    :return:                Accuracy cost.
+    :rtype:                 float
+    """
+
+    cost_timeseries = np.zeros((target_timeseries.shape))
+
+    # timeseries of control vector is weighted sum of contributing cost functionals
+    if weights["w_p"] != 0.0:
+        cost_timeseries += weights["w_p"] * precision_cost(x, target_timeseries, cost_matrix, interval)
+
+    cost = 0.0
+    # integrate over nodes, channels, and time
+    if weights["w_p"] != 0.0:
+        for n in range(x.shape[0]):
+            for v in range(x.shape[1]):
+                for t in range(interval[0], interval[1]):
+                    cost += cost_timeseries[n, v, t] * dt
+
+    return cost
+
+
+@numba.njit
+def derivative_accuracy_cost(x, target_timeseries, weights, cost_matrix, interval=(0, None)):
+    """Derivative of the 'accuracy_cost' wrt. to the state 'x'.
+
+    :param x:               State of dynamical system.
+    :type x:                np.ndarray
+    :param target_timeseries:    Target state.
+    :type target_timeseries:     np.darray
+    :param weights:         Dictionary of weights.
+    :type weights:          dictionary
+    :param cost_matrix:     Matrix of channels to take into account
+    :type cost_matrix:      ndarray
+    :return:                Accuracy cost derivative.
+    :rtype:                 ndarray
+    """
+
+    der = np.zeros((cost_matrix.shape[0], cost_matrix.shape[1], x.shape[2]))
+
+    if weights["w_p"] != 0.0:
+        der += weights["w_p"] * derivative_precision_cost(x, target_timeseries, cost_matrix, interval)
+
+    return der
+
+
+@numba.njit
+def precision_cost(x_sim, x_target, cost_matrix, interval=(0, None)):
     """Summed squared difference between target and simulation within specified time interval weighted by w_p.
        Penalizes deviation from the target.
 
@@ -13,9 +72,9 @@ def precision_cost(x_target, x_sim, w_p, precision_matrix, dt, interval=(0, None
     :type x_sim:        np.ndarray
     :param w_p:         Weight that is multiplied with the precision cost.
     :type w_p:          float
-    :param precision_matrix: N x V binary matrix that defines nodes and channels of precision measurement. Defaults to
+    :param cost_matrix: N x V binary matrix that defines nodes and channels of precision measurement. Defaults to
                              None.
-    :type precision_matrix:  np.ndarray
+    :type cost_matrix:  np.ndarray
     :param dt:          Time step.
     :type dt:           float
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
@@ -25,17 +84,18 @@ def precision_cost(x_target, x_sim, w_p, precision_matrix, dt, interval=(0, None
     :rtype:             float
     """
 
-    cost = 0.0
+    cost = np.zeros((x_target.shape))
+
     for n in range(x_target.shape[0]):
         for v in range(x_target.shape[1]):
             for t in range(interval[0], interval[1]):
-                cost += precision_matrix[n, v] * (x_target[n, v, t] - x_sim[n, v, t]) ** 2
+                cost[n, v, t] = 0.5 * cost_matrix[n, v] * (x_target[n, v, t] - x_sim[n, v, t]) ** 2
 
-    return w_p * 0.5 * cost * dt
+    return cost
 
 
 @numba.njit
-def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval):
+def derivative_precision_cost(x_sim, x_target, cost_matrix, interval):
     """Derivative of 'precision_cost' wrt. to 'x_sim'.
 
     :param x_target:    N x V x T array that contains the target time series.
@@ -44,9 +104,9 @@ def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval):
     :type x_sim:        np.ndarray
     :param w_p:         Weight that is multiplied with the precision cost.
     :type w_p:          float
-    :param precision_matrix: N x V binary matrix that defines nodes and channels of precision measurement, defaults to
+    :param cost_matrix: N x V binary matrix that defines nodes and channels of precision measurement, defaults to
                                  None
-    :type precision_matrix:  np.ndarray
+    :type cost_matrix:  np.ndarray
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                         dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:     tuple
@@ -59,36 +119,84 @@ def derivative_precision_cost(x_target, x_sim, w_p, precision_matrix, interval):
     for n in range(x_target.shape[0]):
         for v in range(x_target.shape[1]):
             for t in range(interval[0], interval[1]):
-                derivative[n, v, t] = np.multiply(-w_p * (x_target[n, v, t] - x_sim[n, v, t]), precision_matrix[n, v])
+                derivative[n, v, t] = -cost_matrix[n, v] * (x_target[n, v, t] - x_sim[n, v, t])
 
     return derivative
 
 
 @numba.njit
-def energy_cost(u, w_2, dt):
+def control_strength_cost(u, weights, dt):
+    """Total cost related to the control strength, weighted sum of contributions.
+
+    :param u:           Control-dimensions x T array. Control signals.
+    :type u:            np.ndarray
+    :param weights:     Dictionary of weights.
+    :type weights:      dictionary
+    :param dt:          Time step.
+    :type dt:           float
+    :return:            control strength cost of the control.
+    :rtype:             float
+    """
+
+    cost_timeseries = np.zeros((u.shape))
+
+    # timeseries of control vector is weighted sum of contributing cost functionals
+    if weights["w_2"] != 0.0:
+        cost_timeseries += weights["w_2"] * L2_cost(u)
+
+    cost = 0.0
+    # integrate over nodes, channels, and time
+    if weights["w_2"] != 0.0:
+        for n in range(u.shape[0]):
+            for v in range(u.shape[1]):
+                for t in range(u.shape[2]):
+                    cost += cost_timeseries[n, v, t] * dt
+
+    return cost
+
+
+@numba.njit
+def derivative_control_strength_cost(u, weights):
+    """Derivative of the 'control_strength_cost' wrt. to the control 'u'.
+
+    :param u:           Control-dimensions x T array. Control signals.
+    :type u:            np.ndarray
+    :param weights:     Dictionary of weights.
+    :type weights:      dictionary
+    :param dt:          Time step.
+    :type dt:           float
+    :return:    Control-dimensions x T array of L2-cost gradients.
+    :rtype:     np.ndarray
+    """
+
+    der = np.zeros((u.shape))
+
+    if weights["w_2"] != 0.0:
+        der += weights["w_2"] * derivative_L2_cost(u)
+
+    return der
+
+
+@numba.njit
+def L2_cost(u):
     """'Energy' or 'L2' cost. Penalizes for control strength.
 
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
-    :param w_2: Weight that is multiplied with the L2 ("energy") cost.
-    :type w_2:  float
-    :param dt:  Time step.
-    :type dt:   float
     :return:    L2 cost of the control.
     :rtype:     float
     """
-    return w_2 * 0.5 * np.sum(u**2.0) * dt
+
+    return 0.5 * u**2.0
 
 
 @numba.njit
-def derivative_energy_cost(u, w_2):
-    """Derivative of the 'energy_cost' wrt. to the control 'u'.
+def derivative_L2_cost(u):
+    """Derivative of the 'L2_cost' wrt. to the control 'u'.
 
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
-    :param w_2: Weight that is multiplied with the L2 ("energy") cost.
-    :type w_2:  float
     :return:    Control-dimensions x T array of L2-cost gradients.
     :rtype:     np.ndarray
     """
-    return w_2 * u
+    return u
