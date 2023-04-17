@@ -225,10 +225,6 @@ class TestWC(unittest.TestCase):
                                     control_coincide = True
                                     break
 
-                                print("cdiff max", c_diff_max)
-                                print("control ", np.round(control[c_node, c_channel, :], 4))
-                                print("input ", input[0, :])
-
                                 if model_controlled.zero_step_encountered:
                                     break
 
