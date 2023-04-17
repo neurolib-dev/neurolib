@@ -345,8 +345,8 @@ class TestWC(unittest.TestCase):
         for t in range(input.shape[1]):
             input[0, t] = np.sin(t)
 
-        model.params["y_ext"] = np.vstack([input, input])
-        model.params["x_ext"] = np.vstack([-input, 1.1 * input])
+        model.params["exc_ext"] = np.vstack([input, input])
+        model.params["inh_ext"] = np.vstack([-input, 1.1 * input])
 
         initind = 5
 
