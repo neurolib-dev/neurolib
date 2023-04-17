@@ -79,7 +79,7 @@ class TestCostFunctions(unittest.TestCase):
         )
 
         self.assertTrue(np.all(derivative_p_c[0, :, 1::] == 0))
-        self.assertTrue(np.all(derivative_p_c[0, :, 0] == 2 * (-weights["w_p"] * x_target[0, :, 0])))
+        self.assertTrue(np.all(derivative_p_c[0, :, 0] == 2 * (weights["w_p"] * x_target[0, :, 0])))
 
     def test_derivative_precision_cost_full_timeseries_nodes_channels(self):
         print(" Test precision cost derivative full timeseries for node and channel selection")
@@ -103,7 +103,7 @@ class TestCostFunctions(unittest.TestCase):
                 derivative_p_c = cost_functions.derivative_accuracy_cost(
                     target, zerostate, weights, precision_cost_matrix, interval
                 )
-                result = -weights["w_p"] * np.einsum("ijk,ij->ijk", target, precision_cost_matrix)
+                result = weights["w_p"] * np.einsum("ijk,ij->ijk", target, precision_cost_matrix)
                 self.assertTrue(np.all(derivative_p_c - result == 0))
                 precision_cost_matrix[i, j] = 0
 
@@ -142,7 +142,7 @@ class TestCostFunctions(unittest.TestCase):
 
         self.assertTrue(np.all(derivative_p_c[0, :, 0:3] == 0))
         self.assertTrue(np.all(derivative_p_c[0, :, 4::] == 0))
-        self.assertTrue(np.all(derivative_p_c[0, :, 3] == 2 * (-weights["w_p"] * x_target[0, :, 3])))
+        self.assertTrue(np.all(derivative_p_c[0, :, 3] == 2 * (weights["w_p"] * x_target[0, :, 3])))
 
     def test_L2_cost(self):
         print(" Test L2 cost")

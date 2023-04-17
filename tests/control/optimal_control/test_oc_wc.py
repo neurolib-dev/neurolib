@@ -37,17 +37,17 @@ class TestWC(unittest.TestCase):
 
         for input_channel in [0, 1]:
 
-            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
             control_mat = np.zeros((model.params.N, len(model.state_vars)))
             if input_channel == 0:
                 print("Input to E channel, measure in I channel")
-                prec_mat[0, 1] = 1.0  # only measure in I-channel in one channel
+                cost_mat[0, 1] = 1.0  # only measure in I-channel in one channel
                 control_mat[0, 0] = 1.0  # only allow inputs to other channel
                 model.params["exc_ext"] = input
                 model.params["inh_ext"] = zero_input
             elif input_channel == 1:
                 print("Input to I channel, measure in E channel")
-                prec_mat[0, 0] = 1.0  # only measure in E-channel in one channel
+                cost_mat[0, 0] = 1.0  # only measure in E-channel in one channel
                 control_mat[0, 1] = 1.0  # only allow inputs to other channel
                 model.params["exc_ext"] = zero_input
                 model.params["inh_ext"] = input
@@ -140,11 +140,11 @@ class TestWC(unittest.TestCase):
                             e0, e1 = model.exc[0, -1], model.exc[1, -1]
                             i0, i1 = model.inh[0, -1], model.inh[1, -1]
 
-                            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+                            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
                             control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
                             control_mat[c_node, c_channel] = 1.0
-                            prec_mat[p_node, p_channel] = 1.0
+                            cost_mat[p_node, p_channel] = 1.0
 
                             model.params.duration = duration
                             model.params.coupling = coupling
@@ -200,7 +200,7 @@ class TestWC(unittest.TestCase):
                                 model,
                                 target,
                                 control_matrix=control_mat,
-                                precision_matrix=prec_mat,
+                                cost_matrix=cost_mat,
                             )
                             model_controlled.maximum_control_strength = 2.0 * a
 
@@ -251,11 +251,11 @@ class TestWC(unittest.TestCase):
 
         model = WCModel(Cmat=cmat, Dmat=dmat)
 
-        prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
         control_mat[0, 0] = 1.0
-        prec_mat[1, 0] = 1.0
+        cost_mat[1, 0] = 1.0
 
         model.params.duration = duration
 
@@ -300,7 +300,7 @@ class TestWC(unittest.TestCase):
             model,
             target,
             control_matrix=control_mat,
-            precision_matrix=prec_mat,
+            cost_matrix=cost_mat,
         )
 
         self.assertTrue((model.params.Dmat_ndt == model_controlled.Dmat_ndt).all())
