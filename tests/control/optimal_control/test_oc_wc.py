@@ -352,8 +352,8 @@ class TestWC(unittest.TestCase):
 
         zeroinit = np.zeros((initind))
 
-        model.params["xs_init"] = np.vstack([zeroinit, zeroinit])
-        model.params["ys_init"] = np.vstack([zeroinit, zeroinit])
+        model.params["exc_init"] = np.vstack([zeroinit, zeroinit])
+        model.params["inh_init"] = np.vstack([zeroinit, zeroinit])
 
         target = np.ones((2, 2, input.shape[1]))
 
