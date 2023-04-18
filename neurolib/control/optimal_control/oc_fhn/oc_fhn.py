@@ -48,12 +48,11 @@ class OcFhn(OC):
         self,
         model,
         target,
-        w_p=1.0,
-        w_2=1.0,
+        weights=None,
         maximum_control_strength=None,
         print_array=[],
-        precision_cost_interval=(None, None),
-        precision_matrix=None,
+        cost_interval=(None, None),
+        cost_matrix=None,
         control_matrix=None,
         M=1,
         M_validation=0,
@@ -62,12 +61,11 @@ class OcFhn(OC):
         super().__init__(
             model,
             target,
-            w_p=w_p,
-            w_2=w_2,
+            weights=weights,
             maximum_control_strength=maximum_control_strength,
             print_array=print_array,
-            precision_cost_interval=precision_cost_interval,
-            precision_matrix=precision_matrix,
+            cost_interval=cost_interval,
+            cost_matrix=cost_matrix,
             control_matrix=control_matrix,
             M=M,
             M_validation=M_validation,
@@ -193,8 +191,7 @@ class OcFhn(OC):
         :rtype:          np.ndarray of shape N x V x T
         """
         self.solve_adjoint()
-        df_du = cost_functions.derivative_energy_cost(self.control, self.w_2)  # Remark: at the current state, only the
-        # "energy" (L2) cost explicitly depends on the control signal. Further contributions can be added here.
+        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
         d_du = self.Duh()
 
         return compute_gradient(self.N, self.dim_out, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)

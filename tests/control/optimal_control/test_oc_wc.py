@@ -37,17 +37,17 @@ class TestWC(unittest.TestCase):
 
         for input_channel in [0, 1]:
 
-            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
             control_mat = np.zeros((model.params.N, len(model.state_vars)))
             if input_channel == 0:
                 print("Input to E channel, measure in I channel")
-                prec_mat[0, 1] = 1.0  # only measure in I-channel in one channel
+                cost_mat[0, 1] = 1.0  # only measure in I-channel in one channel
                 control_mat[0, 0] = 1.0  # only allow inputs to other channel
                 model.params["exc_ext"] = input
                 model.params["inh_ext"] = zero_input
             elif input_channel == 1:
                 print("Input to I channel, measure in E channel")
-                prec_mat[0, 0] = 1.0  # only measure in E-channel in one channel
+                cost_mat[0, 0] = 1.0  # only measure in E-channel in one channel
                 control_mat[0, 1] = 1.0  # only allow inputs to other channel
                 model.params["exc_ext"] = zero_input
                 model.params["inh_ext"] = input
@@ -70,7 +70,7 @@ class TestWC(unittest.TestCase):
             model.params["inh_ext"] = zero_input
             model.params["exc_ext"] = zero_input
 
-            model_controlled = oc_wc.OcWc(model, target, w_p=1, w_2=0)
+            model_controlled = oc_wc.OcWc(model, target)
 
             control_coincide = False
             iterations = 5000
@@ -140,11 +140,11 @@ class TestWC(unittest.TestCase):
                             e0, e1 = model.exc[0, -1], model.exc[1, -1]
                             i0, i1 = model.inh[0, -1], model.inh[1, -1]
 
-                            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+                            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
                             control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
                             control_mat[c_node, c_channel] = 1.0
-                            prec_mat[p_node, p_channel] = 1.0
+                            cost_mat[p_node, p_channel] = 1.0
 
                             model.params.duration = duration
                             model.params.coupling = coupling
@@ -199,10 +199,8 @@ class TestWC(unittest.TestCase):
                             model_controlled = oc_wc.OcWc(
                                 model,
                                 target,
-                                w_p=1,
-                                w_2=0,
                                 control_matrix=control_mat,
-                                precision_matrix=prec_mat,
+                                cost_matrix=cost_mat,
                             )
                             model_controlled.maximum_control_strength = 2.0 * a
 
@@ -227,10 +225,6 @@ class TestWC(unittest.TestCase):
                                     control_coincide = True
                                     break
 
-                                print("cdiff max", c_diff_max)
-                                print("control ", np.round(control[c_node, c_channel, :], 4))
-                                print("input ", input[0, :])
-
                                 if model_controlled.zero_step_encountered:
                                     break
 
@@ -253,11 +247,11 @@ class TestWC(unittest.TestCase):
 
         model = WCModel(Cmat=cmat, Dmat=dmat)
 
-        prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
         control_mat[0, 0] = 1.0
-        prec_mat[1, 0] = 1.0
+        cost_mat[1, 0] = 1.0
 
         model.params.duration = duration
 
@@ -301,10 +295,8 @@ class TestWC(unittest.TestCase):
         model_controlled = oc_wc.OcWc(
             model,
             target,
-            w_p=1,
-            w_2=0,
             control_matrix=control_mat,
-            precision_matrix=prec_mat,
+            cost_matrix=cost_mat,
         )
 
         self.assertTrue((model.params.Dmat_ndt == model_controlled.Dmat_ndt).all())
@@ -332,6 +324,43 @@ class TestWC(unittest.TestCase):
                 break
 
         self.assertTrue(control_coincide)
+
+    # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
+    def test_get_xs(self):
+        print("Test state shape agrees with target shape")
+
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        model = WCModel(Cmat=cmat, Dmat=dmat)
+        duration = 1.0
+        model.params.duration = duration
+
+        zero_input = ZeroInput().generate_input(duration=duration + model.params.dt, dt=model.params.dt)
+        input = np.copy(zero_input)
+
+        for t in range(input.shape[1]):
+            input[0, t] = np.sin(t)
+
+        model.params["exc_ext"] = np.vstack([input, input])
+        model.params["inh_ext"] = np.vstack([-input, 1.1 * input])
+
+        initind = 5
+
+        zeroinit = np.zeros((initind))
+
+        model.params["exc_init"] = np.vstack([zeroinit, zeroinit])
+        model.params["inh_init"] = np.vstack([zeroinit, zeroinit])
+
+        target = np.ones((2, 2, input.shape[1]))
+
+        model_controlled = oc_wc.OcWc(
+            model,
+            target,
+        )
+
+        model_controlled.optimize(1)
+        xs = model_controlled.get_xs()
+        self.assertTrue(xs.shape == target.shape)
 
 
 if __name__ == "__main__":

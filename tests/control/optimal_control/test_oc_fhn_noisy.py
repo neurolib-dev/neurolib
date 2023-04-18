@@ -52,13 +52,13 @@ class TestFHNNoisy(unittest.TestCase):
         model.params["y_ext"] = zero_input
         model.params["x_ext"] = zero_input
 
-        fhn_controlled_noisy = oc_fhn.OcFhn(model, target, w_p=1, w_2=0, M=2, M_validation=1000)
+        model_controlled_noisy = oc_fhn.OcFhn(model, target, M=2, M_validation=1000)
 
         control_coincide = False
 
         for i in range(100):
-            fhn_controlled_noisy.optimize(1000)
-            control = fhn_controlled_noisy.control
+            model_controlled_noisy.optimize(1000)
+            control = model_controlled_noisy.control
 
             c_diff = np.vstack([np.abs(control[0, 0, :] - input_x), np.abs(control[0, 1, :] - input_y)])
             if np.amax(c_diff) < limit_diff:
@@ -103,16 +103,16 @@ class TestFHNNoisy(unittest.TestCase):
 
         model.params["y_ext"] = zero_input
         model.params["x_ext"] = zero_input
-        fhn_controlled_noisy = oc_fhn.OcFhn(model, target, w_p=1, w_2=0, M=2, M_validation=1000)
+        model_controlled_noisy = oc_fhn.OcFhn(model, target, M=2, M_validation=1000)
 
-        fhn_controlled_noisy.optimize(test_iterations)
-        control_noisy = fhn_controlled_noisy.control
+        model_controlled_noisy.optimize(test_iterations)
+        control_noisy = model_controlled_noisy.control
 
         model.params["y_ext"] = zero_input
         model.params["x_ext"] = zero_input
-        fhn_controlled_det = oc_fhn.OcFhn(model, target, w_p=1, w_2=0)
-        fhn_controlled_det.optimize(test_iterations)
-        control_det = fhn_controlled_det.control
+        model_controlled_det = oc_fhn.OcFhn(model, target)
+        model_controlled_det.optimize(test_iterations)
+        control_det = model_controlled_det.control
 
         maxdiff = np.amax(np.abs(control_noisy - control_det))
         self.assertLess(maxdiff, limit_diff)
@@ -161,15 +161,15 @@ class TestFHNNoisy(unittest.TestCase):
 
         model.params["y_ext"] = zero_input
         model.params["x_ext"] = zero_input
-        fhn_controlled_noisy = oc_fhn.OcFhn(model, target, w_p=1, w_2=0, M=2, M_validation=10)
-        fhn_controlled_noisy.optimize(test_iterations)
-        control_noisy = fhn_controlled_noisy.control
+        model_controlled_noisy = oc_fhn.OcFhn(model, target, M=2, M_validation=10)
+        model_controlled_noisy.optimize(test_iterations)
+        control_noisy = model_controlled_noisy.control
 
         model.params["y_ext"] = zero_input
         model.params["x_ext"] = zero_input
-        fhn_controlled_det = oc_fhn.OcFhn(model, target, w_p=1, w_2=0)
-        fhn_controlled_det.optimize(test_iterations)
-        control_det = fhn_controlled_det.control
+        model_controlled_det = oc_fhn.OcFhn(model, target)
+        model_controlled_det.optimize(test_iterations)
+        control_det = model_controlled_det.control
 
         maxdiff = np.amax(np.abs(control_noisy - control_det))
         self.assertLess(maxdiff, limit_diff)
@@ -208,12 +208,14 @@ class TestFHNNoisy(unittest.TestCase):
 
         model.params.sigma_ou = 1.0
 
-        fhn_controlled = oc_fhn.OcFhn(model, target, w_p=0, w_2=1, M=2, M_validation=1000)
+        model_controlled = oc_fhn.OcFhn(model, target, M=2, M_validation=1000)
+        model_controlled.weights["w_p"] = 0.0
+        model_controlled.weights["w_2"] = 1.0
         control_is_zero = False
 
         for i in range(100):
-            fhn_controlled.optimize(1000)
-            control = fhn_controlled.control
+            model_controlled.optimize(1000)
+            control = model_controlled.control
 
             c_max = np.amax(np.abs(control))
             if c_max < limit_diff:
@@ -263,12 +265,14 @@ class TestFHNNoisy(unittest.TestCase):
 
         model.params.sigma_ou = 1.0
 
-        fhn_controlled = oc_fhn.OcFhn(model, target, w_p=0, w_2=1, M=2, M_validation=1000)
+        model_controlled = oc_fhn.OcFhn(model, target, M=2, M_validation=1000)
+        model_controlled.weights["w_p"] = 0.0
+        model_controlled.weights["w_2"] = 1.0
         control_is_zero = False
 
         for i in range(100):
-            fhn_controlled.optimize(1000)
-            control = fhn_controlled.control
+            model_controlled.optimize(1000)
+            control = model_controlled.control
 
             c_max = np.amax(np.abs(control))
             if c_max < limit_diff:

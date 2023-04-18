@@ -6,6 +6,17 @@ import logging
 import copy
 
 
+def getdefaultweights():
+    weights = numba.typed.Dict.empty(
+        key_type=numba.types.unicode_type,
+        value_type=numba.types.float64,
+    )
+    weights["w_p"] = 1.0
+    weights["w_2"] = 0.0
+
+    return weights
+
+
 def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, cost_gradient):
     """Find a step size which leads to improved cost given the gradient. The step size is iteratively decreased.
         The control-inputs are updated in place according to the found step size via the
@@ -276,12 +287,11 @@ class OC:
         self,
         model,
         target,
-        w_p=1.0,
-        w_2=1.0,
+        weights=None,
         maximum_control_strength=None,
         print_array=[],
-        precision_cost_interval=(None, None),
-        precision_matrix=None,
+        cost_interval=(None, None),
+        cost_matrix=None,
         control_matrix=None,
         M=1,
         M_validation=0,
@@ -295,23 +305,21 @@ class OC:
         :type model:        neurolib.models.model
         :param target:      Target time series of controllable variables.
         :type target:       np.ndarray
-        :param w_p:         Weight of the precision cost term, defaults to 1.
-        :type w_p:          float, optional
-        :param w_2:         Weight of the L2 cost term, defaults to 1.
-        :type w_2:          float, optional
+        :param weights:     Dictionary of weight parameters, defaults to 'None'.
+        :type weights:      dictionary, optional
         :param maximum_control_strength:    Maximum absolute value a control signal can take. No limitation of the
                                             absolute control strength if 'None'. Defaults to None.
         :type:                              float or None, optional
         :param print_array: Array of optimization-iteration-indices (starting at 1) in which cost is printed out.
                             Defaults to empty list `[]`.
         :type print_array:  list, optional
-        :param precision_cost_interval: (t_start, t_end). Indices of start and end point (both inclusive) of the
-                                        time interval in which the precision cost is evaluated. Default is full time
+        :param cost_interval: (t_start, t_end). Indices of start and end point (both inclusive) of the
+                                        time interval in which the accuracy cost is evaluated. Default is full time
                                         series. Defaults to (None, None).
-        :type precision_cost_interval:  tuple, optional
-        :param precision_matrix: N x V binary matrix that defines nodes and channels of precision measurement, defaults
+        :type cost_interval:  tuple, optional
+        :param cost_matrix: N x V binary matrix that defines nodes and channels of accuracy measurement, defaults
                                  to None.
-        :type precision_matrix:  np.ndarray
+        :type cost_matrix:  np.ndarray
         :param control_matrix:   N x V Binary matrix that defines nodes and variables where control inputs are active,
                                  defaults to None.
         :type control_matrix:    np.ndarray
@@ -331,10 +339,22 @@ class OC:
         self.simulate_forward()
 
         self.target = target  # ToDo: dimensions-check
-
-        self.w_p = w_p
-        self.w_2 = w_2
         self.maximum_control_strength = maximum_control_strength
+
+        if weights is None:
+            self.weights = getdefaultweights()
+        elif type(weights) != type(dict()):
+            print("Weights parameter must be dictionary, use default weights instead.")
+            self.weights = getdefaultweights()
+        else:
+            defaultweights = getdefaultweights()
+            for k in defaultweights.keys():
+                if k in weights.keys():
+                    defaultweights[k] = weights[k]
+                else:
+                    print("Weight ", k, " not in provided weight dictionary. Use default value.")
+
+            self.weights = defaultweights
 
         self.N = self.model.params.N
 
@@ -349,14 +369,14 @@ class OC:
             if isinstance(self.model.Dmat, type(None)):
                 self.model.Dmat = np.zeros((self.N, self.N))
 
-        self.precision_matrix = precision_matrix
-        if isinstance(self.precision_matrix, type(None)):
-            self.precision_matrix = np.ones(
+        self.cost_matrix = cost_matrix
+        if isinstance(self.cost_matrix, type(None)):
+            self.cost_matrix = np.ones(
                 (self.N, self.dim_out)
             )  # default: measure precision in all variables in all nodes
 
         # check if matrix is binary
-        assert np.array_equal(self.precision_matrix, self.precision_matrix.astype(bool))
+        assert np.array_equal(self.cost_matrix, self.cost_matrix.astype(bool))
 
         self.control_matrix = control_matrix
         if isinstance(self.control_matrix, type(None)):
@@ -398,8 +418,7 @@ class OC:
         self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
         self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
 
-        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps is
-        # initial condition.
+        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps
 
         # + forward simulation steps of neurolibs model.run().
         self.state_dim = (
@@ -423,7 +442,7 @@ class OC:
 
         self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
-        self.precision_cost_interval = convert_interval(precision_cost_interval, self.T)
+        self.cost_interval = convert_interval(cost_interval, self.T)
 
     @abc.abstractmethod
     def get_xs(self):
@@ -454,28 +473,28 @@ class OC:
         pass
 
     def compute_total_cost(self):
-        """Compute the total cost as weighted sum precision of precision and L2 term.
-
+        """Compute the total cost as weighted sum precision of all contributing cost terms.
         :rtype: float
         """
-        precision_cost = cost_functions.precision_cost(
+        xs = self.get_xs()
+        accuracy_cost = cost_functions.accuracy_cost(
+            xs,
             self.target,
-            self.get_xs(),
-            self.w_p,
-            self.precision_matrix,
+            self.weights,
+            self.cost_matrix,
             self.dt,
-            self.precision_cost_interval,
+            self.cost_interval,
         )
-        energy_cost = cost_functions.energy_cost(self.control, w_2=self.w_2, dt=self.dt)
-        return precision_cost + energy_cost  # Further cost terms can be added here. Add corresponding derivatives
-        # elsewhere accordingly.
+        control_strenght_cost = cost_functions.control_strength_cost(self.control, self.weights, self.dt)
+        return accuracy_cost + control_strenght_cost
 
     @abc.abstractmethod
     def compute_gradient(self):
-        """Compute the gradient of the total cost wrt. to the control signals. This is achieved by first, solving the
-        adjoint equation backwards in time. Second, derivatives of the cost wrt. to explicit control variables are
-        evaluated as well as the Jacobians of the dynamics wrt. to explicit control. Then the decent direction /
-        gradient of the cost wrt. to control (in its explicit form AND IMPLICIT FORM) is computed.
+        """Compute the gradient of the total cost wrt. to the control:
+        1. solve the adjoint equation backwards in time
+        2. compute derivatives of cost wrt. to control
+        3. compute Jacobians of the dynamics wrt. to control
+        4. compute gradient of the cost wrt. to control(i.e., negative descent direction)
         """
         pass
 
@@ -494,15 +513,14 @@ class OC:
         hx = self.compute_hx()
         hx_nw = self.compute_hx_nw()
 
-        # Derivative of cost wrt. to controllable 'state_vars'. Contributions of other costs might be added here.
-        df_dx = cost_functions.derivative_precision_cost(
-            self.target,
+        # Derivative of cost wrt. to controllable 'state_vars'.
+        df_dx = cost_functions.derivative_accuracy_cost(
             self.get_xs(),
-            self.w_p,
-            self.precision_matrix,
-            self.precision_cost_interval,
+            self.target,
+            self.weights,
+            self.cost_matrix,
+            self.cost_interval,
         )
-
         self.adjoint_state = solve_adjoint(hx, hx_nw, df_dx, self.state_dim, self.dt, self.N, self.T, self.Dmat_ndt)
 
     def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):
@@ -592,8 +610,8 @@ class OC:
         :type n_max_iterations:  int
         """
 
-        self.precision_cost_interval = convert_interval(
-            self.precision_cost_interval, self.T
+        self.cost_interval = convert_interval(
+            self.cost_interval, self.T
         )  # Assure check in repeated calls of ".optimize()".
 
         self.control = update_control_with_limit(

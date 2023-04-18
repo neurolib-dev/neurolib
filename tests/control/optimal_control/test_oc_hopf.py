@@ -37,17 +37,17 @@ class TestHopf(unittest.TestCase):
 
         for input_channel in [0, 1]:
 
-            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
             control_mat = np.zeros((model.params.N, len(model.state_vars)))
             if input_channel == 0:
                 print("Input to x channel, measure in y channel")
-                prec_mat[0, 1] = 1.0  # only measure in y-channel in one channel
+                cost_mat[0, 1] = 1.0  # only measure in y-channel in one channel
                 control_mat[0, 0] = 1.0  # only allow inputs to other channel
                 model.params["x_ext"] = input
                 model.params["y_ext"] = zero_input
             elif input_channel == 1:
                 print("Input to y channel, measure in x channel")
-                prec_mat[0, 0] = 1.0  # only measure in y-channel in one channel
+                cost_mat[0, 0] = 1.0  # only measure in y-channel in one channel
                 control_mat[0, 1] = 1.0  # only allow inputs to other channel
                 model.params["x_ext"] = zero_input
                 model.params["y_ext"] = input
@@ -70,7 +70,7 @@ class TestHopf(unittest.TestCase):
             model.params["y_ext"] = zero_input
             model.params["x_ext"] = zero_input
 
-            model_controlled = oc_hopf.OcHopf(model, target, w_p=1, w_2=0)
+            model_controlled = oc_hopf.OcHopf(model, target)
             model_controlled.control = control_init.copy()
 
             control_coincide = False
@@ -132,11 +132,11 @@ class TestHopf(unittest.TestCase):
 
                             model = HopfModel(Cmat=cmat, Dmat=dmat)
 
-                            prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+                            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
                             control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
                             control_mat[c_node, c_channel] = 1.0
-                            prec_mat[p_node, p_channel] = 1.0
+                            cost_mat[p_node, p_channel] = 1.0
 
                             model.params.duration = duration
                             model.params.coupling = coupling
@@ -194,10 +194,8 @@ class TestHopf(unittest.TestCase):
                             model_controlled = oc_hopf.OcHopf(
                                 model,
                                 target,
-                                w_p=1,
-                                w_2=0,
                                 control_matrix=control_mat,
-                                precision_matrix=prec_mat,
+                                cost_matrix=cost_mat,
                             )
 
                             model_controlled.control = control_init.copy()
@@ -237,11 +235,11 @@ class TestHopf(unittest.TestCase):
 
         model = HopfModel(Cmat=cmat, Dmat=dmat)
 
-        prec_mat = np.zeros((model.params.N, len(model.output_vars)))
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
         control_mat[0, 0] = 1.0
-        prec_mat[1, 0] = 1.0
+        cost_mat[1, 0] = 1.0
 
         model.params.duration = duration
 
@@ -285,10 +283,8 @@ class TestHopf(unittest.TestCase):
         model_controlled = oc_hopf.OcHopf(
             model,
             target,
-            w_p=1,
-            w_2=0,
             control_matrix=control_mat,
-            precision_matrix=prec_mat,
+            cost_matrix=cost_mat,
         )
 
         self.assertTrue((model.params.Dmat_ndt == model_controlled.Dmat_ndt).all())
@@ -348,8 +344,6 @@ class TestHopf(unittest.TestCase):
         model_controlled = oc_hopf.OcHopf(
             model,
             target,
-            w_p=1,
-            w_2=1,
         )
 
         model_controlled.optimize(1)
