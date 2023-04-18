@@ -1,7 +1,10 @@
 import unittest
+import numpy as np
 from neurolib.control.optimal_control import cost_functions
 from neurolib.control.optimal_control.oc import getdefaultweights
-import numpy as np
+from neurolib.utils.stimulus import ZeroInput
+from neurolib.models.fhn import FHNModel
+from neurolib.control.optimal_control import oc_fhn
 
 
 class TestCostFunctions(unittest.TestCase):
@@ -159,6 +162,38 @@ class TestCostFunctions(unittest.TestCase):
         u = self.get_arbitrary_array()
         desired_output = u
         self.assertTrue(np.all(cost_functions.derivative_L2_cost(u) == desired_output))
+
+    def test_weights_dictionary(self):
+        print("Test ditionary of cost weights")
+        model = FHNModel()
+        duration = 1.0
+        model.params.duration = duration
+        zero_input = ZeroInput().generate_input(duration=duration + model.params.dt, dt=model.params.dt)
+        model.params["x_ext"] = zero_input
+        model.params["y_ext"] = zero_input
+        model.run()
+        target = np.zeros((1, 2, 11))
+
+        defaultweights = getdefaultweights()
+
+        # use no reasonable input for weight dictionary
+        for w in [None, 1, 0.1, dict()]:
+            model_controlled = oc_fhn.OcFhn(model, target, weights=w)
+            self.assertTrue(model_controlled.weights == defaultweights)
+            model_controlled.optimize(0)  # check if dictionary is correctly implemented as numba dict
+
+        # set only one parameter, others should be default
+        for k in defaultweights.keys():
+            w = dict()
+            w[k] = 100.0
+            model_controlled = oc_fhn.OcFhn(model, target, weights=w)
+            self.assertTrue(model_controlled.weights[k] == w[k])
+            for l in defaultweights.keys():
+                if l == k:
+                    continue
+                self.assertTrue(model_controlled.weights[l] == defaultweights[l])
+
+            model_controlled.optimize(0)  # check if dictionary is correctly implemented as numba dict
 
 
 if __name__ == "__main__":
