@@ -342,8 +342,19 @@ class OC:
         self.maximum_control_strength = maximum_control_strength
 
         if weights is None:
-            weights = getdefaultweights()
-        self.weights = weights
+            self.weights = getdefaultweights()
+        elif type(weights) != type(dict()):
+            print("Weights parameter must be dictionary, use default weights instead.")
+            self.weights = getdefaultweights()
+        else:
+            defaultweights = getdefaultweights()
+            for k in defaultweights.keys():
+                if k in weights.keys():
+                    defaultweights[k] = weights[k]
+                else:
+                    print("Weight ", k, " not in provided weight dictionary. Use default value.")
+
+            self.weights = defaultweights
 
         self.N = self.model.params.N
 
