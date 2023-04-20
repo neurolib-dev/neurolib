@@ -282,6 +282,29 @@ This will gives us a summary of the last generation and plots a distribution of 
   <img src="https://github.com/neurolib-dev/neurolib/raw/master/resources/evolution_animated.gif">
 </p>
 
+### Optimal control
+The optimal control modules enables to compute efficient stimulation for your neural model. If you know how your output should look like, this module computes the optimal input. Detailes example notebooks can be found in the [optimal control example folder](examples/examples/example-5-optimal-control). In optimal control computations, you trade precision with respect to a target against control strength. You can determine, how much each contribution affects the results, by setting weights accordingly.
+
+To compute an optimal control signal, you need to create a model and define a target state, e.g., a sine curve with period 2.
+```python
+from neurolib.models.fhn import FHNModel
+model = FHNModel()
+
+duration = 10.
+model.params["duration"] = duration
+dt = model.params["dt"]
+
+period = 2.
+target = np.sin(2. * np.pi * np.arange(0, duration+dt, dt) / period)
+```
+You can then create a controlled model and run the iterative optimization to find the most efficient control input. The optimal control and the controlled model activity can be taken from the controlled model.
+```python
+model_controlled = oc_fhn.OcFhn(model, target)
+model_controlled.optimize(500) # run 500 iterations
+optimal_control = model_controlled.control
+optimal_state = model_controlled.get_xs()
+```
+
 ## More information
 
 ### Built With
