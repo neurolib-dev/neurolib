@@ -283,9 +283,9 @@ This will gives us a summary of the last generation and plots a distribution of 
 </p>
 
 ### Optimal control
-The optimal control modules enables to compute efficient stimulation for your neural model. If you know how your output should look like, this module computes the optimal input. Detailes example notebooks can be found in the [optimal control example folder](examples/examples/example-5-optimal-control). In optimal control computations, you trade precision with respect to a target against control strength. You can determine, how much each contribution affects the results, by setting weights accordingly.
+The optimal control modules enables to compute efficient stimulation for your neural model. If you know how your output should look like, this module computes the optimal input. Detailes example notebooks can be found in the [optimal control example folder](https://github.com/lenasal/neurolib/tree/readme_update/examples/example-5-optimal-control). In optimal control computations, you trade precision with respect to a target against control strength. You can determine how much each contribution affects the results, by setting weights accordingly.
 
-To compute an optimal control signal, you need to create a model and define a target state, e.g., a sine curve with period 2.
+To compute an optimal control signal, you need to create a model (e.g., an FHN model) and define a target state (e.g., a sine curve with period 2).
 ```python
 from neurolib.models.fhn import FHNModel
 model = FHNModel()
@@ -336,9 +336,15 @@ Cakan, C., Jajcay, N. & Obermayer, K. neurolib: A Simulation Framework for Whole
 
 Caglar Cakan (cakan@ni.tu-berlin.de)  
 Department of Software Engineering and Theoretical Computer Science, Technische Universität Berlin, Germany  
-Bernstein Center for Computational Neuroscience Berlin, Germany  
+Bernstein Center for Computational Neuroscience Berlin, Germany 
+
+For questions or comments on the optimal control module, please contact
+Lena Salfenmoser (lena.salfenmoser@tu-berlin.de)
+Department of Software Engineering and Theoretical Computer Science, Technische Universität Berlin, Germany  
+
 
 ### Acknowledgments
 This work was supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) with the project number 327654276 (SFB 1315) and the Research Training Group GRK1589/2.
+The optimal control module was developed and implemented by Lena Salfenmoser and Martin Krück, and supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) with the project number 163436311 (SFB 910).
 
 <!--end-include-in-documentation-->
