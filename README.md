@@ -345,6 +345,7 @@ Department of Software Engineering and Theoretical Computer Science, Technische 
 
 ### Acknowledgments
 This work was supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) with the project number 327654276 (SFB 1315) and the Research Training Group GRK1589/2.
+
 The optimal control module was developed and implemented by Lena Salfenmoser and Martin Krück, and supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) with the project number 163436311 (SFB 910).
 
 <!--end-include-in-documentation-->
