@@ -74,8 +74,8 @@ def timeIntegration(params):
     max_global_delay = np.max(Dmat_ndt)
     startind = int(max_global_delay + 1)  # timestep to start integration at
 
-    x_ou = params["x_ou"]
-    y_ou = params["y_ou"]
+    x_ou = params["x_ou"].copy()
+    y_ou = params["y_ou"].copy()
 
     # state variable arrays, have length of t + startind
     # they store initial conditions AND simulated data
