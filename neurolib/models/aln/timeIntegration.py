@@ -177,51 +177,36 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
     # Set initial values
-    mufe = np.hstack(
-        (np.tile(params["mufe_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1)))
-    )  # Filtered mean input (mu) for exc. population
-    print(mufe.shape)
-    mufi = np.hstack(
-        (np.tile(params["mufi_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1)))
-    )  # Filtered mean input (mu) for inh. population
-    IA_init = params["IA_init"].copy()
-    seem = np.hstack(
-        (np.tile(params["seem_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1)))
-    )  # Mean exc synaptic input
-    seim = np.hstack((np.tile(params["seim_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1))))
-    seev = np.hstack(
-        (np.tile(params["seev_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1)))
-    )  # Exc synaptic input variance
-    seiv = np.hstack((np.tile(params["seiv_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1))))
-    siim = np.hstack(
-        (np.tile(params["siim_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1)))
-    )  # Mean inh synaptic input
-    siem = np.hstack((np.tile(params["siem_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1))))
-    siiv = np.hstack(
-        (np.tile(params["siiv_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1)))
-    )  # Inh synaptic input variance
-    siev = np.hstack((np.tile(params["siev_init"][:, np.newaxis], startind), np.zeros((N, len(t) - 1))))
 
-    mue_ou = np.hstack(
-        (np.tile(params["mue_ou"][:, np.newaxis], startind), np.zeros((N, len(t) - 1)))
-    )  # Mean of external exc OU input (mV/ms)
-    mui_ou = np.hstack(
-        (np.tile(params["mui_ou"][:, np.newaxis], startind), np.zeros((N, len(t) - 1)))
-    )  # Mean of external inh ON inout (mV/ms)
+    mufe = setvarinit(params["mufe_init"], N, startind, t)
+    mufi = setvarinit(params["mufi_init"], N, startind, t)
+    IA = setvarinit(params["IA_init"], N, startind, t)
+
+    seem = setvarinit(params["seem_init"], N, startind, t)
+    seim = setvarinit(params["seim_init"], N, startind, t)
+    siem = setvarinit(params["siem_init"], N, startind, t)
+    siim = setvarinit(params["siim_init"], N, startind, t)
+    seev = setvarinit(params["seev_init"], N, startind, t)
+    seiv = setvarinit(params["seiv_init"], N, startind, t)
+    siev = setvarinit(params["siev_init"], N, startind, t)
+    siiv = setvarinit(params["siiv_init"], N, startind, t)
+
+    mue_ou = setvarinit(params["mue_ou"], N, startind, t)
+    mui_ou = setvarinit(params["mui_ou"], N, startind, t)
 
     # Set the initial firing rates.
     # if initial values are just a Nx1 array
     if np.shape(params["rates_exc_init"])[1] == 1:
         # repeat the 1-dim value stardind times
         rates_exc_init = np.dot(params["rates_exc_init"], np.ones((1, startind)))  # kHz
-        rates_inh_init = np.dot(params["rates_inh_init"], np.ones((1, startind)))  # kHz
-        # set initial adaptation current
-        IA_init = np.dot(params["IA_init"], np.ones((1, startind)))
     # if initial values are a Nxt array
     else:
         rates_exc_init = params["rates_exc_init"][:, -startind:]
+
+    if np.shape(params["rates_inh_init"])[1] == 1:
+        rates_inh_init = np.dot(params["rates_inh_init"], np.ones((1, startind)))  # kHz
+    else:
         rates_inh_init = params["rates_inh_init"][:, -startind:]
-        IA_init = params["IA_init"][:, -startind:]
 
     np.random.seed(RNGseed)
 
@@ -232,7 +217,6 @@ def timeIntegration(params):
     # Set the initial conditions
     rates_exc[:, :startind] = rates_exc_init
     rates_inh[:, :startind] = rates_inh_init
-    IA[:, :startind] = IA_init
 
     noise_exc = np.zeros((N,))
     noise_inh = np.zeros((N,))
@@ -610,6 +594,18 @@ def timeIntegration_njit_elementwise(
             )  # mV/ms
 
     return t, rates_exc, rates_inh, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, mue_ou, mui_ou
+
+
+def setvarinit(initpar, N, startind, t):
+    var = np.zeros((N, startind + len(t)))
+    if len(np.shape(initpar)) == 1:
+        var[:, :startind] = initpar
+    elif np.shape(initpar)[1] == 1:
+        var[:, :startind] = initpar
+    else:
+        var[:, :startind] = initpar[:, -startind:]
+
+    return var
 
 
 @numba.njit(locals={"idxX": numba.int64, "idxY": numba.int64})
