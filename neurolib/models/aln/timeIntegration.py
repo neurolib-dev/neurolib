@@ -178,7 +178,11 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
     # Set initial values
-    mufe = params["mufe_init"].copy()  # Filtered mean input (mu) for exc. population
+    mufe = params["mufe_init"].copy()
+    # mufe = np.concatenate(
+    #    params["mufe_init"], np.zeros((N, len(t) - 1))
+    # )  # Filtered mean input (mu) for exc. population
+    print("mufe shape = ", mufe.shape)
     mufi = params["mufi_init"].copy()  # Filtered mean input (mu) for inh. population
     IA_init = params["IA_init"].copy()  # Adaptation current (pA)
     seem = params["seem_init"].copy()  # Mean exc synaptic input
