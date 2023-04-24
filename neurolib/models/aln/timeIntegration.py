@@ -159,9 +159,8 @@ def timeIntegration(params):
     ndt_de = np.around(de / dt).astype(int)
     ndt_di = np.around(di / dt).astype(int)
 
-    rd_nw_exc = np.zeros((N, N))  # kHz  rd_nw_exc(i,j): Connection from jth node to ith
-    rd_exc = np.zeros(N)  # connection within one node
-    rd_inh = np.zeros(N)  # connection within one node
+    rd_exc = np.zeros((N, N))  # kHz  rd_exc(i,j): Connection from jth node to ith
+    rd_inh = np.zeros(N)
 
     # Already done above when Dmat_ndt is built
     # for l in range(N):
@@ -297,7 +296,6 @@ def timeIntegration(params):
         t,
         rates_exc,
         rates_inh,
-        rd_nw_exc,
         rd_exc,
         rd_inh,
         sqrt_dt,
@@ -384,7 +382,6 @@ def timeIntegration_njit_elementwise(
     t,
     rates_exc,
     rates_inh,
-    rd_nw_exc,
     rd_exc,
     rd_inh,
     sqrt_dt,
@@ -426,10 +423,9 @@ def timeIntegration_njit_elementwise(
             for no in range(N):
                 # interareal coupling
                 for l in range(N):
-                    rd_nw_exc[l, no] = rates_exc[no, i - Dmat_ndt[l, no] - 1] * 1e-3  # convert Hz to kHz
-                # rd_exc and rd_inh as delayed input rate within population no
-                # Warning: these are vectors and not a matrix as rd_nw_exc
-                rd_exc[no] = rates_exc[no, i - ndt_de - 1] * 1e-3  # convert Hz to kHz
+                    # rd_exc(i,j) delayed input rate from population j to population i
+                    rd_exc[l, no] = rates_exc[no, i - Dmat_ndt[l, no] - 1] * 1e-3  # convert Hz to kHz
+                # Warning: this is a vector and not a matrix as rd_exc
                 rd_inh[no] = rates_inh[no, i - ndt_di - 1] * 1e-3  # convert Hz to kHz
 
         # loop through all the nodes
@@ -446,23 +442,25 @@ def timeIntegration_njit_elementwise(
             rowsum = 0
             rowsumsq = 0
             for col in range(N):
-                rowsum = rowsum + Cmat[no, col] * rd_nw_exc[no, col]
-                rowsumsq = rowsumsq + Cmat[no, col] ** 2 * rd_nw_exc[no, col]
+                rowsum = rowsum + Cmat[no, col] * rd_exc[no, col]
+                rowsumsq = rowsumsq + Cmat[no, col] ** 2 * rd_exc[no, col]
 
             # z1: weighted sum of delayed rates, weights=c*K
             z1ee = (
-                cee * Ke * rd_exc[no] + c_gl * Ke_gl * rowsum + c_gl * Ke_gl * ext_exc_rate[no, i]
+                cee * Ke * rd_exc[no, no] + c_gl * Ke_gl * rowsum + c_gl * Ke_gl * ext_exc_rate[no, i]
             )  # rate from other regions + exc_ext_rate
             z1ei = cei * Ki * rd_inh[no]
             z1ie = (
-                cie * Ke * rd_exc[no] + c_gl * Ke_gl * ext_inh_rate[no, i]
+                cie * Ke * rd_exc[no, no] + c_gl * Ke_gl * ext_inh_rate[no, i]
             )  # first test of external rate input to inh. population
             z1ii = cii * Ki * rd_inh[no]
             # z2: weighted sum of delayed rates, weights=c^2*K (see thesis last ch.)
-            z2ee = cee**2 * Ke * rd_exc[no] + c_gl**2 * Ke_gl * rowsumsq + c_gl**2 * Ke_gl * ext_exc_rate[no, i]
+            z2ee = (
+                cee**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * rowsumsq + c_gl**2 * Ke_gl * ext_exc_rate[no, i]
+            )
             z2ei = cei**2 * Ki * rd_inh[no]
             z2ie = (
-                cie**2 * Ke * rd_exc[no] + c_gl**2 * Ke_gl * ext_inh_rate[no, i]
+                cie**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * ext_inh_rate[no, i]
             )  # external rate input to inh. population
             z2ii = cii**2 * Ki * rd_inh[no]
 
@@ -521,7 +519,7 @@ def timeIntegration_njit_elementwise(
 
             # EQ. 4.43
             if distr_delay:
-                rd_exc_rhs = (rates_exc[no, i] * 1e-3 - rd_exc[no]) / tau_de
+                rd_exc_rhs = (rates_exc[no, i] * 1e-3 - rd_exc[no, no]) / tau_de
                 rd_inh_rhs = (rates_inh[no, i] * 1e-3 - rd_inh[no]) / tau_di
 
             if filter_sigma:
@@ -545,7 +543,7 @@ def timeIntegration_njit_elementwise(
             IA[no, i] = IA[no, i - 1] + dt * IA_rhs
 
             if distr_delay:
-                rd_exc[no] = rd_exc[no] + dt * rd_exc_rhs
+                rd_exc[no] = rd_exc[no, no] + dt * rd_exc_rhs
                 rd_inh[no] = rd_inh[no] + dt * rd_inh_rhs
 
             if filter_sigma:
