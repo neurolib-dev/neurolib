@@ -428,6 +428,7 @@ class OC:
         )  # dimensions of state. Model has N network nodes, V state variables, T time points
 
         self.adjoint_state = np.zeros(self.state_dim)
+        self.gradient = np.zeros(self.state_dim)
 
         self.control = None  # Is implemented in derived classes.
 
@@ -641,9 +642,9 @@ class OC:
             self.cost_history.append(cost)
 
         for i in range(1, n_max_iterations + 1):
-            grad = self.compute_gradient()
+            self.gradient = self.compute_gradient()
 
-            if np.isnan(grad).any():
+            if np.isnan(self.gradient).any():
                 print("nan in gradient, break")
                 break
 
@@ -651,7 +652,7 @@ class OC:
                 print(f"Converged in iteration %s with cost %s" % (i, cost))
                 break
 
-            self.step_size(-grad)
+            self.step_size(-self.gradient)
             self.simulate_forward()
 
             cost = self.compute_total_cost()
@@ -695,13 +696,13 @@ class OC:
 
         for i in range(1, n_max_iterations + 1):
 
-            grad = np.mean(grad_m, axis=0)
+            self.gradient = np.mean(grad_m, axis=0)
 
             count = 0
             while count < self.count_noisy_step:
                 count += 1
                 self.zero_step_encountered = False
-                _ = self.step_size(-grad)
+                _ = self.step_size(-self.gradient)
                 if not self.zero_step_encountered:
                     consecutive_zero_step = 0
                     break
