@@ -94,6 +94,10 @@ class OcAln(OC):
             assert (control[n, 0, :] == self.model.params["ext_inh_current"][n, :]).all()
             assert (control[n, 1, :] == self.model.params["ext_exc_current"][n, :]).all()
 
+            # in aln model, t=0 control does not affect the system
+            control[n, 0, 0] = 0.0
+            control[n, 1, 0] = 0.0
+
         self.control = update_control_with_limit(control, 0.0, np.zeros(control.shape), self.maximum_control_strength)
 
     def get_xs_delay(self):
@@ -248,6 +252,7 @@ class OcAln(OC):
         :rtype:         np.ndarray of shape N x V x T
         """
         self.solve_adjoint()
+        self.adjoint_state[:, :, 0] = 0.0
         df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
         d_du = self.Duh()
 

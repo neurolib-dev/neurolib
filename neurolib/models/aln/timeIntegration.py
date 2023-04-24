@@ -757,9 +757,9 @@ def jacobian_aln(aln_model_params, V):
     (tau_se, tau_si) = aln_model_params
 
     jacobian = np.zeros((V, V))
-    jacobian[0, 2] = 1e3
+    jacobian[0, 2] = -1e3
 
-    jacobian[2, 2] = -1.0 / tau_se
+    jacobian[2, 2] = 1.0 / tau_se
     return jacobian
 
 
@@ -828,5 +828,5 @@ def Duh(
     duh = np.zeros((N, V, V, T))
     for t in range(T):
         for n in range(N):
-            duh[n, 0, 0, t] = 1.0 / tau_exc
+            duh[n, 0, 0, t] = -1.0 / tau_exc
     return duh

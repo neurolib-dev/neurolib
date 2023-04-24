@@ -161,7 +161,7 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
     return step, counter
 
 
-# @numba.njit
+@numba.njit
 def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     """Backwards integration of the adjoint state.
 
@@ -189,21 +189,19 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     fx_fullstate = np.zeros(state_dim)
     fx_fullstate[:, :2, :] = fx.copy()
 
-    print(N, T, dmat_ndt)
-
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
         for n in range(N):  # iterate through nodes
             der = fx_fullstate[n, :, t + 1].copy()
             for k in range(len(der)):
                 for i in range(len(der)):
-                    der[k] += adjoint_state[n, i, t + 1] * hx[n, t + 1][i, k]
+                    der[k] += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
             for n2 in range(N):  # iterate through connectivity of current node "n"
                 if t + 1 + dmat_ndt[n2, n] > T - 2:
                     continue
                 for k in range(len(der)):
                     for i in range(len(der)):
                         der[k] += (
-                            adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]] * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n]][i, k]
+                            adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]] * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
                         )
             adjoint_state[n, :, t] = adjoint_state[n, :, t + 1] - der * dt
 
@@ -246,7 +244,6 @@ def update_control_with_limit(control, step, gradient, u_max):
     return control_new
 
 
-# @numba.njit  # ToDo: check why tests suddenly fail when jitted.
 def convert_interval(interval, array_length):
     """Turn indices into positive values only. It is assumed in any case, that the first index defines the start and
        the second the stop index, both inclusive.
