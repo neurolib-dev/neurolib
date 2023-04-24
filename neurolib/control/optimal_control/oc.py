@@ -161,7 +161,7 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
     return step, counter
 
 
-@numba.njit
+# @numba.njit
 def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     """Backwards integration of the adjoint state.
 
@@ -188,6 +188,8 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     adjoint_state = np.zeros(state_dim)
     fx_fullstate = np.zeros(state_dim)
     fx_fullstate[:, :2, :] = fx.copy()
+
+    print(N, T, dmat_ndt)
 
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
         for n in range(N):  # iterate through nodes
@@ -360,6 +362,8 @@ class OC:
 
         self.dim_vars = len(self.model.state_vars)
         self.dim_out = len(self.model.output_vars)
+        if self.model.name == "aln":
+            self.dim_out = 2
 
         self.Dmat_ndt = self.model.params.Dmat_ndt
 
