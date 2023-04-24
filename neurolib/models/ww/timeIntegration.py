@@ -91,8 +91,8 @@ def timeIntegration(params):
     startind = int(max_global_delay + 1)  # timestep to start integration at
 
     # noise variable
-    exc_ou = params["exc_ou"]
-    inh_ou = params["inh_ou"]
+    exc_ou = params["exc_ou"].copy()
+    inh_ou = params["inh_ou"].copy()
 
     # state variable arrays, have length of t + startind
     # they store initial conditions AND simulated data
