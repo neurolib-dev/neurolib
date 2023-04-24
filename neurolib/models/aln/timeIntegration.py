@@ -455,16 +455,14 @@ def timeIntegration_njit_elementwise(
             )  # rate from other regions + exc_ext_rate
             z1ei = cei * Ki * rd_inh[no]
             z1ie = (
-                cie * Ke * rd_exc[no, no] + c_gl * Ke_gl * ext_inh_rate[no, i]
+                cie * Ke * rd_exc[no] + c_gl * Ke_gl * ext_inh_rate[no, i]
             )  # first test of external rate input to inh. population
             z1ii = cii * Ki * rd_inh[no]
             # z2: weighted sum of delayed rates, weights=c^2*K (see thesis last ch.)
-            z2ee = (
-                cee**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * rowsumsq + c_gl**2 * Ke_gl * ext_exc_rate[no, i]
-            )
+            z2ee = cee**2 * Ke * rd_exc[no] + c_gl**2 * Ke_gl * rowsumsq + c_gl**2 * Ke_gl * ext_exc_rate[no, i]
             z2ei = cei**2 * Ki * rd_inh[no]
             z2ie = (
-                cie**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * ext_inh_rate[no, i]
+                cie**2 * Ke * rd_exc[no] + c_gl**2 * Ke_gl * ext_inh_rate[no, i]
             )  # external rate input to inh. population
             z2ii = cii**2 * Ki * rd_inh[no]
 
@@ -523,7 +521,7 @@ def timeIntegration_njit_elementwise(
 
             # EQ. 4.43
             if distr_delay:
-                rd_exc_rhs = (rates_exc[no, i] * 1e-3 - rd_exc[no, no]) / tau_de
+                rd_exc_rhs = (rates_exc[no, i] * 1e-3 - rd_exc[no]) / tau_de
                 rd_inh_rhs = (rates_inh[no, i] * 1e-3 - rd_inh[no]) / tau_di
 
             if filter_sigma:
@@ -547,7 +545,7 @@ def timeIntegration_njit_elementwise(
             IA[no, i] = IA[no, i - 1] + dt * IA_rhs
 
             if distr_delay:
-                rd_exc[no, no] = rd_exc[no, no] + dt * rd_exc_rhs
+                rd_exc[no] = rd_exc[no] + dt * rd_exc_rhs
                 rd_inh[no] = rd_inh[no] + dt * rd_inh_rhs
 
             if filter_sigma:
