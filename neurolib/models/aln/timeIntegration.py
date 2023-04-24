@@ -7,7 +7,7 @@ from ...utils import model_utils as mu
 
 def timeIntegration(params):
     """Sets up the parameters for time integration
-    
+
     Return:
       rates_exc:  N*L array   : containing the exc. neuron rates in kHz time series of the N nodes
       rates_inh:  N*L array   : containing the inh. neuron rates in kHz time series of the N nodes
@@ -399,10 +399,10 @@ def timeIntegration_njit_elementwise(
 ):
 
     # squared Jee_max
-    sq_Jee_max = Jee_max ** 2
-    sq_Jei_max = Jei_max ** 2
-    sq_Jie_max = Jie_max ** 2
-    sq_Jii_max = Jii_max ** 2
+    sq_Jee_max = Jee_max**2
+    sq_Jei_max = Jei_max**2
+    sq_Jie_max = Jie_max**2
+    sq_Jii_max = Jii_max**2
 
     # initialize so we don't get an error when returning
     rd_exc_rhs = 0.0
@@ -456,24 +456,24 @@ def timeIntegration_njit_elementwise(
             z1ii = cii * Ki * rd_inh[no]
             # z2: weighted sum of delayed rates, weights=c^2*K (see thesis last ch.)
             z2ee = (
-                cee ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * rowsumsq + c_gl ** 2 * Ke_gl * ext_exc_rate[no, i]
+                cee**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * rowsumsq + c_gl**2 * Ke_gl * ext_exc_rate[no, i]
             )
-            z2ei = cei ** 2 * Ki * rd_inh[no]
+            z2ei = cei**2 * Ki * rd_inh[no]
             z2ie = (
-                cie ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * ext_inh_rate[no, i]
+                cie**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * ext_inh_rate[no, i]
             )  # external rate input to inh. population
-            z2ii = cii ** 2 * Ki * rd_inh[no]
+            z2ii = cii**2 * Ki * rd_inh[no]
 
             sigmae = np.sqrt(
                 2 * sq_Jee_max * seev[no] * tau_se * taum / ((1 + z1ee) * taum + tau_se)
                 + 2 * sq_Jei_max * seiv[no] * tau_si * taum / ((1 + z1ei) * taum + tau_si)
-                + sigmae_ext ** 2
+                + sigmae_ext**2
             )  # mV/sqrt(ms)
 
             sigmai = np.sqrt(
                 2 * sq_Jie_max * siev[no] * tau_se * taum / ((1 + z1ie) * taum + tau_se)
                 + 2 * sq_Jii_max * siiv[no] * tau_si * taum / ((1 + z1ii) * taum + tau_si)
-                + sigmai_ext ** 2
+                + sigmai_ext**2
             )  # mV/sqrt(ms)
 
             if not filter_sigma:
@@ -531,10 +531,10 @@ def timeIntegration_njit_elementwise(
             seim_rhs = ((1 - seim[no]) * z1ei - seim[no]) / tau_si
             siem_rhs = ((1 - siem[no]) * z1ie - siem[no]) / tau_se
             siim_rhs = ((1 - siim[no]) * z1ii - siim[no]) / tau_si
-            seev_rhs = ((1 - seem[no]) ** 2 * z2ee + (z2ee - 2 * tau_se * (z1ee + 1)) * seev[no]) / tau_se ** 2
-            seiv_rhs = ((1 - seim[no]) ** 2 * z2ei + (z2ei - 2 * tau_si * (z1ei + 1)) * seiv[no]) / tau_si ** 2
-            siev_rhs = ((1 - siem[no]) ** 2 * z2ie + (z2ie - 2 * tau_se * (z1ie + 1)) * siev[no]) / tau_se ** 2
-            siiv_rhs = ((1 - siim[no]) ** 2 * z2ii + (z2ii - 2 * tau_si * (z1ii + 1)) * siiv[no]) / tau_si ** 2
+            seev_rhs = ((1 - seem[no]) ** 2 * z2ee + (z2ee - 2 * tau_se * (z1ee + 1)) * seev[no]) / tau_se**2
+            seiv_rhs = ((1 - seim[no]) ** 2 * z2ei + (z2ei - 2 * tau_si * (z1ei + 1)) * seiv[no]) / tau_si**2
+            siev_rhs = ((1 - siem[no]) ** 2 * z2ie + (z2ie - 2 * tau_se * (z1ie + 1)) * siev[no]) / tau_se**2
+            siiv_rhs = ((1 - siim[no]) ** 2 * z2ii + (z2ii - 2 * tau_si * (z1ii + 1)) * siiv[no]) / tau_si**2
 
             # -------------- integration --------------
 
@@ -636,6 +636,7 @@ def lookup_no_interp(x, dx, xi, y, dy, yi):
 
     return idxX, idxY
 
+
 @numba.njit(locals={"xid1": numba.int64, "yid1": numba.int64, "dxid": numba.float64, "dyid": numba.float64})
 def fast_interp2_opt(x, dx, xi, y, dy, yi):
 
@@ -717,3 +718,215 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
         dyid = yid - yid1
 
     return xid1, yid1, dxid, dyid
+
+
+@numba.njit
+def jacobian_wc(wc_model_params, nw_e, e, i, ue, ui, V):
+    """Jacobian of the WC dynamical system.
+
+    :param wc_model_params: Tuple of parameters in the WCModel in order (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh,
+                            c_excexc, c_inhexc, c_excinh, c_inhinh). All parameters of type 'float'.
+    :type wc_model_params: tuple
+    :param  nw_e:   N x T input of network into each node's 'exc'
+    :type  nw_e:    np.ndarray
+    :param e:       Value of the E-variable at specific time.
+    :type e:        float
+    :param i:       Value of the I-variable at specific time.
+    :type i:        float
+    :param ue:      N x T combined input of 'background' and 'control' into 'exc'.
+    :type ue:       np.ndarray
+    :param ui:      N x T combined input of 'background' and 'control' into 'inh'.
+    :type ui:       np.ndarray
+    :param V:       Number of system variables.
+    :type V:        int
+    :return:        4 x 4 Jacobian matrix.
+    :rtype:         np.ndarray
+    """
+    (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh) = wc_model_params
+
+    jacobian = np.zeros((V, V))
+    return jacobian
+
+
+@numba.njit
+def compute_hx(
+    wc_model_params: tuple[float, float, float, float, float, float, float, float, float, float],
+    K_gl,
+    cmat,
+    dmat_ndt,
+    N,
+    V,
+    T,
+    dyn_vars,
+    dyn_vars_delay,
+    control,
+):
+    """Jacobians of WCModel wrt. to the 'e'- and 'i'-variable for each time step.
+
+    :param wc_model_params: Tuple of parameters in the WCModel in order (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh,
+                            c_excexc, c_inhexc, c_excinh, c_inhinh). All parameters of type 'float'.
+    :type wc_model_params: tuple
+    :param K_gl:        Model parameter of global coupling strength.
+    :type K_gl:         float
+    :param cmat:        Model parameter, connectivity matrix.
+    :type cmat:         ndarray
+    :param dmat_ndt:    N x N delay matrix in multiples of dt.
+    :type dmat_ndt:     np.ndarray
+    :param N:           Number of nodes in the network.
+    :type N:            int
+    :param V:           Number of system variables.
+    :type V:            int
+    :param T:           Length of simulation (time dimension).
+    :type T:            int
+    :param dyn_vars:    N x V x T array containing all values of 'exc' and 'inh'.
+    :type dyn_vars:     np.ndarray
+    :param dyn_vars_delay:
+    :type dyn_vars_delay:     np.ndarray
+    :param control:     N x 2 x T control inputs to 'exc' and 'inh'.
+    :type control:      np.ndarray
+    :return:            N x T x 4 x 4 Jacobians.
+    :rtype:             np.ndarray
+    """
+    hx = np.zeros((N, T, V, V))
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, dyn_vars_delay[:, 0, :])
+
+    for n in range(N):
+        for t, e in enumerate(dyn_vars[n, 0, :]):
+            i = dyn_vars[n, 1, t]
+            ue = control[n, 0, t]
+            ui = control[n, 1, t]
+            hx[n, t, :, :] = jacobian_wc(
+                wc_model_params,
+                nw_e[n, t],
+                e,
+                i,
+                ue,
+                ui,
+                V,
+            )
+    return hx
+
+
+@numba.njit
+def compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_values):
+    """Compute input by other nodes of network into each node's 'exc' population at every timestep.
+
+    :param N:           Number of nodes in the network.
+    :type N:            int
+    :param T:           Length of simulation (time dimension).
+    :type T:            int
+    :param K_gl:        Model parameter of global coupling strength.
+    :type K_gl:         float
+    :param cmat:        Model parameter, connectivity matrix.
+    :type cmat:         ndarray
+    :param dmat_ndt:    N x N delay matrix in multiples of dt.
+    :type dmat_ndt:     np.ndarray
+    :param exc_values:  N x T array containing values of 'exc' of all nodes through time.
+    :type exc_values:   np.ndarray
+    :return:            N x T network inputs.
+    :rytpe:             np.ndarray
+    """
+    nw_input = np.zeros((N, T))
+
+    for t in range(1, T):
+        for n in range(N):
+            for l in range(N):
+                nw_input[n, t] += K_gl * cmat[n, l] * (exc_values[l, t - dmat_ndt[n, l] - 1])
+    return nw_input
+
+
+@numba.njit
+def compute_hx_nw(
+    K_gl,
+    cmat,
+    dmat_ndt,
+    N,
+    V,
+    T,
+    e,
+    i,
+    e_delay,
+    ue,
+    tau_exc,
+    a_exc,
+    mu_exc,
+    c_excexc,
+    c_inhexc,
+):
+    """Jacobians for network connectivity in all time steps.
+
+    :param K_gl:        Model parameter of global coupling strength.
+    :type K_gl:         float
+    :param cmat:        Model parameter, connectivity matrix.
+    :type cmat:         ndarray
+    :param dmat_ndt:    N x N delay matrix in multiples of dt.
+    :type dmat_ndt:     np.ndarray
+    :param N:           Number of nodes in the network.
+    :type N:            int
+    :param V:           Number of system variables.
+    :type V:            int
+    :param T:           Length of simulation (time dimension).
+    :type T:            int
+    :param e:       Value of the E-variable at specific time.
+    :type e:        float
+    :param i:       Value of the I-variable at specific time.
+    :type i:        float
+    :param ue:      N x T array of the total input received by 'exc' population in every node at any time.
+    :type ue:       np.ndarray
+    :param tau_exc: Excitatory time constant.
+    :type tau_exc:  float
+    :param a_exc:   Excitatory gain.
+    :type a_exc:    float
+    :param mu_exc:  Excitatory firing threshold.
+    :type mu_exc:   float
+    :param c_excexc: Local E-E coupling.
+    :type c_excexc:  float
+    :param c_inhexc: Local I-E coupling.
+    :type c_inhexc:  float
+    :return:         Jacobians for network connectivity in all time steps.
+    :rtype:          np.ndarray of shape N x N x T x 4 x 4
+    """
+    hx_nw = np.zeros((N, N, T, V, V))
+
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, e_delay)
+    exc_input = c_excexc * e - c_inhexc * i + nw_e + ue
+
+    for n1 in range(N):
+        for n2 in range(N):
+            for t in range(T - 1):
+                hx_nw[n1, n2, t, 0, 0] = 0.0
+
+    return -hx_nw
+
+
+@numba.njit
+def Duh(
+    N,
+    V,
+    T,
+    c_excexc,
+    c_inhexc,
+    c_excinh,
+    c_inhinh,
+    a_exc,
+    a_inh,
+    mu_exc,
+    mu_inh,
+    tau_exc,
+    tau_inh,
+    nw_e,
+    ue,
+    ui,
+    e,
+    i,
+):
+    """Jacobian of systems dynamics wrt. to external inputs (control signals).
+
+    :rtype:     np.ndarray of shape N x V x V x T
+    """
+    duh = np.zeros((N, V, V, T))
+    for t in range(T):
+        for n in range(N):
+            input_exc = c_excexc * e[n, t] - c_inhexc * i[n, t] + nw_e[n, t] + ue[n, t]
+            input_inh = c_excinh * e[n, t] - c_inhinh * i[n, t] + ui[n, t]
+    return duh
