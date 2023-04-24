@@ -2,6 +2,7 @@ import abc
 import numba
 import numpy as np
 from neurolib.control.optimal_control import cost_functions
+from neurolib.models.fhn.loadDefaultParams import computeDelayMatrix
 import logging
 import copy
 
@@ -194,14 +195,15 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
             der = fx_fullstate[n, :, t + 1].copy()
             for k in range(len(der)):
                 for i in range(len(der)):
-                    der[k] += adjoint_state[n, i, t + 1] * hx[n, t + 1][i, k]
+                    der[k] += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
+
             for n2 in range(N):  # iterate through connectivity of current node "n"
                 if t + 1 + dmat_ndt[n2, n] > T - 2:
                     continue
                 for k in range(len(der)):
                     for i in range(len(der)):
                         der[k] += (
-                            adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]] * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n]][i, k]
+                            adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]] * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
                         )
             adjoint_state[n, :, t] = adjoint_state[n, :, t + 1] - der * dt
 
@@ -357,11 +359,22 @@ class OC:
             self.weights = defaultweights
 
         self.N = self.model.params.N
+        self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
+        self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
+        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps
 
         self.dim_vars = len(self.model.state_vars)
         self.dim_out = len(self.model.output_vars)
 
-        self.Dmat_ndt = self.model.params.Dmat_ndt
+        if self.N == 1:
+            self.Dmat_ndt = np.zeros((self.N, self.N)).astype(int)
+        else:
+            Dmat = computeDelayMatrix(self.model.params.lengthMat, self.model.params.signalV)
+            if self.model.name != "aln":
+                Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
+            else:
+                Dmat[np.eye(len(Dmat)) == 1] = np.ones(len(Dmat)) * self.model.params.de
+            self.Dmat_ndt = np.around(Dmat / self.dt).astype(int)
 
         if self.N == 1:
             if isinstance(self.model.Cmat, type(None)):
@@ -414,11 +427,6 @@ class OC:
                     + "\n"
                     + 'If you want to study a noisy system, please set model parameter "sigma_ou" larger than zero'
                 )
-
-        self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
-        self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
-
-        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps
 
         # + forward simulation steps of neurolibs model.run().
         self.state_dim = (
