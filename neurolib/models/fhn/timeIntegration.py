@@ -7,7 +7,7 @@ from ...utils import model_utils as mu
 
 def timeIntegration(params):
     """Sets up the parameters for time integration
-    
+
     :param params: Parameter dictionary of the model
     :type params: dict
     :return: Integrated activity variables of the model
@@ -80,8 +80,8 @@ def timeIntegration(params):
     max_global_delay = np.max(Dmat_ndt)
     startind = int(max_global_delay + 1)  # timestep to start integration at
 
-    x_ou = params["x_ou"]
-    y_ou = params["y_ou"]
+    x_ou = params["x_ou"].copy()
+    y_ou = params["y_ou"].copy()
 
     # state variable arrays, have length of t + startind
     # they store initial conditions AND simulated data
@@ -229,13 +229,13 @@ def timeIntegration_njit_elementwise(
                 - ys[no, i - 1]
                 + xs_input_d[no]  # input from other nodes
                 + x_ou[no]  # ou noise
-                + x_ext[no, i-1] # external input
+                + x_ext[no, i - 1]  # external input
             )
             y_rhs = (
                 (xs[no, i - 1] - delta - epsilon * ys[no, i - 1]) / tau
                 + ys_input_d[no]  # input from other nodes
                 + y_ou[no]  # ou noise
-                + y_ext[no, i-1] # external input
+                + y_ext[no, i - 1]  # external input
             )
 
             # Euler integration
