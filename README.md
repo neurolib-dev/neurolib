@@ -124,7 +124,7 @@ Example [IPython Notebooks](examples/) on how to use the library can be found in
 - [Example 0.6](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-0.6-custom-model.ipynb) - Minimal example of how to implement your own model in `neurolib`
 - [Example 1.2](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-1.2-brain-network-exploration.ipynb) - Parameter exploration of a brain network and fitting to BOLD data
 - [Example 2.0](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-2-evolutionary-optimization-minimal.ipynb) - A simple example of the evolutionary optimization framework 
-- [Example 5.3](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples/example-5-optimal-control%2Fexample-5.3-oc-wc-model-deterministic.ipynb) - Example of optimal control of the noise-free Wilson-Cowan model
+- [Example 5.3](examples/example-5-optimal-control/example-5.3-oc-wc-model-deterministic.ipynb) - Example of optimal control of the noise-free Wilson-Cowan model
 
 A basic overview of the functionality of `neurolib` is also given in the following. 
 
