@@ -1,7 +1,6 @@
 import numpy as np
 import numba
 
-from . import loadDefaultParams as dp
 from ...utils import model_utils as mu
 
 
@@ -59,7 +58,7 @@ def timeIntegration(params):
         Dmat = np.zeros((N, N))
     else:
         # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
-        Dmat = dp.computeDelayMatrix(lengthMat, signalV)
+        Dmat = mu.computeDelayMatrix(lengthMat, signalV)
         Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
     params["Dmat_ndt"] = Dmat_ndt
@@ -219,7 +218,7 @@ def timeIntegration_njit_elementwise(
                         c_excexc * excs[no, i - 1]  # input from within the excitatory population
                         - c_inhexc * inhs[no, i - 1]  # input from the inhibitory population
                         + exc_input_d[no]  # input from other nodes
-                        + exc_ext[no, i-1]
+                        + exc_ext[no, i - 1]
                     )  # external input
                     + exc_ou[no]  # ou noise
                 )
@@ -233,7 +232,7 @@ def timeIntegration_njit_elementwise(
                     * S_I(
                         c_excinh * excs[no, i - 1]  # input from the excitatory population
                         - c_inhinh * inhs[no, i - 1]  # input from within the inhibitory population
-                        + inh_ext[no, i-1]
+                        + inh_ext[no, i - 1]
                     )  # external input
                     + inh_ou[no]  # ou noise
                 )
