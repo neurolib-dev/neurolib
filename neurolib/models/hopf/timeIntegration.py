@@ -231,7 +231,7 @@ def timeIntegration_njit_elementwise(
 
 @numba.njit
 def jacobian_hopf(a, w, V, x, y):
-    """Jacobian of a single node of the Hopf models dynamical system wrt. to its 'state_vars' ('x', 'y', 'x_ou',
+    """Jacobian of a single node of the Hopf models dynamical system wrt. its 'state_vars' ('x', 'y', 'x_ou',
        'y_ou').
 
     :param a:   Bifurcation parameter
@@ -257,7 +257,7 @@ def jacobian_hopf(a, w, V, x, y):
 
 @numba.njit
 def compute_hx(a, w, N, V, T, dyn_vars):
-    """Jacobians of the Hopf model wrt. to its 'state_vars' at each time step.
+    """Jacobians of the Hopf model wrt. its 'state_vars' at each time step.
 
     :param a:   Bifurcation parameter of the Hopf model.
     :type a :   float

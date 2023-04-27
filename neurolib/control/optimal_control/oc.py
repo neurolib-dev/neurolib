@@ -6,11 +6,15 @@ from neurolib.models.fhn.loadDefaultParams import computeDelayMatrix
 import logging
 import copy
 
+from numba.core import types
+from numba.typed import Dict
+
 
 def getdefaultweights():
-    weights = numba.typed.Dict.empty(
-        key_type=numba.types.unicode_type,
-        value_type=numba.types.float64,
+
+    weights = Dict.empty(
+        key_type=types.unicode_type,
+        value_type=types.float64,
     )
     weights["w_p"] = 1.0
     weights["w_2"] = 0.0
@@ -36,7 +40,7 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
     :type control0:     np.ndarray N x V x T
     :param factor_down:  Factor the step size is scaled with in each iteration until cost is improved.
     :type factor_down:   float
-    :param cost_gradient:   Gradient of the total cost wrt. to the control signal.
+    :param cost_gradient:   Gradient of the total cost wrt. the control signal.
     :type cost_gradient:    np.ndarray of shape N x V x T
     :return:    The selected step size and the count-variable how often step-adjustment-loop was executed.
     :rtype:     tuple[float, int]
@@ -51,6 +55,7 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
     while cost > cost0:  # Decrease the step size until first step size is found where cost is improved.
         step *= factor_down  # Decrease step size.
         counter += 1
+        # print(step, cost, cost0)
 
         # Inplace updating of models control bc. forward-sim relies on models parameters.
         controlled_model.control = update_control_with_limit(
@@ -99,7 +104,7 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
     :type control0:     np.ndarray N x V x T
     :param factor_up:  Factor the step size is scaled with in each iteration while the cost keeps improving.
     :type factor_up:   float
-    :param cost_gradient:   Gradient of the total cost wrt. to the control signal.
+    :param cost_gradient:   Gradient of the total cost wrt. the control signal.
     :type cost_gradient:    np.ndarray of shape N x V x T
     :return:    The selected step size and the count-variable how often step-adjustment-loop was executed.
     :rtype:     tuple[float, int]
@@ -163,14 +168,14 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
 
 
 @numba.njit
-def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
+def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, dxdoth, hx_de, ndt_de, hx_di, ndt_di):
     """Backwards integration of the adjoint state.
 
-    :param hx: dh/dx    Jacobians of systems dynamics wrt. to 'state_vars' for each time step.
+    :param hx: dh/dx    Jacobians of systems dynamics wrt. 'state_vars' for each time step.
     :type hx:           np.ndarray
     :param hx_nw:       Jacobians for each time step for the network coupling.
     :type hx_nw:        np.ndarray
-    :param fx: df/dx    Derivative of cost function wrt. to systems dynamics.
+    :param fx: df/dx    Derivative of cost function wrt. systems dynamics.
     :type fx:           np.ndarray
     :param state_dim:   Dimensions of state (N, V, T).
     :type state_dim:    tuple
@@ -190,21 +195,43 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     fx_fullstate = np.zeros(state_dim)
     fx_fullstate[:, :2, :] = fx.copy()
 
+    ### t = T-1
+    for n in range(N):  # iterate through nodes
+        for k in range(state_dim[1]):
+            if dxdoth[n, k, k] == 0:
+                adjoint_state[n, k, -1] = -fx_fullstate[n, k, -1]
+
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
         for n in range(N):  # iterate through nodes
-            der = fx_fullstate[n, :, t + 1].copy()
-            for k in range(len(der)):
-                for i in range(len(der)):
-                    der[k] += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
-            for n2 in range(N):  # iterate through connectivity of current node "n"
-                if t + 1 + dmat_ndt[n2, n] > T - 2:
-                    continue
-                for k in range(len(der)):
-                    for i in range(len(der)):
-                        der[k] += (
-                            adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]] * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
-                        )
-            adjoint_state[n, :, t] = adjoint_state[n, :, t + 1] - der * dt
+            for k in range(state_dim[1]):
+                if dxdoth[n, k, k] == 0:
+
+                    res = fx_fullstate[n, k, t]
+                    for i in range(state_dim[1]):
+                        res += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
+                        if t + 1 + ndt_de < T:
+                            res += adjoint_state[n, i, t + 1 + ndt_de] * hx_de[n, t + 1 + ndt_de, i, k]
+                        if t + 1 + ndt_di < T:
+                            res += adjoint_state[n, i, t + 1 + ndt_di] * hx_di[n, t + 1 + ndt_di, i, k]
+                    adjoint_state[n, k, t] = -res
+
+                elif dxdoth[n, k, k] != 0:
+                    der = fx_fullstate[n, k, t + 1]
+                    for i in range(state_dim[1]):
+                        der += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
+                        if t + 1 + ndt_de < T:
+                            der += adjoint_state[n, i, t + 1 + ndt_de] * hx_de[n, t + 1 + ndt_de, i, k]
+                        if t + 1 + ndt_di < T:
+                            der += adjoint_state[n, i, t + 1 + ndt_di] * hx_di[n, t + 1 + ndt_di, i, k]
+                    for n2 in range(N):  # iterate through connectivity of current node "n"
+                        if t + 1 + dmat_ndt[n2, n] > T - 2:
+                            continue
+                        for i in range(state_dim[1]):
+                            der += (
+                                adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
+                                * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
+                            )
+                    adjoint_state[n, k, t] = adjoint_state[n, k, t + 1] - dt * der
 
     return adjoint_state
 
@@ -336,16 +363,16 @@ class OC:
         """
 
         self.model = copy.deepcopy(model)
-        self.simulate_forward()
 
         self.target = target  # ToDo: dimensions-check
         self.maximum_control_strength = maximum_control_strength
 
-        if weights is None:
-            self.weights = getdefaultweights()
-        elif type(weights) != type(dict()):
-            print("Weights parameter must be dictionary, use default weights instead.")
-            self.weights = getdefaultweights()
+        if type(weights) != type(dict()):
+            if weights is None:
+                self.weights = getdefaultweights()
+            else:
+                print("Weights parameter must be dictionary, use default weights instead.")
+                self.weights = getdefaultweights()
         else:
             defaultweights = getdefaultweights()
             for k in defaultweights.keys():
@@ -365,6 +392,8 @@ class OC:
         self.dim_out = len(self.model.output_vars)
         if self.model.name == "aln":
             self.dim_out = 2
+
+        self.simulate_forward()
 
         if self.N == 1:
             self.Dmat_ndt = np.zeros((self.N, self.N)).astype(int)
@@ -453,6 +482,8 @@ class OC:
 
         self.cost_interval = convert_interval(cost_interval, self.T)
 
+        self.ndt_de, self.ndt_di = 0.0, 0.0
+
     @abc.abstractmethod
     def get_xs(self):
         """Stack the initial condition with the simulation results for controllable state variables."""
@@ -473,12 +504,12 @@ class OC:
 
     @abc.abstractmethod
     def Dxdot(self):
-        """V x V Jacobian of systems dynamics wrt. to change of all 'state_vars'."""
+        """V x V Jacobian of systems dynamics wrt. change of all 'state_vars'."""
         pass
 
     @abc.abstractmethod
     def Duh(self):
-        """Jacobian of systems dynamics wrt. to external inputs (control signals) to all 'state_vars'."""
+        """Jacobian of systems dynamics wrt. external inputs (control signals) to all 'state_vars'."""
         pass
 
     def compute_total_cost(self):
@@ -499,17 +530,22 @@ class OC:
 
     @abc.abstractmethod
     def compute_gradient(self):
-        """Compute the gradient of the total cost wrt. to the control:
+        """Compute the gradient of the total cost wrt. the control:
         1. solve the adjoint equation backwards in time
-        2. compute derivatives of cost wrt. to control
-        3. compute Jacobians of the dynamics wrt. to control
-        4. compute gradient of the cost wrt. to control(i.e., negative descent direction)
+        2. compute derivatives of cost wrt. control
+        3. compute Jacobians of the dynamics wrt. control
+        4. compute gradient of the cost wrt. control(i.e., negative descent direction)
         """
         pass
 
     @abc.abstractmethod
     def compute_hx(self):
-        """Jacobians of model dynamics wrt. to its 'state_vars' at each time step."""
+        """Jacobians of model dynamics wrt. its 'state_vars' at each time step."""
+        pass
+
+    @abc.abstractmethod
+    def compute_hx_de(self):
+        """Jacobians of model dynamics wrt. its delayed 'state_vars' at each time step."""
         pass
 
     @abc.abstractmethod
@@ -517,12 +553,19 @@ class OC:
         """Jacobians for each time step for the network coupling."""
         pass
 
+    @abc.abstractmethod
+    def compute_dxdoth(self):
+        pass
+
     def solve_adjoint(self):
         """Backwards integration of the adjoint state."""
         hx = self.compute_hx()
         hx_nw = self.compute_hx_nw()
+        dxdoth = self.compute_dxdoth()
+        hx_de = self.compute_hx_de()
+        hx_di = self.compute_hx_di()
 
-        # Derivative of cost wrt. to controllable 'state_vars'.
+        # Derivative of cost wrt. controllable 'state_vars'.
         df_dx = cost_functions.derivative_accuracy_cost(
             self.get_xs(),
             self.target,
@@ -530,7 +573,21 @@ class OC:
             self.cost_matrix,
             self.cost_interval,
         )
-        self.adjoint_state = solve_adjoint(hx, hx_nw, df_dx, self.state_dim, self.dt, self.N, self.T, self.Dmat_ndt)
+        self.adjoint_state = solve_adjoint(
+            hx,
+            hx_nw,
+            df_dx,
+            self.state_dim,
+            self.dt,
+            self.N,
+            self.T,
+            self.Dmat_ndt,
+            dxdoth,
+            hx_de,
+            self.ndt_de,
+            hx_di,
+            self.ndt_di,
+        )
 
     def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):
         """Iteratively decrease step size until cost is improved."""
@@ -543,7 +600,7 @@ class OC:
     def step_size(self, cost_gradient):
         """Adaptively choose a step size for control update.
 
-        :param cost_gradient:   N x V x T gradient of the total cost wrt. to control.
+        :param cost_gradient:   N x V x T gradient of the total cost wrt. control.
         :type cost_gradient:    np.ndarray
         :return:    Step size that got multiplied with the 'cost_gradient'.
         :rtype:     float
@@ -586,6 +643,7 @@ class OC:
                 self.compute_total_cost()
             )  # Cost after applying control update according to gradient with first valid
         # step size (numerically stable).
+        # print(cost, cost0)
         if (
             cost > cost0
         ):  # If the cost choosing the first (stable) step size is no improvement, reduce step size by bisection.

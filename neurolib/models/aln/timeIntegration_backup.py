@@ -786,7 +786,7 @@ def compute_hx(
     dyn_vars_delay,
     control,
 ):
-    """Jacobians of WCModel wrt. to the 'e'- and 'i'-variable for each time step.
+    """Jacobians of WCModel wrt. the 'e'- and 'i'-variable for each time step.
 
     :param wc_model_params: Tuple of parameters in the WCModel in order (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh,
                             c_excexc, c_inhexc, c_excinh, c_inhinh). All parameters of type 'float'.
@@ -945,7 +945,7 @@ def Duh(
     e,
     i,
 ):
-    """Jacobian of systems dynamics wrt. to external inputs (control signals).
+    """Jacobian of systems dynamics wrt. external inputs (control signals).
 
     :rtype:     np.ndarray of shape N x V x V x T
     """

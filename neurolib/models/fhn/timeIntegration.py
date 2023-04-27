@@ -251,7 +251,7 @@ def timeIntegration_njit_elementwise(
 
 @numba.njit
 def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
-    """Jacobian of a single node of the FHN dynamical system wrt. to its 'state_vars' ('x', 'y', 'x_ou', 'y_ou'). The
+    """Jacobian of a single node of the FHN dynamical system wrt. its 'state_vars' ('x', 'y', 'x_ou', 'y_ou'). The
        Jacobian of the FHN systems dynamics depends only on the constant model parameters and the values of the 'x'-
        population.
 
@@ -280,7 +280,7 @@ def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
 
 @numba.njit
 def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, dyn_vars):
-    """Jacobians  of FHN model wrt. to its 'state_vars' at each time step.
+    """Jacobians  of FHN model wrt. its 'state_vars' at each time step.
 
     :param alpha:   FHN model parameter.
     :type alpha:    float

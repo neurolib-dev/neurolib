@@ -59,7 +59,6 @@ def timeIntegration(params):
         Dmat[np.eye(len(Dmat)) == 1] = np.ones(len(Dmat)) * params["de"]
 
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
-    params["Dmat_ndt"] = Dmat_ndt
 
     # ------------------------------------------------------------------------
 
@@ -178,36 +177,34 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
     # Set initial values
+    mufe = params["mufe_init"].copy()  # Filtered mean input (mu) for exc. population
+    mufi = params["mufi_init"].copy()  # Filtered mean input (mu) for inh. population
+    IA_init = params["IA_init"].copy()  # Adaptation current (pA)
+    seem = params["seem_init"].copy()  # Mean exc synaptic input
+    seim = params["seim_init"].copy()
+    seev = params["seev_init"].copy()  # Exc synaptic input variance
+    seiv = params["seiv_init"].copy()
+    siim = params["siim_init"].copy()  # Mean inh synaptic input
+    siem = params["siem_init"].copy()
+    siiv = params["siiv_init"].copy()  # Inh synaptic input variance
+    siev = params["siev_init"].copy()
 
-    mufe = setvarinit(params["mufe_init"], N, startind, t)
-    mufi = setvarinit(params["mufi_init"], N, startind, t)
-    IA = setvarinit(params["IA_init"], N, startind, t)
-
-    seem = setvarinit(params["seem_init"], N, startind, t)
-    seim = setvarinit(params["seim_init"], N, startind, t)
-    siem = setvarinit(params["siem_init"], N, startind, t)
-    siim = setvarinit(params["siim_init"], N, startind, t)
-    seev = setvarinit(params["seev_init"], N, startind, t)
-    seiv = setvarinit(params["seiv_init"], N, startind, t)
-    siev = setvarinit(params["siev_init"], N, startind, t)
-    siiv = setvarinit(params["siiv_init"], N, startind, t)
-
-    mue_ou = setvarinit(params["mue_ou"], N, startind, t)
-    mui_ou = setvarinit(params["mui_ou"], N, startind, t)
+    mue_ou = params["mue_ou"].copy()  # Mean of external exc OU input (mV/ms)
+    mui_ou = params["mui_ou"].copy()  # Mean of external inh ON inout (mV/ms)
 
     # Set the initial firing rates.
     # if initial values are just a Nx1 array
     if np.shape(params["rates_exc_init"])[1] == 1:
         # repeat the 1-dim value stardind times
         rates_exc_init = np.dot(params["rates_exc_init"], np.ones((1, startind)))  # kHz
+        rates_inh_init = np.dot(params["rates_inh_init"], np.ones((1, startind)))  # kHz
+        # set initial adaptation current
+        IA_init = np.dot(params["IA_init"], np.ones((1, startind)))
     # if initial values are a Nxt array
     else:
         rates_exc_init = params["rates_exc_init"][:, -startind:]
-
-    if np.shape(params["rates_inh_init"])[1] == 1:
-        rates_inh_init = np.dot(params["rates_inh_init"], np.ones((1, startind)))  # kHz
-    else:
         rates_inh_init = params["rates_inh_init"][:, -startind:]
+        IA_init = params["IA_init"][:, -startind:]
 
     np.random.seed(RNGseed)
 
@@ -218,6 +215,7 @@ def timeIntegration(params):
     # Set the initial conditions
     rates_exc[:, :startind] = rates_exc_init
     rates_inh[:, :startind] = rates_inh_init
+    IA[:, :startind] = IA_init
 
     noise_exc = np.zeros((N,))
     noise_inh = np.zeros((N,))
@@ -437,10 +435,8 @@ def timeIntegration_njit_elementwise(
             noise_exc[no] = rates_exc[no, i]
             noise_inh[no] = rates_inh[no, i]
 
-            mue = Jee_max * seem[no, i - 1] + Jei_max * seim[no, i - 1] + mue_ou[no, i - 1] + ext_exc_current[no, i]
-            mui = Jie_max * siem[no, i - 1] + Jii_max * siim[no, i - 1] + mui_ou[no, i - 1] + ext_inh_current[no, i]
-
-            mue = mue_ou[no, i - 1] + ext_exc_current[no, i]
+            mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ou[no] + ext_exc_current[no, i]
+            mui = Jie_max * siem[no] + Jii_max * siim[no] + mui_ou[no] + ext_inh_current[no, i]
 
             # compute row sum of Cmat*rd_exc and Cmat**2*rd_exc
             rowsum = 0
@@ -469,14 +465,18 @@ def timeIntegration_njit_elementwise(
             z2ii = cii**2 * Ki * rd_inh[no]
 
             sigmae = np.sqrt(
-                2 * sq_Jee_max * seev[no, i - 1] * tau_se * taum / ((1 + z1ee) * taum + tau_se)
-                + 2 * sq_Jei_max * seiv[no, i - 1] * tau_si * taum / ((1 + z1ei) * taum + tau_si)
+                2 * sq_Jee_max * seev[no] * tau_se * taum / ((1 + z1ee) * taum + tau_se)
+                + 2 * sq_Jei_max * seiv[no] * tau_si * taum / ((1 + z1ei) * taum + tau_si)
                 + sigmae_ext**2
             )  # mV/sqrt(ms)
 
+            # sigmae = np.sqrt(
+            #    2 * sq_Jee_max * seev[no] * tau_se * taum / ((1 + z1ee) * taum + tau_se) + sigmae_ext**2
+            # )  # mV/sqrt(ms)
+
             sigmai = np.sqrt(
-                2 * sq_Jie_max * siev[no, i - 1] * tau_se * taum / ((1 + z1ie) * taum + tau_se)
-                + 2 * sq_Jii_max * siiv[no, i - 1] * tau_si * taum / ((1 + z1ii) * taum + tau_si)
+                2 * sq_Jie_max * siev[no] * tau_se * taum / ((1 + z1ie) * taum + tau_se)
+                + 2 * sq_Jii_max * siiv[no] * tau_si * taum / ((1 + z1ii) * taum + tau_si)
                 + sigmai_ext**2
             )  # mV/sqrt(ms)
 
@@ -488,24 +488,26 @@ def timeIntegration_njit_elementwise(
             # -------------------------------------------------------------
 
             # ------- excitatory population
-            # mufe[no, i] - IA[no] / C is the total current of the excitatory population
+            # mufe[no] - IA[no] / C is the total current of the excitatory population
+            sigmae_f = 0.0
+            IA[no, i - 1] = 0.0
+
             xid1, yid1, dxid, dyid = fast_interp2_opt(
-                sigmarange, ds, sigmae_f, Irange, dI, mufe[no, i - 1] - IA[no, i - 1] / C
+                sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no, i - 1] / C
             )
             xid1, yid1 = int(xid1), int(yid1)
 
             rates_exc[no, i] = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3  # convert kHz to Hz
-
-            rates_exc[no, i] = mufe[no, i - 1] * 1e3
-
             Vmean_exc = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
             tau_exc = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
             if filter_sigma:
                 tau_sigmae_eff = interpolate_values(precalc_tau_sigma, xid1, yid1, dxid, dyid)
 
             # ------- inhibitory population
-            #  mufi[no, i] are the (filtered) currents of the inhibitory population
-            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, mufi[no, i - 1])
+            #  mufi[no] are the (filtered) currents of the inhibitory population
+            sigmai_f = 0.0
+
+            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, mufi[no])
             xid1, yid1 = int(xid1), int(yid1)
 
             rates_inh[no, i] = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
@@ -518,8 +520,8 @@ def timeIntegration_njit_elementwise(
 
             # now everything available for r.h.s:
 
-            mufe_rhs = (mue - mufe[no, i - 1]) / tau_exc
-            mufi_rhs = (mui - mufi[no, i - 1]) / tau_inh
+            mufe_rhs = (mue - mufe[no]) / tau_exc
+            mufi_rhs = (mui - mufi[no]) / tau_inh
 
             # rate has to be kHz
             IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
@@ -534,84 +536,60 @@ def timeIntegration_njit_elementwise(
                 sigmai_f_rhs = (sigmai - sigmai_f) / tau_sigmai_eff
 
             # integration of synaptic input (eq. 4.36)
-            seem_rhs = ((1 - seem[no, i - 1]) * z1ee - seem[no, i - 1]) / tau_se
-            seim_rhs = ((1 - seim[no, i - 1]) * z1ei - seim[no, i - 1]) / tau_si
-            siem_rhs = ((1 - siem[no, i - 1]) * z1ie - siem[no, i - 1]) / tau_se
-            siim_rhs = ((1 - siim[no, i - 1]) * z1ii - siim[no, i - 1]) / tau_si
-            seev_rhs = (
-                (1 - seem[no, i - 1]) ** 2 * z2ee + (z2ee - 2 * tau_se * (z1ee + 1)) * seev[no, i - 1]
-            ) / tau_se**2
-            seiv_rhs = (
-                (1 - seim[no, i - 1]) ** 2 * z2ei + (z2ei - 2 * tau_si * (z1ei + 1)) * seiv[no, i - 1]
-            ) / tau_si**2
-            siev_rhs = (
-                (1 - siem[no, i - 1]) ** 2 * z2ie + (z2ie - 2 * tau_se * (z1ie + 1)) * siev[no, i - 1]
-            ) / tau_se**2
-            siiv_rhs = (
-                (1 - siim[no, i - 1]) ** 2 * z2ii + (z2ii - 2 * tau_si * (z1ii + 1)) * siiv[no, i - 1]
-            ) / tau_si**2
+            seem_rhs = ((1 - seem[no]) * z1ee - seem[no]) / tau_se
+            seim_rhs = ((1 - seim[no]) * z1ei - seim[no]) / tau_si
+            siem_rhs = ((1 - siem[no]) * z1ie - siem[no]) / tau_se
+            siim_rhs = ((1 - siim[no]) * z1ii - siim[no]) / tau_si
+            seev_rhs = ((1 - seem[no]) ** 2 * z2ee + (z2ee - 2 * tau_se * (z1ee + 1)) * seev[no]) / tau_se**2
+            seiv_rhs = ((1 - seim[no]) ** 2 * z2ei + (z2ei - 2 * tau_si * (z1ei + 1)) * seiv[no]) / tau_si**2
+            siev_rhs = ((1 - siem[no]) ** 2 * z2ie + (z2ie - 2 * tau_se * (z1ie + 1)) * siev[no]) / tau_se**2
+            siiv_rhs = ((1 - siim[no]) ** 2 * z2ii + (z2ii - 2 * tau_si * (z1ii + 1)) * siiv[no]) / tau_si**2
 
             # -------------- integration --------------
 
-            mufe[no, i] = mufe[no, i - 1] + dt * mufe_rhs
-            mufi[no, i] = mufi[no, i - 1] + dt * mufi_rhs
-            IA[no, i] = IA[no, i - i - 1] + dt * IA_rhs
+            mufe[no] = mufe[no] + dt * mufe_rhs
+            mufi[no] = mufi[no] + dt * mufi_rhs
+            IA[no, i] = IA[no, i - 1] + dt * IA_rhs
 
             if distr_delay:
-                rd_exc[no] = rd_exc[no, no] + dt * rd_exc_rhs
+                rd_exc[no, no] = rd_exc[no, no] + dt * rd_exc_rhs
                 rd_inh[no] = rd_inh[no] + dt * rd_inh_rhs
 
             if filter_sigma:
                 sigmae_f = sigmae_f + dt * sigmae_f_rhs
                 sigmai_f = sigmai_f + dt * sigmai_f_rhs
 
-            seem[no, i] = seem[no, i - 1] + dt * seem_rhs
-            seim[no, i] = seim[no, i - 1] + dt * seim_rhs
-            siem[no, i] = siem[no, i - 1] + dt * siem_rhs
-            siim[no, i] = siim[no, i - 1] + dt * siim_rhs
-            seev[no, i] = seev[no, i - 1] + dt * seev_rhs
-            seiv[no, i] = seiv[no, i - 1] + dt * seiv_rhs
-            siev[no, i] = siev[no, i - 1] + dt * siev_rhs
-            siiv[no, i] = siiv[no, i - 1] + dt * siiv_rhs
+            seem[no] = seem[no] + dt * seem_rhs
+            seim[no] = seim[no] + dt * seim_rhs
+            siem[no] = siem[no] + dt * siem_rhs
+            siim[no] = siim[no] + dt * siim_rhs
+            seev[no] = seev[no] + dt * seev_rhs
+            seiv[no] = seiv[no] + dt * seiv_rhs
+            siev[no] = siev[no] + dt * siev_rhs
+            siiv[no] = siiv[no] + dt * siiv_rhs
 
             # Ensure the variance does not get negative for low activity
-            if seev[no, i] < 0:
-                seev[no, i] = 0.0
+            if seev[no] < 0:
+                seev[no] = 0.0
 
-            if siev[no, i] < 0:
-                siev[no, i] = 0.0
+            if siev[no] < 0:
+                siev[no] = 0.0
 
-            if seiv[no, i] < 0:
-                seiv[no, i] = 0.0
+            if seiv[no] < 0:
+                seiv[no] = 0.0
 
-            if siiv[no, i] < 0:
-                siiv[no, i] = 0.0
+            if siiv[no] < 0:
+                siiv[no] = 0.0
 
             # ornstein-uhlenbeck process
-            mue_ou[no, i] = (
-                mue_ou[no, i - 1]
-                + (mue_ext_mean - mue_ou[no, i - 1]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_exc[no]
+            mue_ou[no] = (
+                mue_ou[no] + (mue_ext_mean - mue_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[no]
             )  # mV/ms
-            mui_ou[no, i] = (
-                mui_ou[no, i - 1]
-                + (mui_ext_mean - mui_ou[no, i - 1]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_inh[no]
+            mui_ou[no] = (
+                mui_ou[no] + (mui_ext_mean - mui_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[no]
             )  # mV/ms
 
     return t, rates_exc, rates_inh, mufe, mufi, IA, seem, seim, siem, siim, seev, seiv, siev, siiv, mue_ou, mui_ou
-
-
-def setvarinit(initpar, N, startind, t):
-    var = np.zeros((N, startind + len(t)))
-    if len(np.shape(initpar)) == 1:
-        var[:, :startind] = initpar
-    elif np.shape(initpar)[1] == 1:
-        var[:, :startind] = initpar
-    else:
-        var[:, :startind] = initpar[:, -startind:]
-
-    return var
 
 
 @numba.njit(locals={"idxX": numba.int64, "idxY": numba.int64})
@@ -752,37 +730,301 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
 
 
 @numba.njit
-def jacobian_aln(aln_model_params, V):
+def jacobian_aln(aln_model_params, V, fullstate, re_del, ri_del, ue, ui):
 
-    (tau_se, tau_si) = aln_model_params
+    (
+        sigmarange,
+        ds,
+        Irange,
+        dI,
+        C,
+        precalc_r,
+        precalc_tau_mu,
+        Ke,
+        Ki,
+        cee,
+        cei,
+        cie,
+        cii,
+        Jee_max,
+        Jei_max,
+        Jie_max,
+        Jii_max,
+        tau_se,
+        tau_si,
+        taum,
+        sigmae_ext,
+        sigmai_ext,
+    ) = aln_model_params
 
     jacobian = np.zeros((V, V))
-    jacobian[0, 2] = -1e3
 
-    jacobian[2, 2] = 1.0 / tau_se
+    z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
+    z1ee = z1ee_f * fullstate[0]
+    z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
+    z1ei = z1ei_f * fullstate[1]
+    z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
+    z1ie = z1ie_f * fullstate[0]
+    z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
+    z1ii = z1ii_f * fullstate[1]
+
+    sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
+    sig_ee_den = (1 + z1ee) * taum + tau_se
+
+    sigmae_f = np.sqrt(sig_ee_factor * fullstate[5] ** 2 / sig_ee_den + sigmae_ext**2)
+    sigmae_f = 0.0
+    fullstate[4] = 0.0
+
+    xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, fullstate[2] - fullstate[4] / C)
+    xid1, yid1 = int(xid1), int(yid1)
+    re0 = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+    te0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+    xid1, yid1, dxid, dyid = fast_interp2_opt(
+        sigmarange, ds, sigmae_f, Irange, dI, (fullstate[2] + dI) - fullstate[4] / C
+    )
+    xid1, yid1 = int(xid1), int(yid1)
+    re1mu = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+    te1mu = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+
+    xid1, yid1, dxid, dyid = fast_interp2_opt(
+        sigmarange, ds, sigmae_f + ds, Irange, dI, (fullstate[2]) - fullstate[4] / C
+    )
+    xid1, yid1 = int(xid1), int(yid1)
+    re1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+    te1s = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+
+    sigmai_f = 0.0
+
+    xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, fullstate[3])
+    xid1, yid1 = int(xid1), int(yid1)
+    ri0 = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+    ti0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+    xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, (fullstate[3] + dI))
+    xid1, yid1 = int(xid1), int(yid1)
+    ri1mu = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+    ti1mu = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+
+    jacobian[0, 2] = -(re1mu - re0) / (dI)
+    # jacobian[0, 9] = -((re1s - re0) / (ds)) * sigmae_f ** (-1.0 / 2.0) * sig_ee_factor * fullstate[5] / sig_ee_den
+
+    jacobian[1, 3] = -(ri1mu - ri0) / (dI)
+
+    jacobian[2, 2] = (1.0 / te0) + (
+        (Jee_max * fullstate[5] + Jei_max * fullstate[6] + fullstate[13] + ue - fullstate[2]) / te0**2
+    ) * (te1mu - te0) / dI
+    # jacobian[2, 9] = (
+    #    ((Jee_max * fullstate[5] + Jei_max * fullstate[6] + fullstate[13] + ue - fullstate[2]) / te0**2)
+    #    * (-1)
+    #    * (te1mu - te0)
+    #    / dI
+    # )
+
+    jacobian[2, 5] = -Jee_max / te0
+    jacobian[2, 6] = -Jei_max / te0
+
+    jacobian[3, 3] = (1.0 / ti0) + (
+        (Jie_max * fullstate[7] + Jii_max * fullstate[8] + fullstate[14] + ui - fullstate[3]) / ti0**2
+    ) * (ti1mu - ti0) / dI
+    jacobian[3, 7] = -Jie_max / ti0
+    jacobian[3, 8] = -Jii_max / ti0
+
+    jacobian[5, 5] = (z1ee + 1.0) / tau_se
+
+    jacobian[6, 6] = (z1ei + 1.0) / tau_si
+
+    jacobian[7, 7] = (z1ie + 1.0) / tau_se
+
+    jacobian[8, 8] = (z1ii + 1.0) / tau_si
+
     return jacobian
 
 
 @numba.njit
 def compute_hx(
-    aln_model_params: tuple[float, float],
+    aln_model_params: tuple[
+        float,
+        float,
+        float,
+        float,
+        float,
+        np.ndarray,
+        np.ndarray,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+    ],
+    ndt_de,
+    ndt_di,
     N,
     V,
     T,
     dyn_vars,
     control,
 ):
+
     hx = np.zeros((N, T, V, V))
 
     for n in range(N):
-        for t, e in enumerate(dyn_vars[n, 0, :]):
-            i = dyn_vars[n, 1, t]
+        for t in range(T):
+            re_del = dyn_vars[n, 0, t - ndt_de]
+            ri_del = dyn_vars[n, 1, t - ndt_di]
             ue = control[n, 0, t]
             ui = control[n, 1, t]
-            hx[n, t, :, :] = jacobian_aln(
-                aln_model_params,
-                V,
-            )
+            hx[n, t, :, :] = jacobian_aln(aln_model_params, V, dyn_vars[n, :, t], re_del, ri_del, ue, ui)
+
+    return hx
+
+
+@numba.njit
+def jacobian_de(aln_model_params, V, fullstate):
+    (
+        sigmarange,
+        ds,
+        Irange,
+        dI,
+        C,
+        precalc_r,
+        precalc_tau_mu,
+        Ke,
+        cee,
+        cie,
+        Jee_max,
+        Jie_max,
+        tau_se,
+        taum,
+        sigmae_ext,
+    ) = aln_model_params
+
+    jacobian = np.zeros((V, V))
+
+    z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
+    z1ee = z1ee_f * fullstate[0]
+    z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
+    z1ie = z1ie_f * fullstate[0]
+
+    sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
+    sig_ee_den = (1 + z1ee) * taum + tau_se
+
+    sigmae_f = np.sqrt(sig_ee_factor * fullstate[5] ** 2 / sig_ee_den + sigmae_ext**2)
+    sigmae_f = 0.0
+    fullstate[4] = 0.0
+
+    xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, fullstate[2] - fullstate[4] / C)
+    xid1, yid1 = int(xid1), int(yid1)
+    re0 = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+
+    xid1, yid1, dxid, dyid = fast_interp2_opt(
+        sigmarange, ds, sigmae_f + ds, Irange, dI, (fullstate[2]) - fullstate[4] / C
+    )
+    xid1, yid1 = int(xid1), int(yid1)
+    re1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+    te1s = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+
+    # jacobian[0, 0] = (
+    #    ((re1s - re0) / (ds))
+    #    * 0.5
+    #    * sigmae_f ** (-1.0 / 2.0)
+    #    * sig_ee_factor
+    #    * fullstate[5] ** 2
+    #    * taum
+    #    * z1ee_f
+    #    / sig_ee_den**2
+    # )
+
+    jacobian[5, 0] = -(1.0 - fullstate[5]) * z1ee_f / tau_se
+
+    jacobian[7, 0] = -(1.0 - fullstate[7]) * z1ie_f / tau_se
+
+    return jacobian
+
+
+@numba.njit
+def compute_hx_de(
+    aln_model_params: tuple[
+        float,
+        float,
+        float,
+        float,
+        float,
+        np.ndarray,
+        np.ndarray,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+    ],
+    N,
+    V,
+    T,
+    dyn_vars,
+):
+
+    hx = np.zeros((N, T, V, V))
+
+    for n in range(N):
+        for t in range(T):
+            hx[n, t, :, :] = jacobian_de(aln_model_params, V, dyn_vars[n, :, t])
+
+    return hx
+
+
+@numba.njit
+def jacobian_di(aln_model_params, V, fullstate):
+    (
+        Ki,
+        cei,
+        cii,
+        Jei_max,
+        Jii_max,
+        tau_si,
+    ) = aln_model_params
+
+    jacobian = np.zeros((V, V))
+
+    z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
+    jacobian[6, 1] = -(1.0 - fullstate[6]) * z1ei_f / tau_si
+
+    z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
+    jacobian[8, 1] = -(1.0 - fullstate[8]) * z1ii_f / tau_si
+
+    return jacobian
+
+
+@numba.njit
+def compute_hx_di(
+    aln_model_params: tuple[
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+    ],
+    N,
+    V,
+    T,
+    dyn_vars,
+):
+
+    hx = np.zeros((N, T, V, V))
+
+    for n in range(N):
+        for t in range(T):
+            hx[n, t, :, :] = jacobian_di(aln_model_params, V, dyn_vars[n, :, t])
+
     return hx
 
 
@@ -816,17 +1058,44 @@ def compute_hx_nw(
 
 @numba.njit
 def Duh(
+    aln_model_params,
     N,
-    V,
+    V_out,
+    V_vars,
     T,
-    tau_exc,
+    fullstate,
 ):
-    """Jacobian of systems dynamics wrt. to external inputs (control signals).
-
+    """Jacobian of systems dynamics wrt. external inputs (control signals).
     :rtype:     np.ndarray of shape N x V x V x T
     """
-    duh = np.zeros((N, V, V, T))
+    (sigmarange, ds, Irange, dI, C, precalc_r, precalc_tau_mu) = aln_model_params
+
+    duh = np.zeros((N, V_vars, V_out, T))
     for t in range(T):
         for n in range(N):
-            duh[n, 0, 0, t] = -1.0 / tau_exc
+            sigmae_f = 0.0
+            fullstate[n, 4, t] = 0.0
+            xid1, yid1, dxid, dyid = fast_interp2_opt(
+                sigmarange, ds, sigmae_f, Irange, dI, fullstate[n, 2, t] - fullstate[n, 4, t] / C
+            )
+            xid1, yid1 = int(xid1), int(yid1)
+            te0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+
+            sigmai_f = 0.0
+            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, fullstate[n, 3, t])
+            xid1, yid1 = int(xid1), int(yid1)
+            ti0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+
+            duh[n, 2, 0, t] = -1.0 / te0
+            duh[n, 3, 1, t] = -1.0 / ti0
     return duh
+
+
+@numba.njit
+def Dxdoth(N, V):
+    dxdoth = np.zeros((N, V, V))
+    for n in range(N):
+        for v in range(2, V):
+            dxdoth[n, v, v] = 1
+
+    return dxdoth

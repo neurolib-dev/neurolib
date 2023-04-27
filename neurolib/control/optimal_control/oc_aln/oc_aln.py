@@ -2,14 +2,22 @@ from neurolib.control.optimal_control.oc import OC, update_control_with_limit
 from neurolib.control.optimal_control import cost_functions
 import numpy as np
 import numba
-from neurolib.models.aln.timeIntegration import compute_hx, compute_nw_input, compute_hx_nw, Duh
+from neurolib.models.aln.timeIntegration import (
+    compute_hx,
+    compute_nw_input,
+    compute_hx_nw,
+    Duh,
+    Dxdoth,
+    compute_hx_de,
+    compute_hx_di,
+)
 
 
 @numba.njit
 def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
-    """Compute the gradient of the total cost wrt. to the control signals (explicitly and implicitly) given the adjoint
-       state, the Jacobian of the total cost wrt. to explicit control contributions and the Jacobian of the dynamics
-       wrt. to explicit control contributions.
+    """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
+       state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
+       wrt. explicit control contributions.
 
     :param N:       Number of nodes in the network.
     :type N:        int
@@ -17,24 +25,29 @@ def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
     :type dim_out:  int
     :param T:       Length of simulation (time dimension).
     :type T:        int
-    :param df_du:      Derivative of the cost wrt. to the explicit control contributions to cost functionals.
+    :param df_du:      Derivative of the cost wrt. the explicit control contributions to cost functionals.
     :type df_du:       np.ndarray of shape N x V x T
     :param adjoint_state:   Solution of the adjoint equation.
     :type adjoint_state:    np.ndarray of shape N x V x T
     :param control_matrix:  Binary matrix that defines nodes and variables where control inputs are active, defaults to
                             None.
     :type control_matrix:   np.ndarray of shape N x V
-    :param d_du:    Jacobian of systems dynamics wrt. to I_ext (external control input)
+    :param d_du:    Jacobian of systems dynamics wrt. I_ext (external control input)
     :type d_du:     np.ndarray of shape V x V
-    :return:        The gradient of the total cost wrt. to the control.
+    :return:        The gradient of the total cost wrt. the control.
     :rtype:         np.ndarray of shape N x V x T
     """
     grad = np.zeros(df_du.shape)
 
+    # print("lambda mue =", adjoint_state[0, 2, :])
+    # print("duh = ", d_du[0, :4, :4, 0])
+
     for n in range(N):
         for v in range(dim_out):
             for t in range(T):
-                grad[n, v, t] = df_du[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * d_du[n, v, v, t]
+                grad[n, v, t] = df_du[n, v, t]
+                for k in range(adjoint_state.shape[1]):
+                    grad[n, v, t] += control_matrix[n, v] * adjoint_state[n, k, t] * d_du[n, k, v, t]
 
     return grad
 
@@ -43,9 +56,9 @@ class OcAln(OC):
     """Class for optimal control specific to neurolib's implementation of the two-population ALN model
             ("ALNmodel").
 
-    :param model: Instance of ALN model (can describe a single Wilson-Cowan node or a network of coupled
-                  Wilson-Cowan nodes.
-    :type model: neurolib.models.aln.model.WCModel
+    :param model: Instance of ALN model (can describe a single ALN node or a network of coupled
+                  ALN nodes.
+    :type model: neurolib.models.aln.model.ALNModel
     """
 
     def __init__(
@@ -91,14 +104,21 @@ class OcAln(OC):
             control = np.stack((self.model.params["ext_exc_current"], self.model.params["ext_inh_current"]), axis=1)
 
         for n in range(self.N):
-            assert (control[n, 0, :] == self.model.params["ext_inh_current"][n, :]).all()
-            assert (control[n, 1, :] == self.model.params["ext_exc_current"][n, :]).all()
+            assert (control[n, 0, :] == self.model.params["ext_exc_current"][n, :]).all()
+            assert (control[n, 1, :] == self.model.params["ext_inh_current"][n, :]).all()
 
             # in aln model, t=0 control does not affect the system
             control[n, 0, 0] = 0.0
             control[n, 1, 0] = 0.0
 
         self.control = update_control_with_limit(control, 0.0, np.zeros(control.shape), self.maximum_control_strength)
+        self.fullstate = self.get_fullstate()
+
+        if self.model.params.filter_sigma:
+            print("NOT IMPLEMENTED FOR FILTER_SIGMA=TRUE")
+
+        self.ndt_de = np.around(self.model.params.de / self.dt).astype(int)
+        self.ndt_di = np.around(self.model.params.di / self.dt).astype(int)
 
     def get_xs_delay(self):
         """Concatenates the initial conditions with simulated values and pads delay contributions at end. In the models
@@ -183,42 +203,113 @@ class OcAln(OC):
             self.model.params["ext_exc_current"] = self.control[:, 0, :]
             self.model.params["ext_inh_current"] = self.control[:, 1, :]
 
-    def Dxdot(self):
-        """4 x 4 Jacobian of systems dynamics wrt. to change of systems variables."""
-        # Currently not explicitly required since it is identity matrix.
-        raise NotImplementedError  # return np.eye(4)
+    def compute_dxdoth(self):
+        """Derivative of systems dynamics wrt. change of systems variables."""
+        return Dxdoth(self.N, self.dim_vars)
 
     def Duh(self):
-        """Jacobian of systems dynamics wrt. to external control input.
+        """Jacobian of systems dynamics wrt. external control input.
 
         :return:    N x 4 x 4 x T Jacobians.
         :rtype:     np.ndarray
         """
 
-        xs = self.get_xs()
-        e = xs[:, 0, :]
-        ue = self.control[:, 0, :]
-
         return Duh(
+            (
+                self.model.params.sigmarange,
+                self.model.params.ds,
+                self.model.params.Irange,
+                self.model.params.dI,
+                self.model.params.C,
+                self.model.params.precalc_r,
+                self.model.params.precalc_tau_mu,
+            ),
             self.N,
             self.dim_out,
+            self.dim_vars,
             self.T,
-            self.model.params.tau_se,
+            self.fullstate,
         )
 
     def compute_hx(self):
-        """Jacobians of WCModel wrt. to the 'e'- and 'i'-variable for each time step.
+        """Jacobians of ALNModel wrt. the 'e'- and 'i'-variable for each time step.
 
         :return:    N x T x 4 x 4 Jacobians.
         :rtype:     np.ndarray
         """
         return compute_hx(
-            (self.model.params.tau_se, self.model.params.tau_si),
+            (
+                self.model.params.sigmarange,
+                self.model.params.ds,
+                self.model.params.Irange,
+                self.model.params.dI,
+                self.model.params.C,
+                self.model.params.precalc_r,
+                self.model.params.precalc_tau_mu,
+                self.model.params.Ke,
+                self.model.params.Ki,
+                self.model.params.cee,
+                self.model.params.cei,
+                self.model.params.cie,
+                self.model.params.cii,
+                self.model.params.Jee_max,
+                self.model.params.Jei_max,
+                self.model.params.Jie_max,
+                self.model.params.Jii_max,
+                self.model.params.tau_se,
+                self.model.params.tau_si,
+                self.model.params.C / self.model.params.gL,
+                self.model.params.sigmae_ext,
+                self.model.params.sigmai_ext,
+            ),
+            self.ndt_de,
+            self.ndt_di,
             self.N,
             self.dim_vars,
             self.T,
-            self.get_xs(),
+            self.fullstate,
             self.control,
+        )
+
+    def compute_hx_de(self):
+        return compute_hx_de(
+            (
+                self.model.params.sigmarange,
+                self.model.params.ds,
+                self.model.params.Irange,
+                self.model.params.dI,
+                self.model.params.C,
+                self.model.params.precalc_r,
+                self.model.params.precalc_tau_mu,
+                self.model.params.Ke,
+                self.model.params.cee,
+                self.model.params.cie,
+                self.model.params.Jee_max,
+                self.model.params.Jie_max,
+                self.model.params.tau_se,
+                self.model.params.C / self.model.params.gL,
+                self.model.params.sigmae_ext,
+            ),
+            self.N,
+            self.dim_vars,
+            self.T,
+            self.fullstate,
+        )
+
+    def compute_hx_di(self):
+        return compute_hx_di(
+            (
+                self.model.params.Ki,
+                self.model.params.cei,
+                self.model.params.cii,
+                self.model.params.Jei_max,
+                self.model.params.Jii_max,
+                self.model.params.tau_si,
+            ),
+            self.N,
+            self.dim_vars,
+            self.T,
+            self.fullstate,
         )
 
     def compute_hx_nw(self):
@@ -228,13 +319,6 @@ class OcAln(OC):
         :rtype: np.ndarray
         """
 
-        xs = self.get_xs()
-        e = xs[:, 0, :]
-        i = xs[:, 1, :]
-        xsd = self.get_xs_delay()
-        e_delay = xsd[:, 0, :]
-        ue = self.control[:, 0, :]
-
         return compute_hx_nw(
             self.N,
             self.dim_vars,
@@ -242,18 +326,125 @@ class OcAln(OC):
         )
 
     def compute_gradient(self):
-        """Compute the gradient of the total cost wrt. to the control:
+        """Compute the gradient of the total cost wrt. the control:
         1. solve the adjoint equation backwards in time
-        2. compute derivatives of cost wrt. to control
-        3. compute Jacobians of the dynamics wrt. to control
-        4. compute gradient of the cost wrt. to control(i.e., negative descent direction)
+        2. compute derivatives of cost wrt. control
+        3. compute Jacobians of the dynamics wrt. control
+        4. compute gradient of the cost wrt. control(i.e., negative descent direction)
 
-        :return:        The gradient of the total cost wrt. to the control.
+        :return:        The gradient of the total cost wrt. the control.
         :rtype:         np.ndarray of shape N x V x T
         """
+        self.fullstate = self.get_fullstate()
         self.solve_adjoint()
         self.adjoint_state[:, :, 0] = 0.0
         df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
         d_du = self.Duh()
 
         return compute_gradient(self.N, self.dim_out, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)
+
+    def get_fullstate(self):
+        T, N = self.T, self.N
+        self.simulate_forward()
+        maxdel = self.model.getMaxDelay()
+        control = self.control
+        duration = self.model.params.duration
+
+        fullstate = np.zeros((self.N, self.dim_vars, self.T + 2 * maxdel))
+
+        initstate = self.getinitstate()
+        if maxdel > 0:
+            fullstate[:, :, -maxdel:] = initstate[:, :, :-1]
+        fullstate[:, :, 0] = initstate[:, :, -1]
+
+        self.model.params.duration = self.dt
+        self.model.run()
+        finalstate = self.getfinalstate()
+        fullstate[:, :, 1] = finalstate
+
+        for t in range(0, T - 2 + maxdel):
+
+            if t != 0:
+                self.setasinit(fullstate, t)
+            self.model.params.duration = 2.0 * self.dt
+            if t <= T - 2:
+                self.model.params.ext_exc_current = control[:, 0, t : t + 2]
+                self.model.params.ext_inh_current = control[:, 1, t : t + 2]
+            elif t == T - 1:
+                ec = np.concatenate((control[:, 0, t:], np.zeros((N, 1))), axis=1)
+                self.model.params.ext_exc_current = np.concatenate((control[:, 0, t:], np.zeros((N, 1))), axis=1)
+                self.model.params.ext_inh_current = np.concatenate((control[:, 1, t:], np.zeros((N, 1))), axis=1)
+            else:
+                self.model.params.ext_exc_current = 0.0
+                self.model.params.ext_inh_current = 0.0
+            self.model.run()
+
+            finalstate = self.getfinalstate()
+            fullstate[:, :, t + 2] = finalstate
+
+        # reset to starting values
+        self.model.params.duration = duration
+        self.model.params.ext_exc_current = control[:, 0, :]
+        self.model.params.ext_inh_current = control[:, 1, :]
+        self.setinitstate(initstate)
+        self.simulate_forward()
+
+        return fullstate
+
+    def setasinit(self, fullstate, t):
+        N = len(self.model.params.Cmat)
+        V = len(self.model.init_vars)
+        T = self.model.getMaxDelay() + 1
+
+        for n in range(N):
+            for v in range(V):
+                if "rates" in self.model.init_vars[v] or "IA" in self.model.init_vars[v]:
+                    if t >= T:
+                        self.model.params[self.model.init_vars[v]] = fullstate[:, v, t - T : t + 1]
+                    else:
+                        init = np.concatenate((fullstate[:, v, -T + t + 1 :], fullstate[:, v, : t + 1]), axis=1)
+                        self.model.params[self.model.init_vars[v]] = init
+                else:
+                    self.model.params[self.model.init_vars[v]] = fullstate[:, v, t]
+
+    def getinitstate(self):
+        N = len(self.model.params.Cmat)
+        V = len(self.model.init_vars)
+        T = self.model.getMaxDelay() + 1
+        initstate = np.zeros((N, V, T))
+
+        for n in range(N):
+            for v in range(V):
+                if "rates" in self.model.init_vars[v] or "IA" in self.model.init_vars[v]:
+                    initstate[n, v, :] = self.model.params[self.model.init_vars[v]][n, -T:]
+
+                else:
+                    initstate[n, v, :] = self.model.params[self.model.init_vars[v]][n]
+        return initstate
+
+    def getfinalstate(self):
+        N = len(self.model.params.Cmat)
+        V = len(self.model.state_vars)
+        state = np.zeros((N, V))
+        for n in range(N):
+            for v in range(V):
+                if "rates" in self.model.state_vars[v] or "IA" in self.model.state_vars[v]:
+                    state[n, v] = self.model.state[self.model.state_vars[v]][n, -1]
+
+                else:
+                    state[n, v] = self.model.state[self.model.state_vars[v]][n]
+        return state
+
+    def setinitstate(self, state):
+        N = len(self.model.params.Cmat)
+        V = len(self.model.init_vars)
+        T = self.model.getMaxDelay() + 1
+
+        for n in range(N):
+            for v in range(V):
+                if "rates" in self.model.init_vars[v] or "IA" in self.model.init_vars[v]:
+                    self.model.params[self.model.init_vars[v]] = state[:, v, -T:]
+                else:
+                    self.model.params[self.model.init_vars[v]] = state[:, v, -1]
+
+        return

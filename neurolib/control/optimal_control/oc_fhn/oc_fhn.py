@@ -7,9 +7,9 @@ from neurolib.models.fhn.timeIntegration import compute_hx, compute_hx_nw
 
 @numba.njit
 def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
-    """Compute the gradient of the total cost wrt. to the control signals (explicitly and implicitly) given the adjoint
-       state, the Jacobian of the total cost wrt. to explicit control contributions and the Jacobian of the dynamics
-       wrt. to explicit control contributions.
+    """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
+       state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
+       wrt. explicit control contributions.
 
     :param N:       Number of nodes in the network.
     :type N:        int
@@ -17,16 +17,16 @@ def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
     :type dim_out:  int
     :param T:       Length of simulation (time dimension).
     :type T:        int
-    :param df_du:   Derivative of the cost wrt. to the explicit control contributions to cost functionals.
+    :param df_du:   Derivative of the cost wrt. the explicit control contributions to cost functionals.
     :type df_du:    np.ndarray of shape N x V x T
     :param adjoint_state:  Solution of the adjoint equation.
     :type adjoint_state:   np.ndarray of shape N x V x T
     :param control_matrix: Binary matrix that defines nodes and variables where control inputs are active, defaults to
                            None.
     :type control_matrix:  np.ndarray of shape N x V
-    :param d_du:     Jacobian of systems dynamics wrt. to the external inputs (control).
+    :param d_du:     Jacobian of systems dynamics wrt. the external inputs (control).
     :type d_du:      np.ndarray of shape V x V
-    :return:         The gradient of the total cost wrt. to the control.
+    :return:         The gradient of the total cost wrt. the control.
     :rtype:          np.ndarray of shape N x V x T
     """
     grad = np.zeros(df_du.shape)
@@ -136,12 +136,12 @@ class OcFhn(OC):
             self.model.params["y_ext"] = self.control[:, 1, :]
 
     def Dxdot(self):
-        """4 x 4 Jacobian of systems dynamics wrt. to change of systems variables."""
+        """4 x 4 Jacobian of systems dynamics wrt. change of systems variables."""
         # Currently not explicitly required since it is identity matrix.
         raise NotImplementedError  # return np.eye(4)
 
     def Duh(self):
-        """4 x 4 Jacobian of systems dynamics wrt. to external inputs (control signals) to all 'state_vars'. There are no
+        """4 x 4 Jacobian of systems dynamics wrt. external inputs (control signals) to all 'state_vars'. There are no
            inputs to the noise variables 'x_ou' and 'y_ou' in the model.
 
         :rtype:     np.ndarray of shape 4 x 4
@@ -149,7 +149,7 @@ class OcFhn(OC):
         return np.array([[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
 
     def compute_hx(self):
-        """Jacobians of FHN model wrt. to its 'state_vars' at each time step.
+        """Jacobians of FHN model wrt. its 'state_vars' at each time step.
 
         :return:        Array that contains Jacobians for all nodes in all time steps.
         :rtype:         np.ndarray of shape N x T x 4 x 4
@@ -182,12 +182,12 @@ class OcFhn(OC):
         )
 
     def compute_gradient(self):
-        """Compute the gradient of the total cost wrt. to the control signals. This is achieved by first, solving the
-            adjoint equation backwards in time. Second, derivatives of the cost wrt. to explicit control variables are
-            evaluated as well as the Jacobians of the dynamics wrt. to explicit control. Then the decent direction /
-            gradient of the cost wrt. to control (in its explicit form AND IMPLICIT FORM) is computed.
+        """Compute the gradient of the total cost wrt. the control signals. This is achieved by first, solving the
+            adjoint equation backwards in time. Second, derivatives of the cost wrt. explicit control variables are
+            evaluated as well as the Jacobians of the dynamics wrt. explicit control. Then the decent direction /
+            gradient of the cost wrt. control (in its explicit form AND IMPLICIT FORM) is computed.
 
-        :return:         The gradient of the total cost wrt. to the control.
+        :return:         The gradient of the total cost wrt. the control.
         :rtype:          np.ndarray of shape N x V x T
         """
         self.solve_adjoint()
