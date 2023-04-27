@@ -7,7 +7,7 @@ from neurolib.control.optimal_control import oc_aln
 from numpy.random import RandomState, SeedSequence, MT19937
 
 global LIMIT_DIFF
-LIMIT_DIFF = 1e-7
+LIMIT_DIFF = 1e-9
 
 
 def getfinalstate(model):
@@ -86,7 +86,7 @@ class TestALN(unittest.TestCase):
             print("Rates might be out of table range")
 
         # Test duration
-        duration = 1.0 + max(model.params.de, model.params.di)
+        duration = 1.2 + max(model.params.de, model.params.di)
         a = 0.8  # amplitude
 
         zero_input = ZeroInput().generate_input(duration=duration + model.params.dt, dt=model.params.dt)
@@ -169,7 +169,7 @@ class TestALN(unittest.TestCase):
                         break
 
                     if input_channel != measure_channel:
-                        if np.amax(c_diff) < 10 * LIMIT_DIFF:
+                        if np.amax(c_diff) < 100 * LIMIT_DIFF:
                             control_coincide = True
                             break
 
