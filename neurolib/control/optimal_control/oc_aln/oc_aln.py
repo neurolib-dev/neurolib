@@ -285,7 +285,9 @@ class OcAln(OC):
                 self.model.params.cee,
                 self.model.params.cie,
                 self.model.params.Jee_max,
+                self.model.params.Jei_max,
                 self.model.params.Jie_max,
+                self.model.params.Jii_max,
                 self.model.params.tau_se,
                 self.model.params.C / self.model.params.gL,
                 self.model.params.sigmae_ext,
@@ -294,6 +296,7 @@ class OcAln(OC):
             self.dim_vars,
             self.T,
             self.fullstate,
+            self.control,
         )
 
     def compute_hx_di(self):
