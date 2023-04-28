@@ -53,7 +53,7 @@ def derivative_accuracy_cost(x, target_timeseries, weights, cost_matrix, interva
     :rtype:                 ndarray
     """
 
-    der = np.zeros((cost_matrix.shape[0], cost_matrix.shape[1], x.shape[2]))
+    der = np.zeros((target_timeseries.shape))
 
     if weights["w_p"] != 0.0:
         der += weights["w_p"] * derivative_precision_cost(x, target_timeseries, cost_matrix, interval)

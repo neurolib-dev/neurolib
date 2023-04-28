@@ -489,6 +489,7 @@ def timeIntegration_njit_elementwise(
             xid1, yid1, dxid, dyid = fast_interp2_opt(
                 sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no, i - 1] / C
             )
+            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe[no])
             xid1, yid1 = int(xid1), int(yid1)
 
             rates_exc[no, i] = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3  # convert kHz to Hz
@@ -517,6 +518,7 @@ def timeIntegration_njit_elementwise(
 
             # rate has to be kHz
             IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
+            IA_rhs = (a * mufe[no] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
 
             # EQ. 4.43
             if distr_delay:
@@ -801,6 +803,7 @@ def jacobian_aln(aln_model_params, V, fullstate, re_del, ri_del, ue, ui):
     re0 = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
     te0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
     v0 = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
+
     xid1, yid1, dxid, dyid = fast_interp2_opt(
         sigmarange, ds, sigmae_f, Irange, dI, (fullstate[2] + dI) - fullstate[4] / C
     )
@@ -836,7 +839,7 @@ def jacobian_aln(aln_model_params, V, fullstate, re_del, ri_del, ue, ui):
     dsigmaef_dseiv = 0.5 * sigmae_f ** (-1.0 / 2.0) * sig_ei_factor / sig_ei_den
 
     jacobian[0, 2] = -(re1mu - re0) / (dI)
-    jacobian[0, 4] = (re1mu - re0) / (dI) / C
+    # jacobian[0, 4] = (re1mu - re0) / (dI) / C
     jacobian[0, 9] = -((re1s - re0) / (ds)) * dsigmaef_dseev
     jacobian[0, 10] = -((re1s - re0) / (ds)) * dsigmaef_dseiv
 
@@ -850,6 +853,7 @@ def jacobian_aln(aln_model_params, V, fullstate, re_del, ri_del, ue, ui):
     mue_num = (Jee_max * fullstate[5] + Jei_max * fullstate[6] + fullstate[13] + ue - fullstate[2]) / te0**2
 
     jacobian[2, 2] = (1.0 / te0) + (mue_num) * (te1mu - te0) / dI
+    # jacobian[2, 4] = mue_num * ((te1mu - te0) / dI) * (-1.0 / C)
     jacobian[2, 5] = -Jee_max / te0
     jacobian[2, 6] = -Jei_max / te0
     jacobian[2, 9] = mue_num * ((te1s - te0) / ds) * dsigmaef_dseev
@@ -864,9 +868,13 @@ def jacobian_aln(aln_model_params, V, fullstate, re_del, ri_del, ue, ui):
     jacobian[3, 11] = mui_num * ((ti1s - ti0) / ds) * dsigmaif_dsiiv
 
     jacobian[4, 0] = -b * 1e-3
-    jacobian[4, 4] = 1 / tauA
-    jacobian[4, 9] = -(a / tauA) * ((v1s - v0) / (ds)) * dsigmaef_dseev
-    jacobian[4, 10] = -(a / tauA) * ((v1s - v0) / (ds)) * dsigmaef_dseiv
+    # jacobian[4, 2] = -a * ((v1mu - v0) / ds) / tauA
+    jacobian[4, 2] = -a / tauA
+    # jacobian[4, 4] = (1.0 - a * ((v1mu - v0) / ds) / C) / tauA
+    # jacobian[4, 4] = 1.0 / tauA
+    # jacobian[4, 4] = 0.0
+    # jacobian[4, 9] = -(a / tauA) * ((v1s - v0) / (ds)) * dsigmaef_dseev
+    # jacobian[4, 10] = -(a / tauA) * ((v1s - v0) / (ds)) * dsigmaef_dseiv
 
     jacobian[5, 5] = (z1ee + 1.0) / tau_se
     jacobian[6, 6] = (z1ei + 1.0) / tau_si
@@ -891,9 +899,9 @@ def jacobian_aln(aln_model_params, V, fullstate, re_del, ri_del, ue, ui):
 @numba.njit
 def compute_hx(
     aln_model_params: tuple[
+        np.ndarray,
         float,
-        float,
-        float,
+        np.ndarray,
         float,
         float,
         np.ndarray,
@@ -1056,7 +1064,7 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui):
         * dsigmaif_dre
     )
 
-    jacobian[4, 0] = -(a / tauA) * ((v1s - v0) / ds) * dsigmaef_dre
+    # jacobian[4, 0] = -(a / tauA) * ((v1s - v0) / ds) * dsigmaef_dre
 
     jacobian[5, 0] = -(1.0 - fullstate[5]) * z1ee_f / tau_se
     jacobian[7, 0] = -(1.0 - fullstate[7]) * z1ie_f / tau_se
@@ -1074,9 +1082,9 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui):
 @numba.njit
 def compute_hx_de(
     aln_model_params: tuple[
+        np.ndarray,
         float,
-        float,
-        float,
+        np.ndarray,
         float,
         float,
         np.ndarray,
@@ -1234,7 +1242,7 @@ def jacobian_di(aln_model_params, V, fullstate, ue, ui):
         * ((ti1s - ti0) / ds)
         * dsigmaif_dri
     )
-    jacobian[4, 1] = -(a / tauA) * ((v1s - v0) / ds) * dsigmaef_dri
+    # jacobian[4, 1] = -(a / tauA) * ((v1s - v0) / ds) * dsigmaef_dri
 
     jacobian[6, 1] = -(1.0 - fullstate[6]) * z1ei_f / tau_si
     jacobian[8, 1] = -(1.0 - fullstate[8]) * z1ii_f / tau_si
@@ -1252,9 +1260,9 @@ def jacobian_di(aln_model_params, V, fullstate, ue, ui):
 @numba.njit
 def compute_hx_di(
     aln_model_params: tuple[
+        np.ndarray,
         float,
-        float,
-        float,
+        np.ndarray,
         float,
         float,
         np.ndarray,
@@ -1338,20 +1346,82 @@ def Duh(
     """Jacobian of systems dynamics wrt. external inputs (control signals).
     :rtype:     np.ndarray of shape N x V x V x T
     """
-    (sigmarange, ds, Irange, dI, C, precalc_r, precalc_tau_mu) = aln_model_params
+    (
+        sigmarange,
+        ds,
+        Irange,
+        dI,
+        C,
+        precalc_r,
+        precalc_V,
+        precalc_tau_mu,
+        Ke,
+        Ki,
+        cee,
+        cei,
+        cie,
+        cii,
+        Jee_max,
+        Jei_max,
+        Jie_max,
+        Jii_max,
+        tau_se,
+        tau_si,
+        taum,
+        tauA,
+        sigmae_ext,
+        sigmai_ext,
+        a,
+        b,
+        EA,
+    ) = aln_model_params
 
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
         for n in range(N):
-            sigmae_f = 0.0
-            fullstate[n, 4, t] = 0.0
+
+            z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
+            z1ee = z1ee_f * fullstate[n, 0, t]
+
+            z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
+            z1ei = z1ei_f * fullstate[n, 1, t]
+
+            z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
+            z1ie = z1ie_f * fullstate[n, 0, t]
+
+            z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
+            z1ii = z1ii_f * fullstate[n, 1, t]
+
+            sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
+            sig_ee_den = (1 + z1ee) * taum + tau_se
+
+            sig_ei_factor = 2 * Jei_max**2 * tau_si * taum
+            sig_ei_den = (1 + z1ei) * taum + tau_si
+
+            sigmae_f = np.sqrt(
+                sig_ee_factor * fullstate[n, 9, t] / sig_ee_den
+                + sig_ei_factor * fullstate[n, 10, t] / sig_ei_den
+                + sigmae_ext**2
+            )
+
+            sig_ie_factor = 2 * Jie_max**2 * tau_se * taum
+            sig_ie_den = (1 + z1ie) * taum + tau_se
+
+            sig_ii_factor = 2 * Jii_max**2 * tau_si * taum
+            sig_ii_den = (1 + z1ii) * taum + tau_si
+
+            sigmai_f = np.sqrt(
+                sig_ie_factor * fullstate[n, 11, t] / sig_ie_den
+                + sig_ii_factor * fullstate[n, 12, t] / sig_ii_den
+                + sigmai_ext**2
+            )
+
             xid1, yid1, dxid, dyid = fast_interp2_opt(
                 sigmarange, ds, sigmae_f, Irange, dI, fullstate[n, 2, t] - fullstate[n, 4, t] / C
             )
             xid1, yid1 = int(xid1), int(yid1)
             te0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
 
-            sigmai_f = 0.0
             xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, fullstate[n, 3, t])
             xid1, yid1 = int(xid1), int(yid1)
             ti0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)

@@ -138,10 +138,11 @@ class TestALN(unittest.TestCase):
                             (
                                 model.params["rates_exc_init"][:, np.newaxis, -1],
                                 model.params["rates_inh_init"][:, np.newaxis, -1],
+                                model.params["IA_init"][:, np.newaxis, -1],
                             ),
                             axis=1,
                         )[:, :, np.newaxis],
-                        np.stack((model.rates_exc, model.rates_inh), axis=1),
+                        np.stack((model.rates_exc, model.rates_inh, model.IA), axis=1),
                     ),
                     axis=2,
                 )

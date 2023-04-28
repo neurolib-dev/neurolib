@@ -507,3 +507,13 @@ def Duh(
             input_inh = c_excinh * e[n, t] - c_inhinh * i[n, t] + ui[n, t]
             duh[n, 1, 1, t] = -(1.0 - i[n, t]) * logistic_der(input_inh, a_inh, mu_inh) / tau_inh
     return duh
+
+
+@numba.njit
+def Dxdoth(N, V):
+    dxdoth = np.zeros((N, V, V))
+    for n in range(N):
+        for v in range(V):
+            dxdoth[n, v, v] = 1
+
+    return dxdoth

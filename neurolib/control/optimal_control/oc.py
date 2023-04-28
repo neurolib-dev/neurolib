@@ -167,8 +167,8 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
     return step, counter
 
 
-@numba.njit
-def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, dxdoth, hx_de, ndt_de, hx_di, ndt_di):
+# @numba.njit
+def solve_adjoint(hx, hx_nw, fx, state_dim, dim_out, dt, N, T, dmat_ndt, dxdoth, hx_de, ndt_de, hx_di, ndt_di):
     """Backwards integration of the adjoint state.
 
     :param hx: dh/dx    Jacobians of systems dynamics wrt. 'state_vars' for each time step.
@@ -193,13 +193,18 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, dxdoth, hx_de, n
     # ToDo: generalize, not only precision cost
     adjoint_state = np.zeros(state_dim)
     fx_fullstate = np.zeros(state_dim)
-    fx_fullstate[:, :2, :] = fx.copy()
+
+    fx_fullstate[:, :2, :] = fx[:, :2, :].copy()
+    if True:
+        fx_fullstate[:, 4, :] = fx[:, 2, :].copy()
 
     ### t = T-1
     for n in range(N):  # iterate through nodes
         for k in range(state_dim[1]):
             if dxdoth[n, k, k] == 0:
                 adjoint_state[n, k, -1] = -fx_fullstate[n, k, -1]
+            else:
+                adjoint_state[n, k, -1] = -dt * fx_fullstate[n, k, -1]
 
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
         for n in range(N):  # iterate through nodes
@@ -209,20 +214,24 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, dxdoth, hx_de, n
                     res = fx_fullstate[n, k, t]
                     for i in range(state_dim[1]):
                         res += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
-                        if t + 1 + ndt_de < T:
-                            res += adjoint_state[n, i, t + 1 + ndt_de] * hx_de[n, t + 1 + ndt_de, i, k]
-                        if t + 1 + ndt_di < T:
-                            res += adjoint_state[n, i, t + 1 + ndt_di] * hx_di[n, t + 1 + ndt_di, i, k]
+                        if True:
+                            if t + 1 + ndt_de < T:
+                                res += adjoint_state[n, i, t + 1 + ndt_de] * hx_de[n, t + 1 + ndt_de, i, k]
+                            if t + 1 + ndt_di < T:
+                                res += adjoint_state[n, i, t + 1 + ndt_di] * hx_di[n, t + 1 + ndt_di, i, k]
                     adjoint_state[n, k, t] = -res
 
                 elif dxdoth[n, k, k] != 0:
                     der = fx_fullstate[n, k, t + 1]
+                    if True:
+                        der = fx_fullstate[n, k, t]
                     for i in range(state_dim[1]):
                         der += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
-                        if t + 1 + ndt_de < T:
-                            der += adjoint_state[n, i, t + 1 + ndt_de] * hx_de[n, t + 1 + ndt_de, i, k]
-                        if t + 1 + ndt_di < T:
-                            der += adjoint_state[n, i, t + 1 + ndt_di] * hx_di[n, t + 1 + ndt_di, i, k]
+                        if True:
+                            if t + 1 + ndt_de < T:
+                                der += adjoint_state[n, i, t + 1 + ndt_de] * hx_de[n, t + 1 + ndt_de, i, k]
+                            if t + 1 + ndt_di < T:
+                                der += adjoint_state[n, i, t + 1 + ndt_di] * hx_di[n, t + 1 + ndt_di, i, k]
                     for n2 in range(N):  # iterate through connectivity of current node "n"
                         if t + 1 + dmat_ndt[n2, n] > T - 2:
                             continue
@@ -561,8 +570,14 @@ class OC:
         hx = self.compute_hx()
         hx_nw = self.compute_hx_nw()
         dxdoth = self.compute_dxdoth()
-        hx_de = self.compute_hx_de()
-        hx_di = self.compute_hx_di()
+
+        if self.model.name == "aln":
+
+            hx_de = self.compute_hx_de()
+            hx_di = self.compute_hx_di()
+        else:
+            hx_de = np.zeros(hx.shape)
+            hx_di = np.zeros(hx.shape)
 
         # Derivative of cost wrt. controllable 'state_vars'.
         df_dx = cost_functions.derivative_accuracy_cost(
@@ -577,6 +592,7 @@ class OC:
             hx_nw,
             df_dx,
             self.state_dim,
+            self.dim_out,
             self.dt,
             self.N,
             self.T,
