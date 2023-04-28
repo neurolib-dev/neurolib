@@ -389,9 +389,8 @@ class OC:
         self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps
 
         self.dim_vars = len(self.model.state_vars)
+        self.dim_in = len(self.model.input_vars)
         self.dim_out = len(self.model.output_vars)
-        if self.model.name == "aln":
-            self.dim_out = 2
 
         self.simulate_forward()
 
@@ -422,7 +421,7 @@ class OC:
 
         self.control_matrix = control_matrix
         if isinstance(self.control_matrix, type(None)):
-            self.control_matrix = np.ones((self.N, self.dim_vars))  # default: all channels in all nodes active
+            self.control_matrix = np.ones((self.N, self.dim_in))  # default: all channels in all nodes active
 
         # check if matrix is binary
         assert np.array_equal(self.control_matrix, self.control_matrix.astype(bool))
@@ -736,7 +735,7 @@ class OC:
         """
 
         # initialize array containing M gradients (one per noise realization) for each iteration
-        grad_m = np.zeros((self.M, self.N, self.dim_out, self.T))
+        grad_m = np.zeros((self.M, self.N, self.dim_in, self.T))
         consecutive_zero_step = 0
 
         if len(self.control_history) == 0:

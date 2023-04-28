@@ -7,7 +7,7 @@ from neurolib.control.optimal_control import oc_aln
 from numpy.random import RandomState, SeedSequence, MT19937
 
 global LIMIT_DIFF
-LIMIT_DIFF = 1e-9
+LIMIT_DIFF = 1e-10
 
 
 def getfinalstate(model):
@@ -56,8 +56,8 @@ class TestALN(unittest.TestCase):
         ndt_de = np.around(model.params.de / model.params.dt).astype(int)
         ndt_di = np.around(model.params.di / model.params.dt).astype(int)
 
-        model.params.a = 0.0
-        model.params.b = 0.0
+        # model.params.a = 0.0
+        # model.params.b = 0.0
         # intermediate external input to membrane voltage to not reach the boundaries of the transfer function
         model.params.mue_ext_mean = 2.0
         model.params.mui_ext_mean = 1.0
@@ -86,7 +86,7 @@ class TestALN(unittest.TestCase):
             print("Rates might be out of table range")
 
         # Test duration
-        duration = 1.2 + max(model.params.de, model.params.di)
+        duration = 1.4 + max(model.params.de, model.params.di)
         a = 0.8  # amplitude
 
         zero_input = ZeroInput().generate_input(duration=duration + model.params.dt, dt=model.params.dt)
@@ -169,7 +169,9 @@ class TestALN(unittest.TestCase):
                         break
 
                     if input_channel != measure_channel:
-                        if np.amax(c_diff) < 100 * LIMIT_DIFF:
+                        if (
+                            np.amax(c_diff) < 1e4 * LIMIT_DIFF
+                        ):  ## small numerical values in cost leads to earlier convergence
                             control_coincide = True
                             break
 

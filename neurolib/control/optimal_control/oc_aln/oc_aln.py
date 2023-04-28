@@ -14,15 +14,15 @@ from neurolib.models.aln.timeIntegration import (
 
 
 @numba.njit
-def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
+def compute_gradient(N, dim_in, T, df_du, adjoint_state, control_matrix, d_du):
     """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
        state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
        wrt. explicit control contributions.
 
     :param N:       Number of nodes in the network.
     :type N:        int
-    :param dim_out: Number of 'output variables' of the model.
-    :type dim_out:  int
+    :param dim_in: Number of 'input variables' of the model.
+    :type dim_in:  int
     :param T:       Length of simulation (time dimension).
     :type T:        int
     :param df_du:      Derivative of the cost wrt. the explicit control contributions to cost functionals.
@@ -43,7 +43,7 @@ def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
     # print("duh = ", d_du[0, :4, :4, 0])
 
     for n in range(N):
-        for v in range(dim_out):
+        for v in range(dim_in):
             for t in range(T):
                 grad[n, v, t] = df_du[n, v, t]
                 for k in range(adjoint_state.shape[1]):
@@ -127,26 +127,41 @@ class OcAln(OC):
 
         if self.model.params["rates_exc_init"].shape[1] == 1:  # no delay
             xs_begin = np.concatenate(
-                (self.model.params["rates_exc_init"], self.model.params["rates_inh_init"]), axis=1
+                (
+                    self.model.params["rates_exc_init"],
+                    self.model.params["rates_inh_init"],
+                    self.model.params["IA_init"],
+                ),
+                axis=1,
             )[:, :, np.newaxis]
             xs = np.concatenate(
                 (
                     xs_begin,
-                    np.stack((self.model.rates_exc, self.model.rates_inh), axis=1),
+                    np.stack((self.model.rates_exc, self.model.rates_inh, self.model.IA), axis=1),
                 ),
                 axis=2,
             )
         else:
             xs_begin = np.stack(
-                (self.model.params["rates_exc_init"][:, -1], self.model.params["rates_inh_init"][:, -1]), axis=1
+                (
+                    self.model.params["rates_exc_init"][:, -1],
+                    self.model.params["rates_inh_init"][:, -1],
+                    self.model.params["IA_init"][:, -1],
+                ),
+                axis=1,
             )[:, :, np.newaxis]
             xs_end = np.stack(
-                (self.model.params["rates_exc_init"][:, :-1], self.model.params["rates_inh_init"][:, :-1]), axis=1
+                (
+                    self.model.params["rates_exc_init"][:, :-1],
+                    self.model.params["rates_inh_init"][:, :-1],
+                    self.model.params["IA_init"][:, :-1],
+                ),
+                axis=1,
             )
             xs = np.concatenate(
                 (
                     xs_begin,
-                    np.stack((self.model.rates_exc, self.model.rates_inh), axis=1),
+                    np.stack((self.model.rates_exc, self.model.rates_inh, self.model.IA), axis=1),
                 ),
                 axis=2,
             )
@@ -165,23 +180,33 @@ class OcAln(OC):
         """
         if self.model.params["rates_exc_init"].shape[1] == 1:
             xs_begin = np.concatenate(
-                (self.model.params["rates_exc_init"], self.model.params["rates_inh_init"]), axis=1
+                (
+                    self.model.params["rates_exc_init"],
+                    self.model.params["rates_inh_init"],
+                    self.model.params["IA_init"],
+                ),
+                axis=1,
             )[:, :, np.newaxis]
             xs = np.concatenate(
                 (
                     xs_begin,
-                    np.stack((self.model.rates_exc, self.model.rates_inh), axis=1),
+                    np.stack((self.model.rates_exc, self.model.rates_inh, self.model.IA), axis=1),
                 ),
                 axis=2,
             )
         else:
             xs_begin = np.stack(
-                (self.model.params["rates_exc_init"][:, -1], self.model.params["rates_inh_init"][:, -1]), axis=1
+                (
+                    self.model.params["rates_exc_init"][:, -1],
+                    self.model.params["rates_inh_init"][:, -1],
+                    self.model.params["IA_init"][:, -1],
+                ),
+                axis=1,
             )[:, :, np.newaxis]
             xs = np.concatenate(
                 (
                     xs_begin,
-                    np.stack((self.model.rates_exc, self.model.rates_inh), axis=1),
+                    np.stack((self.model.rates_exc, self.model.rates_inh, self.model.IA), axis=1),
                 ),
                 axis=2,
             )
@@ -225,7 +250,7 @@ class OcAln(OC):
                 self.model.params.precalc_tau_mu,
             ),
             self.N,
-            self.dim_out,
+            self.dim_in,
             self.dim_vars,
             self.T,
             self.fullstate,
@@ -245,6 +270,7 @@ class OcAln(OC):
                 self.model.params.dI,
                 self.model.params.C,
                 self.model.params.precalc_r,
+                self.model.params.precalc_V,
                 self.model.params.precalc_tau_mu,
                 self.model.params.Ke,
                 self.model.params.Ki,
@@ -258,9 +284,13 @@ class OcAln(OC):
                 self.model.params.Jii_max,
                 self.model.params.tau_se,
                 self.model.params.tau_si,
+                self.model.params.tauA,
                 self.model.params.C / self.model.params.gL,
                 self.model.params.sigmae_ext,
                 self.model.params.sigmai_ext,
+                self.model.params.a,
+                self.model.params.b,
+                self.model.params.EA,
             ),
             self.ndt_de,
             self.ndt_di,
@@ -280,6 +310,7 @@ class OcAln(OC):
                 self.model.params.dI,
                 self.model.params.C,
                 self.model.params.precalc_r,
+                self.model.params.precalc_V,
                 self.model.params.precalc_tau_mu,
                 self.model.params.Ke,
                 self.model.params.Ki,
@@ -293,9 +324,13 @@ class OcAln(OC):
                 self.model.params.Jii_max,
                 self.model.params.tau_se,
                 self.model.params.tau_si,
+                self.model.params.tauA,
                 self.model.params.C / self.model.params.gL,
                 self.model.params.sigmae_ext,
                 self.model.params.sigmai_ext,
+                self.model.params.a,
+                self.model.params.b,
+                self.model.params.EA,
             ),
             self.N,
             self.dim_vars,
@@ -313,6 +348,7 @@ class OcAln(OC):
                 self.model.params.dI,
                 self.model.params.C,
                 self.model.params.precalc_r,
+                self.model.params.precalc_V,
                 self.model.params.precalc_tau_mu,
                 self.model.params.Ke,
                 self.model.params.Ki,
@@ -326,9 +362,13 @@ class OcAln(OC):
                 self.model.params.Jii_max,
                 self.model.params.tau_se,
                 self.model.params.tau_si,
+                self.model.params.tauA,
                 self.model.params.C / self.model.params.gL,
                 self.model.params.sigmae_ext,
                 self.model.params.sigmai_ext,
+                self.model.params.a,
+                self.model.params.b,
+                self.model.params.EA,
             ),
             self.N,
             self.dim_vars,
@@ -366,7 +406,7 @@ class OcAln(OC):
         df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
         d_du = self.Duh()
 
-        return compute_gradient(self.N, self.dim_out, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)
+        return compute_gradient(self.N, self.dim_in, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)
 
     def get_fullstate(self):
         T, N = self.T, self.N
