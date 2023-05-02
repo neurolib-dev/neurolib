@@ -67,7 +67,6 @@ def timeIntegration(params):
         # no self-feedback delay
         Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
-    params["Dmat_ndt"] = Dmat_ndt
 
     # # Additive or diffusive coupling scheme
     # version = params["version"]
