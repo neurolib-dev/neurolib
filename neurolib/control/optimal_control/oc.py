@@ -168,13 +168,13 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
 
 
 @numba.njit
-def solve_adjoint(
-    hx, hx_nw, fx, state_dim, dim_out, dt, N, T, dmat_ndt, dxdoth, hx_de, ndt_de, hx_di, ndt_di, model_name
-):
+def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, dxdoth, model_name):
     """Backwards integration of the adjoint state.
 
-    :param hx: dh/dx    Jacobians of systems dynamics wrt. 'state_vars' for each time step.
-    :type hx:           np.ndarray
+    :param hx_list:     list of Jacobians of systems dynamics wrt. 'state_vars'
+    :type hx_list:      list of np.ndarray
+    :param del_list:    list of respective time delay integer
+    :type del_list:     list of int
     :param hx_nw:       Jacobians for each time step for the network coupling.
     :type hx_nw:        np.ndarray
     :param fx: df/dx    Derivative of cost function wrt. systems dynamics.
@@ -216,12 +216,9 @@ def solve_adjoint(
 
                     res = fx_fullstate[n, k, t]
                     for i in range(state_dim[1]):
-                        res += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
-                        if True:
-                            if t + 1 + ndt_de < T:
-                                res += adjoint_state[n, i, t + 1 + ndt_de] * hx_de[n, t + 1 + ndt_de, i, k]
-                            if t + 1 + ndt_di < T:
-                                res += adjoint_state[n, i, t + 1 + ndt_di] * hx_di[n, t + 1 + ndt_di, i, k]
+                        for hx, int_delay in zip(hx_list, del_list):
+                            if t + 1 + int_delay < T:
+                                res += adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k]
                     adjoint_state[n, k, t] = -res
 
                 elif dxdoth[n, k, k] != 0:
@@ -231,12 +228,10 @@ def solve_adjoint(
                     else:
                         der = fx_fullstate[n, k, t + 1]
                     for i in range(state_dim[1]):
-                        der += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
-                        if True:
-                            if t + 1 + ndt_de < T:
-                                der += adjoint_state[n, i, t + 1 + ndt_de] * hx_de[n, t + 1 + ndt_de, i, k]
-                            if t + 1 + ndt_di < T:
-                                der += adjoint_state[n, i, t + 1 + ndt_di] * hx_di[n, t + 1 + ndt_di, i, k]
+                        for hx, int_delay in zip(hx_list, del_list):
+                            if t + 1 + int_delay < T:
+                                der += adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k]
+
                     for n2 in range(N):  # iterate through connectivity of current node "n"
                         if t + 1 + dmat_ndt[n2, n] > T - 2:
                             continue
@@ -584,6 +579,9 @@ class OC:
             hx_de = np.zeros(hx.shape)
             hx_di = np.zeros(hx.shape)
 
+        hx_list = [hx, hx_de, hx_di]
+        del_list = [0, self.ndt_de, self.ndt_di]
+
         # Derivative of cost wrt. controllable 'state_vars'.
         df_dx = cost_functions.derivative_accuracy_cost(
             self.get_xs(),
@@ -593,20 +591,16 @@ class OC:
             self.cost_interval,
         )
         self.adjoint_state = solve_adjoint(
-            hx,
+            hx_list,
+            del_list,
             hx_nw,
             df_dx,
             self.state_dim,
-            self.dim_out,
             self.dt,
             self.N,
             self.T,
             self.Dmat_ndt,
             dxdoth,
-            hx_de,
-            self.ndt_de,
-            hx_di,
-            self.ndt_di,
             self.model.name,
         )
 
