@@ -498,12 +498,6 @@ def timeIntegration_njit_elementwise(
             if filter_sigma:
                 tau_sigmae_eff = interpolate_values(precalc_tau_sigma, xid1, yid1, dxid, dyid)
 
-            xid1, yid1, dxid, dyid = fast_interp2_opt(
-                sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no, i - 1] / C
-            )
-            xid1, yid1 = int(xid1), int(yid1)
-            Vmean_exc = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
-
             # ------- inhibitory population
             #  mufi[no] are the (filtered) currents of the inhibitory population
             xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, mufi[no])
@@ -729,7 +723,24 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
 
 
 @numba.njit
-def jacobian_aln(aln_model_params, V, fullstate, re_del, ri_del, ue, ui):
+def jacobian_aln(aln_model_params, V, fullstate, ue, ui):
+    """Jacobian of the ALN dynamical system.
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param  nw_e:               N x T input of network into each node's 'exc'
+    :type  nw_e:                np.ndarray
+    :param fullstate:       Value of all V=16 dynamical variables at given time
+    :type fullstate:        np.ndarray
+    :param ue:      Control input to E population
+    :type ue:       float
+    :param ui:      Control input to I population
+    :type ui:       float
+    :param V:       Number of system variables.
+    :type V:        int
+    :return:        V x V Jacobian matrix.
+    :rtype:         np.ndarray
+    """
 
     (
         sigmarange,
@@ -928,30 +939,79 @@ def compute_hx(
         float,
         float,
     ],
-    ndt_de,
-    ndt_di,
     N,
     V,
     T,
     dyn_vars,
     control,
+    cmat,
+    dmat,
 ):
+    """Jacobian of the ALN dynamical system.
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of system variables.
+    :type V:        int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
+    :param dyn_vars:       Time-dependent values of all N x V dynamical variables (all nodes)
+    :type dyn_vars:        np.ndarray
+    :param control:      Control input (time dependent and all input channels)
+    :type control:       np.ndarray
+    :param cmat:
+    :type cmat:
+    :param dmat:
+    :type dmat:
+
+    :return:        N x T x V x V Jacobian matrix.
+    :rtype:         np.ndarray
+    """
 
     hx = np.zeros((N, T, V, V))
 
+    # nw_input = compute_nw_input(dyn_vars, dmat)
+
     for n in range(N):
         for t in range(T):
-            re_del = dyn_vars[n, 0, t - ndt_de]
-            ri_del = dyn_vars[n, 1, t - ndt_di]
             ue = control[n, 0, t]
             ui = control[n, 1, t]
-            hx[n, t, :, :] = jacobian_aln(aln_model_params, V, dyn_vars[n, :, t], re_del, ri_del, ue, ui)
+            hx[n, t, :, :] = jacobian_aln(aln_model_params, V, dyn_vars[n, :, t], ue, ui)
 
     return hx
 
 
 @numba.njit
+def compute_nw_input(dyn_vars, dmat):
+    nw_input = np.zeros((dyn_vars.shape[0], dyn_vars.shape[0], dyn_vars.shape[2]))
+
+    # for n in range(nw_input.shape[0]):
+    #    for l in range(nw_input.shape[0]):
+
+    return nw_input
+
+
+@numba.njit
 def jacobian_de(aln_model_params, V, fullstate, ue, ui):
+    """Jacobian of the ALN dynamical system wrt relations with delay de
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param  nw_e:               N x T input of network into each node's 'exc'
+    :type  nw_e:                np.ndarray
+    :param fullstate:       Value of all V dynamical variables at given time
+    :type fullstate:        np.ndarray
+    :param ue:      Control input to E population
+    :type ue:       float
+    :param ui:      Control input to I population
+    :type ui:       float
+    :param V:       Number of system variables.
+    :type V:        int
+    :return:        V x V Jacobian matrix.
+    :rtype:         np.ndarray
+    """
     (
         sigmarange,
         ds,
@@ -1013,8 +1073,6 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui):
     sigmae_f = np.sqrt(
         sig_ee_factor * fullstate[9] / sig_ee_den + sig_ei_factor * fullstate[10] / sig_ei_den + sigmae_ext**2
     )
-
-    sigmae_0 = np.sqrt(sig_ee_factor * fullstate[9] / sig_ee_den + sigmae_ext**2)
 
     sig_ie_factor = 2 * Jie_max**2 * tau_se * taum
     sig_ie_den = (1 + z1ie) * taum + tau_se
@@ -1119,6 +1177,28 @@ def compute_hx_de(
     dyn_vars,
     control,
 ):
+    """Jacobian of the ALN dynamical system wrt variables delayed by de
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of system variables.
+    :type V:        int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
+    :param dyn_vars:       Time-dependent values of all N x V dynamical variables (all nodes)
+    :type dyn_vars:        np.ndarray
+    :param control:      Control input (time dependent and all input channels)
+    :type control:       np.ndarray
+    :param cmat:
+    :type cmat:
+    :param dmat:
+    :type dmat:
+
+    :return:        N x T x V x V Jacobian matrix.
+    :rtype:         np.ndarray
+    """
 
     hx = np.zeros((N, T, V, V))
 
@@ -1133,6 +1213,23 @@ def compute_hx_de(
 
 @numba.njit
 def jacobian_di(aln_model_params, V, fullstate, ue, ui):
+    """Jacobian of the ALN dynamical system wrt relations with delay di
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param  nw_e:               N x T input of network into each node's 'exc'
+    :type  nw_e:                np.ndarray
+    :param fullstate:       Value of all V dynamical variables at given time
+    :type fullstate:        np.ndarray
+    :param ue:      Control input to E population
+    :type ue:       float
+    :param ui:      Control input to I population
+    :type ui:       float
+    :param V:       Number of system variables.
+    :type V:        int
+    :return:        V x V Jacobian matrix.
+    :rtype:         np.ndarray
+    """
     (
         sigmarange,
         ds,
@@ -1297,6 +1394,28 @@ def compute_hx_di(
     dyn_vars,
     control,
 ):
+    """Jacobian of the ALN dynamical system wrt variables delayed by di
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of system variables.
+    :type V:        int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
+    :param dyn_vars:       Time-dependent values of all N x V dynamical variables (all nodes)
+    :type dyn_vars:        np.ndarray
+    :param control:      Control input (time dependent and all input channels)
+    :type control:       np.ndarray
+    :param cmat:
+    :type cmat:
+    :param dmat:
+    :type dmat:
+
+    :return:        N x T x V x V Jacobian matrix.
+    :rtype:         np.ndarray
+    """
 
     hx = np.zeros((N, T, V, V))
 
@@ -1307,17 +1426,6 @@ def compute_hx_di(
             hx[n, t, :, :] = jacobian_di(aln_model_params, V, dyn_vars[n, :, t], ue, ui)
 
     return hx
-
-
-@numba.njit
-def compute_nw_input(N, T):
-    nw_input = np.zeros((N, T))
-
-    for t in range(1, T):
-        for n in range(N):
-            for l in range(N):
-                nw_input[n, t] += 0.0
-    return nw_input
 
 
 @numba.njit
@@ -1346,8 +1454,23 @@ def Duh(
     T,
     fullstate,
 ):
-    """Jacobian of systems dynamics wrt. external inputs (control signals).
-    :rtype:     np.ndarray of shape N x V x V x T
+    """Derivative of systems dynamics wrt. external inputs (control signals).
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param N:         Number of nodes in the network.
+    :type N:          int
+    :param V_in:      Number of input channels (control channels).
+    :type V_in:       int
+    :param V_vars:    Number of dynamical variables.
+    :type V_vars:     int
+    :param T:         Length of simulation (time dimension).
+    :type T:          int
+    :param fullstate:       Time-dependent values of all N x V dynamical variables (all nodes)
+    :type fullstate:        np.ndarray
+
+    :return:    N x V x V x T matrix
+    :rtype:     np.ndarray
     """
     (
         sigmarange,
@@ -1436,6 +1559,16 @@ def Duh(
 
 @numba.njit
 def Dxdoth(N, V):
+    """Derivative of system dynamics wrt x dot
+
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of system variables.
+    :type V:        int
+
+    :return:        N x V x V matrix.
+    :rtype:         np.ndarray
+    """
     dxdoth = np.zeros((N, V, V))
     for n in range(N):
         for v in range(2, V):

@@ -552,6 +552,11 @@ class OC:
         pass
 
     @abc.abstractmethod
+    def compute_hx_list(self):
+        """Jacobians of model dynamics wrt. its 'state_vars' at each time step."""
+        pass
+
+    @abc.abstractmethod
     def compute_hx_de(self):
         """Jacobians of model dynamics wrt. its delayed 'state_vars' at each time step."""
         pass
@@ -567,9 +572,10 @@ class OC:
 
     def solve_adjoint(self):
         """Backwards integration of the adjoint state."""
+
+        """
         hx = self.compute_hx()
-        hx_nw = self.compute_hx_nw()
-        dxdoth = self.compute_dxdoth()
+        
 
         if self.model.name == "aln":
 
@@ -579,8 +585,13 @@ class OC:
             hx_de = np.zeros(hx.shape)
             hx_di = np.zeros(hx.shape)
 
-        hx_list = [hx, hx_de, hx_di]
-        del_list = [0, self.ndt_de, self.ndt_di]
+        hx_list = numba.typed.List([hx, hx_de, hx_di])
+        del_list = numba.typed.List([0, self.ndt_de, self.ndt_di])
+        """
+        hx_nw = self.compute_hx_nw()
+        dxdoth = self.compute_dxdoth()
+
+        hx_list, del_list = self.compute_hx_list()
 
         # Derivative of cost wrt. controllable 'state_vars'.
         df_dx = cost_functions.derivative_accuracy_cost(

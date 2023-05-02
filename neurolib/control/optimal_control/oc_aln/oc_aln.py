@@ -276,6 +276,19 @@ class OcAln(OC):
             self.fullstate,
         )
 
+    def compute_hx_list(self):
+        """List of Jacobians without and with time delays (e.g. in the ALN model) and list of respective time step delays as integers (0 for undelayed)
+
+        :return:        List of Jacobian matrices, list of time step delays
+        : rtype:        List of np.ndarray, List of integers
+
+        """
+        hx = self.compute_hx()
+        hx_de = self.compute_hx_de()
+        hx_di = self.compute_hx_di()
+
+        return numba.typed.List([hx, hx_de, hx_di]), numba.typed.List([0, self.ndt_de, self.ndt_di])
+
     def compute_hx(self):
         """Jacobians of ALNModel wrt. the 'e'- and 'i'-variable for each time step.
 
@@ -319,6 +332,8 @@ class OcAln(OC):
             self.T,
             self.fullstate,
             self.control,
+            self.model.params.Cmat,
+            self.model.params.Dmat,
         )
 
     def compute_hx_de(self):

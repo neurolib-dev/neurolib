@@ -148,6 +148,15 @@ class OcFhn(OC):
         """
         return np.array([[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
 
+    def compute_hx_list(self):
+        """List of Jacobians without and with time delays (e.g. in the ALN model) and list of respective time step delays as integers (0 for undelayed)
+
+        :return:        List of Jacobian matrices, list of time step delays
+        : rtype:        List of np.ndarray, List of integers
+        """
+        hx = self.compute_hx()
+        return numba.typed.List([hx]), numba.typed.List([0])
+
     def compute_hx(self):
         """Jacobians of FHN model wrt. its 'state_vars' at each time step.
 

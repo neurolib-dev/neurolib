@@ -219,6 +219,15 @@ class OcWc(OC):
             i,
         )
 
+    def compute_hx_list(self):
+        """List of Jacobians without and with time delays (e.g. in the ALN model) and list of respective time step delays as integers (0 for undelayed)
+
+        :return:        List of Jacobian matrices, list of time step delays
+        : rtype:        List of np.ndarray, List of integers
+        """
+        hx = self.compute_hx()
+        return numba.typed.List([hx]), numba.typed.List([0])
+
     def compute_hx(self):
         """Jacobians of WCModel wrt. the 'e'- and 'i'-variable for each time step.
 
