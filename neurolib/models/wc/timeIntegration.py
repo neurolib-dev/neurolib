@@ -246,7 +246,7 @@ def timeIntegration_njit_elementwise(
                 excs[no, i] = 1.0
             if excs[no, i] < 0.0:
                 excs[no, i] = 0.0
-                
+
             if inhs[no, i] > 1.0:
                 inhs[no, i] = 1.0
             if inhs[no, i] < 0.0:
