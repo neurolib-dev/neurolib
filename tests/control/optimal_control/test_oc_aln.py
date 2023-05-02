@@ -56,15 +56,17 @@ class TestALN(unittest.TestCase):
         ndt_de = np.around(model.params.de / model.params.dt).astype(int)
         ndt_di = np.around(model.params.di / model.params.dt).astype(int)
 
-        # model.params.a = 0.0
-        # model.params.b = 0.0
         # intermediate external input to membrane voltage to not reach the boundaries of the transfer function
-        model.params.mue_ext_mean = 2.0
-        model.params.mui_ext_mean = 1.0
+        model.params.mue_ext_mean = 1.5
+        model.params.mui_ext_mean = 0.5
+
+        # no noise
         model.params.sigma_ou = 0.0
 
-        model.params.cei = 1.0
-        model.params.cie = 1.0
+        # adaptation parameters
+        model.params.a = 4
+        model.params.b = 1
+        model.params.tauA = 1.0
 
         model.params.mue_ou = model.params.mue_ext_mean * np.ones((1,))
         model.params.mui_ou = model.params.mui_ext_mean * np.ones((1,))
@@ -84,10 +86,11 @@ class TestALN(unittest.TestCase):
         ):
             print("WARNING------------------------")
             print("Rates might be out of table range")
+            print(model.params.rates_exc_init[0, -1], model.params.rates_inh_init[0, -1])
 
         # Test duration
-        duration = 1.4 + max(model.params.de, model.params.di)
-        a = 0.8  # amplitude
+        duration = 1.2 + max(model.params.de, model.params.di)
+        a = 1.0  # amplitude
 
         zero_input = ZeroInput().generate_input(duration=duration + model.params.dt, dt=model.params.dt)
         input = np.copy(zero_input)
@@ -103,31 +106,22 @@ class TestALN(unittest.TestCase):
 
         for input_channel in [0, 1]:
 
-            for measure_channel in [0, 1]:
+            for measure_channel in [0, 1, 2]:
 
-                cost_mat = np.zeros((model.params.N, 2))
-                control_mat = np.zeros((model.params.N, 2))
+                print("----------------- input channel, mesure channel = ", input_channel, measure_channel)
+
+                cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+                control_mat = np.zeros((model.params.N, len(model.input_vars)))
                 if input_channel == 0:
                     model.params["ext_exc_current"] = input
                     model.params["ext_inh_current"] = zero_input
-                    control_mat[0, 0] = 1.0  # only allow inputs to input channel
-                    if measure_channel == 1:
-                        print("------------ Input to E channel, measure in I channel")
-                        cost_mat[0, 1] = 1.0  # only measure in I-channel in measure channel
-                    elif measure_channel == 0:
-                        print("------------ Input to E channel, measure in E channel")
-                        cost_mat[0, 0] = 1.0
 
                 elif input_channel == 1:
                     model.params["ext_exc_current"] = zero_input
                     model.params["ext_inh_current"] = input
-                    control_mat[0, 1] = 1.0
-                    if measure_channel == 1:
-                        print("------------ Input to I channel, measure in I channel")
-                        cost_mat[0, 1] = 1.0
-                    elif measure_channel == 0:
-                        print("------------ Input to I channel, measure in E channel")
-                        cost_mat[0, 0] = 1.0
+
+                cost_mat[0, measure_channel] = 1.0
+                control_mat[0, input_channel] = 1.0
 
                 model.params["duration"] = duration
                 model.run()
@@ -146,11 +140,14 @@ class TestALN(unittest.TestCase):
                     ),
                     axis=2,
                 )
+
                 control_init = np.zeros((target.shape))
                 control_init[0, input_channel, :] = inp_init[0, :]
 
                 model.params["ext_exc_current"] = zero_input
                 model.params["ext_inh_current"] = zero_input
+
+                model.run()
 
                 model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
 

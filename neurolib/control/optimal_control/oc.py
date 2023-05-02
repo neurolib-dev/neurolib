@@ -167,8 +167,10 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
     return step, counter
 
 
-# @numba.njit
-def solve_adjoint(hx, hx_nw, fx, state_dim, dim_out, dt, N, T, dmat_ndt, dxdoth, hx_de, ndt_de, hx_di, ndt_di):
+@numba.njit
+def solve_adjoint(
+    hx, hx_nw, fx, state_dim, dim_out, dt, N, T, dmat_ndt, dxdoth, hx_de, ndt_de, hx_di, ndt_di, model_name
+):
     """Backwards integration of the adjoint state.
 
     :param hx: dh/dx    Jacobians of systems dynamics wrt. 'state_vars' for each time step.
@@ -195,7 +197,7 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dim_out, dt, N, T, dmat_ndt, dxdoth,
     fx_fullstate = np.zeros(state_dim)
 
     fx_fullstate[:, :2, :] = fx[:, :2, :].copy()
-    if True:
+    if model_name == "aln":
         fx_fullstate[:, 4, :] = fx[:, 2, :].copy()
 
     ### t = T-1
@@ -204,7 +206,8 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dim_out, dt, N, T, dmat_ndt, dxdoth,
             if dxdoth[n, k, k] == 0:
                 adjoint_state[n, k, -1] = -fx_fullstate[n, k, -1]
             else:
-                adjoint_state[n, k, -1] = -dt * fx_fullstate[n, k, -1]
+                if model_name == "aln":
+                    adjoint_state[n, k, -1] = -dt * fx_fullstate[n, k, -1]
 
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
         for n in range(N):  # iterate through nodes
@@ -222,9 +225,11 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dim_out, dt, N, T, dmat_ndt, dxdoth,
                     adjoint_state[n, k, t] = -res
 
                 elif dxdoth[n, k, k] != 0:
-                    der = fx_fullstate[n, k, t + 1]
-                    if True:
+                    # differences in "IA" state need to be passed to the same time step of the adjoint state
+                    if model_name == "aln":
                         der = fx_fullstate[n, k, t]
+                    else:
+                        der = fx_fullstate[n, k, t + 1]
                     for i in range(state_dim[1]):
                         der += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
                         if True:
@@ -602,6 +607,7 @@ class OC:
             self.ndt_de,
             hx_di,
             self.ndt_di,
+            self.model.name,
         )
 
     def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):
