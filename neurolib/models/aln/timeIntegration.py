@@ -1,13 +1,12 @@
 import numpy as np
 import numba
 
-from . import loadDefaultParams as dp
 from ...utils import model_utils as mu
 
 
 def timeIntegration(params):
     """Sets up the parameters for time integration
-    
+
     Return:
       rates_exc:  N*L array   : containing the exc. neuron rates in kHz time series of the N nodes
       rates_inh:  N*L array   : containing the inh. neuron rates in kHz time series of the N nodes
@@ -53,7 +52,7 @@ def timeIntegration(params):
     if N == 1:
         Dmat = np.ones((N, N)) * params["de"]
     else:
-        Dmat = dp.computeDelayMatrix(
+        Dmat = mu.computeDelayMatrix(
             lengthMat, signalV
         )  # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
         Dmat[np.eye(len(Dmat)) == 1] = np.ones(len(Dmat)) * params["de"]
@@ -399,10 +398,10 @@ def timeIntegration_njit_elementwise(
 ):
 
     # squared Jee_max
-    sq_Jee_max = Jee_max ** 2
-    sq_Jei_max = Jei_max ** 2
-    sq_Jie_max = Jie_max ** 2
-    sq_Jii_max = Jii_max ** 2
+    sq_Jee_max = Jee_max**2
+    sq_Jei_max = Jei_max**2
+    sq_Jie_max = Jie_max**2
+    sq_Jii_max = Jii_max**2
 
     # initialize so we don't get an error when returning
     rd_exc_rhs = 0.0
@@ -456,24 +455,24 @@ def timeIntegration_njit_elementwise(
             z1ii = cii * Ki * rd_inh[no]
             # z2: weighted sum of delayed rates, weights=c^2*K (see thesis last ch.)
             z2ee = (
-                cee ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * rowsumsq + c_gl ** 2 * Ke_gl * ext_exc_rate[no, i]
+                cee**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * rowsumsq + c_gl**2 * Ke_gl * ext_exc_rate[no, i]
             )
-            z2ei = cei ** 2 * Ki * rd_inh[no]
+            z2ei = cei**2 * Ki * rd_inh[no]
             z2ie = (
-                cie ** 2 * Ke * rd_exc[no, no] + c_gl ** 2 * Ke_gl * ext_inh_rate[no, i]
+                cie**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * ext_inh_rate[no, i]
             )  # external rate input to inh. population
-            z2ii = cii ** 2 * Ki * rd_inh[no]
+            z2ii = cii**2 * Ki * rd_inh[no]
 
             sigmae = np.sqrt(
                 2 * sq_Jee_max * seev[no] * tau_se * taum / ((1 + z1ee) * taum + tau_se)
                 + 2 * sq_Jei_max * seiv[no] * tau_si * taum / ((1 + z1ei) * taum + tau_si)
-                + sigmae_ext ** 2
+                + sigmae_ext**2
             )  # mV/sqrt(ms)
 
             sigmai = np.sqrt(
                 2 * sq_Jie_max * siev[no] * tau_se * taum / ((1 + z1ie) * taum + tau_se)
                 + 2 * sq_Jii_max * siiv[no] * tau_si * taum / ((1 + z1ii) * taum + tau_si)
-                + sigmai_ext ** 2
+                + sigmai_ext**2
             )  # mV/sqrt(ms)
 
             if not filter_sigma:
@@ -531,10 +530,10 @@ def timeIntegration_njit_elementwise(
             seim_rhs = ((1 - seim[no]) * z1ei - seim[no]) / tau_si
             siem_rhs = ((1 - siem[no]) * z1ie - siem[no]) / tau_se
             siim_rhs = ((1 - siim[no]) * z1ii - siim[no]) / tau_si
-            seev_rhs = ((1 - seem[no]) ** 2 * z2ee + (z2ee - 2 * tau_se * (z1ee + 1)) * seev[no]) / tau_se ** 2
-            seiv_rhs = ((1 - seim[no]) ** 2 * z2ei + (z2ei - 2 * tau_si * (z1ei + 1)) * seiv[no]) / tau_si ** 2
-            siev_rhs = ((1 - siem[no]) ** 2 * z2ie + (z2ie - 2 * tau_se * (z1ie + 1)) * siev[no]) / tau_se ** 2
-            siiv_rhs = ((1 - siim[no]) ** 2 * z2ii + (z2ii - 2 * tau_si * (z1ii + 1)) * siiv[no]) / tau_si ** 2
+            seev_rhs = ((1 - seem[no]) ** 2 * z2ee + (z2ee - 2 * tau_se * (z1ee + 1)) * seev[no]) / tau_se**2
+            seiv_rhs = ((1 - seim[no]) ** 2 * z2ei + (z2ei - 2 * tau_si * (z1ei + 1)) * seiv[no]) / tau_si**2
+            siev_rhs = ((1 - siem[no]) ** 2 * z2ie + (z2ie - 2 * tau_se * (z1ie + 1)) * siev[no]) / tau_se**2
+            siiv_rhs = ((1 - siim[no]) ** 2 * z2ii + (z2ii - 2 * tau_si * (z1ii + 1)) * siiv[no]) / tau_si**2
 
             # -------------- integration --------------
 
@@ -635,6 +634,7 @@ def lookup_no_interp(x, dx, xi, y, dy, yi):
         idxY = len(y) - 1
 
     return idxX, idxY
+
 
 @numba.njit(locals={"xid1": numba.int64, "yid1": numba.int64, "dxid": numba.float64, "dyid": numba.float64})
 def fast_interp2_opt(x, dx, xi, y, dy, yi):
