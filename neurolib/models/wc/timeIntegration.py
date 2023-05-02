@@ -241,6 +241,17 @@ def timeIntegration_njit_elementwise(
             excs[no, i] = excs[no, i - 1] + dt * exc_rhs
             inhs[no, i] = inhs[no, i - 1] + dt * inh_rhs
 
+            # make sure e and i variables do not exceed 1 (can only happen with noise)
+            if excs[no, i] > 1.0:
+                excs[no, i] = 1.0
+            if excs[no, i] < 0.0:
+                excs[no, i] = 0.0
+                
+            if inhs[no, i] > 1.0:
+                inhs[no, i] = 1.0
+            if inhs[no, i] < 0.0:
+                inhs[no, i] = 0.0
+
             # Ornstein-Uhlenbeck process
             exc_ou[no] = (
                 exc_ou[no] + (exc_ou_mean - exc_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[no]
