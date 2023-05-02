@@ -1,7 +1,6 @@
 import numpy as np
 import numba
 
-from . import loadDefaultParams as dp
 from ...utils import model_utils as mu
 
 
@@ -59,10 +58,9 @@ def timeIntegration(params):
         Dmat = np.zeros((N, N))
     else:
         # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
-        Dmat = dp.computeDelayMatrix(lengthMat, signalV)
+        Dmat = mu.computeDelayMatrix(lengthMat, signalV)
         Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
-    params["Dmat_ndt"] = Dmat_ndt
     # ------------------------------------------------------------------------
     # Initialization
     # Floating point issue in np.arange() workaraound: use integers in np.arange()
@@ -74,8 +72,8 @@ def timeIntegration(params):
     startind = int(max_global_delay + 1)  # timestep to start integration at
 
     # noise variable
-    exc_ou = params["exc_ou"]
-    inh_ou = params["inh_ou"]
+    exc_ou = params["exc_ou"].copy()
+    inh_ou = params["inh_ou"].copy()
 
     # state variable arrays, have length of t + startind
     # they store initial conditions AND simulated data
@@ -242,6 +240,17 @@ def timeIntegration_njit_elementwise(
             # Euler integration
             excs[no, i] = excs[no, i - 1] + dt * exc_rhs
             inhs[no, i] = inhs[no, i - 1] + dt * inh_rhs
+
+            # make sure e and i variables do not exceed 1 (can only happen with noise)
+            if excs[no, i] > 1.0:
+                excs[no, i] = 1.0
+            if excs[no, i] < 0.0:
+                excs[no, i] = 0.0
+                
+            if inhs[no, i] > 1.0:
+                inhs[no, i] = 1.0
+            if inhs[no, i] < 0.0:
+                inhs[no, i] = 0.0
 
             # Ornstein-Uhlenbeck process
             exc_ou[no] = (

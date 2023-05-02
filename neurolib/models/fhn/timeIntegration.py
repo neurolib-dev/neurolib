@@ -1,7 +1,6 @@
 import numpy as np
 import numba
 
-from . import loadDefaultParams as dp
 from ...utils import model_utils as mu
 
 
@@ -53,11 +52,10 @@ def timeIntegration(params):
         Dmat = np.zeros((N, N))
     else:
         # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
-        Dmat = dp.computeDelayMatrix(lengthMat, signalV)
+        Dmat = mu.computeDelayMatrix(lengthMat, signalV)
         # no self-feedback delay
         Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
-    params["Dmat_ndt"] = Dmat_ndt
 
     # Additive or diffusive coupling scheme
     coupling = params["coupling"]
@@ -80,8 +78,8 @@ def timeIntegration(params):
     max_global_delay = np.max(Dmat_ndt)
     startind = int(max_global_delay + 1)  # timestep to start integration at
 
-    x_ou = params["x_ou"]
-    y_ou = params["y_ou"]
+    x_ou = params["x_ou"].copy()
+    y_ou = params["y_ou"].copy()
 
     # state variable arrays, have length of t + startind
     # they store initial conditions AND simulated data
