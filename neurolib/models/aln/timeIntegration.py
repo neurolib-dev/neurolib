@@ -1,7 +1,6 @@
 import numpy as np
 import numba
 
-from . import loadDefaultParams as dp
 from ...utils import model_utils as mu
 
 
@@ -53,7 +52,7 @@ def timeIntegration(params):
     if N == 1:
         Dmat = np.ones((N, N)) * params["de"]
     else:
-        Dmat = dp.computeDelayMatrix(
+        Dmat = mu.computeDelayMatrix(
             lengthMat, signalV
         )  # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
         Dmat[np.eye(len(Dmat)) == 1] = np.ones(len(Dmat)) * params["de"]
