@@ -2,7 +2,7 @@ import abc
 import numba
 import numpy as np
 from neurolib.control.optimal_control import cost_functions
-from neurolib.models.fhn.loadDefaultParams import computeDelayMatrix
+from neurolib.utils.model_utils import computeDelayMatrix
 import logging
 import copy
 
@@ -219,6 +219,15 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
                         for hx, int_delay in zip(hx_list, del_list):
                             if t + 1 + int_delay < T:
                                 res += adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k]
+
+                    for n2 in range(N):  # iterate through connectivity of current node "n"
+                        if t + 1 + dmat_ndt[n2, n] < T:
+                            for i in range(state_dim[1]):
+                                res += (
+                                    adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
+                                    * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
+                                )
+
                     adjoint_state[n, k, t] = -res
 
                 elif dxdoth[n, k, k] != 0:
@@ -233,13 +242,12 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
                                 der += adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k]
 
                     for n2 in range(N):  # iterate through connectivity of current node "n"
-                        if t + 1 + dmat_ndt[n2, n] > T - 2:
-                            continue
-                        for i in range(state_dim[1]):
-                            der += (
-                                adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
-                                * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
-                            )
+                        if t + 1 + dmat_ndt[n2, n] <= T - 2:
+                            for i in range(state_dim[1]):
+                                der += (
+                                    adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
+                                    * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
+                                )
                     adjoint_state[n, k, t] = adjoint_state[n, k, t + 1] - dt * der
 
     return adjoint_state

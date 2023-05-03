@@ -39,9 +39,6 @@ def compute_gradient(N, dim_in, T, df_du, adjoint_state, control_matrix, d_du):
     """
     grad = np.zeros(df_du.shape)
 
-    # print("lambda mue =", adjoint_state[0, 2, :])
-    # print("duh = ", d_du[0, :4, :4, 0])
-
     for n in range(N):
         for v in range(dim_in):
             for t in range(T):
@@ -325,15 +322,15 @@ class OcAln(OC):
                 self.model.params.b,
                 self.model.params.EA,
             ),
-            self.ndt_de,
-            self.ndt_di,
             self.N,
             self.dim_vars,
             self.T,
             self.fullstate,
             self.control,
             self.model.params.Cmat,
-            self.model.params.Dmat,
+            self.Dmat_ndt,
+            self.model.params.c_gl,
+            self.model.params.Ke_gl,
         )
 
     def compute_hx_de(self):
@@ -372,6 +369,10 @@ class OcAln(OC):
             self.T,
             self.fullstate,
             self.control,
+            self.model.params.Cmat,
+            self.Dmat_ndt,
+            self.model.params.c_gl,
+            self.model.params.Ke_gl,
         )
 
     def compute_hx_di(self):
@@ -410,6 +411,10 @@ class OcAln(OC):
             self.T,
             self.fullstate,
             self.control,
+            self.model.params.Cmat,
+            self.Dmat_ndt,
+            self.model.params.c_gl,
+            self.model.params.Ke_gl,
         )
 
     def compute_hx_nw(self):
@@ -420,9 +425,48 @@ class OcAln(OC):
         """
 
         return compute_hx_nw(
+            (
+                self.model.params.sigmarange,
+                self.model.params.ds,
+                self.model.params.Irange,
+                self.model.params.dI,
+                self.model.params.C,
+                self.model.params.precalc_r,
+                self.model.params.precalc_V,
+                self.model.params.precalc_tau_mu,
+                self.model.params.Ke,
+                self.model.params.Ki,
+                self.model.params.cee,
+                self.model.params.cei,
+                self.model.params.cie,
+                self.model.params.cii,
+                self.model.params.Jee_max,
+                self.model.params.Jei_max,
+                self.model.params.Jie_max,
+                self.model.params.Jii_max,
+                self.model.params.tau_se,
+                self.model.params.tau_si,
+                self.model.params.tauA,
+                self.model.params.C / self.model.params.gL,
+                self.model.params.sigmae_ext,
+                self.model.params.sigmai_ext,
+                self.model.params.a,
+                self.model.params.b,
+                self.model.params.EA,
+                self.model.params.c_gl,
+                self.model.params.Ke_gl,
+            ),
             self.N,
             self.dim_vars,
             self.T,
+            self.fullstate,
+            self.control,
+            self.model.params.Cmat,
+            self.Dmat_ndt,
+            self.model.params.c_gl,
+            self.model.params.Ke_gl,
+            self.ndt_de,
+            self.ndt_di,
         )
 
     def compute_gradient(self):

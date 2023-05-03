@@ -7,7 +7,47 @@ from neurolib.control.optimal_control import oc_aln
 from numpy.random import RandomState, SeedSequence, MT19937
 
 global LIMIT_DIFF
-LIMIT_DIFF = 1e-5
+LIMIT_DIFF = 1e-6
+
+
+def set_param_init(model):
+    # intermediate external input to membrane voltage to not reach the boundaries of the transfer function
+    model.params.mue_ext_mean = 1.5
+    model.params.mui_ext_mean = 0.5
+
+    # no noise
+    model.params.sigma_ou = 0.0
+
+    # adaptation parameters
+    model.params.a = 4
+    model.params.b = 1
+    model.params.tauA = 1.0
+
+    for iv in model.init_vars:
+        if "rates" in iv or "IA" in iv:
+            model.params[iv] = np.zeros((model.params.N, model.getMaxDelay() + 1))
+        else:
+            model.params[iv] = np.zeros((model.params.N,))
+
+    model.params.mue_ou = model.params.mue_ext_mean * np.ones((model.params.N,))
+    model.params.mui_ou = model.params.mui_ext_mean * np.ones((model.params.N,))
+
+    model.params["duration"] = max(10, 2 * model.getMaxDelay())
+    model.run()
+
+    # initial state must not be random because delay computation requires history
+    setinitstate(model, getfinalstate(model))
+    if (
+        model.params.rates_exc_init[0, -1] < 5
+        or model.params.rates_inh_init[0, -1] < 5
+        or model.params.rates_exc_init[0, -1] > 150
+        or model.params.rates_inh_init[0, -1] > 150
+    ):
+        print("WARNING------------------------")
+        print("Rates might be out of table range")
+        print(model.params.rates_exc_init[0, -1], model.params.rates_inh_init[0, -1])
+
+    return
 
 
 def getfinalstate(model):
@@ -17,9 +57,11 @@ def getfinalstate(model):
     state = np.zeros((N, V, T))
     for v in range(V):
         if "rates" in model.state_vars[v] or "IA" in model.state_vars[v]:
-            state[:, v, :] = model.state[model.state_vars[v]][:, -T:]
+            for n in range(N):
+                state[n, v, :] = model.state[model.state_vars[v]][n, -T:]
         else:
-            state[:, v, :] = model.state[model.state_vars[v]][:]
+            for n in range(N):
+                state[n, v, :] = model.state[model.state_vars[v]][n]
     return state
 
 
@@ -38,6 +80,23 @@ def setinitstate(model, state):
     return
 
 
+def getstate(model):
+    return np.concatenate(
+        (
+            np.concatenate(
+                (
+                    model.params["rates_exc_init"][:, np.newaxis, -1],
+                    model.params["rates_inh_init"][:, np.newaxis, -1],
+                    model.params["IA_init"][:, np.newaxis, -1],
+                ),
+                axis=1,
+            )[:, :, np.newaxis],
+            np.stack((model.rates_exc, model.rates_inh, model.IA), axis=1),
+        ),
+        axis=2,
+    )
+
+
 class TestALN(unittest.TestCase):
     """
     Test wc in neurolib/optimal_control/
@@ -54,41 +113,7 @@ class TestALN(unittest.TestCase):
         ndt_de = np.around(model.params.de / model.params.dt).astype(int)
         ndt_di = np.around(model.params.di / model.params.dt).astype(int)
 
-        # intermediate external input to membrane voltage to not reach the boundaries of the transfer function
-        model.params.mue_ext_mean = 1.5
-        model.params.mui_ext_mean = 0.5
-
-        # no noise
-        model.params.sigma_ou = 0.0
-
-        # adaptation parameters
-        model.params.a = 4
-        model.params.b = 1
-        model.params.tauA = 1.0
-
-        for iv in model.init_vars:
-            if "rates" in iv or "IA" in iv:
-                model.params[iv] = np.zeros((1, model.getMaxDelay() + 1))
-            else:
-                model.params[iv] = np.zeros((1,))
-
-        model.params.mue_ou = model.params.mue_ext_mean * np.ones((1,))
-        model.params.mui_ou = model.params.mui_ext_mean * np.ones((1,))
-
-        model.params["duration"] = max(10, 2 * model.getMaxDelay())
-        model.run()
-
-        # initial state must not be random because delay computation requires history
-        setinitstate(model, getfinalstate(model))
-        if (
-            model.params.rates_exc_init[0, -1] < 5
-            or model.params.rates_inh_init[0, -1] < 5
-            or model.params.rates_exc_init[0, -1] > 150
-            or model.params.rates_inh_init[0, -1] > 150
-        ):
-            print("WARNING------------------------")
-            print("Rates might be out of table range")
-            print(model.params.rates_exc_init[0, -1], model.params.rates_inh_init[0, -1])
+        set_param_init(model)
 
         # Test duration
         duration = 1.0 + max(model.params.de, model.params.di)
@@ -131,20 +156,7 @@ class TestALN(unittest.TestCase):
                 model.params["duration"] = duration
                 model.run()
 
-                target = np.concatenate(
-                    (
-                        np.concatenate(
-                            (
-                                model.params["rates_exc_init"][:, np.newaxis, -1],
-                                model.params["rates_inh_init"][:, np.newaxis, -1],
-                                model.params["IA_init"][:, np.newaxis, -1],
-                            ),
-                            axis=1,
-                        )[:, :, np.newaxis],
-                        np.stack((model.rates_exc, model.rates_inh, model.IA), axis=1),
-                    ),
-                    axis=2,
-                )
+                target = getstate(model)
 
                 control_init = np.zeros((target.shape))
                 control_init[0, input_channel, :] = inp_init[0, :]
@@ -178,6 +190,194 @@ class TestALN(unittest.TestCase):
                         break
 
                 self.assertTrue(control_coincide)
+
+    # tests if the control from OC computation coincides with a random input used for target forward-simulation
+    # network case
+    def test_twonode_oc(self):
+        print("Test OC in 2-node network")
+
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        duration = 1.0
+        a = 1.0
+
+        for c_node in [0, 1]:
+
+            p_node = np.abs(c_node - 1).astype(int)
+
+            c_channel, p_channel = (
+                0,
+                0,
+            )  # numerical values too small to reasonably test if c_channel = 1 or p_channel = 1
+
+            for bi_dir_connectivity in [0, 1]:
+                print("control node = ", c_node)
+                print("control channel = ", c_channel)
+                print("precision channel = ", p_channel)
+                print("bidirectional connectivity = ", bi_dir_connectivity)
+
+                if bi_dir_connectivity == 0:
+                    if c_node == 0:
+                        cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
+                    else:
+                        cmat = np.array([[0.0, 1.0], [0.0, 0.0]])
+                else:
+                    cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+
+                model = ALNModel(Cmat=cmat, Dmat=dmat)
+
+                model.params.de = 0.0
+                model.params.di = 0.0
+
+                set_param_init(model)
+
+                cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+                control_mat = np.zeros((model.params.N, len(model.state_vars)))
+
+                control_mat[c_node, c_channel] = 1.0
+                cost_mat[p_node, p_channel] = 1.0
+
+                model.params.duration = duration
+
+                zero_input = ZeroInput().generate_input(
+                    duration=model.params.duration + model.params.dt, dt=model.params.dt
+                )
+                input = np.copy(zero_input)
+                input_optimization_start = np.copy(zero_input)
+
+                rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+
+                intinit, intend = 1, input.shape[1] - 4
+
+                for t in range(intinit, intend):
+                    input[0, t] = rs.uniform(-a, a)
+                    input_optimization_start[0, t] = input[0, t] + 1e-2 * rs.uniform(-a, a)
+
+                model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
+                model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
+
+                if c_channel == 0:
+                    if c_node == 0:
+                        model.params["ext_exc_current"] = np.vstack([input, zero_input])
+                    else:
+                        model.params["ext_exc_current"] = np.vstack([zero_input, input])
+                else:
+                    if c_node == 0:
+                        model.params["ext_inh_current"] = np.vstack([input, zero_input])
+                    else:
+                        model.params["ext_inh_current"] = np.vstack([zero_input, input])
+
+                model.run()
+
+                target = getstate(model)
+                control_init = np.zeros((target.shape))
+                control_init[c_node, c_channel, :] = input_optimization_start[0, :]
+
+                model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
+                model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
+
+                model_controlled = oc_aln.OcAln(
+                    model,
+                    target,
+                    control_matrix=control_mat,
+                    cost_matrix=cost_mat,
+                )
+
+                model_controlled.control = control_init.copy()
+
+                control_coincide = False
+                lim = LIMIT_DIFF
+                if c_channel == 1:
+                    lim *= 10
+
+                iterations = 10000
+                for i in range(10):
+                    model_controlled.optimize(iterations)
+                    control = model_controlled.control
+
+                    c_diff = np.abs(control[c_node, c_channel, intinit:intend] - input[0, intinit:intend])
+                    print(c_diff)
+
+                    if np.amax(c_diff) < lim:
+                        control_coincide = True
+                        break
+
+                self.assertTrue(control_coincide)
+
+    # tests if the control from OC computation coincides with a random input used for target forward-simulation
+    # network case
+    def test_twonode_delay_oc(self):
+        print("Test OC in 2-node network")
+
+        duration = 1.0
+        a = 1.0
+
+        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+        delay = rs.choice([0.1, 0.2, 0.3, 0.4])
+
+        cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [delay, 0.0]])
+
+        model = ALNModel(Cmat=cmat, Dmat=dmat)
+
+        model.params.de = 0.0
+        model.params.di = 0.0
+
+        set_param_init(model)
+
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+        control_mat = np.zeros((model.params.N, len(model.state_vars)))
+        control_mat[0, 0] = 1.0
+        cost_mat[1, 0] = 1.0
+
+        model.params.duration = duration
+
+        zero_input = ZeroInput().generate_input(duration=model.params.duration + model.params.dt, dt=model.params.dt)
+        input = np.copy(zero_input)
+        input_optimization_start = np.copy(zero_input)
+
+        intinit, intend = 1, input.shape[1] - 4 - model.getMaxDelay()
+
+        for t in range(intinit, intend):
+            input[0, t] = rs.uniform(-a, a)
+            input_optimization_start[0, t] = input[0, t] + 1e-2 * rs.uniform(-a, a)
+
+        model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
+        model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
+
+        model.params["ext_exc_current"] = np.vstack([input, zero_input])
+        model.run()
+
+        target = getstate(model)
+        control_init = np.zeros((target.shape))
+        control_init[0, 0, :] = input_optimization_start[0, :]
+
+        model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
+        model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
+
+        model_controlled = oc_aln.OcAln(
+            model,
+            target,
+            control_matrix=control_mat,
+            cost_matrix=cost_mat,
+        )
+
+        model_controlled.control = control_init.copy()
+
+        control_coincide = False
+
+        iterations = 10000
+        for i in range(10):
+            model_controlled.optimize(iterations)
+            control = model_controlled.control
+
+            c_diff = np.abs(control[0, 0, intinit:intend] - input[0, intinit:intend])
+            print(c_diff)
+
+            if np.amax(c_diff) < LIMIT_DIFF:
+                control_coincide = True
+                break
+
+        self.assertTrue(control_coincide)
 
     # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
     def test_get_xs(self):
