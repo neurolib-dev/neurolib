@@ -265,12 +265,16 @@ class OcAln(OC):
                 self.model.params.a,
                 self.model.params.b,
                 self.model.params.EA,
+                self.model.params.c_gl,
+                self.model.params.Ke_gl,
             ),
             self.N,
             self.dim_in,
             self.dim_vars,
             self.T,
             self.fullstate,
+            self.model.params.Cmat,
+            self.Dmat_ndt,
         )
 
     def compute_hx_list(self):
@@ -331,6 +335,8 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.model.params.c_gl,
             self.model.params.Ke_gl,
+            self.ndt_de,
+            self.ndt_di,
         )
 
     def compute_hx_de(self):
@@ -373,6 +379,8 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.model.params.c_gl,
             self.model.params.Ke_gl,
+            self.ndt_de,
+            self.ndt_di,
         )
 
     def compute_hx_di(self):
@@ -415,6 +423,8 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.model.params.c_gl,
             self.model.params.Ke_gl,
+            self.ndt_de,
+            self.ndt_di,
         )
 
     def compute_hx_nw(self):

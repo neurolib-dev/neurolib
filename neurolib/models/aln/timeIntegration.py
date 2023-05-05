@@ -444,6 +444,9 @@ def timeIntegration_njit_elementwise(
                 rowsum = rowsum + Cmat[no, col] * rd_exc[no, col]
                 rowsumsq = rowsumsq + Cmat[no, col] ** 2 * rd_exc[no, col]
 
+            # nw_in = c_gl * Ke_gl * rowsum
+            # nw_in_sq = c_gl**2 * Ke_gl * rowsumsq
+
             # z1: weighted sum of delayed rates, weights=c*K
             z1ee = (
                 cee * Ke * rd_exc[no, no] + c_gl * Ke_gl * rowsum + c_gl * Ke_gl * ext_exc_rate[no, i]
@@ -488,7 +491,6 @@ def timeIntegration_njit_elementwise(
             xid1, yid1, dxid, dyid = fast_interp2_opt(
                 sigmarange, ds, sigmae_f, Irange, dI, mufe[no] - IA[no, i - 1] / C
             )
-            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe[no])
             xid1, yid1 = int(xid1), int(yid1)
 
             rates_exc[no, i] = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3  # convert kHz to Hz
@@ -516,7 +518,7 @@ def timeIntegration_njit_elementwise(
             mufi_rhs = (mui - mufi[no]) / tau_inh
 
             # rate has to be kHz
-            IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
+            IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i - 1] * 1e-3) / tauA
 
             # EQ. 4.43
             if distr_delay:
@@ -722,7 +724,7 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
 
 
 @numba.njit
-def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
+def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, re_del, ri_del):
     """Jacobian of the ALN dynamical system.
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
@@ -774,24 +776,24 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
     jacobian = np.zeros((V, V))
 
     z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
-    z1ee = z1ee_f * fullstate[0] + nw_input
+    z1ee = z1ee_f * re_del + nw_input
     z2ee_f = cee**2 * Ke * tau_se**2 / np.abs(Jee_max) ** 2 * 1e-3
-    z2ee = z2ee_f * fullstate[0] + nw_input_sq
+    z2ee = z2ee_f * re_del + nw_input_sq
 
     z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
-    z1ei = z1ei_f * fullstate[1]
+    z1ei = z1ei_f * ri_del
     z2ei_f = cei**2 * Ki * tau_si**2 / np.abs(Jei_max) ** 2 * 1e-3
-    z2ei = z2ei_f * fullstate[1]
+    z2ei = z2ei_f * ri_del
 
     z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
-    z1ie = z1ie_f * fullstate[0]
+    z1ie = z1ie_f * re_del
     z2ie_f = cie**2 * Ke * tau_se**2 / np.abs(Jie_max) ** 2 * 1e-3
-    z2ie = z2ie_f * fullstate[0]
+    z2ie = z2ie_f * re_del
 
     z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
-    z1ii = z1ii_f * fullstate[1]
+    z1ii = z1ii_f * ri_del
     z2ii_f = cii**2 * Ki * tau_si**2 / np.abs(Jii_max) ** 2 * 1e-3
-    z2ii = z2ii_f * fullstate[1]
+    z2ii = z2ii_f * ri_del
 
     sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
     sig_ee_den = (1 + z1ee) * taum + tau_se
@@ -827,7 +829,7 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
     v1mu = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
 
     xid1, yid1, dxid, dyid = fast_interp2_opt(
-        sigmarange, ds, sigmae_f + ds, Irange, dI, (fullstate[2]) - fullstate[4] / C
+        sigmarange, ds, sigmae_f + ds, Irange, dI, fullstate[2] - fullstate[4] / C
     )
     xid1, yid1 = int(xid1), int(yid1)
     re1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
@@ -884,24 +886,24 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
     jacobian[4, 0] = -b * 1e-3
     jacobian[4, 2] = -a * ((v1mu - v0) / dI) / tauA
     jacobian[4, 4] = (1.0 + a * ((v1mu - v0) / dI) / C) / tauA
-    jacobian[4, 9] = -a * ((v1s - v0) / (ds)) * dsigmaef_dseev / tauA
-    jacobian[4, 10] = -a * ((v1s - v0) / (ds)) * dsigmaef_dseiv / tauA
+    jacobian[4, 9] = -a * ((v1s - v0) / ds) * dsigmaef_dseev / tauA
+    jacobian[4, 10] = -a * ((v1s - v0) / ds) * dsigmaef_dseiv / tauA
 
     jacobian[5, 5] = (z1ee + 1.0) / tau_se
     jacobian[6, 6] = (z1ei + 1.0) / tau_si
     jacobian[7, 7] = (z1ie + 1.0) / tau_se
     jacobian[8, 8] = (z1ii + 1.0) / tau_si
 
-    jacobian[9, 5] = -2.0 * (1.0 - fullstate[5]) * z2ee / tau_se**2
+    jacobian[9, 5] = 2.0 * (1.0 - fullstate[5]) * z2ee / tau_se**2
     jacobian[9, 9] = -(z2ee - 2.0 * tau_se * (z1ee + 1.0)) / tau_se**2
 
-    jacobian[10, 6] = -2.0 * (1.0 - fullstate[6]) * z2ei / tau_si**2
+    jacobian[10, 6] = 2.0 * (1.0 - fullstate[6]) * z2ei / tau_si**2
     jacobian[10, 10] = -(z2ei - 2.0 * tau_si * (z1ei + 1.0)) / tau_si**2
 
-    jacobian[11, 7] = -2.0 * (1.0 - fullstate[7]) * z2ie / tau_se**2
+    jacobian[11, 7] = 2.0 * (1.0 - fullstate[7]) * z2ie / tau_se**2
     jacobian[11, 11] = -(z2ie - 2.0 * tau_se * (z1ie + 1.0)) / tau_se**2
 
-    jacobian[12, 8] = -2.0 * (1.0 - fullstate[8]) * z2ii / tau_si**2
+    jacobian[12, 8] = 2.0 * (1.0 - fullstate[8]) * z2ii / tau_si**2
     jacobian[12, 12] = -(z2ii - 2.0 * tau_si * (z1ii + 1.0)) / tau_si**2
 
     return jacobian
@@ -947,6 +949,8 @@ def compute_hx(
     dmat_ndt,
     c_gl,
     Ke_gl,
+    ndt_de,
+    ndt_di,
 ):
     """Jacobian of the ALN dynamical system.
 
@@ -979,8 +983,9 @@ def compute_hx(
         for t in range(T):
             ue = control[n, 0, t]
             ui = control[n, 1, t]
+            re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_aln(
-                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t]
+                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t], re_del, ri_del
             )
 
     return hx
@@ -993,6 +998,8 @@ def compute_nw_input(re, cmat, dmat_ndt, c_gl, Ke_gl):
 
     for n in range(nw_input.shape[0]):
         for l in range(nw_input.shape[0]):
+            if n == l and cmat[n, l] != 0.0:
+                print("WARNING: Cmat diagonal not zero.")
             for t in range(nw_input.shape[1]):
                 nw_input[n, t] += cmat[n, l] * re[l, t - 1 - dmat_ndt[n, l]]
                 nw_input_sq[n, t] += cmat[n, l] ** 2 * re[l, t - 1 - dmat_ndt[n, l]]
@@ -1004,7 +1011,7 @@ def compute_nw_input(re, cmat, dmat_ndt, c_gl, Ke_gl):
 
 
 @numba.njit
-def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
+def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, re_del, ri_del):
     """Jacobian of the ALN dynamical system wrt relations with delay de
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
@@ -1055,24 +1062,24 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
     jacobian = np.zeros((V, V))
 
     z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
-    z1ee = z1ee_f * fullstate[0] + nw_input
+    z1ee = z1ee_f * re_del + nw_input
     z2ee_f = cee**2 * Ke * tau_se**2 / np.abs(Jee_max) ** 2 * 1e-3
-    z2ee = z2ee_f * fullstate[0] + nw_input_sq
+    z2ee = z2ee_f * re_del + nw_input_sq
 
     z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
-    z1ei = z1ei_f * fullstate[1]
+    z1ei = z1ei_f * ri_del
     z2ei_f = cei**2 * Ki * tau_si**2 / np.abs(Jei_max) ** 2 * 1e-3
-    z2ei = z2ei_f * fullstate[1]
+    z2ei = z2ei_f * ri_del
 
     z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
-    z1ie = z1ie_f * fullstate[0]
+    z1ie = z1ie_f * re_del
     z2ie_f = cie**2 * Ke * tau_se**2 / np.abs(Jie_max) ** 2 * 1e-3
-    z2ie = z2ie_f * fullstate[0]
+    z2ie = z2ie_f * re_del
 
     z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
-    z1ii = z1ii_f * fullstate[1]
+    z1ii = z1ii_f * ri_del
     z2ii_f = cii**2 * Ki * tau_si**2 / np.abs(Jii_max) ** 2 * 1e-3
-    z2ii = z2ii_f * fullstate[1]
+    z2ii = z2ii_f * ri_del
 
     sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
     sig_ee_den = (1 + z1ee) * taum + tau_se
@@ -1101,7 +1108,7 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
     v0 = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
 
     xid1, yid1, dxid, dyid = fast_interp2_opt(
-        sigmarange, ds, sigmae_f + ds, Irange, dI, (fullstate[2]) - fullstate[4] / C
+        sigmarange, ds, sigmae_f + ds, Irange, dI, fullstate[2] - fullstate[4] / C
     )
     xid1, yid1 = int(xid1), int(yid1)
     re1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
@@ -1190,6 +1197,8 @@ def compute_hx_de(
     dmat_ndt,
     c_gl,
     Ke_gl,
+    ndt_de,
+    ndt_di,
 ):
     """Jacobian of the ALN dynamical system wrt variables delayed by de
 
@@ -1221,15 +1230,26 @@ def compute_hx_de(
         for t in range(T):
             ue = control[n, 0, t]
             ui = control[n, 1, t]
+            re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_de(
-                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t]
+                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t], re_del, ri_del
             )
 
     return hx
 
 
 @numba.njit
-def jacobian_di(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
+def jacobian_di(
+    aln_model_params,
+    V,
+    fullstate,
+    ue,
+    ui,
+    nw_input,
+    nw_input_sq,
+    re_del,
+    ri_del,
+):
     """Jacobian of the ALN dynamical system wrt relations with delay di
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
@@ -1280,24 +1300,24 @@ def jacobian_di(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
     jacobian = np.zeros((V, V))
 
     z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
-    z1ee = z1ee_f * fullstate[0] + nw_input
+    z1ee = z1ee_f * re_del + nw_input
     z2ee_f = cee**2 * Ke * tau_se**2 / np.abs(Jee_max) ** 2 * 1e-3
-    z2ee = z2ee_f * fullstate[0] + nw_input_sq
+    z2ee = z2ee_f * re_del + nw_input_sq
 
     z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
-    z1ei = z1ei_f * fullstate[1]
+    z1ei = z1ei_f * ri_del
     z2ei_f = cei**2 * Ki * tau_si**2 / np.abs(Jei_max) ** 2 * 1e-3
-    z2ei = z2ei_f * fullstate[1]
+    z2ei = z2ei_f * ri_del
 
     z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
-    z1ie = z1ie_f * fullstate[0]
+    z1ie = z1ie_f * re_del
     z2ie_f = cie**2 * Ke * tau_se**2 / np.abs(Jie_max) ** 2 * 1e-3
-    z2ie = z2ie_f * fullstate[0]
+    z2ie = z2ie_f * re_del
 
     z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
-    z1ii = z1ii_f * fullstate[1]
+    z1ii = z1ii_f * ri_del
     z2ii_f = cii**2 * Ki * tau_si**2 / np.abs(Jii_max) ** 2 * 1e-3
-    z2ii = z2ii_f * fullstate[1]
+    z2ii = z2ii_f * ri_del
 
     sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
     sig_ee_den = (1 + z1ee) * taum + tau_se
@@ -1326,7 +1346,7 @@ def jacobian_di(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
     v0 = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
 
     xid1, yid1, dxid, dyid = fast_interp2_opt(
-        sigmarange, ds, sigmae_f + ds, Irange, dI, (fullstate[2]) - fullstate[4] / C
+        sigmarange, ds, sigmae_f + ds, Irange, dI, fullstate[2] - fullstate[4] / C
     )
     xid1, yid1 = int(xid1), int(yid1)
     re1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
@@ -1360,7 +1380,6 @@ def jacobian_di(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq):
         * dsigmaif_dri
     )
     jacobian[4, 1] = -a * ((v1s - v0) / ds) * dsigmaef_dri / tauA
-
     jacobian[6, 1] = -(1.0 - fullstate[6]) * z1ei_f / tau_si
     jacobian[8, 1] = -(1.0 - fullstate[8]) * z1ii_f / tau_si
 
@@ -1414,6 +1433,8 @@ def compute_hx_di(
     dmat_ndt,
     c_gl,
     Ke_gl,
+    ndt_de,
+    ndt_di,
 ):
     """Jacobian of the ALN dynamical system wrt variables delayed by di
 
@@ -1445,8 +1466,9 @@ def compute_hx_di(
         for t in range(T):
             ue = control[n, 0, t]
             ui = control[n, 1, t]
+            re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_di(
-                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t]
+                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t], re_del, ri_del
             )
 
     return hx
@@ -1553,7 +1575,7 @@ def jacobian_nw(aln_model_params, V, fullstate, re_del, ri_del, nw_input, nw_inp
     v0 = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
 
     xid1, yid1, dxid, dyid = fast_interp2_opt(
-        sigmarange, ds, sigmae_f + ds, Irange, dI, (fullstate[2]) - fullstate[4] / C
+        sigmarange, ds, sigmae_f + ds, Irange, dI, fullstate[2] - fullstate[4] / C
     )
     xid1, yid1 = int(xid1), int(yid1)
     re1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
@@ -1584,14 +1606,7 @@ def jacobian_nw(aln_model_params, V, fullstate, re_del, ri_del, nw_input, nw_inp
 
 
 @numba.njit
-def Duh(
-    aln_model_params,
-    N,
-    V_in,
-    V_vars,
-    T,
-    fullstate,
-):
+def Duh(aln_model_params, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
     """Derivative of systems dynamics wrt. external inputs (control signals).
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
@@ -1638,7 +1653,11 @@ def Duh(
         a,
         b,
         EA,
+        c_gl,
+        Ke_gl,
     ) = aln_model_params
+
+    nw_input, nw_input_sq = compute_nw_input(fullstate[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
 
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
