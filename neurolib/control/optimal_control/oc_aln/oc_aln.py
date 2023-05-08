@@ -117,6 +117,9 @@ class OcAln(OC):
         self.ndt_de = np.around(self.model.params.de / self.dt).astype(int)
         self.ndt_di = np.around(self.model.params.di / self.dt).astype(int)
 
+        self.aln_model_params = self.get_model_params()
+        self.precomp_factors = self.get_precomp_factors()
+
     def get_xs_delay(self):
         """Concatenates the initial conditions with simulated values and pads delay contributions at end. In the models
         timeIntegration, these values can be accessed in a circular fashion in the time-indexing.
@@ -229,6 +232,92 @@ class OcAln(OC):
         """Derivative of systems dynamics wrt. change of systems variables."""
         return Dxdoth(self.N, self.dim_vars)
 
+    def get_model_params(self):
+        return (
+            self.model.params.sigmarange,
+            self.model.params.ds,
+            self.model.params.Irange,
+            self.model.params.dI,
+            self.model.params.C,
+            self.model.params.precalc_r,
+            self.model.params.precalc_V,
+            self.model.params.precalc_tau_mu,
+            self.model.params.Jee_max,
+            self.model.params.Jei_max,
+            self.model.params.Jie_max,
+            self.model.params.Jii_max,
+            self.model.params.tau_se,
+            self.model.params.tau_si,
+            self.model.params.tauA,
+            self.model.params.C / self.model.params.gL,
+            self.model.params.sigmae_ext,
+            self.model.params.sigmai_ext,
+            self.model.params.a,
+            self.model.params.b,
+            self.model.params.c_gl,
+            self.model.params.Ke_gl,
+        )
+
+    def get_precomp_factors(self):
+        return (
+            self.model.params.cee
+            * self.model.params.Ke
+            * self.model.params.tau_se
+            / np.abs(self.model.params.Jee_max)
+            * 1e-3,
+            self.model.params.cee**2
+            * self.model.params.Ke
+            * self.model.params.tau_se**2
+            / np.abs(self.model.params.Jee_max) ** 2
+            * 1e-3,
+            self.model.params.cei
+            * self.model.params.Ki
+            * self.model.params.tau_si
+            / np.abs(self.model.params.Jei_max)
+            * 1e-3,
+            self.model.params.cei**2
+            * self.model.params.Ki
+            * self.model.params.tau_si**2
+            / np.abs(self.model.params.Jei_max) ** 2
+            * 1e-3,
+            self.model.params.cie
+            * self.model.params.Ke
+            * self.model.params.tau_se
+            / np.abs(self.model.params.Jie_max)
+            * 1e-3,
+            self.model.params.cie**2
+            * self.model.params.Ke
+            * self.model.params.tau_se**2
+            / np.abs(self.model.params.Jie_max) ** 2
+            * 1e-3,
+            self.model.params.cii
+            * self.model.params.Ki
+            * self.model.params.tau_si
+            / np.abs(self.model.params.Jii_max)
+            * 1e-3,
+            self.model.params.cii**2
+            * self.model.params.Ki
+            * self.model.params.tau_si**2
+            / np.abs(self.model.params.Jii_max) ** 2
+            * 1e-3,
+            2
+            * self.model.params.Jee_max**2
+            * self.model.params.tau_se
+            * (self.model.params.C / self.model.params.gL),
+            2
+            * self.model.params.Jei_max**2
+            * self.model.params.tau_si
+            * (self.model.params.C / self.model.params.gL),
+            2
+            * self.model.params.Jie_max**2
+            * self.model.params.tau_se
+            * (self.model.params.C / self.model.params.gL),
+            2
+            * self.model.params.Jii_max**2
+            * self.model.params.tau_si
+            * (self.model.params.C / self.model.params.gL),
+        )
+
     def Duh(self):
         """Jacobian of systems dynamics wrt. external control input.
 
@@ -237,37 +326,8 @@ class OcAln(OC):
         """
 
         return Duh(
-            (
-                self.model.params.sigmarange,
-                self.model.params.ds,
-                self.model.params.Irange,
-                self.model.params.dI,
-                self.model.params.C,
-                self.model.params.precalc_r,
-                self.model.params.precalc_V,
-                self.model.params.precalc_tau_mu,
-                self.model.params.Ke,
-                self.model.params.Ki,
-                self.model.params.cee,
-                self.model.params.cei,
-                self.model.params.cie,
-                self.model.params.cii,
-                self.model.params.Jee_max,
-                self.model.params.Jei_max,
-                self.model.params.Jie_max,
-                self.model.params.Jii_max,
-                self.model.params.tau_se,
-                self.model.params.tau_si,
-                self.model.params.tauA,
-                self.model.params.C / self.model.params.gL,
-                self.model.params.sigmae_ext,
-                self.model.params.sigmai_ext,
-                self.model.params.a,
-                self.model.params.b,
-                self.model.params.EA,
-                self.model.params.c_gl,
-                self.model.params.Ke_gl,
-            ),
+            self.aln_model_params,
+            self.precomp_factors,
             self.N,
             self.dim_in,
             self.dim_vars,
@@ -284,6 +344,7 @@ class OcAln(OC):
         : rtype:        List of np.ndarray, List of integers
 
         """
+
         hx = self.compute_hx()
         hx_de = self.compute_hx_de()
         hx_di = self.compute_hx_di()
@@ -296,36 +357,10 @@ class OcAln(OC):
         :return:    N x T x 4 x 4 Jacobians.
         :rtype:     np.ndarray
         """
+
         return compute_hx(
-            (
-                self.model.params.sigmarange,
-                self.model.params.ds,
-                self.model.params.Irange,
-                self.model.params.dI,
-                self.model.params.C,
-                self.model.params.precalc_r,
-                self.model.params.precalc_V,
-                self.model.params.precalc_tau_mu,
-                self.model.params.Ke,
-                self.model.params.Ki,
-                self.model.params.cee,
-                self.model.params.cei,
-                self.model.params.cie,
-                self.model.params.cii,
-                self.model.params.Jee_max,
-                self.model.params.Jei_max,
-                self.model.params.Jie_max,
-                self.model.params.Jii_max,
-                self.model.params.tau_se,
-                self.model.params.tau_si,
-                self.model.params.tauA,
-                self.model.params.C / self.model.params.gL,
-                self.model.params.sigmae_ext,
-                self.model.params.sigmai_ext,
-                self.model.params.a,
-                self.model.params.b,
-                self.model.params.EA,
-            ),
+            self.aln_model_params,
+            self.precomp_factors,
             self.N,
             self.dim_vars,
             self.T,
@@ -333,43 +368,14 @@ class OcAln(OC):
             self.control,
             self.model.params.Cmat,
             self.Dmat_ndt,
-            self.model.params.c_gl,
-            self.model.params.Ke_gl,
             self.ndt_de,
             self.ndt_di,
         )
 
     def compute_hx_de(self):
         return compute_hx_de(
-            (
-                self.model.params.sigmarange,
-                self.model.params.ds,
-                self.model.params.Irange,
-                self.model.params.dI,
-                self.model.params.C,
-                self.model.params.precalc_r,
-                self.model.params.precalc_V,
-                self.model.params.precalc_tau_mu,
-                self.model.params.Ke,
-                self.model.params.Ki,
-                self.model.params.cee,
-                self.model.params.cei,
-                self.model.params.cie,
-                self.model.params.cii,
-                self.model.params.Jee_max,
-                self.model.params.Jei_max,
-                self.model.params.Jie_max,
-                self.model.params.Jii_max,
-                self.model.params.tau_se,
-                self.model.params.tau_si,
-                self.model.params.tauA,
-                self.model.params.C / self.model.params.gL,
-                self.model.params.sigmae_ext,
-                self.model.params.sigmai_ext,
-                self.model.params.a,
-                self.model.params.b,
-                self.model.params.EA,
-            ),
+            self.aln_model_params,
+            self.precomp_factors,
             self.N,
             self.dim_vars,
             self.T,
@@ -377,43 +383,14 @@ class OcAln(OC):
             self.control,
             self.model.params.Cmat,
             self.Dmat_ndt,
-            self.model.params.c_gl,
-            self.model.params.Ke_gl,
             self.ndt_de,
             self.ndt_di,
         )
 
     def compute_hx_di(self):
         return compute_hx_di(
-            (
-                self.model.params.sigmarange,
-                self.model.params.ds,
-                self.model.params.Irange,
-                self.model.params.dI,
-                self.model.params.C,
-                self.model.params.precalc_r,
-                self.model.params.precalc_V,
-                self.model.params.precalc_tau_mu,
-                self.model.params.Ke,
-                self.model.params.Ki,
-                self.model.params.cee,
-                self.model.params.cei,
-                self.model.params.cie,
-                self.model.params.cii,
-                self.model.params.Jee_max,
-                self.model.params.Jei_max,
-                self.model.params.Jie_max,
-                self.model.params.Jii_max,
-                self.model.params.tau_se,
-                self.model.params.tau_si,
-                self.model.params.tauA,
-                self.model.params.C / self.model.params.gL,
-                self.model.params.sigmae_ext,
-                self.model.params.sigmai_ext,
-                self.model.params.a,
-                self.model.params.b,
-                self.model.params.EA,
-            ),
+            self.aln_model_params,
+            self.precomp_factors,
             self.N,
             self.dim_vars,
             self.T,
@@ -421,8 +398,6 @@ class OcAln(OC):
             self.control,
             self.model.params.Cmat,
             self.Dmat_ndt,
-            self.model.params.c_gl,
-            self.model.params.Ke_gl,
             self.ndt_de,
             self.ndt_di,
         )
@@ -435,37 +410,8 @@ class OcAln(OC):
         """
 
         return compute_hx_nw(
-            (
-                self.model.params.sigmarange,
-                self.model.params.ds,
-                self.model.params.Irange,
-                self.model.params.dI,
-                self.model.params.C,
-                self.model.params.precalc_r,
-                self.model.params.precalc_V,
-                self.model.params.precalc_tau_mu,
-                self.model.params.Ke,
-                self.model.params.Ki,
-                self.model.params.cee,
-                self.model.params.cei,
-                self.model.params.cie,
-                self.model.params.cii,
-                self.model.params.Jee_max,
-                self.model.params.Jei_max,
-                self.model.params.Jie_max,
-                self.model.params.Jii_max,
-                self.model.params.tau_se,
-                self.model.params.tau_si,
-                self.model.params.tauA,
-                self.model.params.C / self.model.params.gL,
-                self.model.params.sigmae_ext,
-                self.model.params.sigmai_ext,
-                self.model.params.a,
-                self.model.params.b,
-                self.model.params.EA,
-                self.model.params.c_gl,
-                self.model.params.Ke_gl,
-            ),
+            self.aln_model_params,
+            self.precomp_factors,
             self.N,
             self.dim_vars,
             self.T,
@@ -473,8 +419,6 @@ class OcAln(OC):
             self.control,
             self.model.params.Cmat,
             self.Dmat_ndt,
-            self.model.params.c_gl,
-            self.model.params.Ke_gl,
             self.ndt_de,
             self.ndt_di,
         )

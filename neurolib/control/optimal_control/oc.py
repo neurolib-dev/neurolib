@@ -215,10 +215,22 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
                 if dxdoth[n, k, k] == 0:
 
                     res = fx_fullstate[n, k, t]
-                    for i in range(state_dim[1]):
-                        for hx, int_delay in zip(hx_list, del_list):
-                            if t + 1 + int_delay < T:
+
+                    if False and n == 0 and k == 0:
+                        print(fx_fullstate[n, k, t])
+
+                    for hx, int_delay in zip(hx_list, del_list):
+                        if t + 1 + int_delay < T:
+                            for i in range(state_dim[1]):
                                 res += adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k]
+
+                                if False and n == 0 and k == 0:
+                                    if adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k] != 0.0:
+                                        print(
+                                            "hx ",
+                                            i,
+                                            adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k],
+                                        )
 
                     for n2 in range(N):  # iterate through connectivity of current node "n"
                         if t + 1 + dmat_ndt[n2, n] < T:
@@ -227,6 +239,18 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
                                     adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
                                     * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
                                 )
+                                if False and n == 0 and k == 0:
+                                    if (
+                                        adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
+                                        * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
+                                        != 0.0
+                                    ):
+                                        print(
+                                            "nw",
+                                            i,
+                                            adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
+                                            * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k],
+                                        )
 
                     adjoint_state[n, k, t] = -res
 

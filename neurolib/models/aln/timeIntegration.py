@@ -517,7 +517,7 @@ def timeIntegration_njit_elementwise(
             mufe_rhs = (mue - mufe[no]) / tau_exc
             mufi_rhs = (mui - mufi[no]) / tau_inh
 
-            # rate has to be kHz
+            ## rate has to be kHz
             IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i - 1] * 1e-3) / tauA
 
             # EQ. 4.43
@@ -724,23 +724,32 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
 
 
 @numba.njit
-def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, re_del, ri_del):
+def jacobian_aln(aln_model_params, precomp_factors, V, fullstate, ue, ui, nw_input, nw_input_sq, re_del, ri_del):
     """Jacobian of the ALN dynamical system.
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
     :type aln_model_params:     tuple of float and np.ndarray
-    :param  nw_e:               N x T input of network into each node's 'exc'
-    :type  nw_e:                np.ndarray
-    :param fullstate:       Value of all V=16 dynamical variables at given time
-    :type fullstate:        np.ndarray
-    :param ue:      Control input to E population
-    :type ue:       float
-    :param ui:      Control input to I population
-    :type ui:       float
-    :param V:       Number of system variables.
-    :type V:        int
-    :return:        V x V Jacobian matrix.
-    :rtype:         np.ndarray
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param fullstate:           Value of all V=16 dynamical variables at given time
+    :type fullstate:            np.ndarray
+    :param ue:                  Control input to E population
+    :type ue:                   float
+    :param ui:                  Control input to I population
+    :type ui:                   float
+    :param  nw_input:           sum of all network inputs into current node at current time
+    :type  nw_input:            float
+    :param  nw_input_sq:        sum of all network inputs into current node at current time with squared prefactors
+    :type  nw_input_sq:         float
+    :param re_del:              E rate delayed by de
+    :type re_del:               float
+    :param ri_del:              I rate delayed by di
+    :type ri_del:               float
+
+    :return:                    V x V Jacobian matrix.
+    :rtype:                     np.ndarray
     """
 
     (
@@ -752,12 +761,6 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, 
         precalc_r,
         precalc_V,
         precalc_tau_mu,
-        Ke,
-        Ki,
-        cee,
-        cei,
-        cie,
-        cii,
         Jee_max,
         Jei_max,
         Jie_max,
@@ -770,41 +773,43 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, 
         sigmai_ext,
         a,
         b,
-        EA,
+        c_gl,
+        Ke_gl,
     ) = aln_model_params
+    (
+        z1ee_f,
+        z2ee_f,
+        z1ei_f,
+        z2ei_f,
+        z1ie_f,
+        z2ie_f,
+        z1ii_f,
+        z2ii_f,
+        sig_ee_factor,
+        sig_ei_factor,
+        sig_ie_factor,
+        sig_ii_factor,
+    ) = precomp_factors
 
     jacobian = np.zeros((V, V))
 
-    z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
     z1ee = z1ee_f * re_del + nw_input
-    z2ee_f = cee**2 * Ke * tau_se**2 / np.abs(Jee_max) ** 2 * 1e-3
     z2ee = z2ee_f * re_del + nw_input_sq
-
-    z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
     z1ei = z1ei_f * ri_del
-    z2ei_f = cei**2 * Ki * tau_si**2 / np.abs(Jei_max) ** 2 * 1e-3
     z2ei = z2ei_f * ri_del
 
-    z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
     z1ie = z1ie_f * re_del
-    z2ie_f = cie**2 * Ke * tau_se**2 / np.abs(Jie_max) ** 2 * 1e-3
     z2ie = z2ie_f * re_del
-
-    z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
     z1ii = z1ii_f * ri_del
-    z2ii_f = cii**2 * Ki * tau_si**2 / np.abs(Jii_max) ** 2 * 1e-3
     z2ii = z2ii_f * ri_del
 
-    sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
     sig_ee_den = (1 + z1ee) * taum + tau_se
-
-    sig_ei_factor = 2 * Jei_max**2 * tau_si * taum
     sig_ei_den = (1 + z1ei) * taum + tau_si
 
     sigmae_f = np.sqrt(
         sig_ee_factor * fullstate[9] / sig_ee_den + sig_ei_factor * fullstate[10] / sig_ei_den + sigmae_ext**2
     )
-    sig_ie_factor = 2 * Jie_max**2 * tau_se * taum
+
     sig_ie_den = (1 + z1ie) * taum + tau_se
 
     sig_ii_factor = 2 * Jii_max**2 * tau_si * taum
@@ -851,16 +856,16 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, 
     ri1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
     ti1s = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
 
-    dsigmaef_dseev = 0.5 * sigmae_f ** (-1.0 / 2.0) * sig_ee_factor / sig_ee_den
-    dsigmaef_dseiv = 0.5 * sigmae_f ** (-1.0 / 2.0) * sig_ei_factor / sig_ei_den
+    dsigmaef_dseev = 0.5 * (sigmae_f**-1.0) * sig_ee_factor / sig_ee_den
+    dsigmaef_dseiv = 0.5 * (sigmae_f**-1.0) * sig_ei_factor / sig_ei_den
 
     jacobian[0, 2] = -(re1mu - re0) / (dI)
     jacobian[0, 4] = (re1mu - re0) / (dI) / C
     jacobian[0, 9] = -((re1s - re0) / (ds)) * dsigmaef_dseev
     jacobian[0, 10] = -((re1s - re0) / (ds)) * dsigmaef_dseiv
 
-    dsigmaif_dsiev = 0.5 * sigmai_f ** (-1.0 / 2.0) * sig_ie_factor / sig_ie_den
-    dsigmaif_dsiiv = 0.5 * sigmai_f ** (-1.0 / 2.0) * sig_ii_factor / sig_ii_den
+    dsigmaif_dsiev = 0.5 * (sigmai_f**-1.0) * sig_ie_factor / sig_ie_den
+    dsigmaif_dsiiv = 0.5 * (sigmai_f**-1.0) * sig_ii_factor / sig_ii_den
 
     jacobian[1, 3] = -(ri1mu - ri0) / (dI)
     jacobian[1, 11] = -((ri1s - ri0) / (ds)) * dsigmaif_dsiev
@@ -885,7 +890,9 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, 
 
     jacobian[4, 0] = -b * 1e-3
     jacobian[4, 2] = -a * ((v1mu - v0) / dI) / tauA
-    jacobian[4, 4] = (1.0 + a * ((v1mu - v0) / dI) / C) / tauA
+    # jacobian[4, 4] = (a * ((v1mu - v0) / dI) / C + 1.0) / tauA
+    # commented expression is mathematically correct, but imprecise numerical derivative leads to relatively large errors
+    jacobian[4, 4] = 1.0 / tauA
     jacobian[4, 9] = -a * ((v1s - v0) / ds) * dsigmaef_dseev / tauA
     jacobian[4, 10] = -a * ((v1s - v0) / ds) * dsigmaef_dseiv / tauA
 
@@ -896,13 +903,11 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, 
 
     jacobian[9, 5] = 2.0 * (1.0 - fullstate[5]) * z2ee / tau_se**2
     jacobian[9, 9] = -(z2ee - 2.0 * tau_se * (z1ee + 1.0)) / tau_se**2
-
     jacobian[10, 6] = 2.0 * (1.0 - fullstate[6]) * z2ei / tau_si**2
     jacobian[10, 10] = -(z2ei - 2.0 * tau_si * (z1ei + 1.0)) / tau_si**2
 
     jacobian[11, 7] = 2.0 * (1.0 - fullstate[7]) * z2ie / tau_se**2
     jacobian[11, 11] = -(z2ie - 2.0 * tau_se * (z1ie + 1.0)) / tau_se**2
-
     jacobian[12, 8] = 2.0 * (1.0 - fullstate[8]) * z2ii / tau_si**2
     jacobian[12, 12] = -(z2ii - 2.0 * tau_si * (z1ii + 1.0)) / tau_si**2
 
@@ -911,35 +916,8 @@ def jacobian_aln(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, 
 
 @numba.njit
 def compute_hx(
-    aln_model_params: tuple[
-        np.ndarray,
-        float,
-        np.ndarray,
-        float,
-        float,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-    ],
+    aln_model_params,
+    precomp_factors,
     N,
     V,
     T,
@@ -947,8 +925,6 @@ def compute_hx(
     control,
     cmat,
     dmat_ndt,
-    c_gl,
-    Ke_gl,
     ndt_de,
     ndt_di,
 ):
@@ -956,24 +932,33 @@ def compute_hx(
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
     :type aln_model_params:     tuple of float and np.ndarray
-    :param N:       Number of nodes in the network.
-    :type N:        int
-    :param V:       Number of system variables.
-    :type V:        int
-    :param T:       Length of simulation (time dimension).
-    :type T:        int
-    :param dyn_vars:       Time-dependent values of all N x V dynamical variables (all nodes)
-    :type dyn_vars:        np.ndarray
-    :param control:      Control input (time dependent and all input channels)
-    :type control:       np.ndarray
-    :param cmat:
-    :type cmat:
-    :param dmat:
-    :type dmat:
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param N:                   Number of nodes in the network.
+    :type N:                    int
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param T:                   Length of simulation (time dimension).
+    :type T:                    int
+    :param dyn_vars:            Time-dependent values of all N x V dynamical variables (all nodes)
+    :type dyn_vars:             np.ndarray
+    :param control:             Control input (time dependent and all input channels)
+    :type control:              np.ndarray
+    :param cmat:                Connectivity matrix
+    :type cmat:                 np.ndarray
+    :param dmat_ndt:            Delay matrix in time steps
+    :type dmat_ndt:             np.ndarray of ints
+    :param ndt_de:              E rate delay in time steps
+    :type ndt_de:               int
+    :param ndt_di:              I rate delay in time steps
+    :type ndt_di:               int
 
-    :return:        N x T x V x V Jacobian matrix.
-    :rtype:         np.ndarray
+    :return:                    N x T x V x V Jacobian matrix.
+    :rtype:                     np.ndarray
     """
+
+    c_gl = aln_model_params[-2]
+    Ke_gl = aln_model_params[-1]
 
     hx = np.zeros((N, T, V, V))
 
@@ -985,7 +970,16 @@ def compute_hx(
             ui = control[n, 1, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_aln(
-                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t], re_del, ri_del
+                aln_model_params,
+                precomp_factors,
+                V,
+                dyn_vars[n, :, t],
+                ue,
+                ui,
+                nw_input[n, t],
+                nw_input_sq[n, t],
+                re_del,
+                ri_del,
             )
 
     return hx
@@ -1011,23 +1005,40 @@ def compute_nw_input(re, cmat, dmat_ndt, c_gl, Ke_gl):
 
 
 @numba.njit
-def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, re_del, ri_del):
+def jacobian_de(
+    aln_model_params,
+    precomp_factors,
+    V,
+    fullstate,
+    ue,
+    ui,
+    nw_input,
+    re_del,
+    ri_del,
+):
     """Jacobian of the ALN dynamical system wrt relations with delay de
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
     :type aln_model_params:     tuple of float and np.ndarray
-    :param  nw_e:               N x T input of network into each node's 'exc'
-    :type  nw_e:                np.ndarray
-    :param fullstate:       Value of all V dynamical variables at given time
-    :type fullstate:        np.ndarray
-    :param ue:      Control input to E population
-    :type ue:       float
-    :param ui:      Control input to I population
-    :type ui:       float
-    :param V:       Number of system variables.
-    :type V:        int
-    :return:        V x V Jacobian matrix.
-    :rtype:         np.ndarray
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param fullstate:           Value of all V=16 dynamical variables at given time
+    :type fullstate:            np.ndarray
+    :param ue:                  Control input to E population
+    :type ue:                   float
+    :param ui:                  Control input to I population
+    :type ui:                   float
+    :param  nw_input:           sum of all network inputs into current node at current time
+    :type  nw_input:            float
+    :param re_del:              E rate delayed by de
+    :type re_del:               float
+    :param ri_del:              I rate delayed by di
+    :type ri_del:               float
+
+    :return:                    V x V Jacobian matrix of delayed variables
+    :rtype:                     np.ndarray
     """
     (
         sigmarange,
@@ -1038,12 +1049,6 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, r
         precalc_r,
         precalc_V,
         precalc_tau_mu,
-        Ke,
-        Ki,
-        cee,
-        cei,
-        cie,
-        cii,
         Jee_max,
         Jei_max,
         Jie_max,
@@ -1056,45 +1061,39 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, r
         sigmai_ext,
         a,
         b,
-        EA,
+        c_gl,
+        Ke_gl,
     ) = aln_model_params
+    (
+        z1ee_f,
+        z2ee_f,
+        z1ei_f,
+        z2ei_f,
+        z1ie_f,
+        z2ie_f,
+        z1ii_f,
+        z2ii_f,
+        sig_ee_factor,
+        sig_ei_factor,
+        sig_ie_factor,
+        sig_ii_factor,
+    ) = precomp_factors
 
     jacobian = np.zeros((V, V))
 
-    z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
     z1ee = z1ee_f * re_del + nw_input
-    z2ee_f = cee**2 * Ke * tau_se**2 / np.abs(Jee_max) ** 2 * 1e-3
-    z2ee = z2ee_f * re_del + nw_input_sq
-
-    z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
     z1ei = z1ei_f * ri_del
-    z2ei_f = cei**2 * Ki * tau_si**2 / np.abs(Jei_max) ** 2 * 1e-3
-    z2ei = z2ei_f * ri_del
-
-    z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
     z1ie = z1ie_f * re_del
-    z2ie_f = cie**2 * Ke * tau_se**2 / np.abs(Jie_max) ** 2 * 1e-3
-    z2ie = z2ie_f * re_del
-
-    z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
     z1ii = z1ii_f * ri_del
-    z2ii_f = cii**2 * Ki * tau_si**2 / np.abs(Jii_max) ** 2 * 1e-3
-    z2ii = z2ii_f * ri_del
 
-    sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
     sig_ee_den = (1 + z1ee) * taum + tau_se
-
-    sig_ei_factor = 2 * Jei_max**2 * tau_si * taum
     sig_ei_den = (1 + z1ei) * taum + tau_si
 
     sigmae_f = np.sqrt(
         sig_ee_factor * fullstate[9] / sig_ee_den + sig_ei_factor * fullstate[10] / sig_ei_den + sigmae_ext**2
     )
 
-    sig_ie_factor = 2 * Jie_max**2 * tau_se * taum
     sig_ie_den = (1 + z1ie) * taum + tau_se
-
-    sig_ii_factor = 2 * Jii_max**2 * tau_si * taum
     sig_ii_den = (1 + z1ii) * taum + tau_si
 
     sigmai_f = np.sqrt(
@@ -1125,8 +1124,8 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, r
     ri1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
     ti1s = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
 
-    dsigmaef_dre = -0.5 * sigmae_f ** (-1.0 / 2.0) * sig_ee_factor * fullstate[9] * taum * z1ee_f / sig_ee_den**2
-    dsigmaif_dre = -0.5 * sigmai_f ** (-1.0 / 2.0) * sig_ie_factor * fullstate[11] * taum * z1ie_f / sig_ie_den**2
+    dsigmaef_dre = -0.5 * (sigmae_f**-1.0) * sig_ee_factor * fullstate[9] * taum * z1ee_f / sig_ee_den**2
+    dsigmaif_dre = -0.5 * (sigmai_f**-1.0) * sig_ie_factor * fullstate[11] * taum * z1ie_f / sig_ie_den**2
 
     jacobian[0, 0] = -((re1s - re0) / (ds)) * dsigmaef_dre
     jacobian[1, 0] = -((ri1s - ri0) / (ds)) * dsigmaif_dre
@@ -1159,35 +1158,8 @@ def jacobian_de(aln_model_params, V, fullstate, ue, ui, nw_input, nw_input_sq, r
 
 @numba.njit
 def compute_hx_de(
-    aln_model_params: tuple[
-        np.ndarray,
-        float,
-        np.ndarray,
-        float,
-        float,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-    ],
+    aln_model_params,
+    precomp_factors,
     N,
     V,
     T,
@@ -1195,8 +1167,6 @@ def compute_hx_de(
     control,
     cmat,
     dmat_ndt,
-    c_gl,
-    Ke_gl,
     ndt_de,
     ndt_di,
 ):
@@ -1204,24 +1174,32 @@ def compute_hx_de(
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
     :type aln_model_params:     tuple of float and np.ndarray
-    :param N:       Number of nodes in the network.
-    :type N:        int
-    :param V:       Number of system variables.
-    :type V:        int
-    :param T:       Length of simulation (time dimension).
-    :type T:        int
-    :param dyn_vars:       Time-dependent values of all N x V dynamical variables (all nodes)
-    :type dyn_vars:        np.ndarray
-    :param control:      Control input (time dependent and all input channels)
-    :type control:       np.ndarray
-    :param cmat:
-    :type cmat:
-    :param dmat:
-    :type dmat:
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param N:                   Number of nodes in the network.
+    :type N:                    int
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param T:                   Length of simulation (time dimension).
+    :type T:                    int
+    :param dyn_vars:            Time-dependent values of all N x V dynamical variables (all nodes)
+    :type dyn_vars:             np.ndarray
+    :param control:             Control input (time dependent and all input channels)
+    :type control:              np.ndarray
+    :param cmat:                Connectivity matrix
+    :type cmat:                 np.ndarray
+    :param dmat_ndt:            Delay matrix in time steps
+    :type dmat_ndt:             np.ndarray of ints
+    :param ndt_de:              E rate delay in time steps
+    :type ndt_de:               int
+    :param ndt_di:              I rate delay in time steps
+    :type ndt_di:               int
 
-    :return:        N x T x V x V Jacobian matrix.
-    :rtype:         np.ndarray
+    :return:                    N x T x V x V Jacobian matrix of delayed variables
+    :rtype:                     np.ndarray
     """
+    c_gl = aln_model_params[-2]
+    Ke_gl = aln_model_params[-1]
 
     hx = np.zeros((N, T, V, V))
     nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
@@ -1232,7 +1210,15 @@ def compute_hx_de(
             ui = control[n, 1, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_de(
-                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t], re_del, ri_del
+                aln_model_params,
+                precomp_factors,
+                V,
+                dyn_vars[n, :, t],
+                ue,
+                ui,
+                nw_input[n, t],
+                re_del,
+                ri_del,
             )
 
     return hx
@@ -1241,31 +1227,37 @@ def compute_hx_de(
 @numba.njit
 def jacobian_di(
     aln_model_params,
+    precomp_factors,
     V,
     fullstate,
     ue,
     ui,
     nw_input,
-    nw_input_sq,
     re_del,
     ri_del,
 ):
     """Jacobian of the ALN dynamical system wrt relations with delay di
-
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
     :type aln_model_params:     tuple of float and np.ndarray
-    :param  nw_e:               N x T input of network into each node's 'exc'
-    :type  nw_e:                np.ndarray
-    :param fullstate:       Value of all V dynamical variables at given time
-    :type fullstate:        np.ndarray
-    :param ue:      Control input to E population
-    :type ue:       float
-    :param ui:      Control input to I population
-    :type ui:       float
-    :param V:       Number of system variables.
-    :type V:        int
-    :return:        V x V Jacobian matrix.
-    :rtype:         np.ndarray
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param fullstate:           Value of all V=16 dynamical variables at given time
+    :type fullstate:            np.ndarray
+    :param ue:                  Control input to E population
+    :type ue:                   float
+    :param ui:                  Control input to I population
+    :type ui:                   float
+    :param  nw_input:           sum of all network inputs into current node at current time
+    :type  nw_input:            float
+    :param re_del:              E rate delayed by de
+    :type re_del:               float
+    :param ri_del:              I rate delayed by di
+    :type ri_del:               float
+
+    :return:                    V x V Jacobian matrix of delayed variables
+    :rtype:                     np.ndarray
     """
     (
         sigmarange,
@@ -1276,12 +1268,6 @@ def jacobian_di(
         precalc_r,
         precalc_V,
         precalc_tau_mu,
-        Ke,
-        Ki,
-        cee,
-        cei,
-        cie,
-        cii,
         Jee_max,
         Jei_max,
         Jie_max,
@@ -1294,35 +1280,32 @@ def jacobian_di(
         sigmai_ext,
         a,
         b,
-        EA,
+        c_gl,
+        Ke_gl,
     ) = aln_model_params
+    (
+        z1ee_f,
+        z2ee_f,
+        z1ei_f,
+        z2ei_f,
+        z1ie_f,
+        z2ie_f,
+        z1ii_f,
+        z2ii_f,
+        sig_ee_factor,
+        sig_ei_factor,
+        sig_ie_factor,
+        sig_ii_factor,
+    ) = precomp_factors
 
     jacobian = np.zeros((V, V))
 
-    z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
     z1ee = z1ee_f * re_del + nw_input
-    z2ee_f = cee**2 * Ke * tau_se**2 / np.abs(Jee_max) ** 2 * 1e-3
-    z2ee = z2ee_f * re_del + nw_input_sq
-
-    z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
     z1ei = z1ei_f * ri_del
-    z2ei_f = cei**2 * Ki * tau_si**2 / np.abs(Jei_max) ** 2 * 1e-3
-    z2ei = z2ei_f * ri_del
-
-    z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
     z1ie = z1ie_f * re_del
-    z2ie_f = cie**2 * Ke * tau_se**2 / np.abs(Jie_max) ** 2 * 1e-3
-    z2ie = z2ie_f * re_del
-
-    z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
     z1ii = z1ii_f * ri_del
-    z2ii_f = cii**2 * Ki * tau_si**2 / np.abs(Jii_max) ** 2 * 1e-3
-    z2ii = z2ii_f * ri_del
 
-    sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
     sig_ee_den = (1 + z1ee) * taum + tau_se
-
-    sig_ei_factor = 2 * Jei_max**2 * tau_si * taum
     sig_ei_den = (1 + z1ei) * taum + tau_si
 
     sigmae_f = np.sqrt(
@@ -1363,8 +1346,8 @@ def jacobian_di(
     ri1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
     ti1s = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
 
-    dsigmaef_dri = -0.5 * sigmae_f ** (-1.0 / 2.0) * sig_ei_factor * fullstate[10] * taum * z1ei_f / sig_ei_den**2
-    dsigmaif_dri = -0.5 * sigmai_f ** (-1.0 / 2.0) * sig_ii_factor * fullstate[12] * taum * z1ii_f / sig_ii_den**2
+    dsigmaef_dri = -0.5 * (sigmae_f**-1.0) * sig_ei_factor * fullstate[10] * taum * z1ei_f / sig_ei_den**2
+    dsigmaif_dri = -0.5 * (sigmai_f**-1.0) * sig_ii_factor * fullstate[12] * taum * z1ii_f / sig_ii_den**2
 
     jacobian[0, 1] = -((re1s - re0) / (ds)) * dsigmaef_dri
     jacobian[1, 1] = -((ri1s - ri0) / (ds)) * dsigmaif_dri
@@ -1395,35 +1378,8 @@ def jacobian_di(
 
 @numba.njit
 def compute_hx_di(
-    aln_model_params: tuple[
-        np.ndarray,
-        float,
-        np.ndarray,
-        float,
-        float,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-    ],
+    aln_model_params,
+    precomp_factors,
     N,
     V,
     T,
@@ -1431,8 +1387,6 @@ def compute_hx_di(
     control,
     cmat,
     dmat_ndt,
-    c_gl,
-    Ke_gl,
     ndt_de,
     ndt_di,
 ):
@@ -1440,24 +1394,33 @@ def compute_hx_di(
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
     :type aln_model_params:     tuple of float and np.ndarray
-    :param N:       Number of nodes in the network.
-    :type N:        int
-    :param V:       Number of system variables.
-    :type V:        int
-    :param T:       Length of simulation (time dimension).
-    :type T:        int
-    :param dyn_vars:       Time-dependent values of all N x V dynamical variables (all nodes)
-    :type dyn_vars:        np.ndarray
-    :param control:      Control input (time dependent and all input channels)
-    :type control:       np.ndarray
-    :param cmat:
-    :type cmat:
-    :param dmat:
-    :type dmat:
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param N:                   Number of nodes in the network.
+    :type N:                    int
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param T:                   Length of simulation (time dimension).
+    :type T:                    int
+    :param dyn_vars:            Time-dependent values of all N x V dynamical variables (all nodes)
+    :type dyn_vars:             np.ndarray
+    :param control:             Control input (time dependent and all input channels)
+    :type control:              np.ndarray
+    :param cmat:                Connectivity matrix
+    :type cmat:                 np.ndarray
+    :param dmat_ndt:            Delay matrix in time steps
+    :type dmat_ndt:             np.ndarray of ints
+    :param ndt_de:              E rate delay in time steps
+    :type ndt_de:               int
+    :param ndt_di:              I rate delay in time steps
+    :type ndt_di:               int
 
-    :return:        N x T x V x V Jacobian matrix.
-    :rtype:         np.ndarray
+    :return:                    N x T x V x V Jacobian matrix of delayed variables
+    :rtype:                     np.ndarray
     """
+
+    c_gl = aln_model_params[-2]
+    Ke_gl = aln_model_params[-1]
 
     hx = np.zeros((N, T, V, V))
     nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
@@ -1468,7 +1431,15 @@ def compute_hx_di(
             ui = control[n, 1, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_di(
-                aln_model_params, V, dyn_vars[n, :, t], ue, ui, nw_input[n, t], nw_input_sq[n, t], re_del, ri_del
+                aln_model_params,
+                precomp_factors,
+                V,
+                dyn_vars[n, :, t],
+                ue,
+                ui,
+                nw_input[n, t],
+                re_del,
+                ri_del,
             )
 
     return hx
@@ -1477,6 +1448,7 @@ def compute_hx_di(
 @numba.njit
 def compute_hx_nw(
     aln_model_params,
+    precomp_factors,
     N,
     V,
     T,
@@ -1484,11 +1456,40 @@ def compute_hx_nw(
     control,
     cmat,
     dmat_ndt,
-    c_gl,
-    Ke_gl,
     ndt_de,
     ndt_di,
 ):
+    """Jacobian of the ALN dynamical system wrt network connections
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param N:                   Number of nodes in the network.
+    :type N:                    int
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param T:                   Length of simulation (time dimension).
+    :type T:                    int
+    :param dyn_vars:            Time-dependent values of all N x V dynamical variables (all nodes)
+    :type dyn_vars:             np.ndarray
+    :param control:             Control input (time dependent and all input channels)
+    :type control:              np.ndarray
+    :param cmat:                Connectivity matrix
+    :type cmat:                 np.ndarray
+    :param dmat_ndt:            Delay matrix in time steps
+    :type dmat_ndt:             np.ndarray of ints
+    :param ndt_de:              E rate delay in time steps
+    :type ndt_de:               int
+    :param ndt_di:              I rate delay in time steps
+    :type ndt_di:               int
+
+    :return:                    N x N x T x V x V Jacobian matrix of network connections
+    :rtype:                     np.ndarray
+    """
+
+    c_gl = aln_model_params[-2]
+    Ke_gl = aln_model_params[-1]
 
     hx_nw = np.zeros((N, N, T, V, V))
     nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
@@ -1500,12 +1501,12 @@ def compute_hx_nw(
                 ue = control[n1, 0, t]
                 hx_nw[n1, n2, t, :, :] = jacobian_nw(
                     aln_model_params,
+                    precomp_factors,
                     V,
                     dyn_vars[n1, :, t],
                     re_del,
                     ri_del,
                     nw_input[n1, t],
-                    nw_input_sq[n1, t],
                     cmat[n1, n2],
                     ue,
                 )
@@ -1514,7 +1515,41 @@ def compute_hx_nw(
 
 
 @numba.njit
-def jacobian_nw(aln_model_params, V, fullstate, re_del, ri_del, nw_input, nw_input_sq, cmat_entry, ue):
+def jacobian_nw(
+    aln_model_params,
+    precomp_factors,
+    V,
+    fullstate,
+    re_del,
+    ri_del,
+    nw_input,
+    cmat_entry,
+    ue,
+):
+    """Jacobian of the ALN dynamical system wrt network connections
+
+    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type aln_model_params:     tuple of float and np.ndarray
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param fullstate:           Value of all V=16 dynamical variables at given time
+    :type fullstate:            np.ndarray
+    :param re_del:              E rate delayed by de
+    :type re_del:               float
+    :param ri_del:              I rate delayed by di
+    :type ri_del:               float
+    :param  nw_input:           sum of all network inputs into current node at current time
+    :type  nw_input:            float
+    :param cmat_entry:          Entry of the connectivity matrix at n1, n2
+    :type cmat_entry:           float
+    :param ue:                  Control input to E population
+    :type ue:                   float
+
+    :return:                    V x V Jacobian matrix of network variables
+    :rtype:                     np.ndarray
+    """
 
     (
         sigmarange,
@@ -1525,12 +1560,6 @@ def jacobian_nw(aln_model_params, V, fullstate, re_del, ri_del, nw_input, nw_inp
         precalc_r,
         precalc_V,
         precalc_tau_mu,
-        Ke,
-        Ki,
-        cee,
-        cei,
-        cie,
-        cii,
         Jee_max,
         Jei_max,
         Jie_max,
@@ -1543,25 +1572,30 @@ def jacobian_nw(aln_model_params, V, fullstate, re_del, ri_del, nw_input, nw_inp
         sigmai_ext,
         a,
         b,
-        EA,
         c_gl,
         Ke_gl,
     ) = aln_model_params
+    (
+        z1ee_f,
+        z2ee_f,
+        z1ei_f,
+        z2ei_f,
+        z1ie_f,
+        z2ie_f,
+        z1ii_f,
+        z2ii_f,
+        sig_ee_factor,
+        sig_ei_factor,
+        sig_ie_factor,
+        sig_ii_factor,
+    ) = precomp_factors
 
     jac_nw = np.zeros((V, V))
 
-    z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
     z1ee = z1ee_f * re_del + nw_input
-    z2ee_f = cee**2 * Ke * tau_se**2 / np.abs(Jee_max) ** 2 * 1e-3
-    z2ee = z2ee_f * re_del + nw_input_sq
-
-    z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
     z1ei = z1ei_f * ri_del
 
-    sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
     sig_ee_den = (1 + z1ee) * taum + tau_se
-
-    sig_ei_factor = 2 * Jei_max**2 * tau_si * taum
     sig_ei_den = (1 + z1ei) * taum + tau_si
 
     sigmae_f = np.sqrt(
@@ -1584,7 +1618,7 @@ def jacobian_nw(aln_model_params, V, fullstate, re_del, ri_del, nw_input, nw_inp
 
     factor_r_nw = c_gl * Ke_gl * 1e-3 * cmat_entry
     factor_r_nw_sq = c_gl**2 * Ke_gl * 1e-3 * cmat_entry**2
-    dsigmaef_dre = -0.5 * sigmae_f ** (-1.0 / 2.0) * sig_ee_factor * fullstate[9] * taum * factor_r_nw / sig_ee_den**2
+    dsigmaef_dre = -0.5 * (sigmae_f**-1.0) * sig_ee_factor * fullstate[9] * taum * factor_r_nw / sig_ee_den**2
 
     jac_nw[0, 0] = -((re1s - re0) / (ds)) * dsigmaef_dre
 
@@ -1596,7 +1630,6 @@ def jacobian_nw(aln_model_params, V, fullstate, re_del, ri_del, nw_input, nw_inp
 
     jac_nw[4, 0] = -a * ((v1s - v0) / ds) * dsigmaef_dre / tauA
     jac_nw[5, 0] = -(1.0 - fullstate[5]) * factor_r_nw / tau_se
-
     jac_nw[9, 0] = (
         -(((1.0 - fullstate[5]) ** 2) * factor_r_nw_sq + (factor_r_nw_sq - 2.0 * tau_se * factor_r_nw) * fullstate[9])
         / tau_se**2
@@ -1606,21 +1639,27 @@ def jacobian_nw(aln_model_params, V, fullstate, re_del, ri_del, nw_input, nw_inp
 
 
 @numba.njit
-def Duh(aln_model_params, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
+def Duh(aln_model_params, precomp_factors, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
     """Derivative of systems dynamics wrt. external inputs (control signals).
 
     :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
     :type aln_model_params:     tuple of float and np.ndarray
-    :param N:         Number of nodes in the network.
-    :type N:          int
-    :param V_in:      Number of input channels (control channels).
-    :type V_in:       int
-    :param V_vars:    Number of dynamical variables.
-    :type V_vars:     int
-    :param T:         Length of simulation (time dimension).
-    :type T:          int
-    :param fullstate:       Time-dependent values of all N x V dynamical variables (all nodes)
-    :type fullstate:        np.ndarray
+    :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
+    :type precomp_factors:      tuple of float
+    :param N:                   Number of nodes in the network.
+    :type N:                    int
+    :param V_in:                Number of input channels (control channels).
+    :type V_in:                 int
+    :param V_vars:              Number of dynamical variables.
+    :type V_vars:               int
+    :param T:                   Length of simulation (time dimension).
+    :type T:                    int
+    :param fullstate:           Time-dependent values of all N x V dynamical variables (all nodes)
+    :type fullstate:            np.ndarray
+    :param cmat:                Connectivity matrix
+    :type cmat:                 np.ndarray
+    :param dmat_ndt:            Delay matrix in time steps
+    :type dmat_ndt:             np.ndarray of ints
 
     :return:    N x V x V x T matrix
     :rtype:     np.ndarray
@@ -1634,12 +1673,6 @@ def Duh(aln_model_params, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
         precalc_r,
         precalc_V,
         precalc_tau_mu,
-        Ke,
-        Ki,
-        cee,
-        cei,
-        cie,
-        cii,
         Jee_max,
         Jei_max,
         Jie_max,
@@ -1652,10 +1685,23 @@ def Duh(aln_model_params, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
         sigmai_ext,
         a,
         b,
-        EA,
         c_gl,
         Ke_gl,
     ) = aln_model_params
+    (
+        z1ee_f,
+        z2ee_f,
+        z1ei_f,
+        z2ei_f,
+        z1ie_f,
+        z2ie_f,
+        z1ii_f,
+        z2ii_f,
+        sig_ee_factor,
+        sig_ei_factor,
+        sig_ie_factor,
+        sig_ii_factor,
+    ) = precomp_factors
 
     nw_input, nw_input_sq = compute_nw_input(fullstate[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
 
@@ -1663,22 +1709,12 @@ def Duh(aln_model_params, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
     for t in range(T):
         for n in range(N):
 
-            z1ee_f = cee * Ke * tau_se / np.abs(Jee_max) * 1e-3
-            z1ee = z1ee_f * fullstate[n, 0, t]
-
-            z1ei_f = cei * Ki * tau_si / np.abs(Jei_max) * 1e-3
+            z1ee = z1ee_f * fullstate[n, 0, t] + nw_input[n, t]
             z1ei = z1ei_f * fullstate[n, 1, t]
-
-            z1ie_f = cie * Ke * tau_se / np.abs(Jie_max) * 1e-3
             z1ie = z1ie_f * fullstate[n, 0, t]
-
-            z1ii_f = cii * Ki * tau_si / np.abs(Jii_max) * 1e-3
             z1ii = z1ii_f * fullstate[n, 1, t]
 
-            sig_ee_factor = 2 * Jee_max**2 * tau_se * taum
             sig_ee_den = (1 + z1ee) * taum + tau_se
-
-            sig_ei_factor = 2 * Jei_max**2 * tau_si * taum
             sig_ei_den = (1 + z1ei) * taum + tau_si
 
             sigmae_f = np.sqrt(
@@ -1687,10 +1723,7 @@ def Duh(aln_model_params, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
                 + sigmae_ext**2
             )
 
-            sig_ie_factor = 2 * Jie_max**2 * tau_se * taum
             sig_ie_den = (1 + z1ie) * taum + tau_se
-
-            sig_ii_factor = 2 * Jii_max**2 * tau_si * taum
             sig_ii_den = (1 + z1ii) * taum + tau_si
 
             sigmai_f = np.sqrt(
