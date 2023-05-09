@@ -300,19 +300,19 @@ class OcAln(OC):
             * self.model.params.tau_si**2
             / np.abs(self.model.params.Jii_max) ** 2
             * 1e-3,
-            2
+            2.0
             * self.model.params.Jee_max**2
             * self.model.params.tau_se
             * (self.model.params.C / self.model.params.gL),
-            2
+            2.0
             * self.model.params.Jei_max**2
             * self.model.params.tau_si
             * (self.model.params.C / self.model.params.gL),
-            2
+            2.0
             * self.model.params.Jie_max**2
             * self.model.params.tau_se
             * (self.model.params.C / self.model.params.gL),
-            2
+            2.0
             * self.model.params.Jii_max**2
             * self.model.params.tau_si
             * (self.model.params.C / self.model.params.gL),

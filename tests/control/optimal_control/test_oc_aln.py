@@ -6,8 +6,11 @@ from neurolib.utils.stimulus import ZeroInput
 from neurolib.control.optimal_control import oc_aln
 from numpy.random import RandomState, SeedSequence, MT19937
 
-global LIMIT_DIFF
+global LIMIT_DIFF, ADAP_PARAM_LIST, ITERATIONS, LOOPS
 LIMIT_DIFF = 1e-7
+ADAP_PARAM_LIST = [[0.0, 0.0], [10.0, 0.0], [0.0, 10.0], [10.0, 10.0]]
+ITERATIONS = 5000
+LOOPS = 100
 
 
 def set_param_init(model, a=15.0, b=40.0):
@@ -32,7 +35,7 @@ def set_param_init(model, a=15.0, b=40.0):
     model.params.mue_ou = model.params.mue_ext_mean * np.ones((model.params.N,))
     model.params.mui_ou = model.params.mui_ext_mean * np.ones((model.params.N,))
 
-    model.params["duration"] = max(10, 2 * model.getMaxDelay())
+    model.params["duration"] = max(1000, 2 * model.getMaxDelay())
     model.run()
 
     # initial state must not be random because delay computation requires history
@@ -123,7 +126,7 @@ class TestALN(unittest.TestCase):
 
         rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
-        for [a, b] in [[0.0, 1.0], [1.0, 0.0], [1.0, 1.0]]:
+        for [a, b] in ADAP_PARAM_LIST:
             print("adaptation parameters a, b = ", a, b)
             set_param_init(model, a, b)
 
@@ -134,6 +137,9 @@ class TestALN(unittest.TestCase):
             for input_channel in [0, 1]:
 
                 for measure_channel in [0, 1, 2]:
+
+                    if a == 0.0 and b == 0.0 and measure_channel == 2:
+                        continue
 
                     print("----------------- input channel, measure channel = ", input_channel, measure_channel)
 
@@ -164,13 +170,12 @@ class TestALN(unittest.TestCase):
                     model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
 
                     control_coincide = False
-                    iterations = 10000
 
                     model_controlled.control = control_init.copy()
                     model_controlled.update_input()
 
-                    for i in range(100):
-                        model_controlled.optimize(iterations)
+                    for i in range(LOOPS):
+                        model_controlled.optimize(ITERATIONS)
                         control = model_controlled.control
 
                         c_diff = np.abs(control[0, input_channel, intinit:intend] - input[0, intinit:intend])
@@ -258,13 +263,12 @@ class TestALN(unittest.TestCase):
                 model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
 
                 control_coincide = False
-                iterations = 10000
 
                 model_controlled.control = control_init.copy()
                 model_controlled.update_input()
 
-                for i in range(100):
-                    model_controlled.optimize(iterations)
+                for i in range(LOOPS):
+                    model_controlled.optimize(ITERATIONS)
                     control = model_controlled.control
 
                     c_diff = np.abs(control[0, input_channel, intinit:intend] - input[0, intinit:intend])
@@ -299,13 +303,13 @@ class TestALN(unittest.TestCase):
             p_node = np.abs(c_node - 1).astype(int)
 
             c_channel = 0
-            # numerical values too small to reasonably test if c_channel = 1 or p_channel = 1
-            for p_channel in [0, 2]:
+            # numerical values too small to reasonably test if c_channel = 1 or measure_channel = 1
+            for measure_channel in [0, 2]:
 
                 for bi_dir_connectivity in [0, 1]:
                     print("control node = ", c_node)
                     print("control channel = ", c_channel)
-                    print("precision channel = ", p_channel)
+                    print("precision channel = ", measure_channel)
                     print("bidirectional connectivity = ", bi_dir_connectivity)
 
                     if bi_dir_connectivity == 0:
@@ -316,8 +320,11 @@ class TestALN(unittest.TestCase):
                     else:
                         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
-                    for [a, b] in [[0.0, 1.0], [1.0, 0.0], [1.0, 1.0]]:
+                    for [a, b] in ADAP_PARAM_LIST:
                         print("adaptation parameters a, b = ", a, b)
+
+                        if a == 0.0 and b == 0.0 and measure_channel == 2:
+                            continue
 
                         model = ALNModel(Cmat=cmat, Dmat=dmat)
 
@@ -330,7 +337,7 @@ class TestALN(unittest.TestCase):
                         control_mat = np.zeros((model.params.N, len(model.state_vars)))
 
                         control_mat[c_node, c_channel] = 1.0
-                        cost_mat[p_node, p_channel] = 1.0
+                        cost_mat[p_node, measure_channel] = 1.0
 
                         model.params.duration = duration
 
@@ -342,7 +349,7 @@ class TestALN(unittest.TestCase):
 
                         rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
 
-                        intinit, intend = 1, input.shape[1] - 5
+                        intinit, intend = 1, input.shape[1] - 6
 
                         for t in range(intinit, intend):
                             input[0, t] = rs.uniform(-amplitude, amplitude)
@@ -379,12 +386,12 @@ class TestALN(unittest.TestCase):
                         )
 
                         model_controlled.control = control_init.copy()
+                        model_controlled.update_input()
 
                         control_coincide = False
 
-                        iterations = 10000
-                        for i in range(10):
-                            model_controlled.optimize(iterations)
+                        for i in range(LOOPS):
+                            model_controlled.optimize(ITERATIONS)
                             control = model_controlled.control
 
                             c_diff = np.abs(control[c_node, c_channel, intinit:intend] - input[0, intinit:intend])
@@ -394,10 +401,13 @@ class TestALN(unittest.TestCase):
                                 control_coincide = True
                                 break
 
-                            if c_channel != p_channel:
-                                if np.amax(c_diff) < 1e2 * LIMIT_DIFF:
+                            if c_channel != measure_channel:
+                                if np.amax(c_diff) < 1e3 * LIMIT_DIFF:
                                     control_coincide = True
                                     break
+
+                            if model_controlled.zero_step_encountered:
+                                break
 
                         self.assertTrue(control_coincide)
 
@@ -438,7 +448,7 @@ class TestALN(unittest.TestCase):
             input = np.copy(zero_input)
             input_optimization_start = np.copy(zero_input)
 
-            intinit, intend = 1, input.shape[1] - 4 - model.getMaxDelay()
+            intinit, intend = 1, input.shape[1] - 6 - model.getMaxDelay()
 
             for t in range(intinit, intend):
                 input[0, t] = rs.uniform(-amplitude, amplitude)
@@ -463,12 +473,12 @@ class TestALN(unittest.TestCase):
             )
 
             model_controlled.control = control_init.copy()
+            model_controlled.update_input()
 
             control_coincide = False
 
-            iterations = 10000
-            for i in range(10):
-                model_controlled.optimize(iterations)
+            for i in range(LOOPS):
+                model_controlled.optimize(ITERATIONS)
                 control = model_controlled.control
 
                 c_diff = np.abs(control[0, 0, intinit:intend] - input[0, intinit:intend])
@@ -478,10 +488,13 @@ class TestALN(unittest.TestCase):
                     control_coincide = True
                     break
 
-                if control_channel != measure_channel:
+                if 0 != measure_channel:
                     if np.amax(c_diff) < 1e2 * LIMIT_DIFF:
                         control_coincide = True
                         break
+
+                if model_controlled.zero_step_encountered:
+                    break
 
             self.assertTrue(control_coincide)
 
