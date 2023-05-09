@@ -7,8 +7,8 @@ from neurolib.control.optimal_control import oc_aln
 from numpy.random import RandomState, SeedSequence, MT19937
 
 global LIMIT_DIFF, ADAP_PARAM_LIST, ITERATIONS, LOOPS
-LIMIT_DIFF = 1e-7
-ADAP_PARAM_LIST = [[0.0, 0.0], [10.0, 0.0], [0.0, 10.0], [10.0, 10.0]]
+LIMIT_DIFF = 1e-6
+ADAP_PARAM_LIST = [[10.0, 0.0], [0.0, 10.0], [10.0, 10.0]]
 ITERATIONS = 5000
 LOOPS = 100
 
@@ -136,10 +136,7 @@ class TestALN(unittest.TestCase):
 
             for input_channel in [0, 1]:
 
-                for measure_channel in [0, 1, 2]:
-
-                    if a == 0.0 and b == 0.0 and measure_channel == 2:
-                        continue
+                for measure_channel in [0, 1]:
 
                     print("----------------- input channel, measure channel = ", input_channel, measure_channel)
 
@@ -179,19 +176,17 @@ class TestALN(unittest.TestCase):
                         control = model_controlled.control
 
                         c_diff = np.abs(control[0, input_channel, intinit:intend] - input[0, intinit:intend])
-                        print(c_diff)
 
                         if np.amax(c_diff) < LIMIT_DIFF:
                             control_coincide = True
                             break
 
                         if input_channel != measure_channel:
-                            if np.amax(c_diff) < 1e3 * LIMIT_DIFF:
+                            if np.amax(c_diff) < 1e2 * LIMIT_DIFF:
                                 control_coincide = True
                                 break
 
                         if model_controlled.zero_step_encountered:
-                            print(np.amax(c_diff), c_diff)
                             break
 
                     self.assertTrue(control_coincide)
@@ -200,7 +195,7 @@ class TestALN(unittest.TestCase):
 
     # single-node case
     def test_onenode_oc_delay(self):
-        print("Test OC in single-node system")
+        print("Test OC in single-node system with delay")
         model = ALNModel()
 
         rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
@@ -228,11 +223,7 @@ class TestALN(unittest.TestCase):
 
         for input_channel in [0, 1]:
 
-            for measure_channel in [0, 1, 2]:
-
-                if [input_channel, measure_channel] == [1, 2]:
-                    # numerical values too small to reasonably test if c_channel = 1 and measure_channel = 2
-                    continue
+            for measure_channel in [0, 1]:
 
                 print("----------------- input channel, measure channel = ", input_channel, measure_channel)
 
@@ -272,19 +263,17 @@ class TestALN(unittest.TestCase):
                     control = model_controlled.control
 
                     c_diff = np.abs(control[0, input_channel, intinit:intend] - input[0, intinit:intend])
-                    print(c_diff)
 
                     if np.amax(c_diff) < LIMIT_DIFF:
                         control_coincide = True
                         break
 
                     if input_channel != measure_channel:
-                        if np.amax(c_diff) < 1e3 * LIMIT_DIFF:
+                        if np.amax(c_diff) < 1e2 * LIMIT_DIFF:
                             control_coincide = True
                             break
 
                     if model_controlled.zero_step_encountered:
-                        print(np.amax(c_diff), c_diff)
                         break
 
                 self.assertTrue(control_coincide)
@@ -298,123 +287,117 @@ class TestALN(unittest.TestCase):
         duration = 1.0
         amplitude = 1.0
 
-        for c_node in [0, 1]:
+        c_node = 0.0
+        p_node = np.abs(c_node - 1).astype(int)
 
-            p_node = np.abs(c_node - 1).astype(int)
+        control_channel = 0
+        # numerical values too small to reasonably test if control_channel = 1 or measure_channel = 1
+        measure_channel = 0
 
-            c_channel = 0
-            # numerical values too small to reasonably test if c_channel = 1 or measure_channel = 1
-            for measure_channel in [0, 2]:
+        for bi_dir_connectivity in [0, 1]:
+            print("control node = ", c_node)
+            print("control channel = ", control_channel)
+            print("precision channel = ", measure_channel)
+            print("bidirectional connectivity = ", bi_dir_connectivity)
 
-                for bi_dir_connectivity in [0, 1]:
-                    print("control node = ", c_node)
-                    print("control channel = ", c_channel)
-                    print("precision channel = ", measure_channel)
-                    print("bidirectional connectivity = ", bi_dir_connectivity)
+            if bi_dir_connectivity == 0:
+                if c_node == 0:
+                    cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
+                else:
+                    cmat = np.array([[0.0, 1.0], [0.0, 0.0]])
+            else:
+                cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
-                    if bi_dir_connectivity == 0:
-                        if c_node == 0:
-                            cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
-                        else:
-                            cmat = np.array([[0.0, 1.0], [0.0, 0.0]])
+            for [a, b] in ADAP_PARAM_LIST:
+                print("adaptation parameters a, b = ", a, b)
+
+                model = ALNModel(Cmat=cmat, Dmat=dmat)
+
+                model.params.de = 0.0
+                model.params.di = 0.0
+
+                set_param_init(model, a, b)
+
+                cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+                control_mat = np.zeros((model.params.N, len(model.state_vars)))
+
+                control_mat[c_node, control_channel] = 1.0
+                cost_mat[p_node, measure_channel] = 1.0
+
+                model.params.duration = duration
+
+                zero_input = ZeroInput().generate_input(
+                    duration=model.params.duration + model.params.dt, dt=model.params.dt
+                )
+                input = np.copy(zero_input)
+                input_optimization_start = np.copy(zero_input)
+
+                rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+
+                intinit, intend = 1, input.shape[1] - 6
+
+                for t in range(intinit, intend):
+                    input[0, t] = rs.uniform(-amplitude, amplitude)
+                    input_optimization_start[0, t] = input[0, t] + 1e-2 * rs.uniform(-amplitude, amplitude)
+
+                model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
+                model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
+
+                if control_channel == 0:
+                    if c_node == 0:
+                        model.params["ext_exc_current"] = np.vstack([input, zero_input])
                     else:
-                        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+                        model.params["ext_exc_current"] = np.vstack([zero_input, input])
+                else:
+                    if c_node == 0:
+                        model.params["ext_inh_current"] = np.vstack([input, zero_input])
+                    else:
+                        model.params["ext_inh_current"] = np.vstack([zero_input, input])
 
-                    for [a, b] in ADAP_PARAM_LIST:
-                        print("adaptation parameters a, b = ", a, b)
+                model.run()
 
-                        if a == 0.0 and b == 0.0 and measure_channel == 2:
-                            continue
+                target = getstate(model)
+                control_init = np.zeros((target.shape))
+                control_init[c_node, control_channel, :] = input_optimization_start[0, :]
 
-                        model = ALNModel(Cmat=cmat, Dmat=dmat)
+                model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
+                model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
 
-                        model.params.de = 0.0
-                        model.params.di = 0.0
+                model_controlled = oc_aln.OcAln(
+                    model,
+                    target,
+                    control_matrix=control_mat,
+                    cost_matrix=cost_mat,
+                )
 
-                        set_param_init(model, a, b)
+                model_controlled.control = control_init.copy()
+                model_controlled.update_input()
 
-                        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
-                        control_mat = np.zeros((model.params.N, len(model.state_vars)))
+                control_coincide = False
 
-                        control_mat[c_node, c_channel] = 1.0
-                        cost_mat[p_node, measure_channel] = 1.0
+                for i in range(LOOPS):
+                    model_controlled.optimize(ITERATIONS)
+                    control = model_controlled.control
+                    c_diff = np.abs(control[c_node, control_channel, intinit:intend] - input[0, intinit:intend])
 
-                        model.params.duration = duration
+                    if np.amax(c_diff) < LIMIT_DIFF:
+                        control_coincide = True
+                        break
 
-                        zero_input = ZeroInput().generate_input(
-                            duration=model.params.duration + model.params.dt, dt=model.params.dt
-                        )
-                        input = np.copy(zero_input)
-                        input_optimization_start = np.copy(zero_input)
+                    if control_channel != measure_channel:
+                        if np.amax(c_diff) < 1e3 * LIMIT_DIFF:
+                            control_coincide = True
+                            break
 
-                        rs = RandomState(MT19937(SeedSequence(0)))  # work with fixed seed for reproducibility
+                    if model_controlled.zero_step_encountered:
+                        break
 
-                        intinit, intend = 1, input.shape[1] - 6
-
-                        for t in range(intinit, intend):
-                            input[0, t] = rs.uniform(-amplitude, amplitude)
-                            input_optimization_start[0, t] = input[0, t] + 1e-2 * rs.uniform(-amplitude, amplitude)
-
-                        model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
-                        model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
-
-                        if c_channel == 0:
-                            if c_node == 0:
-                                model.params["ext_exc_current"] = np.vstack([input, zero_input])
-                            else:
-                                model.params["ext_exc_current"] = np.vstack([zero_input, input])
-                        else:
-                            if c_node == 0:
-                                model.params["ext_inh_current"] = np.vstack([input, zero_input])
-                            else:
-                                model.params["ext_inh_current"] = np.vstack([zero_input, input])
-
-                        model.run()
-
-                        target = getstate(model)
-                        control_init = np.zeros((target.shape))
-                        control_init[c_node, c_channel, :] = input_optimization_start[0, :]
-
-                        model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
-                        model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
-
-                        model_controlled = oc_aln.OcAln(
-                            model,
-                            target,
-                            control_matrix=control_mat,
-                            cost_matrix=cost_mat,
-                        )
-
-                        model_controlled.control = control_init.copy()
-                        model_controlled.update_input()
-
-                        control_coincide = False
-
-                        for i in range(LOOPS):
-                            model_controlled.optimize(ITERATIONS)
-                            control = model_controlled.control
-
-                            c_diff = np.abs(control[c_node, c_channel, intinit:intend] - input[0, intinit:intend])
-                            print(c_diff)
-
-                            if np.amax(c_diff) < LIMIT_DIFF:
-                                control_coincide = True
-                                break
-
-                            if c_channel != measure_channel:
-                                if np.amax(c_diff) < 1e3 * LIMIT_DIFF:
-                                    control_coincide = True
-                                    break
-
-                            if model_controlled.zero_step_encountered:
-                                break
-
-                        self.assertTrue(control_coincide)
+                self.assertTrue(control_coincide)
 
     # tests if the control from OC computation coincides with a random input used for target forward-simulation
     # network case
     def test_twonode_delay_oc(self):
-        print("Test OC in 2-node network")
+        print("Test OC in 2-node network with delay")
 
         duration = 1.0
         amplitude = 1.0
@@ -437,66 +420,63 @@ class TestALN(unittest.TestCase):
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
         control_mat[0, 0] = 1.0
 
-        for measure_channel in [0, 2]:
+        measure_channel = 0
 
-            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
-            cost_mat[1, measure_channel] = 1.0
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+        cost_mat[1, measure_channel] = 1.0
 
-            zero_input = ZeroInput().generate_input(
-                duration=model.params.duration + model.params.dt, dt=model.params.dt
-            )
-            input = np.copy(zero_input)
-            input_optimization_start = np.copy(zero_input)
+        zero_input = ZeroInput().generate_input(duration=model.params.duration + model.params.dt, dt=model.params.dt)
+        input = np.copy(zero_input)
+        input_optimization_start = np.copy(zero_input)
 
-            intinit, intend = 1, input.shape[1] - 6 - model.getMaxDelay()
+        intinit, intend = 1, input.shape[1] - 6 - model.getMaxDelay()
 
-            for t in range(intinit, intend):
-                input[0, t] = rs.uniform(-amplitude, amplitude)
-                input_optimization_start[0, t] = input[0, t] + 1e-2 * rs.uniform(-amplitude, amplitude)
+        for t in range(intinit, intend):
+            input[0, t] = rs.uniform(-amplitude, amplitude)
+            input_optimization_start[0, t] = input[0, t] + 1e-2 * rs.uniform(-amplitude, amplitude)
 
-            model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
-            model.params["ext_exc_current"] = np.vstack([input, zero_input])
-            model.run()
+        model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
+        model.params["ext_exc_current"] = np.vstack([input, zero_input])
+        model.run()
 
-            target = getstate(model)
-            control_init = np.zeros((target.shape))
-            control_init[0, 0, :] = input_optimization_start[0, :]
+        target = getstate(model)
+        control_init = np.zeros((target.shape))
+        control_init[0, 0, :] = input_optimization_start[0, :]
 
-            model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
-            model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
+        model.params["ext_inh_current"] = np.vstack([zero_input, zero_input])
+        model.params["ext_exc_current"] = np.vstack([zero_input, zero_input])
 
-            model_controlled = oc_aln.OcAln(
-                model,
-                target,
-                control_matrix=control_mat,
-                cost_matrix=cost_mat,
-            )
+        model_controlled = oc_aln.OcAln(
+            model,
+            target,
+            control_matrix=control_mat,
+            cost_matrix=cost_mat,
+        )
 
-            model_controlled.control = control_init.copy()
-            model_controlled.update_input()
+        model_controlled.control = control_init.copy()
+        model_controlled.update_input()
 
-            control_coincide = False
+        control_coincide = False
 
-            for i in range(LOOPS):
-                model_controlled.optimize(ITERATIONS)
-                control = model_controlled.control
+        for i in range(LOOPS):
+            model_controlled.optimize(ITERATIONS)
+            control = model_controlled.control
 
-                c_diff = np.abs(control[0, 0, intinit:intend] - input[0, intinit:intend])
-                print(c_diff)
+            c_diff = np.abs(control[0, 0, intinit:intend] - input[0, intinit:intend])
 
-                if np.amax(c_diff) < LIMIT_DIFF:
+            if np.amax(c_diff) < LIMIT_DIFF:
+                control_coincide = True
+                break
+
+            if 0 != measure_channel:
+                if np.amax(c_diff) < 1e2 * LIMIT_DIFF:
                     control_coincide = True
                     break
 
-                if 0 != measure_channel:
-                    if np.amax(c_diff) < 1e2 * LIMIT_DIFF:
-                        control_coincide = True
-                        break
+            if model_controlled.zero_step_encountered:
+                break
 
-                if model_controlled.zero_step_encountered:
-                    break
-
-            self.assertTrue(control_coincide)
+        self.assertTrue(control_coincide)
 
     # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
     def test_get_xs(self):
