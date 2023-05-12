@@ -517,8 +517,6 @@ def timeIntegration_njit_elementwise(
             mufe_rhs = (mue - mufe[no]) / tau_exc
             mufi_rhs = (mui - mufi[no]) / tau_inh
 
-            Vmean_exc = vmean(sigmae_f, mufe[no], IA[no, i - 1], C)
-
             # rate has to be kHz
             IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i - 1] * 1e-3) / tauA
 
@@ -890,19 +888,14 @@ def jacobian_aln(aln_model_params, precomp_factors, V, fullstate, ue, ui, nw_inp
     jacobian[3, 10] = mui_num * ((ti1s - ti0) / ds) * dsigmaif_dsiev
     jacobian[3, 11] = mui_num * ((ti1s - ti0) / ds) * dsigmaif_dsiiv
 
-    # as a consistency check, lookup tables were replaced by analytic functions
-    # in partiuclar for V,ḿean, imprecise numerical derivatives lead to relatively large errors
-    # if IA is target state, it might be beneficial to not include all channels and comment out [4,2] and/ or {4,4]}
+    # as a consistency check, lookup table for Vmean was replaced by an analytic function
+    # in partiuclar for Vḿean, imprecise numerical derivatives lead to relatively large errors
+    # if IA is target state, it might be beneficial to not include all channels and comment out [4,2] and/ or [4,4]
     jacobian[4, 0] = -b * 1e-3
     jacobian[4, 2] = -a * ((v1mu - v0) / dI) / tauA
     jacobian[4, 4] = (a * ((v1mu - v0) / dI) / C + 1.0) / tauA
     jacobian[4, 9] = -a * ((v1s - v0) / ds) * dsigmaef_dseev / tauA
     jacobian[4, 10] = -a * ((v1s - v0) / ds) * dsigmaef_dseiv / tauA
-
-    jacobian[4, 2] = -a * dv_dm(sigmae_f, fullstate[2], fullstate[4], C) / tauA
-    jacobian[4, 4] = (-a * dv_di(sigmae_f, fullstate[2], fullstate[4], C) + 1.0) / tauA
-    jacobian[4, 9] = -a * dv_ds(sigmae_f, fullstate[2], fullstate[4], C) * dsigmaef_dseev / tauA
-    jacobian[4, 10] = -a * dv_ds(sigmae_f, fullstate[2], fullstate[4], C) * dsigmaef_dseiv / tauA
 
     jacobian[5, 5] = (z1ee + 1.0) / tau_se
     jacobian[6, 6] = (z1ei + 1.0) / tau_si
@@ -1149,8 +1142,7 @@ def jacobian_de(
         * dsigmaif_dre
     )
 
-    # jacobian[4, 0] = -a * ((v1s - v0) / ds) * dsigmaef_dre / tauA
-    jacobian[4, 0] = -a * dv_ds(sigmae_f, fullstate[2], fullstate[4], C) * dsigmaef_dre / tauA
+    jacobian[4, 0] = -a * ((v1s - v0) / ds) * dsigmaef_dre / tauA
 
     jacobian[5, 0] = -(1.0 - fullstate[5]) * z1ee_f / tau_se
     jacobian[7, 0] = -(1.0 - fullstate[7]) * z1ie_f / tau_se
@@ -1368,8 +1360,7 @@ def jacobian_di(
         * ((ti1s - ti0) / ds)
         * dsigmaif_dri
     )
-    # jacobian[4, 1] = -a * ((v1s - v0) / ds) * dsigmaef_dri / tauA
-    jacobian[4, 1] = -a * dv_ds(sigmae_f, fullstate[2], fullstate[4], C) * dsigmaef_dri / tauA
+    jacobian[4, 1] = -a * ((v1s - v0) / ds) * dsigmaef_dri / tauA
 
     jacobian[6, 1] = -(1.0 - fullstate[6]) * z1ei_f / tau_si
     jacobian[8, 1] = -(1.0 - fullstate[8]) * z1ii_f / tau_si
@@ -1636,9 +1627,7 @@ def jacobian_nw(
         * dsigmaef_dre
     )
 
-    # jac_nw[4, 0] = -a * ((v1s - v0) / ds) * dsigmaef_dre / tauA
-    jac_nw[4, 0] = -a * dv_ds(sigmae_f, fullstate[2], fullstate[4], C) * dsigmaef_dre / tauA
-
+    jac_nw[4, 0] = -a * ((v1s - v0) / ds) * dsigmaef_dre / tauA
     jac_nw[5, 0] = -(1.0 - fullstate[5]) * factor_r_nw / tau_se
     jac_nw[9, 0] = (
         -(((1.0 - fullstate[5]) ** 2) * factor_r_nw_sq + (factor_r_nw_sq - 2.0 * tau_se * factor_r_nw) * fullstate[9])
@@ -1775,23 +1764,3 @@ def Dxdoth(N, V):
             dxdoth[n, v, v] = 1
 
     return dxdoth
-
-
-@numba.njit
-def vmean(sigma, mu, I, C):
-    return -60.0 - (10.0 + sigma) * np.exp(-(mu - I / C))
-
-
-@numba.njit
-def dv_ds(sigma, mu, I, C):
-    return -np.exp(-(mu - I / C))
-
-
-@numba.njit
-def dv_dm(sigma, mu, I, C):
-    return (10.0 + sigma) * np.exp(-(mu - I / C))
-
-
-@numba.njit
-def dv_di(sigma, mu, I, C):
-    return -(10.0 + sigma) * np.exp(-(mu - I / C)) / C

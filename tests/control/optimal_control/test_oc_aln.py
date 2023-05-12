@@ -7,7 +7,7 @@ from neurolib.control.optimal_control import oc_aln
 from numpy.random import RandomState, SeedSequence, MT19937
 
 global LIMIT_DIFF, ADAP_PARAM_LIST, ITERATIONS, LOOPS
-LIMIT_DIFF = 1e-6
+LIMIT_DIFF = 1e-7
 ADAP_PARAM_LIST = [[10.0, 0.0], [0.0, 10.0], [10.0, 10.0]]
 ITERATIONS = 5000
 LOOPS = 100
@@ -191,9 +191,7 @@ class TestALN(unittest.TestCase):
 
                     self.assertTrue(control_coincide)
 
-        # tests if the control from OC computation coincides with a random input used for target forward-simulation
-
-    # single-node case
+    # single-node case with delay
     def test_onenode_oc_delay(self):
         print("Test OC in single-node system with delay")
         model = ALNModel()
@@ -287,17 +285,14 @@ class TestALN(unittest.TestCase):
         duration = 1.0
         amplitude = 1.0
 
-        c_node = 0.0
+        c_node = 0
         p_node = np.abs(c_node - 1).astype(int)
 
-        control_channel = 0
         # numerical values too small to reasonably test if control_channel = 1 or measure_channel = 1
+        control_channel = 0
         measure_channel = 0
 
         for bi_dir_connectivity in [0, 1]:
-            print("control node = ", c_node)
-            print("control channel = ", control_channel)
-            print("precision channel = ", measure_channel)
             print("bidirectional connectivity = ", bi_dir_connectivity)
 
             if bi_dir_connectivity == 0:
@@ -379,6 +374,7 @@ class TestALN(unittest.TestCase):
                     model_controlled.optimize(ITERATIONS)
                     control = model_controlled.control
                     c_diff = np.abs(control[c_node, control_channel, intinit:intend] - input[0, intinit:intend])
+                    print(c_diff)
 
                     if np.amax(c_diff) < LIMIT_DIFF:
                         control_coincide = True
@@ -395,7 +391,7 @@ class TestALN(unittest.TestCase):
                 self.assertTrue(control_coincide)
 
     # tests if the control from OC computation coincides with a random input used for target forward-simulation
-    # network case
+    # network case with delay
     def test_twonode_delay_oc(self):
         print("Test OC in 2-node network with delay")
 
