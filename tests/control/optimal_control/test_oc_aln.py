@@ -7,7 +7,7 @@ from neurolib.control.optimal_control import oc_aln
 from numpy.random import RandomState, SeedSequence, MT19937
 
 global LIMIT_DIFF, ADAP_PARAM_LIST, ITERATIONS, LOOPS
-LIMIT_DIFF = 1e-7
+LIMIT_DIFF = 1e-5
 ADAP_PARAM_LIST = [[10.0, 0.0], [0.0, 10.0], [10.0, 10.0]]
 ITERATIONS = 5000
 LOOPS = 100

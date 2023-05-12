@@ -2,7 +2,7 @@ from neurolib.control.optimal_control.oc import OC, update_control_with_limit
 from neurolib.control.optimal_control import cost_functions
 import numba
 import numpy as np
-from neurolib.models.hopf.timeIntegration import compute_hx, compute_hx_nw
+from neurolib.models.hopf.timeIntegration import compute_hx, compute_hx_nw, Dxdoth
 
 
 @numba.njit
@@ -141,10 +141,9 @@ class OcHopf(OC):
             self.model.params["x_ext"] = self.control[:, 0, :]
             self.model.params["y_ext"] = self.control[:, 1, :]
 
-    def Dxdot(self):
-        """4 x 4 Jacobian of systems dynamics wrt. change of systems variables."""
-        # Currently not explicitly required since it is identity matrix.
-        raise NotImplementedError  # return np.eye(4)
+    def compute_dxdoth(self):
+        """Derivative of systems dynamics wrt. change of systems variables."""
+        return Dxdoth(self.N, self.dim_vars)
 
     def Duh(self):
         """4 x 4 Jacobian of systems dynamics wrt. external inputs (control signals) to all 'state_vars'. There are no

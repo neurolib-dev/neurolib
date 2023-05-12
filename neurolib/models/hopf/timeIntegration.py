@@ -311,3 +311,13 @@ def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
                 hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
 
     return -hx_nw
+
+
+@numba.njit
+def Dxdoth(N, V):
+    dxdoth = np.zeros((N, V, V))
+    for n in range(N):
+        for v in range(V):
+            dxdoth[n, v, v] = 1
+
+    return dxdoth
