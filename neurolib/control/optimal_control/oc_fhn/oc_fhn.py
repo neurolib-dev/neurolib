@@ -92,7 +92,9 @@ class OcFhn(OC):
             assert (control[n, 0, :] == self.model.params["x_ext"][n, :]).all()
             assert (control[n, 1, :] == self.model.params["y_ext"][n, :]).all()
 
-        self.control = update_control_with_limit(control, 0.0, np.zeros(control.shape), self.maximum_control_strength)
+        self.control = update_control_with_limit(
+            self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
+        )
 
         self.model_params = self.get_model_params()
 

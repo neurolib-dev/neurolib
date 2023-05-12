@@ -963,7 +963,7 @@ def compute_hx(
 
     hx = np.zeros((N, T, V, V))
 
-    nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
+    nw_input, nw_input_sq = compute_nw_input(N, T, dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
 
     for n in range(N):
         for t in range(T):
@@ -987,15 +987,15 @@ def compute_hx(
 
 
 @numba.njit
-def compute_nw_input(re, cmat, dmat_ndt, c_gl, Ke_gl):
-    nw_input = np.zeros((re.shape[0], re.shape[1]))
+def compute_nw_input(N, T, re, cmat, dmat_ndt, c_gl, Ke_gl):
+    nw_input = np.zeros((N, T))
     nw_input_sq = nw_input.copy()
 
-    for n in range(nw_input.shape[0]):
-        for l in range(nw_input.shape[0]):
+    for n in range(N):
+        for l in range(T):
             if n == l and cmat[n, l] != 0.0:
                 print("WARNING: Cmat diagonal not zero.")
-            for t in range(nw_input.shape[1]):
+            for t in range(T):
                 nw_input[n, t] += cmat[n, l] * re[l, t - 1 - dmat_ndt[n, l]]
                 nw_input_sq[n, t] += cmat[n, l] ** 2 * re[l, t - 1 - dmat_ndt[n, l]]
 
@@ -1203,7 +1203,7 @@ def compute_hx_de(
     Ke_gl = model_params[-1]
 
     hx = np.zeros((N, T, V, V))
-    nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
+    nw_input, nw_input_sq = compute_nw_input(N, T, dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
 
     for n in range(N):
         for t in range(T):
@@ -1422,7 +1422,7 @@ def compute_hx_di(
     Ke_gl = model_params[-1]
 
     hx = np.zeros((N, T, V, V))
-    nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
+    nw_input, nw_input_sq = compute_nw_input(N, T, dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
 
     for n in range(N):
         for t in range(T):
@@ -1491,7 +1491,7 @@ def compute_hx_nw(
     Ke_gl = model_params[-1]
 
     hx_nw = np.zeros((N, N, T, V, V))
-    nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
+    nw_input, nw_input_sq = compute_nw_input(N, T, dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
 
     for n1 in range(N):
         for n2 in range(N):
@@ -1702,7 +1702,7 @@ def Duh(model_params, precomp_factors, N, V_in, V_vars, T, fullstate, cmat, dmat
         sig_ii_factor,
     ) = precomp_factors
 
-    nw_input, nw_input_sq = compute_nw_input(fullstate[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
+    nw_input, nw_input_sq = compute_nw_input(N, T, fullstate[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
 
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):

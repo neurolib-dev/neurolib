@@ -14,7 +14,7 @@ from neurolib.models.aln.timeIntegration import (
 
 
 @numba.njit
-def compute_gradient(N, dim_in, T, df_du, adjoint_state, control_matrix, d_du):
+def compute_gradient(N, V, dim_in, T, df_du, adjoint_state, control_matrix, d_du):
     """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
        state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
        wrt. explicit control contributions.
@@ -43,7 +43,7 @@ def compute_gradient(N, dim_in, T, df_du, adjoint_state, control_matrix, d_du):
         for v in range(dim_in):
             for t in range(T):
                 grad[n, v, t] = df_du[n, v, t]
-                for k in range(adjoint_state.shape[1]):
+                for k in range(V):
                     grad[n, v, t] += control_matrix[n, v] * adjoint_state[n, k, t] * d_du[n, k, v, t]
 
     return grad
@@ -108,7 +108,9 @@ class OcAln(OC):
             control[n, 0, 0] = 0.0
             control[n, 1, 0] = 0.0
 
-        self.control = update_control_with_limit(control, 0.0, np.zeros(control.shape), self.maximum_control_strength)
+        self.control = update_control_with_limit(
+            self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
+        )
         self.fullstate = self.get_fullstate()
 
         if self.model.params.filter_sigma:
@@ -439,7 +441,9 @@ class OcAln(OC):
         df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
         d_du = self.Duh()
 
-        return compute_gradient(self.N, self.dim_in, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)
+        return compute_gradient(
+            self.N, self.V, self.dim_in, self.T, df_du, self.adjoint_state, self.control_matrix, d_du
+        )
 
     def get_fullstate(self):
         T, N = self.T, self.N
