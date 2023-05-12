@@ -724,11 +724,11 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
 
 
 @numba.njit
-def jacobian_aln(aln_model_params, precomp_factors, V, fullstate, ue, ui, nw_input, nw_input_sq, re_del, ri_del):
+def jacobian_aln(model_params, precomp_factors, V, fullstate, ue, ui, nw_input, nw_input_sq, re_del, ri_del):
     """Jacobian of the ALN dynamical system.
 
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param V:                   Number of system variables.
@@ -775,7 +775,7 @@ def jacobian_aln(aln_model_params, precomp_factors, V, fullstate, ue, ui, nw_inp
         b,
         c_gl,
         Ke_gl,
-    ) = aln_model_params
+    ) = model_params
     (
         z1ee_f,
         z2ee_f,
@@ -917,7 +917,7 @@ def jacobian_aln(aln_model_params, precomp_factors, V, fullstate, ue, ui, nw_inp
 
 @numba.njit
 def compute_hx(
-    aln_model_params,
+    model_params,
     precomp_factors,
     N,
     V,
@@ -931,8 +931,8 @@ def compute_hx(
 ):
     """Jacobian of the ALN dynamical system.
 
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param N:                   Number of nodes in the network.
@@ -958,8 +958,8 @@ def compute_hx(
     :rtype:                     np.ndarray
     """
 
-    c_gl = aln_model_params[-2]
-    Ke_gl = aln_model_params[-1]
+    c_gl = model_params[-2]
+    Ke_gl = model_params[-1]
 
     hx = np.zeros((N, T, V, V))
 
@@ -971,7 +971,7 @@ def compute_hx(
             ui = control[n, 1, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_aln(
-                aln_model_params,
+                model_params,
                 precomp_factors,
                 V,
                 dyn_vars[n, :, t],
@@ -1007,7 +1007,7 @@ def compute_nw_input(re, cmat, dmat_ndt, c_gl, Ke_gl):
 
 @numba.njit
 def jacobian_de(
-    aln_model_params,
+    model_params,
     precomp_factors,
     V,
     fullstate,
@@ -1019,8 +1019,8 @@ def jacobian_de(
 ):
     """Jacobian of the ALN dynamical system wrt relations with delay de
 
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param V:                   Number of system variables.
@@ -1064,7 +1064,7 @@ def jacobian_de(
         b,
         c_gl,
         Ke_gl,
-    ) = aln_model_params
+    ) = model_params
     (
         z1ee_f,
         z2ee_f,
@@ -1159,7 +1159,7 @@ def jacobian_de(
 
 @numba.njit
 def compute_hx_de(
-    aln_model_params,
+    model_params,
     precomp_factors,
     N,
     V,
@@ -1173,8 +1173,8 @@ def compute_hx_de(
 ):
     """Jacobian of the ALN dynamical system wrt variables delayed by de
 
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param N:                   Number of nodes in the network.
@@ -1199,8 +1199,8 @@ def compute_hx_de(
     :return:                    N x T x V x V Jacobian matrix of delayed variables
     :rtype:                     np.ndarray
     """
-    c_gl = aln_model_params[-2]
-    Ke_gl = aln_model_params[-1]
+    c_gl = model_params[-2]
+    Ke_gl = model_params[-1]
 
     hx = np.zeros((N, T, V, V))
     nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
@@ -1211,7 +1211,7 @@ def compute_hx_de(
             ui = control[n, 1, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_de(
-                aln_model_params,
+                model_params,
                 precomp_factors,
                 V,
                 dyn_vars[n, :, t],
@@ -1227,7 +1227,7 @@ def compute_hx_de(
 
 @numba.njit
 def jacobian_di(
-    aln_model_params,
+    model_params,
     precomp_factors,
     V,
     fullstate,
@@ -1238,8 +1238,8 @@ def jacobian_di(
     ri_del,
 ):
     """Jacobian of the ALN dynamical system wrt relations with delay di
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param V:                   Number of system variables.
@@ -1283,7 +1283,7 @@ def jacobian_di(
         b,
         c_gl,
         Ke_gl,
-    ) = aln_model_params
+    ) = model_params
     (
         z1ee_f,
         z2ee_f,
@@ -1377,7 +1377,7 @@ def jacobian_di(
 
 @numba.njit
 def compute_hx_di(
-    aln_model_params,
+    model_params,
     precomp_factors,
     N,
     V,
@@ -1391,8 +1391,8 @@ def compute_hx_di(
 ):
     """Jacobian of the ALN dynamical system wrt variables delayed by di
 
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param N:                   Number of nodes in the network.
@@ -1418,8 +1418,8 @@ def compute_hx_di(
     :rtype:                     np.ndarray
     """
 
-    c_gl = aln_model_params[-2]
-    Ke_gl = aln_model_params[-1]
+    c_gl = model_params[-2]
+    Ke_gl = model_params[-1]
 
     hx = np.zeros((N, T, V, V))
     nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
@@ -1430,7 +1430,7 @@ def compute_hx_di(
             ui = control[n, 1, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_di(
-                aln_model_params,
+                model_params,
                 precomp_factors,
                 V,
                 dyn_vars[n, :, t],
@@ -1446,7 +1446,7 @@ def compute_hx_di(
 
 @numba.njit
 def compute_hx_nw(
-    aln_model_params,
+    model_params,
     precomp_factors,
     N,
     V,
@@ -1460,8 +1460,8 @@ def compute_hx_nw(
 ):
     """Jacobian of the ALN dynamical system wrt network connections
 
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param N:                   Number of nodes in the network.
@@ -1487,8 +1487,8 @@ def compute_hx_nw(
     :rtype:                     np.ndarray
     """
 
-    c_gl = aln_model_params[-2]
-    Ke_gl = aln_model_params[-1]
+    c_gl = model_params[-2]
+    Ke_gl = model_params[-1]
 
     hx_nw = np.zeros((N, N, T, V, V))
     nw_input, nw_input_sq = compute_nw_input(dyn_vars[:, 0, :], cmat, dmat_ndt, c_gl, Ke_gl)
@@ -1499,7 +1499,7 @@ def compute_hx_nw(
                 re_del, ri_del = dyn_vars[n1, 0, t - ndt_de], dyn_vars[n1, 1, t - ndt_di]
                 ue = control[n1, 0, t]
                 hx_nw[n1, n2, t, :, :] = jacobian_nw(
-                    aln_model_params,
+                    model_params,
                     precomp_factors,
                     V,
                     dyn_vars[n1, :, t],
@@ -1515,7 +1515,7 @@ def compute_hx_nw(
 
 @numba.njit
 def jacobian_nw(
-    aln_model_params,
+    model_params,
     precomp_factors,
     V,
     fullstate,
@@ -1527,8 +1527,8 @@ def jacobian_nw(
 ):
     """Jacobian of the ALN dynamical system wrt network connections
 
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param V:                   Number of system variables.
@@ -1573,7 +1573,7 @@ def jacobian_nw(
         b,
         c_gl,
         Ke_gl,
-    ) = aln_model_params
+    ) = model_params
     (
         z1ee_f,
         z2ee_f,
@@ -1638,11 +1638,11 @@ def jacobian_nw(
 
 
 @numba.njit
-def Duh(aln_model_params, precomp_factors, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
+def Duh(model_params, precomp_factors, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
     """Derivative of systems dynamics wrt. external inputs (control signals).
 
-    :param aln_model_params:    Ordered tuple of parameters in the ALNModel in order
-    :type aln_model_params:     tuple of float and np.ndarray
+    :param model_params:    Ordered tuple of parameters in the ALNModel in order
+    :type model_params:     tuple of float and np.ndarray
     :param precomp_factors:     Ordered tuple of precomputed factors required repeatedly in the computation
     :type precomp_factors:      tuple of float
     :param N:                   Number of nodes in the network.
@@ -1686,7 +1686,7 @@ def Duh(aln_model_params, precomp_factors, N, V_in, V_vars, T, fullstate, cmat, 
         b,
         c_gl,
         Ke_gl,
-    ) = aln_model_params
+    ) = model_params
     (
         z1ee_f,
         z2ee_f,

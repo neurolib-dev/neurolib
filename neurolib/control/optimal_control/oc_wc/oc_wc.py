@@ -95,6 +95,7 @@ class OcWc(OC):
             assert (self.background[n, 1, :] == self.model.params["inh_ext"][n, :]).all()
 
         self.control = np.zeros((self.background.shape))  # control is of shape N x 2 x T, controls of 'exc' and 'inh'
+        self.model_params = self.get_model_params()
 
     def get_xs_delay(self):
         """Concatenates the initial conditions with simulated values and pads delay contributions at end. In the models
@@ -180,6 +181,20 @@ class OcWc(OC):
         """Derivative of systems dynamics wrt. change of systems variables."""
         return Dxdoth(self.N, self.dim_vars)
 
+    def get_model_params(self):
+        return (
+            self.model.params.tau_exc,
+            self.model.params.tau_inh,
+            self.model.params.a_exc,
+            self.model.params.a_inh,
+            self.model.params.mu_exc,
+            self.model.params.mu_inh,
+            self.model.params.c_excexc,
+            self.model.params.c_inhexc,
+            self.model.params.c_excinh,
+            self.model.params.c_inhinh,
+        )
+
     def Duh(self):
         """Jacobian of systems dynamics wrt. external control input.
 
@@ -199,19 +214,10 @@ class OcWc(OC):
         ui = input[:, 1, :]
 
         return Duh(
+            self.model_params,
             self.N,
             self.dim_out,
             self.T,
-            self.model.params.c_excexc,
-            self.model.params.c_inhexc,
-            self.model.params.c_excinh,
-            self.model.params.c_inhinh,
-            self.model.params.a_exc,
-            self.model.params.a_inh,
-            self.model.params.mu_exc,
-            self.model.params.mu_inh,
-            self.model.params.tau_exc,
-            self.model.params.tau_inh,
             nw_e,
             ue,
             ui,
@@ -235,18 +241,7 @@ class OcWc(OC):
         :rtype:     np.ndarray
         """
         return compute_hx(
-            (
-                self.model.params.tau_exc,
-                self.model.params.tau_inh,
-                self.model.params.a_exc,
-                self.model.params.a_inh,
-                self.model.params.mu_exc,
-                self.model.params.mu_inh,
-                self.model.params.c_excexc,
-                self.model.params.c_inhexc,
-                self.model.params.c_excinh,
-                self.model.params.c_inhinh,
-            ),
+            self.model_params,
             self.model.params.K_gl,
             self.model.Cmat,
             self.Dmat_ndt,
@@ -273,6 +268,7 @@ class OcWc(OC):
         ue = self.background[:, 0, :] + self.control[:, 0, :]
 
         return compute_hx_nw(
+            self.model_params,
             self.model.params.K_gl,
             self.model.Cmat,
             self.Dmat_ndt,
@@ -283,11 +279,6 @@ class OcWc(OC):
             i,
             e_delay,
             ue,
-            self.model.params.tau_exc,
-            self.model.params.a_exc,
-            self.model.params.mu_exc,
-            self.model.params.c_excexc,
-            self.model.params.c_inhexc,
         )
 
     def compute_gradient(self):

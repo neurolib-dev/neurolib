@@ -117,7 +117,7 @@ class OcAln(OC):
         self.ndt_de = np.around(self.model.params.de / self.dt).astype(int)
         self.ndt_di = np.around(self.model.params.di / self.dt).astype(int)
 
-        self.aln_model_params = self.get_model_params()
+        self.model_params = self.get_model_params()
         self.precomp_factors = self.get_precomp_factors()
 
     def get_xs_delay(self):
@@ -326,7 +326,7 @@ class OcAln(OC):
         """
 
         return Duh(
-            self.aln_model_params,
+            self.model_params,
             self.precomp_factors,
             self.N,
             self.dim_in,
@@ -359,7 +359,7 @@ class OcAln(OC):
         """
 
         return compute_hx(
-            self.aln_model_params,
+            self.model_params,
             self.precomp_factors,
             self.N,
             self.dim_vars,
@@ -374,7 +374,7 @@ class OcAln(OC):
 
     def compute_hx_de(self):
         return compute_hx_de(
-            self.aln_model_params,
+            self.model_params,
             self.precomp_factors,
             self.N,
             self.dim_vars,
@@ -389,7 +389,7 @@ class OcAln(OC):
 
     def compute_hx_di(self):
         return compute_hx_di(
-            self.aln_model_params,
+            self.model_params,
             self.precomp_factors,
             self.N,
             self.dim_vars,
@@ -410,7 +410,7 @@ class OcAln(OC):
         """
 
         return compute_hx_nw(
-            self.aln_model_params,
+            self.model_params,
             self.precomp_factors,
             self.N,
             self.dim_vars,

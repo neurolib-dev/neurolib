@@ -97,8 +97,7 @@ class OcHopf(OC):
 
         self.control = update_control_with_limit(control, 0.0, np.zeros(control.shape), self.maximum_control_strength)
 
-        # save control signals throughout optimization iterations for later analysis
-        # self.control_history.append(self.control)
+        self.model_params = self.get_model_params()
 
     def get_xs(self):
         """Stack the initial condition with the simulation results for dynamic variables 'x' and 'y' of Hopf model.
@@ -145,6 +144,12 @@ class OcHopf(OC):
         """Derivative of systems dynamics wrt. change of systems variables."""
         return Dxdoth(self.N, self.dim_vars)
 
+    def get_model_params(self):
+        return (
+            self.model.params.a,
+            self.model.params.w,
+        )
+
     def Duh(self):
         """4 x 4 Jacobian of systems dynamics wrt. external inputs (control signals) to all 'state_vars'. There are no
            inputs to the noise variables 'x_ou' and 'y_ou' in the model.
@@ -169,8 +174,7 @@ class OcHopf(OC):
         :rtype:         np.ndarray of shape N x T x 4 x 4
         """
         return compute_hx(
-            self.model.params.a,
-            self.model.params.w,
+            self.model_params,
             self.N,
             self.dim_vars,
             self.T,

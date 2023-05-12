@@ -264,8 +264,6 @@ class TestHopf(unittest.TestCase):
 
         model.run()
 
-        self.assertTrue(np.amax(model.params.Dmat_ndt) >= 1)  # Relates to the given "delay" and time-discretization.
-
         target = np.concatenate(
             (
                 np.stack(
@@ -287,8 +285,6 @@ class TestHopf(unittest.TestCase):
             cost_matrix=cost_mat,
         )
 
-        self.assertTrue((model.params.Dmat_ndt == model_controlled.Dmat_ndt).all())
-
         control_coincide = False
 
         iterations = 4000
@@ -297,14 +293,7 @@ class TestHopf(unittest.TestCase):
             control = model_controlled.control
 
             # last few entries of adjoint_state[0,0,:] are zero
-            self.assertTrue(
-                np.amax(
-                    np.abs(
-                        model_controlled.adjoint_state[0, 0, -np.around(np.amax(model.params.Dmat_ndt)).astype(int) :]
-                    )
-                )
-                == 0.0
-            )
+            self.assertTrue(np.amax(np.abs(model_controlled.adjoint_state[0, 0, -model.getMaxDelay() :])) == 0.0)
 
             c_diff_max = np.amax(np.abs(control[0, 0, :] - input[0, :]))
             if c_diff_max < LIMIT_DIFF:
