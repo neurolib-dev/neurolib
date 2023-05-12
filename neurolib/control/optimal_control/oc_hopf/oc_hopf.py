@@ -114,6 +114,7 @@ class OcHopf(OC):
         return Dxdoth(self.N, self.dim_vars)
 
     def get_model_params(self):
+        """Model params as an ordered tuple"""
         return (
             self.model.params.a,
             self.model.params.w,

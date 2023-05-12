@@ -74,6 +74,12 @@ def decrease_step(controlled_model, N, dim_in, T, cost, cost0, step, control0, f
 
     :param controlled_model: Instance of optimal control object.
     :type controlled_model:  neurolib.optimal_control.oc.OC
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param dim_in: Number of 'input variables' of the model.
+    :type dim_in:  int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
     :param cost:    Cost after applying control update according to gradient with first valid step size (numerically
                     stable).
     :type cost:     float
@@ -138,6 +144,12 @@ def increase_step(controlled_model, N, dim_in, T, cost, cost0, step, control0, f
 
     :param controlled_model: Instance of optimal control object.
     :type controlled_model:  neurolib.optimal_control.oc.OC
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param dim_in: Number of 'input variables' of the model.
+    :type dim_in:  int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
     :param cost:    Cost after applying control update according to gradient with first valid step size (numerically
                     stable).
     :type cost:     float
@@ -310,15 +322,13 @@ def update_control_with_limit(N, dim_in, T, control, step, gradient, u_max):
 
     :param control:         N x V x T array. Control signals.
     :type control:          np.ndarray
-
     :param step:            Step size along the gradients.
     :type step:             float
-
     :param gradient:        N x V x T array of the gradients.
     :type gradient:         np.ndarray
-
     :param u_max:           Maximum absolute value allowed for the strength of the control signal.
     :type u_max:            float or None
+
     :return:                N x V x T array containing the new control signal, updated according to 'step' and
                             'gradient' with the maximum absolute values being limited by 'u_max'.
     :rtype:                 np.ndarray
@@ -647,21 +657,6 @@ class OC:
     def solve_adjoint(self):
         """Backwards integration of the adjoint state."""
 
-        """
-        hx = self.compute_hx()
-        
-
-        if self.model.name == "aln":
-
-            hx_de = self.compute_hx_de()
-            hx_di = self.compute_hx_di()
-        else:
-            hx_de = np.zeros(hx.shape)
-            hx_di = np.zeros(hx.shape)
-
-        hx_list = numba.typed.List([hx, hx_de, hx_di])
-        del_list = numba.typed.List([0, self.ndt_de, self.ndt_di])
-        """
         if self.model.name == "aln":
             self.fullstate = self.get_fullstate()
 
@@ -705,6 +700,7 @@ class OC:
 
         :param cost_gradient:   N x V x T gradient of the total cost wrt. control.
         :type cost_gradient:    np.ndarray
+
         :return:    Step size that got multiplied with the 'cost_gradient'.
         :rtype:     float
         """
@@ -922,6 +918,9 @@ class OC:
 
     def compute_cost_noisy(self, M):
         """Computes the average cost from 'M_validation' noise realizations.
+
+        :param M:                   Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
+        :type M:                    int, optional
 
         :rtype: float
         """

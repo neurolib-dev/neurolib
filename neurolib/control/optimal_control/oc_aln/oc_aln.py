@@ -199,6 +199,7 @@ class OcAln(OC):
         return Dxdoth(self.N, self.dim_vars)
 
     def get_model_params(self):
+        """Model params as an ordered tuple"""
         return (
             self.model.params.sigmarange,
             self.model.params.ds,
@@ -225,6 +226,7 @@ class OcAln(OC):
         )
 
     def get_precomp_factors(self):
+        """Precomputed factors as an ordered tuple"""
         return (
             self.model.params.cee
             * self.model.params.Ke
@@ -320,7 +322,7 @@ class OcAln(OC):
     def compute_hx(self):
         """Jacobians of ALNModel wrt. the 'e'- and 'i'-variable for each time step.
 
-        :return:    N x T x 4 x 4 Jacobians.
+        :return:    N x T x V x V Jacobians.
         :rtype:     np.ndarray
         """
 
@@ -339,6 +341,11 @@ class OcAln(OC):
         )
 
     def compute_hx_de(self):
+        """Jacobians of ALNModel wrt. the variables delayed by de
+
+        :return:    N x T x V x V Jacobians.
+        :rtype:     np.ndarray
+        """
         return compute_hx_de(
             self.model_params,
             self.precomp_factors,
@@ -354,6 +361,11 @@ class OcAln(OC):
         )
 
     def compute_hx_di(self):
+        """Jacobians of ALNModel wrt. the variables delayed by di
+
+        :return:    N x T x V x V Jacobians.
+        :rtype:     np.ndarray
+        """
         return compute_hx_di(
             self.model_params,
             self.precomp_factors,
@@ -371,7 +383,7 @@ class OcAln(OC):
     def compute_hx_nw(self):
         """Jacobians for each time step for the network coupling.
 
-        :return: N x N x T x (4x4) array
+        :return: N x N x T x V x V array
         :rtype: np.ndarray
         """
 
@@ -390,6 +402,11 @@ class OcAln(OC):
         )
 
     def get_fullstate(self):
+        """Compute the full state (all 16 variables) of the ALN model by stepwise forward integration.
+
+        :return:    N x V x T state vector
+        :rtype:     np.ndarray
+        """
         T, N = self.T, self.N
         self.simulate_forward()
         maxdel = self.model.getMaxDelay()
@@ -438,6 +455,14 @@ class OcAln(OC):
         return fullstate
 
     def setasinit(self, fullstate, t):
+        """Set the initial state of the ALN model as defined by input 'fullstate'
+
+        :param fullstate:   state vector to read initial state from
+        :type fullstate:    np.ndarray
+        :param t:           time index
+        :type t:            int
+        """
+
         N = len(self.model.params.Cmat)
         V = len(self.model.init_vars)
         T = self.model.getMaxDelay() + 1
@@ -454,6 +479,11 @@ class OcAln(OC):
                     self.model.params[self.model.init_vars[v]] = fullstate[:, v, t]
 
     def getinitstate(self):
+        """Read the initial state of the ALN model
+
+        :return:            initial state of the ALN model as N x V x N_maxdelay array
+        :rtype t:           np.ndarray
+        """
         N = len(self.model.params.Cmat)
         V = len(self.model.init_vars)
         T = self.model.getMaxDelay() + 1
@@ -469,6 +499,11 @@ class OcAln(OC):
         return initstate
 
     def getfinalstate(self):
+        """Read the final state of the ALN model (only last timestep)
+
+        :return:            final state of the ALN model as N x V matrix
+        :rtype t:           np.ndarray
+        """
         N = len(self.model.params.Cmat)
         V = len(self.model.state_vars)
         state = np.zeros((N, V))
@@ -482,6 +517,11 @@ class OcAln(OC):
         return state
 
     def setinitstate(self, state):
+        """Set the initial state of the ALN model as defined by final values of state
+
+        :param state:       state vector to read initial state from
+        :type state:        np.ndarray
+        """
         N = len(self.model.params.Cmat)
         V = len(self.model.init_vars)
         T = self.model.getMaxDelay() + 1

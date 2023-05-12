@@ -341,8 +341,10 @@ def Duh(
 
     :param N:               Number of nodes in the network.
     :type N:                int
-    :param V:               Number of system variables.
-    :type V:                int
+    :param V_in:            Number of input variables.
+    :type V_in:             int
+    :param V_vars:          Number of system variables.
+    :type V_vars:           int
     :param T:               Length of simulation (time dimension).
     :type T:                int
 

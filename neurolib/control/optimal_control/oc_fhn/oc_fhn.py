@@ -112,6 +112,7 @@ class OcFhn(OC):
         return Dxdoth(self.N, self.dim_vars)
 
     def get_model_params(self):
+        """Model params as an ordered tuple"""
         return (
             self.model.params.alpha,
             self.model.params.beta,
