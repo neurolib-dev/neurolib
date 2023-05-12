@@ -125,8 +125,9 @@ class TestOC(unittest.TestCase):
         step = 1.0
         cost_gradient = self.get_arbitrary_array()
         u_max = None
+        (N, dim_in, T) = control.shape
 
-        control_limited = update_control_with_limit(control, step, cost_gradient, u_max)
+        control_limited = update_control_with_limit(N, dim_in, T, control, step, cost_gradient, u_max)
 
         self.assertTrue(np.all(control_limited == control + step * cost_gradient))
 
@@ -139,8 +140,9 @@ class TestOC(unittest.TestCase):
         step = 1.0
         cost_gradient = self.get_arbitrary_array()
         u_max = 5.0
+        (N, dim_in, T) = control.shape
 
-        control_limited = update_control_with_limit(control, step, cost_gradient, u_max)
+        control_limited = update_control_with_limit(N, dim_in, T, control, step, cost_gradient, u_max)
 
         self.assertTrue(np.all(np.abs(control_limited) <= u_max))
 

@@ -992,7 +992,9 @@ def compute_nw_input(N, T, re, cmat, dmat_ndt, c_gl, Ke_gl):
     nw_input_sq = nw_input.copy()
 
     for n in range(N):
-        for l in range(T):
+        for l in range(N):
+            if cmat[n, l] == 0.0:
+                continue
             if n == l and cmat[n, l] != 0.0:
                 print("WARNING: Cmat diagonal not zero.")
             for t in range(T):
@@ -1495,6 +1497,8 @@ def compute_hx_nw(
 
     for n1 in range(N):
         for n2 in range(N):
+            if cmat[n1, n2] == 0.0:
+                continue
             for t in range(T):
                 re_del, ri_del = dyn_vars[n1, 0, t - ndt_de], dyn_vars[n1, 1, t - ndt_di]
                 ue = control[n1, 0, t]

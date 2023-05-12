@@ -662,7 +662,6 @@ class OC:
 
         hx_nw = self.compute_hx_nw()
         dxdoth = self.compute_dxdoth()
-
         hx_list, del_list = self.compute_hx_list()
 
         # Derivative of cost wrt. controllable 'state_vars'.
