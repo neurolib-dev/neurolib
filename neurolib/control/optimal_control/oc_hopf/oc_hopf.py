@@ -2,40 +2,7 @@ from neurolib.control.optimal_control.oc import OC, update_control_with_limit
 from neurolib.control.optimal_control import cost_functions
 import numba
 import numpy as np
-from neurolib.models.hopf.timeIntegration import compute_hx, compute_hx_nw, Dxdoth
-
-
-@numba.njit
-def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
-    """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
-       state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
-       wrt. explicit control contributions.
-
-    :param N:       Number of nodes in the network.
-    :type N:        int
-    :param dim_out: Number of 'output variables' of the model.
-    :type dim_out:  int
-    :param T:       Length of simulation (time dimension).
-    :type T:        int
-    :param df_du:   Derivative of the cost wrt. the explicit control contributions to cost functionals.
-    :type df_du:    np.ndarray of shape N x V x T
-    :param adjoint_state:  Solution of the adjoint equation.
-    :type adjoint_state:   np.ndarray of shape N x V x T
-    :param control_matrix: Binary matrix that defines nodes and variables where control inputs are active, defaults to
-                           None.
-    :type control_matrix:  np.ndarray of shape N x V
-    :param d_du:     Jacobian of systems dynamics wrt. the external inputs (control).
-    :type d_du:      np.ndarray of shape V x V
-    :return:         The gradient of the total cost wrt. the control.
-    :rtype:          np.ndarray of shape N x V x T
-    """
-    grad = np.zeros(df_du.shape)
-    for n in range(N):
-        for v in range(dim_out):
-            for t in range(T):
-                grad[n, v, t] = df_du[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * d_du[v, v]
-
-    return grad
+from neurolib.models.hopf.timeIntegration import compute_hx, compute_hx_nw, Dxdoth, Duh
 
 
 class OcHopf(OC):
@@ -158,7 +125,12 @@ class OcHopf(OC):
 
         :rtype:     np.ndarray of shape 4 x 4
         """
-        return np.array([[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        return Duh(
+            self.N,
+            self.dim_in,
+            self.dim_vars,
+            self.T,
+        )
 
     def compute_hx_list(self):
         """List of Jacobians without and with time delays (e.g. in the ALN model) and list of respective time step delays as integers (0 for undelayed)
@@ -197,18 +169,3 @@ class OcHopf(OC):
             self.dim_vars,
             self.T,
         )
-
-    def compute_gradient(self):
-        """Compute the gradient of the total cost wrt. the control signals. This is achieved by first, solving the
-           adjoint equation backwards in time. Second, derivatives of the cost wrt. explicit control variables are
-           evaluated as well as the Jacobians of the dynamics wrt. explicit control. Then the decent direction /
-           gradient of the cost wrt. control (in its explicit form AND IMPLICIT FORM) is computed.
-
-        :return:         The gradient of the total cost wrt. the control.
-        :rtype:          np.ndarray of shape N x V x T
-        """
-        self.solve_adjoint()
-        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
-        d_du = self.Duh()
-
-        return compute_gradient(self.N, self.dim_out, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)

@@ -5,40 +5,6 @@ import numba
 from neurolib.models.wc.timeIntegration import compute_hx, compute_nw_input, compute_hx_nw, Duh, Dxdoth
 
 
-@numba.njit
-def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
-    """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
-       state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
-       wrt. explicit control contributions.
-
-    :param N:       Number of nodes in the network.
-    :type N:        int
-    :param dim_out: Number of 'output variables' of the model.
-    :type dim_out:  int
-    :param T:       Length of simulation (time dimension).
-    :type T:        int
-    :param df_du:      Derivative of the cost wrt. the explicit control contributions to cost functionals.
-    :type df_du:       np.ndarray of shape N x V x T
-    :param adjoint_state:   Solution of the adjoint equation.
-    :type adjoint_state:    np.ndarray of shape N x V x T
-    :param control_matrix:  Binary matrix that defines nodes and variables where control inputs are active, defaults to
-                            None.
-    :type control_matrix:   np.ndarray of shape N x V
-    :param d_du:    Jacobian of systems dynamics wrt. I_ext (external control input)
-    :type d_du:     np.ndarray of shape V x V
-    :return:        The gradient of the total cost wrt. the control.
-    :rtype:         np.ndarray of shape N x V x T
-    """
-    grad = np.zeros(df_du.shape)
-
-    for n in range(N):
-        for v in range(dim_out):
-            for t in range(T):
-                grad[n, v, t] = df_du[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * d_du[n, v, v, t]
-
-    return grad
-
-
 class OcWc(OC):
     """Class for optimal control specific to neurolib's implementation of the two-population Wilson-Cowan model
             ("WCmodel").
@@ -207,7 +173,6 @@ class OcWc(OC):
         i = xs[:, 1, :]
         xsd = self.get_xs_delay()
         ed = xsd[:, 0, :]
-        nw_e = compute_nw_input(self.N, self.T, self.model.params.K_gl, self.model.Cmat, self.Dmat_ndt, ed)
 
         input = self.background + self.control
         ue = input[:, 0, :]
@@ -216,13 +181,17 @@ class OcWc(OC):
         return Duh(
             self.model_params,
             self.N,
-            self.dim_out,
+            self.dim_in,
+            self.dim_vars,
             self.T,
-            nw_e,
             ue,
             ui,
             e,
             i,
+            self.model.params.K_gl,
+            self.model.params.Cmat,
+            self.Dmat_ndt,
+            ed,
         )
 
     def compute_hx_list(self):
@@ -280,19 +249,3 @@ class OcWc(OC):
             e_delay,
             ue,
         )
-
-    def compute_gradient(self):
-        """Compute the gradient of the total cost wrt. the control:
-        1. solve the adjoint equation backwards in time
-        2. compute derivatives of cost wrt. control
-        3. compute Jacobians of the dynamics wrt. control
-        4. compute gradient of the cost wrt. control(i.e., negative descent direction)
-
-        :return:        The gradient of the total cost wrt. the control.
-        :rtype:         np.ndarray of shape N x V x T
-        """
-        self.solve_adjoint()
-        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
-        d_du = self.Duh()
-
-        return compute_gradient(self.N, self.dim_out, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)

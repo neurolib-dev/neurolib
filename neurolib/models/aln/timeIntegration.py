@@ -1638,7 +1638,17 @@ def jacobian_nw(
 
 
 @numba.njit
-def Duh(model_params, precomp_factors, N, V_in, V_vars, T, fullstate, cmat, dmat_ndt):
+def Duh(
+    model_params,
+    precomp_factors,
+    N,
+    V_in,
+    V_vars,
+    T,
+    fullstate,
+    cmat,
+    dmat_ndt,
+):
     """Derivative of systems dynamics wrt. external inputs (control signals).
 
     :param model_params:    Ordered tuple of parameters in the ALNModel in order

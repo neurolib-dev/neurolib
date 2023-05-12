@@ -474,13 +474,18 @@ def compute_hx_nw(
 def Duh(
     model_params,
     N,
-    V,
+    V_in,
+    V_vars,
     T,
     nw_e,
     ue,
     ui,
     e,
     i,
+    K_gl,
+    cmat,
+    dmat_ndt,
+    ed,
 ):
     """Jacobian of systems dynamics wrt. external inputs (control signals).
 
@@ -508,7 +513,9 @@ def Duh(
 
     (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh) = model_params
 
-    duh = np.zeros((N, V, V, T))
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, ed)
+
+    duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
         for n in range(N):
             input_exc = c_excexc * e[n, t] - c_inhexc * i[n, t] + nw_e[n, t] + ue[n, t]

@@ -314,6 +314,33 @@ def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
 
 
 @numba.njit
+def Duh(
+    N,
+    V_in,
+    V_vars,
+    T,
+):
+    """Jacobian of systems dynamics wrt. external inputs (control signals).
+
+    :param N:               Number of nodes in the network.
+    :type N:                int
+    :param V:               Number of system variables.
+    :type V:                int
+    :param T:               Length of simulation (time dimension).
+    :type T:                int
+
+    :rtype:     np.ndarray of shape N x V x V x T
+    """
+
+    duh = np.zeros((N, V_vars, V_in, T))
+    for t in range(T):
+        for n in range(N):
+            duh[n, 0, 0, t] = -1.0
+            duh[n, 1, 1, t] = -1.0
+    return duh
+
+
+@numba.njit
 def Dxdoth(N, V):
     """Derivative of system dynamics wrt x dot
 

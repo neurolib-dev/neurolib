@@ -22,6 +22,51 @@ def getdefaultweights():
     return weights
 
 
+@numba.njit
+def compute_gradient(
+    N,
+    V,
+    dim_out,
+    T,
+    df_du,
+    adjoint_state,
+    control_matrix,
+    d_du,
+):
+    """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
+       state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
+       wrt. explicit control contributions.
+
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of  variables of the model.
+    :type V:        int
+    :param dim_out: Number of 'output variables' of the model.
+    :type dim_out:  int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
+    :param df_du:   Derivative of the cost wrt. the explicit control contributions to cost functionals.
+    :type df_du:    np.ndarray of shape N x V x T
+    :param adjoint_state:  Solution of the adjoint equation.
+    :type adjoint_state:   np.ndarray of shape N x V x T
+    :param control_matrix: Binary matrix that defines nodes and variables where control inputs are active, defaults to
+                           None.
+    :type control_matrix:  np.ndarray of shape N x V
+    :param d_du:     Jacobian of systems dynamics wrt. the external inputs (control).
+    :type d_du:      np.ndarray of shape V x V
+    :return:         The gradient of the total cost wrt. the control.
+    :rtype:          np.ndarray of shape N x V x T
+    """
+    grad = np.zeros(df_du.shape)
+    for n in range(N):
+        for v in range(dim_out):
+            for t in range(T):
+                grad[n, v, t] = df_du[n, v, t]
+                for k in range(V):
+                    grad[n, v, t] += control_matrix[n, v] * adjoint_state[n, k, t] * d_du[n, k, v, t]
+    return grad
+
+
 def decrease_step(controlled_model, N, dim_in, T, cost, cost0, step, control0, factor_down, cost_gradient):
     """Find a step size which leads to improved cost given the gradient. The step size is iteratively decreased.
         The control-inputs are updated in place according to the found step size via the
@@ -210,6 +255,10 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
                     adjoint_state[n, k, -1] = -dt * fx_fullstate[n, k, -1]
 
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
+        if t == 0:
+            if model_name == "aln":
+                break
+
         for n in range(N):  # iterate through nodes
             for k in range(state_dim[1]):
                 if dxdoth[n, k, k] == 0:
@@ -552,8 +601,24 @@ class OC:
         2. compute derivatives of cost wrt. control
         3. compute Jacobians of the dynamics wrt. control
         4. compute gradient of the cost wrt. control(i.e., negative descent direction)
+
+        :return:        The gradient of the total cost wrt. the control.
+        :rtype:         np.ndarray of shape N x V x T
         """
-        pass
+        self.solve_adjoint()
+        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
+        d_du = self.Duh()
+
+        return compute_gradient(
+            self.N,
+            self.dim_vars,
+            self.dim_in,
+            self.T,
+            df_du,
+            self.adjoint_state,
+            self.control_matrix,
+            d_du,
+        )
 
     @abc.abstractmethod
     def compute_hx(self):
@@ -597,6 +662,9 @@ class OC:
         hx_list = numba.typed.List([hx, hx_de, hx_di])
         del_list = numba.typed.List([0, self.ndt_de, self.ndt_di])
         """
+        if self.model.name == "aln":
+            self.fullstate = self.get_fullstate()
+
         hx_nw = self.compute_hx_nw()
         dxdoth = self.compute_dxdoth()
 
