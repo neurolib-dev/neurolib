@@ -293,6 +293,7 @@ class OC:
         maximum_control_strength=None,
         print_array=[],
         cost_interval=(None, None),
+        control_interval=(None, None),
         cost_matrix=None,
         control_matrix=None,
         M=1,
@@ -312,19 +313,23 @@ class OC:
         :param maximum_control_strength:    Maximum absolute value a control signal can take. No limitation of the
                                             absolute control strength if 'None'. Defaults to None.
         :type:                              float or None, optional
-        :param print_array: Array of optimization-iteration-indices (starting at 1) in which cost is printed out.
-                            Defaults to empty list `[]`.
-        :type print_array:  list, optional
-        :param cost_interval: (t_start, t_end). Indices of start and end point (both inclusive) of the
-                                        time interval in which the accuracy cost is evaluated. Default is full time
-                                        series. Defaults to (None, None).
-        :type cost_interval:  tuple, optional
-        :param cost_matrix: N x V binary matrix that defines nodes and channels of accuracy measurement, defaults
-                                 to None.
-        :type cost_matrix:  np.ndarray
-        :param control_matrix:   N x V Binary matrix that defines nodes and variables where control inputs are active,
-                                 defaults to None.
-        :type control_matrix:    np.ndarray
+        :param print_array:                 Array of optimization-iteration-indices (starting at 1) in which cost is printed out.
+                                            Defaults to empty list `[]`.
+        :type print_array:                  list, optional
+        :param cost_interval:               (t_start, t_end). Indices of start and end point (both inclusive) of the
+                                            time interval in which the accuracy cost is evaluated. Default is full time
+                                            series. Defaults to (None, None).
+        :type cost_interval:                tuple, optional
+        :param control_interval:            (t_start, t_end). Indices of start and end point (both inclusive) of the
+                                            time interval in which control can be applied. Default is full time
+                                            series. Defaults to (None, None).
+        :type control_interval:              tuple, optional
+        :param cost_matrix:                 N x V binary matrix that defines nodes and channels of accuracy measurement, defaults
+                                            to None.
+        :type cost_matrix:                  np.ndarray
+        :param control_matrix:      N x V Binary matrix that defines nodes and variables where control inputs are active,
+                                    defaults to None.
+        :type control_matrix:       np.ndarray
         :param M:                   Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
         :type M:                    int, optional
         :param M_validation:        Number of noise realizations for validation (only used in stochastic case, M>1).
@@ -452,6 +457,7 @@ class OC:
         self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
         self.cost_interval = convert_interval(cost_interval, self.T)
+        self.control_interval = convert_interval(control_interval, self.T)
 
     @abc.abstractmethod
     def get_xs(self):
@@ -619,9 +625,9 @@ class OC:
         :type n_max_iterations:  int
         """
 
-        self.cost_interval = convert_interval(
-            self.cost_interval, self.T
-        )  # Assure check in repeated calls of ".optimize()".
+        # If changed between repeated calls of ".optimize()".
+        self.cost_interval = convert_interval(self.cost_interval, self.T)
+        self.control_interval = convert_interval(self.control_interval, self.T)
 
         self.control = update_control_with_limit(
             self.control, 0.0, np.zeros(self.control.shape), self.maximum_control_strength
