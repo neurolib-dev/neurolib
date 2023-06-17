@@ -3,10 +3,6 @@ import numba
 
 from ...utils import model_utils as mu
 
-# TODO: rename variables to theta
-# TODO: loop over nodes
-# TODO: remove time_integrateion '
-# TODO: integrate input
 
 def timeIntegration(params):
     """
@@ -58,6 +54,7 @@ def timeIntegration(params):
 
         # no self-feedback delay
         Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
+    Dmat = Dmat.astype(int)
     Dmat_ndt = np.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
    
     # ------------------------------------------------------------------------
@@ -71,21 +68,25 @@ def timeIntegration(params):
 
     # Placeholders
     theta_ou = params['theta_ou'].copy()
-    thetas = np.zeros((N, startind + len(t)))
+    theta = np.zeros((N, startind + len(t)))
+
+    theta_ext = mu.adjustArrayShape(params["theta_ext"], theta)
 
     # ------------------------------------------------------------------------
     # initial values
     # ------------------------------------------------------------------------  
-    if params["thetas_init"].shape[1] == 1:
-        thetas_init = np.dot(params["thetas_init"], np.ones((1, startind)))
+    if params["theta_init"].shape[1] == 1:
+        theta_init = np.dot(params["theta_init"], np.ones((1, startind)))
     else:
-        thetas_init = params["thetas_init"][:, -startind:]
+        theta_init = params["theta_init"][:, -startind:]
     
     # put noise to instantiated array to save memory
-    thetas[:, :startind] = thetas_init
-    thetas[:, startind:] = np.random.standard_normal((N, len(t)))
+    theta[:, :startind] = theta_init
+    theta[:, startind:] = np.random.standard_normal((N, len(t)))
     
-    noise_thetas = np.zeros((N,))
+    theta_input_d = np.zeros(N)
+
+    noise_theta = np.zeros((N,))
 
     # ------------------------------------------------------------------------
     # some helper variables
@@ -97,22 +98,24 @@ def timeIntegration(params):
     # time integration
     # ------------------------------------------------------------------------
     return timeIntegration_njit_elementwise(
-        startind=startind,
-        t=t,
-        dt=dt,
-        sqrt_dt=sqrt_dt,
-        N=N,
-        omega=omega,
-        k_n=k_n,
-        Cmat=Cmat,
-        Dmat=Dmat_ndt,
-        thetas=thetas,
-        tau_ou=tau_ou,
-        sigma_ou=sigma_ou,
-        theta_ou=theta_ou,
-        theta_ou_mean=theta_ou_mean,
-        noise_thetas=noise_thetas,
-        theta_rhs=theta_rhs,
+        startind,
+        t, 
+        dt, 
+        sqrt_dt,
+        N,
+        omega,
+        k_n, 
+        Cmat,
+        Dmat,
+        theta,
+        theta_input_d,
+        theta_ext,
+        tau_ou,
+        sigma_ou,
+        theta_ou,
+        theta_ou_mean,
+        noise_theta,
+        theta_rhs,
     )
 
 
@@ -127,43 +130,39 @@ def timeIntegration_njit_elementwise(
     k_n, 
     Cmat,
     Dmat,
-    thetas,
+    theta,
+    theta_input_d,
+    theta_ext,
     tau_ou,
     sigma_ou,
     theta_ou,
     theta_ou_mean,
-    noise_thetas,
-    theta_rhs, # right hand side
+    noise_theta,
+    theta_rhs, 
 ):
     """
     Kuramoto Model 
     """
     for i in range(startind, startind+len(t)):
-        # get noise from thetas
-        noise_thetas = thetas[:, i]
+        # Kuramoto model
+        for n in range(N): 
+            noise_theta[n] = theta[n, i]
+            
+            theta_input_d[n] = 0.0
 
-        # # Kuramoto model
-        # theta_rhs[:] = 0.0
-        # for n in range(N): 
-        #     for m in range(N):
-        #         theta_rhs[n] += Cmat[n, m] * np.sin(thetas[m, i-Dmat[n, m]] - thetas[n, i-1])
-        #     theta_rhs *= k_n
+            # adding input from other nodes
+            for m in range(N):
+                theta_input_d[n] +=  k_n * Cmat[n, m] * np.sin(theta[m, i-1-Dmat[n, m]] - theta[n, i-1])
 
-        theta_rhs[:] = 0.0
-        for n, m in np.ndindex((N, N)):
-            theta_rhs[n] += Cmat[n, m] * np.sin(thetas[m, i-1-Dmat[n, m]] - thetas[n, i-1])
-        theta_rhs *= k_n
+            theta_rhs[n] = omega[n] + theta_input_d[n] + theta_ou[n] + theta_ext[n, i-1]
+            
+            # time integration
+            theta[n, i] = theta[n, i-1] + dt * theta_rhs[n]
+            
+            # cap theta to [0, 2*pi]
+            theta[n, i] = np.mod(theta[n, i], 2*np.pi)
 
-        # Ornstein-Uhlenbeck process
-        theta_ou = theta_ou + (theta_ou_mean - theta_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_thetas
-    
-        sum_theta = omega + theta_rhs + theta_ou
-        # Euler integration
-        new_theta = thetas[:, i-1] + dt * sum_theta
+            # ornstein-uhlenbeck
+            theta_ou[n] = theta_ou[n] + (theta_ou_mean - theta_ou[n]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta[n]
 
-        new_theta = np.mod(new_theta, 2*np.pi)
-
-        thetas[:, i] = new_theta
-    
-
-    return t, thetas, theta_ou
+    return t, theta, theta_ou

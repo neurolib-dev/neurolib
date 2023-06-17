@@ -3,8 +3,6 @@ from . import timeIntegration as ti
 
 from neurolib.models.model import Model
 
-# TODO: remove 's' from variables
-
 
 class KuramotoModel(Model):
     """
@@ -14,15 +12,14 @@ class KuramotoModel(Model):
     name = "kuramoto"
     description = "Kuramoto Model"
 
-    init_vars = ['thetas_init', 'theta_ou']
-    state_vars = ['thetas', 'theta_ou'] # change x to theta
-    output_vars = ['thetas']
-    default_output = 'thetas'
+    init_vars = ['theta_init', 'theta_ou']
+    state_vars = ['theta', 'theta_ou'] # change x to theta
+    output_vars = ['theta']
+    default_output = 'theta'
     input_vars = None
     default_input = None
 
     def __init__(self, params=None, Cmat=None, Dmat=None, seed=None):
-
         self.Cmat = Cmat
         self.Dmat = Dmat
         self.seed = seed

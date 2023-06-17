@@ -4,7 +4,6 @@ from neurolib.utils.collections import dotdict
 # TODO: omega should not be randomized
 # TODO: increase k
 # TODO: chekc theta_ou_mean again
-# TODO: remove 's' from variables
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
@@ -14,12 +13,13 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     params.dt = 0.1 
     params.duration = 2000  
-    params.seed = seed
+
     np.random.seed(seed)  
+    params.seed = seed
 
     # model parameters
     params.N = 1
-    params.k = 1
+    params.k = 2
 
     params.omega = np.random.normal(loc=np.pi, scale=np.pi, size=(params.N,))
 
@@ -42,10 +42,13 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.theta_ou_mean = 0.0  # mV/ms (OU process) [0-5]
 
     # init values
-    params.thetas_init = np.random.uniform(low=0, high=2*np.pi, size=(params.N, 1))
+    params.theta_init = np.random.uniform(low=0, high=2*np.pi, size=(params.N, 1))
 
     # Ornstein-Uhlenbeck process
     params.theta_ou = np.zeros((params.N,))
+
+    # external input
+    params.theta_ext = np.ones((params.N,))
 
     return params
     
