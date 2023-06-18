@@ -1,9 +1,6 @@
 import numpy as np
 
 from neurolib.utils.collections import dotdict
-# TODO: omega should not be randomized
-# TODO: increase k
-# TODO: chekc theta_ou_mean again
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
@@ -39,7 +36,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     # Ornstein-Uhlenbeck process
     params.tau_ou = 5.0  # ms Timescale of the Ornstein-Uhlenbeck noise process
     params.sigma_ou = 0.0  # mV/ms/sqrt(ms) noise intensity
-    params.theta_ou_mean = 0.0  # mV/ms (OU process) [0-5]
 
     # init values
     params.theta_init = np.random.uniform(low=0, high=2*np.pi, size=(params.N, 1))

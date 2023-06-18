@@ -31,13 +31,10 @@ def timeIntegration(params):
     # ornstein uhlenbeck noise param
     tau_ou = params["tau_ou"]  # noise time constant
     sigma_ou = params["sigma_ou"]  # noise strength
-    theta_ou_mean = params["theta_ou_mean"]
     
     # ------------------------------------------------------------------------
     # global coupling parameters
     # ------------------------------------------------------------------------
-    #TO CHECK, added from other models
-
     # Connectivity matrix and Delay
     Cmat = params["Cmat"]
 
@@ -113,7 +110,6 @@ def timeIntegration(params):
         tau_ou,
         sigma_ou,
         theta_ou,
-        theta_ou_mean,
         noise_theta,
         theta_rhs,
     )
@@ -136,7 +132,6 @@ def timeIntegration_njit_elementwise(
     tau_ou,
     sigma_ou,
     theta_ou,
-    theta_ou_mean,
     noise_theta,
     theta_rhs, 
 ):
@@ -163,6 +158,6 @@ def timeIntegration_njit_elementwise(
             theta[n, i] = np.mod(theta[n, i], 2*np.pi)
 
             # ornstein-uhlenbeck
-            theta_ou[n] = theta_ou[n] + (theta_ou_mean - theta_ou[n]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta[n]
+            theta_ou[n] = theta_ou[n] - theta_ou[n] * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta[n]
 
     return t, theta, theta_ou
