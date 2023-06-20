@@ -195,6 +195,42 @@ class TestWW(unittest.TestCase):
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
 
+class TestKuramoto(unittest.TestCase):
+    """
+    Basic test for Kuramoto model.
+    """
+
+    def test_single_node(self):
+        logging.info("\t > Kuramoto: Testing single node ...")
+        start = time.time()
+        model = KuramotoModel()
+        model.params["duration"] = 2.0 * 1000
+        model.params["sigma_ou"] = 0.03
+
+        model.run()
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+    def test_network(self):
+        logging.info("\t > Kuramoto: Testing brain network (chunkwise integration and BOLD simulation) ...")
+        start = time.time()
+        ds = Dataset("gw")
+        model = KuramotoModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
+        model.params["signalV"] = 4.0
+        model.params["duration"] = 10 * 1000
+        model.params["sigma_ou"] = 0.1
+        model.params["k"] = 0.6
+
+        
+        # local node input parameter 
+        model.params["theta_ext"] = 0.72
+
+        model.run(chunkwise=True, append_outputs=True)
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
 class TestThalamus(unittest.TestCase):
     """
     Basic test for thalamic mass model.
@@ -348,41 +384,6 @@ class TestMultiModel(unittest.TestCase):
         model.run()
         self.assertEqual(model.start_t, 0.0)
 
-
-class TestKuramoto(unittest.TestCase):
-    """
-    Basic test for Kuramoto model.
-    """
-
-    def test_single_node(self):
-        logging.info("\t > Kuramoto: Testing single node ...")
-        start = time.time()
-        model = KuramotoModel()
-        model.params["duration"] = 2.0 * 1000
-        model.params["sigma_ou"] = 0.03
-
-        model.run()
-
-        end = time.time()
-        logging.info("\t > Done in {:.2f} s".format(end - start))
-
-    def test_network(self):
-        logging.info("\t > Kuramoto: Testing brain network (chunkwise integration and BOLD simulation) ...")
-        start = time.time()
-        ds = Dataset("gw")
-        model = KuramotoModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
-        model.params["signalV"] = 4.0
-        model.params["duration"] = 10 * 1000
-        model.params["sigma_ou"] = 0.1
-        model.params["k"] = 0.6
-
-        
-        # local node input parameter 
-        model.params["theta_ext"] = 0.72
-
-        model.run(chunkwise=True, append_outputs=True)
-        end = time.time()
-        logging.info("\t > Done in {:.2f} s".format(end - start))
 
 if __name__ == "__main__":
     unittest.main()

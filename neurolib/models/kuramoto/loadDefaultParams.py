@@ -29,8 +29,8 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
         params.N = len(params.Cmat)  # override number of nodes
         params.lengthMat = Dmat
 
-    params.omega = np.random.normal(loc=np.pi, scale=np.pi, size=(params.N,))
-
+    params.omega = np.ones((params.N,)) * np.pi
+    
     params.signalV = 20.0
 
     # Ornstein-Uhlenbeck process
@@ -44,7 +44,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.theta_ou = np.zeros((params.N,))
 
     # external input
-    params.theta_ext = np.ones((params.N,))
+    params.theta_ext = np.zeros((params.N,))
 
     return params
     

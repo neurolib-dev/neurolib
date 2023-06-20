@@ -16,8 +16,8 @@ class KuramotoModel(Model):
     state_vars = ['theta', 'theta_ou'] # change x to theta
     output_vars = ['theta']
     default_output = 'theta'
-    input_vars = None
-    default_input = None
+    input_vars = ['theta_ext']
+    default_input = 'theta_ext'
 
     def __init__(self, params=None, Cmat=None, Dmat=None, seed=None):
         self.Cmat = Cmat
