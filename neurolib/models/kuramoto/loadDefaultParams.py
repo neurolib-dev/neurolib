@@ -18,8 +18,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.N = 1
     params.k = 2
 
-    params.omega = np.random.normal(loc=np.pi, scale=np.pi, size=(params.N,))
-
     # connectivity
     if Cmat is None:
         params.Cmat = np.ones((params.N, params.N))
@@ -30,6 +28,8 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
         np.fill_diagonal(params.Cmat, 0)  # no self connections
         params.N = len(params.Cmat)  # override number of nodes
         params.lengthMat = Dmat
+
+    params.omega = np.random.normal(loc=np.pi, scale=np.pi, size=(params.N,))
 
     params.signalV = 20.0
 

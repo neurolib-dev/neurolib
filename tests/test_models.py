@@ -348,6 +348,7 @@ class TestMultiModel(unittest.TestCase):
         model.run()
         self.assertEqual(model.start_t, 0.0)
 
+
 class TestKuramoto(unittest.TestCase):
     """
     Basic test for Kuramoto model.
@@ -373,13 +374,13 @@ class TestKuramoto(unittest.TestCase):
         model.params["signalV"] = 4.0
         model.params["duration"] = 10 * 1000
         model.params["sigma_ou"] = 0.1
-        model.params["K_gl"] = 0.6
+        model.params["k"] = 0.6
 
         
         # local node input parameter 
         model.params["theta_ext"] = 0.72
 
-        model.run(chunkwise=True, bold=True, append_outputs=True)
+        model.run(chunkwise=True, append_outputs=True)
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
