@@ -517,7 +517,7 @@ class Signal:
 
         resampled = resample_func(self.data.values)
         # construct new times
-        new_times = (np.arange(resampled.shape[-1], dtype=np.float) / to_frequency) + self.data.time.values[0]
+        new_times = (np.arange(resampled.shape[-1], dtype=float) / to_frequency) + self.data.time.values[0]
         # to dataframe
         resampled = xr.DataArray(resampled, dims=self.data.dims, coords={**self.coords_not_time, "time": new_times})
         add_steps = [f"resample to {to_frequency}Hz"]
