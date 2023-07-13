@@ -25,7 +25,7 @@ PARAMS = {"a": 1.2, "b": 11.9}
 
 class TestSanitizeMatrix(unittest.TestCase):
     def test_sanitize_matrix_int(self):
-        mat = (np.random.rand(2, 2) * 100.0).astype(np.int)
+        mat = (np.random.rand(2, 2) * 100.0).astype(int)
         result = _sanitize_matrix(mat, (2, 2))
         self.assertTrue(result.dtype.kind == "f")
         np.testing.assert_equal(mat.astype(np.float), result)
@@ -37,7 +37,7 @@ class TestSanitizeMatrix(unittest.TestCase):
         np.testing.assert_equal(mat, result)
 
     def test_sanitize_matrix_wrong(self):
-        mat = (np.random.rand(2, 2) * 100.0).astype(np.int)
+        mat = (np.random.rand(2, 2) * 100.0).astype(int)
         with pytest.raises(AssertionError):
             result = _sanitize_matrix(mat, (3, 3))
 
