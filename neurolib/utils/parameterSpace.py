@@ -134,7 +134,7 @@ class ParameterSpace:
                 random_value = np.random.choice(value)
                 if isinstance(random_value, np.float64):
                     random_value = float(random_value)
-                elif isinstance(random_value, int64):
+                elif isinstance(random_value, np.int64):
                     random_value = int(random_value)
                 randomPar[key] = random_value
         else:
