@@ -79,7 +79,7 @@ class MultiModel(Model):
             params.update({"N": 1, "Cmat": np.zeros((1, 1))})
         else:
             params.update(
-                {"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(floating)}
+                {"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(float)}
             )
         return params
 
