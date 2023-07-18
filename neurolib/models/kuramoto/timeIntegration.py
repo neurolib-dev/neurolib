@@ -83,7 +83,7 @@ def timeIntegration(params):
     
     theta_input_d = np.zeros(N)
 
-    noise_theta = np.zeros((N,))
+    noise_theta = 0
 
     # ------------------------------------------------------------------------
     # some helper variables
@@ -141,7 +141,7 @@ def timeIntegration_njit_elementwise(
     for i in range(startind, startind+len(t)):
         # Kuramoto model
         for n in range(N): 
-            noise_theta[n] = theta[n, i]
+            noise_theta = theta[n, i]
             
             theta_input_d[n] = 0.0
 
@@ -154,10 +154,11 @@ def timeIntegration_njit_elementwise(
             # time integration
             theta[n, i] = theta[n, i-1] + dt * theta_rhs[n]
             
+            # note: numba 0.51 does not support np.mod 
             # cap theta to [0, 2*pi]
-            theta[n, i] = np.mod(theta[n, i], 2*np.pi)
+            # theta[n, i] = np.mod(theta[n, i], 2*np.pi)
 
             # ornstein-uhlenbeck
-            theta_ou[n] = theta_ou[n] - theta_ou[n] * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta[n]
+            theta_ou[n] = theta_ou[n] - theta_ou[n] * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta
 
     return t, theta, theta_ou

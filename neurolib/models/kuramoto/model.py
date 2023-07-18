@@ -7,6 +7,9 @@ from neurolib.models.model import Model
 class KuramotoModel(Model):
     """
     Kuramoto Model
+
+    Based on:
+    Kuramoto, Yoshiki (1975). H. Araki (ed.). Lecture Notes in Physics, International Symposium on Mathematical Problems in Theoretical Physics.
     """
 
     name = "kuramoto"

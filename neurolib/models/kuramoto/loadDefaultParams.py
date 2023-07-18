@@ -35,7 +35,7 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     # Ornstein-Uhlenbeck process
     params.tau_ou = 5.0  # ms Timescale of the Ornstein-Uhlenbeck noise process
-    params.sigma_ou = 0.0  # mV/ms/sqrt(ms) noise intensity
+    params.sigma_ou = 0.0  # 1/ms/sqrt(ms) noise intensity
 
     # init values
     params.theta_init = np.random.uniform(low=0, high=2*np.pi, size=(params.N, 1))
