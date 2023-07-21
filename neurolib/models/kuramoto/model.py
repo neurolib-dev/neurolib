@@ -16,7 +16,7 @@ class KuramotoModel(Model):
     description = "Kuramoto Model"
 
     init_vars = ['theta_init', 'theta_ou']
-    state_vars = ['theta', 'theta_ou'] # change x to theta
+    state_vars = ['theta', 'theta_ou'] 
     output_vars = ['theta']
     default_output = 'theta'
     input_vars = ['theta_ext']

@@ -158,7 +158,7 @@ def timeIntegration_njit_elementwise(
             # cap theta to [0, 2*pi]
             # theta[n, i] = np.mod(theta[n, i], 2*np.pi)
 
-            # ornstein-uhlenbeck
+            # Ornstein-Uhlenbeck
             theta_ou[n] = theta_ou[n] - theta_ou[n] * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta
 
     return t, theta, theta_ou
