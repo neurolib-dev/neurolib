@@ -35,6 +35,7 @@ def timeIntegration(params):
     # ------------------------------------------------------------------------
     # global coupling parameters
     # ------------------------------------------------------------------------
+
     # Connectivity matrix and Delay
     Cmat = params["Cmat"]
 
@@ -57,6 +58,7 @@ def timeIntegration(params):
     # ------------------------------------------------------------------------
     # Initialization
     # ------------------------------------------------------------------------
+
     t = np.arange(1, round(duration, 6) / dt + 1) * dt  # Time variable (ms)
     sqrt_dt = np.sqrt(dt)
 
@@ -72,6 +74,7 @@ def timeIntegration(params):
     # ------------------------------------------------------------------------
     # initial values
     # ------------------------------------------------------------------------  
+
     if params["theta_init"].shape[1] == 1:
         theta_init = np.dot(params["theta_init"], np.ones((1, startind)))
     else:
@@ -88,12 +91,14 @@ def timeIntegration(params):
     # ------------------------------------------------------------------------
     # some helper variables
     # ------------------------------------------------------------------------
+
     k_n = k/N
     theta_rhs = np.zeros((N,))
 
     # ------------------------------------------------------------------------
     # time integration
     # ------------------------------------------------------------------------
+    
     return timeIntegration_njit_elementwise(
         startind,
         t, 
@@ -153,10 +158,6 @@ def timeIntegration_njit_elementwise(
             
             # time integration
             theta[n, i] = theta[n, i-1] + dt * theta_rhs[n]
-            
-            # note: numba 0.51 does not support np.mod 
-            # cap theta to [0, 2*pi]
-            # theta[n, i] = np.mod(theta[n, i], 2*np.pi)
 
             # Ornstein-Uhlenbeck
             theta_ou[n] = theta_ou[n] - theta_ou[n] * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta
