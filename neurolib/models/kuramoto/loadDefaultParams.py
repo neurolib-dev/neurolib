@@ -27,8 +27,12 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
         params.Cmat = Cmat.copy()  # coupling matrix
         np.fill_diagonal(params.Cmat, 0)  # no self connections
         params.N = len(params.Cmat)  # override number of nodes
-        params.lengthMat = Dmat
-
+        
+        if Dmat is None:
+            params.lengthMat = np.zeros((params.N, params.N))
+        else:
+            params.lengthMat = Dmat
+            
     params.omega = np.ones((params.N,)) * np.pi
     
     params.signalV = 20.0
