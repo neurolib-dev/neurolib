@@ -4,6 +4,18 @@ from neurolib.utils.collections import dotdict
 
 
 def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
+    """Load default parameters for the Kuramoto Model model
+
+    :param Cmat: Structural connectivity matrix (adjacency matrix) of coupling strengths, will be normalized to 1. If not given, then a single node simulation will be assumed, defaults to None
+    :type Cmat: numpy.ndarray, optional
+    :param Dmat: Fiber length matrix, will be used for computing the delay matrix together with the signal transmission speed parameter `signalV`, defaults to None
+    :type Dmat: numpy.ndarray, optional
+    :param seed: Seed for the random number generator, defaults to None
+    :type seed: int, optional
+
+    :return: A dictionary with the default parameters of the model
+    :rtype: dict
+    """
     params = dotdict({})
 
     ### runtime parameters
@@ -20,9 +32,9 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
 
     # connectivity
     if Cmat is None:
-        params.Cmat = np.ones((params.N, params.N))
-        np.fill_diagonal(params.Cmat, 0)  # no self connections
-        params.lengthMat = np.zeros((params.N, params.N))
+        params.N = 1
+        params.Cmat = np.zeros((1, 1))
+        params.lengthMat = np.zeros((1, 1))
     else:
         params.Cmat = Cmat.copy()  # coupling matrix
         np.fill_diagonal(params.Cmat, 0)  # no self connections
