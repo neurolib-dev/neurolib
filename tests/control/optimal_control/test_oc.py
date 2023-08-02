@@ -1,7 +1,12 @@
 import unittest
 import numpy as np
 import neurolib
-from neurolib.control.optimal_control.oc import solve_adjoint, update_control_with_limit, convert_interval
+from neurolib.control.optimal_control.oc import (
+    solve_adjoint,
+    update_control_with_limit,
+    convert_interval,
+    limit_control_to_interval,
+)
 from neurolib.control.optimal_control.oc_wc import OcWc
 from neurolib.models.wc import WCModel
 from neurolib.utils.stimulus import ZeroInput
@@ -117,34 +122,45 @@ class TestOC(unittest.TestCase):
         self.assertTrue(model_controlled.step_size(-np.zeros(target.shape)) == 0.0)
 
     def test_update_control_with_limit_no_limit(self):
-        # Test for the control to be unchanged, if no limit is set.
+        # Test for the control to be limited.
 
-        print("Test control update without strength limit.")
+        print("Test control update with and without strength limit.")
 
         control = self.get_arbitrary_array_finite_values()
         step = 1.0
         cost_gradient = self.get_arbitrary_array()
-        u_max = None
         (N, dim_in, T) = control.shape
 
+        u_max = None
         control_limited = update_control_with_limit(N, dim_in, T, control, step, cost_gradient, u_max)
-
         self.assertTrue(np.all(control_limited == control + step * cost_gradient))
 
-    def test_update_control_with_limit_limited(self):
-        # Test that absolute value of control signal is limited.
+        u_max = 5.0
+        control_limited = update_control_with_limit(N, dim_in, T, control, step, cost_gradient, u_max)
+        self.assertTrue(np.all(np.abs(control_limited) <= u_max))
 
-        print("Test control update with strength limit.")
+    def test_limit_control_to_interval(self):
+        # Test for the control to be unchanged, if no limit is set.
+
+        print("Test limit of control interval.")
 
         control = self.get_arbitrary_array_finite_values()
-        step = 1.0
-        cost_gradient = self.get_arbitrary_array()
-        u_max = 5.0
         (N, dim_in, T) = control.shape
 
-        control_limited = update_control_with_limit(N, dim_in, T, control, step, cost_gradient, u_max)
+        control_interval = (0, T)
+        control_limited = limit_control_to_interval(N, dim_in, T, control, control_interval)
+        self.assertTrue(np.all(control_limited == control))
 
-        self.assertTrue(np.all(np.abs(control_limited) <= u_max))
+        control_interval = (3, 7)
+        control_limited = limit_control_to_interval(N, dim_in, T, control, control_interval)
+        self.assertTrue(np.all(control_limited[:, :, : control_interval[0]]) == 0.0)
+        self.assertTrue(np.all(control_limited[:, :, control_interval[1] :]) == 0.0)
+        self.assertTrue(
+            np.all(
+                control_limited[:, :, control_interval[0] : control_interval[1]]
+                == control[:, :, control_interval[0] : control_interval[1]]
+            )
+        )
 
     def test_convert_interval_none(self):
         print("Test convert interval.")

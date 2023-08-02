@@ -31,6 +31,7 @@ def compute_gradient(
     adjoint_state,
     control_matrix,
     d_du,
+    control_interval,
 ):
     """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
        state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
@@ -59,7 +60,7 @@ def compute_gradient(
     grad = np.zeros(df_du.shape)
     for n in range(N):
         for v in range(dim_out):
-            for t in range(T):
+            for t in range(control_interval[0], control_interval[1]):
                 grad[n, v, t] = df_du[n, v, t]
                 for k in range(V):
                     grad[n, v, t] += control_matrix[n, v] * adjoint_state[n, k, t] * d_du[n, k, v, t]
@@ -310,6 +311,20 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
                     adjoint_state[n, k, t] = adjoint_state[n, k, t + 1] - dt * der
 
     return adjoint_state
+
+
+@numba.njit
+def limit_control_to_interval(N, dim_in, T, control, control_interval):
+    control_new = control.copy()
+
+    for n in range(N):
+        for v in range(dim_in):
+            for t in range(0, control_interval[0]):
+                control_new[n, v, t] = 0.0
+            for t in range(control_interval[1], T):
+                control_new[n, v, t] = 0.0
+
+    return control_new
 
 
 @numba.njit
@@ -630,6 +645,7 @@ class OC:
             self.adjoint_state,
             self.control_matrix,
             d_du,
+            self.control_interval,
         )
 
     @abc.abstractmethod
@@ -790,6 +806,7 @@ class OC:
         self.control = update_control_with_limit(
             self.N, self.dim_in, self.T, self.control, 0.0, np.zeros(self.control.shape), self.maximum_control_strength
         )  # To avoid issues in repeated executions.
+        self.control = limit_control_to_interval(self.N, self.dim_in, self.T, self.control, self.control_interval)
 
         if self.M == 1:
             print("Compute control for a deterministic system")
