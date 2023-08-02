@@ -1,6 +1,0 @@
-1. create branch from OCdev, mode item in projects to corresponding position
-2. implement feature & corresponding tests
-3. do testing
-4. proceed to code review
-5. code reviewer acceptance => code reviewer merges and deletes branch, moves item to "done" in project
-6. reviewer informs about merging
