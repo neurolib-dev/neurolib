@@ -2,41 +2,7 @@ from neurolib.control.optimal_control.oc import OC
 from neurolib.control.optimal_control import cost_functions
 import numpy as np
 import numba
-from neurolib.models.wc.timeIntegration import compute_hx, compute_nw_input, compute_hx_nw, Duh
-
-
-@numba.njit
-def compute_gradient(N, dim_out, T, df_du, adjoint_state, control_matrix, d_du):
-    """Compute the gradient of the total cost wrt. to the control signals (explicitly and implicitly) given the adjoint
-       state, the Jacobian of the total cost wrt. to explicit control contributions and the Jacobian of the dynamics
-       wrt. to explicit control contributions.
-
-    :param N:       Number of nodes in the network.
-    :type N:        int
-    :param dim_out: Number of 'output variables' of the model.
-    :type dim_out:  int
-    :param T:       Length of simulation (time dimension).
-    :type T:        int
-    :param df_du:      Derivative of the cost wrt. to the explicit control contributions to cost functionals.
-    :type df_du:       np.ndarray of shape N x V x T
-    :param adjoint_state:   Solution of the adjoint equation.
-    :type adjoint_state:    np.ndarray of shape N x V x T
-    :param control_matrix:  Binary matrix that defines nodes and variables where control inputs are active, defaults to
-                            None.
-    :type control_matrix:   np.ndarray of shape N x V
-    :param d_du:    Jacobian of systems dynamics wrt. to I_ext (external control input)
-    :type d_du:     np.ndarray of shape V x V
-    :return:        The gradient of the total cost wrt. to the control.
-    :rtype:         np.ndarray of shape N x V x T
-    """
-    grad = np.zeros(df_du.shape)
-
-    for n in range(N):
-        for v in range(dim_out):
-            for t in range(T):
-                grad[n, v, t] = df_du[n, v, t] + adjoint_state[n, v, t] * control_matrix[n, v] * d_du[n, v, v, t]
-
-    return grad
+from neurolib.models.wc.timeIntegration import compute_hx, compute_nw_input, compute_hx_nw, Duh, Dxdoth
 
 
 class OcWc(OC):
@@ -95,6 +61,7 @@ class OcWc(OC):
             assert (self.background[n, 1, :] == self.model.params["inh_ext"][n, :]).all()
 
         self.control = np.zeros((self.background.shape))  # control is of shape N x 2 x T, controls of 'exc' and 'inh'
+        self.model_params = self.get_model_params()
 
     def get_xs_delay(self):
         """Concatenates the initial conditions with simulated values and pads delay contributions at end. In the models
@@ -176,13 +143,27 @@ class OcWc(OC):
             self.model.params["exc_ext"] = input[:, 0, :]
             self.model.params["inh_ext"] = input[:, 1, :]
 
-    def Dxdot(self):
-        """4 x 4 Jacobian of systems dynamics wrt. to change of systems variables."""
-        # Currently not explicitly required since it is identity matrix.
-        raise NotImplementedError  # return np.eye(4)
+    def compute_dxdoth(self):
+        """Derivative of systems dynamics wrt. change of systems variables."""
+        return Dxdoth(self.N, self.dim_vars)
+
+    def get_model_params(self):
+        """Model params as an ordered tuple"""
+        return (
+            self.model.params.tau_exc,
+            self.model.params.tau_inh,
+            self.model.params.a_exc,
+            self.model.params.a_inh,
+            self.model.params.mu_exc,
+            self.model.params.mu_inh,
+            self.model.params.c_excexc,
+            self.model.params.c_inhexc,
+            self.model.params.c_excinh,
+            self.model.params.c_inhinh,
+        )
 
     def Duh(self):
-        """Jacobian of systems dynamics wrt. to external control input.
+        """Jacobian of systems dynamics wrt. external control input.
 
         :return:    N x 4 x 4 x T Jacobians.
         :rtype:     np.ndarray
@@ -193,52 +174,44 @@ class OcWc(OC):
         i = xs[:, 1, :]
         xsd = self.get_xs_delay()
         ed = xsd[:, 0, :]
-        nw_e = compute_nw_input(self.N, self.T, self.model.params.K_gl, self.model.Cmat, self.Dmat_ndt, ed)
 
         input = self.background + self.control
         ue = input[:, 0, :]
         ui = input[:, 1, :]
 
         return Duh(
+            self.model_params,
             self.N,
-            self.dim_out,
+            self.dim_in,
+            self.dim_vars,
             self.T,
-            self.model.params.c_excexc,
-            self.model.params.c_inhexc,
-            self.model.params.c_excinh,
-            self.model.params.c_inhinh,
-            self.model.params.a_exc,
-            self.model.params.a_inh,
-            self.model.params.mu_exc,
-            self.model.params.mu_inh,
-            self.model.params.tau_exc,
-            self.model.params.tau_inh,
-            nw_e,
             ue,
             ui,
             e,
             i,
+            self.model.params.K_gl,
+            self.model.params.Cmat,
+            self.Dmat_ndt,
+            ed,
         )
 
+    def compute_hx_list(self):
+        """List of Jacobians without and with time delays (e.g. in the ALN model) and list of respective time step delays as integers (0 for undelayed)
+
+        :return:        List of Jacobian matrices, list of time step delays
+        : rtype:        List of np.ndarray, List of integers
+        """
+        hx = self.compute_hx()
+        return numba.typed.List([hx]), numba.typed.List([0])
+
     def compute_hx(self):
-        """Jacobians of WCModel wrt. to the 'e'- and 'i'-variable for each time step.
+        """Jacobians of WCModel wrt. the 'e'- and 'i'-variable for each time step.
 
         :return:    N x T x 4 x 4 Jacobians.
         :rtype:     np.ndarray
         """
         return compute_hx(
-            (
-                self.model.params.tau_exc,
-                self.model.params.tau_inh,
-                self.model.params.a_exc,
-                self.model.params.a_inh,
-                self.model.params.mu_exc,
-                self.model.params.mu_inh,
-                self.model.params.c_excexc,
-                self.model.params.c_inhexc,
-                self.model.params.c_excinh,
-                self.model.params.c_inhinh,
-            ),
+            self.model_params,
             self.model.params.K_gl,
             self.model.Cmat,
             self.Dmat_ndt,
@@ -265,6 +238,7 @@ class OcWc(OC):
         ue = self.background[:, 0, :] + self.control[:, 0, :]
 
         return compute_hx_nw(
+            self.model_params,
             self.model.params.K_gl,
             self.model.Cmat,
             self.Dmat_ndt,
@@ -275,25 +249,4 @@ class OcWc(OC):
             i,
             e_delay,
             ue,
-            self.model.params.tau_exc,
-            self.model.params.a_exc,
-            self.model.params.mu_exc,
-            self.model.params.c_excexc,
-            self.model.params.c_inhexc,
         )
-
-    def compute_gradient(self):
-        """Compute the gradient of the total cost wrt. to the control:
-        1. solve the adjoint equation backwards in time
-        2. compute derivatives of cost wrt. to control
-        3. compute Jacobians of the dynamics wrt. to control
-        4. compute gradient of the cost wrt. to control(i.e., negative descent direction)
-
-        :return:        The gradient of the total cost wrt. to the control.
-        :rtype:         np.ndarray of shape N x V x T
-        """
-        self.solve_adjoint()
-        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
-        d_du = self.Duh()
-
-        return compute_gradient(self.N, self.dim_out, self.T, df_du, self.adjoint_state, self.control_matrix, d_du)

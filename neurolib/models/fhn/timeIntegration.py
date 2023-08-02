@@ -248,28 +248,27 @@ def timeIntegration_njit_elementwise(
 
 
 @numba.njit
-def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
-    """Jacobian of a single node of the FHN dynamical system wrt. to its 'state_vars' ('x', 'y', 'x_ou', 'y_ou'). The
+def jacobian_fhn(model_params, x, V):
+    """Jacobian of a single node of the FHN dynamical system wrt. its 'state_vars' ('x', 'y', 'x_ou', 'y_ou'). The
        Jacobian of the FHN systems dynamics depends only on the constant model parameters and the values of the 'x'-
        population.
 
-    :param alpha:   FHN model parameter.
-    :type alpha:    float
-    :param beta:    FHN model parameter.
-    :type beta:     float
-    :param gamma:   FHN model parameter.
-    :type gamma:    float
-    :param tau:     FHN model parameter.
-    :type tau:      float
-    :param epsilon: FHN model parameter.
-    :type epsilon:  float
-    :param x:       Value of the 'x'-population in the FHN node at a specific time step.
-    :type x:        float
-    :param V:       Number of system variables.
-    :type V:        int
-    :return:        4 x 4 Jacobian matrix.
-    :rtype:         np.ndarray
+    :param model_params:    Ordered tuple of parameters in the FHN Model in order
+    :type model_params:     tuple of float
+    :param x:                   Value of the 'x'-population in the FHN node at a specific time step.
+    :type x:                    float
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :return:                    V x V Jacobian matrix.
+    :rtype:                     np.ndarray
     """
+    (
+        alpha,
+        beta,
+        gamma,
+        tau,
+        epsilon,
+    ) = model_params
     jacobian = np.zeros((V, V))
     jacobian[0, :2] = [3 * alpha * x**2 - 2 * beta * x - gamma, 1]
     jacobian[1, :2] = [-1 / tau, epsilon / tau]
@@ -277,35 +276,27 @@ def jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V):
 
 
 @numba.njit
-def compute_hx(alpha, beta, gamma, tau, epsilon, N, V, T, dyn_vars):
-    """Jacobians  of FHN model wrt. to its 'state_vars' at each time step.
+def compute_hx(model_params, N, V, T, dyn_vars):
+    """Jacobians  of FHN model wrt. its 'state_vars' at each time step.
 
-    :param alpha:   FHN model parameter.
-    :type alpha:    float
-    :param beta:    FHN model parameter.
-    :type beta:     float
-    :param gamma:   FHN model parameter.
-    :type gamma:    float
-    :param tau:     FHN model parameter.
-    :type tau:      float
-    :param epsilon: FHN model parameter.
-    :type epsilon:  float
-    :param N:       Number of nodes in the network.
-    :type N:        int
-    :param V:       Number of system variables.
-    :type V:        int
-    :param T:       Length of simulation (time dimension).
-    :type T:        int
-    :param dyn_vars:      Values of the 'x' and 'y' variable of FHN of all nodes through time.
-    :type dyn_vars:       np.ndarray of shape N x 2 x T
-    :return:        Array that contains Jacobians for all nodes in all time steps.
-    :rtype:         np.ndarray of shape N x T x 4 x 4
+    :param model_params:    Ordered tuple of parameters in the FHN Model in order
+    :type model_params:     tuple of float
+    :param N:                   Number of nodes in the network.
+    :type N:                    int
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param T:                   Length of simulation (time dimension).
+    :type T:                    int
+    :param dyn_vars:            Values of the 'x' and 'y' variable of FHN of all nodes through time.
+    :type dyn_vars:             np.ndarray of shape N x 2 x T
+    :return:                    Array that contains Jacobians for all nodes in all time steps.
+    :rtype:                     np.ndarray of shape N x T x v X v
     """
     hx = np.zeros((N, T, V, V))
 
     for n in range(N):  # Iterate through nodes.
         for ind, x in enumerate(dyn_vars[n, 0, :]):  # Pick value of x-variable at each time step.
-            hx[n, ind, :, :] = jacobian_fhn(alpha, beta, gamma, tau, epsilon, x, V)
+            hx[n, ind, :, :] = jacobian_fhn(model_params, x, V)
     return hx
 
 
@@ -337,3 +328,52 @@ def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
                 hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
 
     return -hx_nw
+
+
+@numba.njit
+def Duh(
+    N,
+    V_in,
+    V_vars,
+    T,
+):
+    """Jacobian of systems dynamics wrt. external inputs (control signals).
+
+    :param N:               Number of nodes in the network.
+    :type N:                int
+    :param V_in:            Number of input variables.
+    :type V_in:             int
+    :param V_vars:          Number of system variables.
+    :type V_vars:           int
+    :param T:               Length of simulation (time dimension).
+    :type T:                int
+
+    :rtype:     np.ndarray of shape N x V x V x T
+    """
+
+    duh = np.zeros((N, V_vars, V_in, T))
+    for t in range(T):
+        for n in range(N):
+            duh[n, 0, 0, t] = -1.0
+            duh[n, 1, 1, t] = -1.0
+    return duh
+
+
+@numba.njit
+def Dxdoth(N, V):
+    """Derivative of system dynamics wrt x dot
+
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of system variables.
+    :type V:        int
+
+    :return:        N x V x V matrix.
+    :rtype:         np.ndarray
+    """
+    dxdoth = np.zeros((N, V, V))
+    for n in range(N):
+        for v in range(V):
+            dxdoth[n, v, v] = 1
+
+    return dxdoth

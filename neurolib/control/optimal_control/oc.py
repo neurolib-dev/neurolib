@@ -2,15 +2,18 @@ import abc
 import numba
 import numpy as np
 from neurolib.control.optimal_control import cost_functions
-from neurolib.models.fhn.loadDefaultParams import computeDelayMatrix
+from neurolib.utils.model_utils import computeDelayMatrix
 import logging
 import copy
 
+from numba.core import types
+from numba.typed import Dict
+
 
 def getdefaultweights():
-    weights = numba.typed.Dict.empty(
-        key_type=numba.types.unicode_type,
-        value_type=numba.types.float64,
+    weights = Dict.empty(
+        key_type=types.unicode_type,
+        value_type=types.float64,
     )
     weights["w_p"] = 1.0
     weights["w_2"] = 0.0
@@ -18,13 +21,64 @@ def getdefaultweights():
     return weights
 
 
-def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, cost_gradient):
+@numba.njit
+def compute_gradient(
+    N,
+    V,
+    dim_out,
+    T,
+    df_du,
+    adjoint_state,
+    control_matrix,
+    d_du,
+):
+    """Compute the gradient of the total cost wrt. the control signals (explicitly and implicitly) given the adjoint
+       state, the Jacobian of the total cost wrt. explicit control contributions and the Jacobian of the dynamics
+       wrt. explicit control contributions.
+
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of  variables of the model.
+    :type V:        int
+    :param dim_out: Number of 'output variables' of the model.
+    :type dim_out:  int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
+    :param df_du:   Derivative of the cost wrt. the explicit control contributions to cost functionals.
+    :type df_du:    np.ndarray of shape N x V x T
+    :param adjoint_state:  Solution of the adjoint equation.
+    :type adjoint_state:   np.ndarray of shape N x V x T
+    :param control_matrix: Binary matrix that defines nodes and variables where control inputs are active, defaults to
+                           None.
+    :type control_matrix:  np.ndarray of shape N x V
+    :param d_du:     Jacobian of systems dynamics wrt. the external inputs (control).
+    :type d_du:      np.ndarray of shape V x V
+    :return:         The gradient of the total cost wrt. the control.
+    :rtype:          np.ndarray of shape N x V x T
+    """
+    grad = np.zeros(df_du.shape)
+    for n in range(N):
+        for v in range(dim_out):
+            for t in range(T):
+                grad[n, v, t] = df_du[n, v, t]
+                for k in range(V):
+                    grad[n, v, t] += control_matrix[n, v] * adjoint_state[n, k, t] * d_du[n, k, v, t]
+    return grad
+
+
+def decrease_step(controlled_model, N, dim_in, T, cost, cost0, step, control0, factor_down, cost_gradient):
     """Find a step size which leads to improved cost given the gradient. The step size is iteratively decreased.
         The control-inputs are updated in place according to the found step size via the
         "controlled_model.update_input()" call.
 
     :param controlled_model: Instance of optimal control object.
     :type controlled_model:  neurolib.optimal_control.oc.OC
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param dim_in: Number of 'input variables' of the model.
+    :type dim_in:  int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
     :param cost:    Cost after applying control update according to gradient with first valid step size (numerically
                     stable).
     :type cost:     float
@@ -36,7 +90,7 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
     :type control0:     np.ndarray N x V x T
     :param factor_down:  Factor the step size is scaled with in each iteration until cost is improved.
     :type factor_down:   float
-    :param cost_gradient:   Gradient of the total cost wrt. to the control signal.
+    :param cost_gradient:   Gradient of the total cost wrt. the control signal.
     :type cost_gradient:    np.ndarray of shape N x V x T
     :return:    The selected step size and the count-variable how often step-adjustment-loop was executed.
     :rtype:     tuple[float, int]
@@ -51,10 +105,11 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
     while cost > cost0:  # Decrease the step size until first step size is found where cost is improved.
         step *= factor_down  # Decrease step size.
         counter += 1
+        # print(step, cost, cost0)
 
         # Inplace updating of models control bc. forward-sim relies on models parameters.
         controlled_model.control = update_control_with_limit(
-            control0, step, cost_gradient, controlled_model.maximum_control_strength
+            N, dim_in, T, control0, step, cost_gradient, controlled_model.maximum_control_strength
         )
         controlled_model.update_input()
 
@@ -70,7 +125,7 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
             # cost.
             step = 0.0  # For later analysis only.
             controlled_model.control = update_control_with_limit(
-                control0, 0.0, np.zeros(control0.shape), controlled_model.maximum_control_strength
+                N, dim_in, T, control0, 0.0, np.zeros(control0.shape), controlled_model.maximum_control_strength
             )
             controlled_model.update_input()
 
@@ -80,7 +135,7 @@ def decrease_step(controlled_model, cost, cost0, step, control0, factor_down, co
     return step, counter
 
 
-def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost_gradient):
+def increase_step(controlled_model, N, dim_in, T, cost, cost0, step, control0, factor_up, cost_gradient):
     """Find the largest step size which leads to the biggest improvement of cost given the gradient. The step size is
         iteratively increased.
         The control-inputs are updated in place according to the found step size via the
@@ -88,6 +143,12 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
 
     :param controlled_model: Instance of optimal control object.
     :type controlled_model:  neurolib.optimal_control.oc.OC
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param dim_in: Number of 'input variables' of the model.
+    :type dim_in:  int
+    :param T:       Length of simulation (time dimension).
+    :type T:        int
     :param cost:    Cost after applying control update according to gradient with first valid step size (numerically
                     stable).
     :type cost:     float
@@ -99,7 +160,7 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
     :type control0:     np.ndarray N x V x T
     :param factor_up:  Factor the step size is scaled with in each iteration while the cost keeps improving.
     :type factor_up:   float
-    :param cost_gradient:   Gradient of the total cost wrt. to the control signal.
+    :param cost_gradient:   Gradient of the total cost wrt. the control signal.
     :type cost_gradient:    np.ndarray of shape N x V x T
     :return:    The selected step size and the count-variable how often step-adjustment-loop was executed.
     :rtype:     tuple[float, int]
@@ -118,7 +179,7 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
 
         # Inplace updating of models control bc. forward-sim relies on models parameters
         controlled_model.control = update_control_with_limit(
-            control0, step, cost_gradient, controlled_model.maximum_control_strength
+            N, dim_in, T, control0, step, cost_gradient, controlled_model.maximum_control_strength
         )
         controlled_model.update_input()
 
@@ -130,13 +191,12 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
             logging.info("Increasing step encountered NAN.")
             step /= factor_up  # Undo the last step update by inverse operation.
             controlled_model.control = update_control_with_limit(
-                control0, step, cost_gradient, controlled_model.maximum_control_strength
+                N, dim_in, T, control0, step, cost_gradient, controlled_model.maximum_control_strength
             )
             controlled_model.update_input()
             break
 
         else:
-
             if noisy:
                 cost = controlled_model.compute_cost_noisy(controlled_model.M)
             else:
@@ -146,7 +206,7 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
                 # then) and exit.
                 step /= factor_up  # Undo the last step update by inverse operation.
                 controlled_model.control = update_control_with_limit(
-                    control0, step, cost_gradient, controlled_model.maximum_control_strength
+                    N, dim_in, T, control0, step, cost_gradient, controlled_model.maximum_control_strength
                 )
                 controlled_model.update_input()
                 break
@@ -163,14 +223,16 @@ def increase_step(controlled_model, cost, cost0, step, control0, factor_up, cost
 
 
 @numba.njit
-def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
+def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, dxdoth, model_name):
     """Backwards integration of the adjoint state.
 
-    :param hx: dh/dx    Jacobians of systems dynamics wrt. to 'state_vars' for each time step.
-    :type hx:           np.ndarray
+    :param hx_list:     list of Jacobians of systems dynamics wrt. 'state_vars'
+    :type hx_list:      list of np.ndarray
+    :param del_list:    list of respective time delay integer
+    :type del_list:     list of int
     :param hx_nw:       Jacobians for each time step for the network coupling.
     :type hx_nw:        np.ndarray
-    :param fx: df/dx    Derivative of cost function wrt. to systems dynamics.
+    :param fx: df/dx    Derivative of cost function wrt. systems dynamics.
     :type fx:           np.ndarray
     :param state_dim:   Dimensions of state (N, V, T).
     :type state_dim:    tuple
@@ -188,44 +250,82 @@ def solve_adjoint(hx, hx_nw, fx, state_dim, dt, N, T, dmat_ndt):
     # ToDo: generalize, not only precision cost
     adjoint_state = np.zeros(state_dim)
     fx_fullstate = np.zeros(state_dim)
-    fx_fullstate[:, :2, :] = fx.copy()
+
+    fx_fullstate[:, :2, :] = fx[:, :2, :].copy()
+    if model_name == "aln":
+        fx_fullstate[:, 4, :] = fx[:, 2, :].copy()
+
+    ### t = T-1
+    for n in range(N):  # iterate through nodes
+        for k in range(state_dim[1]):
+            if dxdoth[n, k, k] == 0:
+                adjoint_state[n, k, -1] = -fx_fullstate[n, k, -1]
+            else:
+                if model_name == "aln":
+                    adjoint_state[n, k, -1] = -dt * fx_fullstate[n, k, -1]
 
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
-        for n in range(N):  # iterate through nodes
-            der = fx_fullstate[n, :, t + 1].copy()
-            for k in range(len(der)):
-                for i in range(len(der)):
-                    der[k] += adjoint_state[n, i, t + 1] * hx[n, t + 1, i, k]
+        if t == 0:
+            if model_name == "aln":
+                break
 
-            for n2 in range(N):  # iterate through connectivity of current node "n"
-                if t + 1 + dmat_ndt[n2, n] > T - 2:
-                    continue
-                for k in range(len(der)):
-                    for i in range(len(der)):
-                        der[k] += (
-                            adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]] * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
-                        )
-            adjoint_state[n, :, t] = adjoint_state[n, :, t + 1] - der * dt
+        for n in range(N):  # iterate through nodes
+            for k in range(state_dim[1]):
+                if dxdoth[n, k, k] == 0:
+                    res = fx_fullstate[n, k, t]
+
+                    for hx, int_delay in zip(hx_list, del_list):
+                        if t + 1 + int_delay < T:
+                            for i in range(state_dim[1]):
+                                res += adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k]
+
+                    for n2 in range(N):  # iterate through connectivity of current node "n"
+                        if t + 1 + dmat_ndt[n2, n] < T:
+                            for i in range(state_dim[1]):
+                                res += (
+                                    adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
+                                    * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
+                                )
+
+                    adjoint_state[n, k, t] = -res
+
+                elif dxdoth[n, k, k] != 0:
+                    # differences in "IA" state need to be passed to the same time step of the adjoint state
+                    if model_name == "aln":
+                        der = fx_fullstate[n, k, t]
+                    else:
+                        der = fx_fullstate[n, k, t + 1]
+                    for i in range(state_dim[1]):
+                        for hx, int_delay in zip(hx_list, del_list):
+                            if t + 1 + int_delay < T:
+                                der += adjoint_state[n, i, t + 1 + int_delay] * hx[n, t + 1 + int_delay, i, k]
+
+                    for n2 in range(N):  # iterate through connectivity of current node "n"
+                        if t + 1 + dmat_ndt[n2, n] <= T - 2:
+                            for i in range(state_dim[1]):
+                                der += (
+                                    adjoint_state[n2, i, t + 1 + dmat_ndt[n2, n]]
+                                    * hx_nw[n2, n, t + 1 + dmat_ndt[n2, n], i, k]
+                                )
+                    adjoint_state[n, k, t] = adjoint_state[n, k, t + 1] - dt * der
 
     return adjoint_state
 
 
 @numba.njit
-def update_control_with_limit(control, step, gradient, u_max):
+def update_control_with_limit(N, dim_in, T, control, step, gradient, u_max):
     """Computes the updated control signal. The absolute values of the new control are bounded by +/- 'u_max'. If
        'u_max' is 'None', no limit is applied.
 
     :param control:         N x V x T array. Control signals.
     :type control:          np.ndarray
-
     :param step:            Step size along the gradients.
     :type step:             float
-
     :param gradient:        N x V x T array of the gradients.
     :type gradient:         np.ndarray
-
     :param u_max:           Maximum absolute value allowed for the strength of the control signal.
     :type u_max:            float or None
+
     :return:                N x V x T array containing the new control signal, updated according to 'step' and
                             'gradient' with the maximum absolute values being limited by 'u_max'.
     :rtype:                 np.ndarray
@@ -234,19 +334,17 @@ def update_control_with_limit(control, step, gradient, u_max):
     control_new = control + step * gradient
 
     if u_max is not None:
-
         control_new = control + step * gradient
 
-        for n in range(control_new.shape[0]):
-            for v in range(control_new.shape[1]):
-                for t in range(control_new.shape[2]):
+        for n in range(N):
+            for v in range(dim_in):
+                for t in range(T):
                     if np.greater(np.abs(control_new[n, v, t]), u_max):
                         control_new[n, v, t] = np.sign(control_new[n, v, t]) * u_max
 
     return control_new
 
 
-# @numba.njit  # ToDo: check why tests suddenly fail when jitted.
 def convert_interval(interval, array_length):
     """Turn indices into positive values only. It is assumed in any case, that the first index defines the start and
        the second the stop index, both inclusive.
@@ -343,16 +441,16 @@ class OC:
         """
 
         self.model = copy.deepcopy(model)
-        self.simulate_forward()
 
         self.target = target  # ToDo: dimensions-check
         self.maximum_control_strength = maximum_control_strength
 
-        if weights is None:
-            self.weights = getdefaultweights()
-        elif type(weights) != type(dict()):
-            print("Weights parameter must be dictionary, use default weights instead.")
-            self.weights = getdefaultweights()
+        if type(weights) != type(dict()):
+            if weights is None:
+                self.weights = getdefaultweights()
+            else:
+                print("Weights parameter must be dictionary, use default weights instead.")
+                self.weights = getdefaultweights()
         else:
             defaultweights = getdefaultweights()
             for k in defaultweights.keys():
@@ -369,7 +467,10 @@ class OC:
         self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps
 
         self.dim_vars = len(self.model.state_vars)
+        self.dim_in = len(self.model.input_vars)
         self.dim_out = len(self.model.output_vars)
+
+        self.simulate_forward()
 
         if self.N == 1:
             self.Dmat_ndt = np.zeros((self.N, self.N)).astype(int)
@@ -398,7 +499,7 @@ class OC:
 
         self.control_matrix = control_matrix
         if isinstance(self.control_matrix, type(None)):
-            self.control_matrix = np.ones((self.N, self.dim_vars))  # default: all channels in all nodes active
+            self.control_matrix = np.ones((self.N, self.dim_in))  # default: all channels in all nodes active
 
         # check if matrix is binary
         assert np.array_equal(self.control_matrix, self.control_matrix.astype(bool))
@@ -459,6 +560,8 @@ class OC:
         self.cost_interval = convert_interval(cost_interval, self.T)
         self.control_interval = convert_interval(control_interval, self.T)
 
+        self.ndt_de, self.ndt_di = 0.0, 0.0
+
     @abc.abstractmethod
     def get_xs(self):
         """Stack the initial condition with the simulation results for controllable state variables."""
@@ -479,12 +582,12 @@ class OC:
 
     @abc.abstractmethod
     def Dxdot(self):
-        """V x V Jacobian of systems dynamics wrt. to change of all 'state_vars'."""
+        """V x V Jacobian of systems dynamics wrt. change of all 'state_vars'."""
         pass
 
     @abc.abstractmethod
     def Duh(self):
-        """Jacobian of systems dynamics wrt. to external inputs (control signals) to all 'state_vars'."""
+        """Jacobian of systems dynamics wrt. external inputs (control signals) to all 'state_vars'."""
         pass
 
     def compute_total_cost(self):
@@ -505,17 +608,43 @@ class OC:
 
     @abc.abstractmethod
     def compute_gradient(self):
-        """Compute the gradient of the total cost wrt. to the control:
+        """Compute the gradient of the total cost wrt. the control:
         1. solve the adjoint equation backwards in time
-        2. compute derivatives of cost wrt. to control
-        3. compute Jacobians of the dynamics wrt. to control
-        4. compute gradient of the cost wrt. to control(i.e., negative descent direction)
+        2. compute derivatives of cost wrt. control
+        3. compute Jacobians of the dynamics wrt. control
+        4. compute gradient of the cost wrt. control(i.e., negative descent direction)
+
+        :return:        The gradient of the total cost wrt. the control.
+        :rtype:         np.ndarray of shape N x V x T
         """
-        pass
+        self.solve_adjoint()
+        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
+        d_du = self.Duh()
+
+        return compute_gradient(
+            self.N,
+            self.dim_vars,
+            self.dim_in,
+            self.T,
+            df_du,
+            self.adjoint_state,
+            self.control_matrix,
+            d_du,
+        )
 
     @abc.abstractmethod
     def compute_hx(self):
-        """Jacobians of model dynamics wrt. to its 'state_vars' at each time step."""
+        """Jacobians of model dynamics wrt. its 'state_vars' at each time step."""
+        pass
+
+    @abc.abstractmethod
+    def compute_hx_list(self):
+        """Jacobians of model dynamics wrt. its 'state_vars' at each time step."""
+        pass
+
+    @abc.abstractmethod
+    def compute_hx_de(self):
+        """Jacobians of model dynamics wrt. its delayed 'state_vars' at each time step."""
         pass
 
     @abc.abstractmethod
@@ -523,12 +652,21 @@ class OC:
         """Jacobians for each time step for the network coupling."""
         pass
 
+    @abc.abstractmethod
+    def compute_dxdoth(self):
+        pass
+
     def solve_adjoint(self):
         """Backwards integration of the adjoint state."""
-        hx = self.compute_hx()
-        hx_nw = self.compute_hx_nw()
 
-        # Derivative of cost wrt. to controllable 'state_vars'.
+        if self.model.name == "aln":
+            self.fullstate = self.get_fullstate()
+
+        hx_nw = self.compute_hx_nw()
+        dxdoth = self.compute_dxdoth()
+        hx_list, del_list = self.compute_hx_list()
+
+        # Derivative of cost wrt. controllable 'state_vars'.
         df_dx = cost_functions.derivative_accuracy_cost(
             self.get_xs(),
             self.target,
@@ -536,21 +674,34 @@ class OC:
             self.cost_matrix,
             self.cost_interval,
         )
-        self.adjoint_state = solve_adjoint(hx, hx_nw, df_dx, self.state_dim, self.dt, self.N, self.T, self.Dmat_ndt)
+        self.adjoint_state = solve_adjoint(
+            hx_list,
+            del_list,
+            hx_nw,
+            df_dx,
+            self.state_dim,
+            self.dt,
+            self.N,
+            self.T,
+            self.Dmat_ndt,
+            dxdoth,
+            self.model.name,
+        )
 
-    def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):
+    def decrease_step(self, N, dim_in, T, cost, cost0, step, control0, factor_down, cost_gradient):
         """Iteratively decrease step size until cost is improved."""
-        return decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient)
+        return decrease_step(self, N, dim_in, T, cost, cost0, step, control0, factor_down, cost_gradient)
 
-    def increase_step(self, cost, cost0, step, control0, factor_up, cost_gradient):
+    def increase_step(self, N, dim_in, T, cost, cost0, step, control0, factor_up, cost_gradient):
         """Iteratively increase step size while cost is improving."""
-        return increase_step(self, cost, cost0, step, control0, factor_up, cost_gradient)
+        return increase_step(self, N, dim_in, T, cost, cost0, step, control0, factor_up, cost_gradient)
 
     def step_size(self, cost_gradient):
         """Adaptively choose a step size for control update.
 
-        :param cost_gradient:   N x V x T gradient of the total cost wrt. to control.
+        :param cost_gradient:   N x V x T gradient of the total cost wrt. control.
         :type cost_gradient:    np.ndarray
+
         :return:    Step size that got multiplied with the 'cost_gradient'.
         :rtype:     float
         """
@@ -573,7 +724,9 @@ class OC:
 
         while True:  # Reduce the step size, if numerical instability occurs in the forward-simulation.
             # inplace updating of models control bc. forward-sim relies on models parameters
-            self.control = update_control_with_limit(control0, step, cost_gradient, self.maximum_control_strength)
+            self.control = update_control_with_limit(
+                self.N, self.dim_in, self.T, control0, step, cost_gradient, self.maximum_control_strength
+            )
             self.update_input()
 
             # Input signal might be too high and produce diverging values in simulation.
@@ -592,17 +745,22 @@ class OC:
                 self.compute_total_cost()
             )  # Cost after applying control update according to gradient with first valid
         # step size (numerically stable).
+        # print(cost, cost0)
         if (
             cost > cost0
         ):  # If the cost choosing the first (stable) step size is no improvement, reduce step size by bisection.
-            step, counter = self.decrease_step(cost, cost0, step, control0, self.factor_down, cost_gradient)
+            step, counter = self.decrease_step(
+                self.N, self.dim_in, self.T, cost, cost0, step, control0, self.factor_down, cost_gradient
+            )
 
         elif (
             cost < cost0
         ):  # If the cost is improved with the first (stable) step size, search for larger steps with even better
             # reduction of cost.
 
-            step, counter = self.increase_step(cost, cost0, step, control0, self.factor_up, cost_gradient)
+            step, counter = self.increase_step(
+                self.N, self.dim_in, self.T, cost, cost0, step, control0, self.factor_up, cost_gradient
+            )
 
         else:  # Remark: might be included as part of adaptive search for further improvement.
             step = 0.0  # For later analysis only.
@@ -630,7 +788,7 @@ class OC:
         self.control_interval = convert_interval(self.control_interval, self.T)
 
         self.control = update_control_with_limit(
-            self.control, 0.0, np.zeros(self.control.shape), self.maximum_control_strength
+            self.N, self.dim_in, self.T, self.control, 0.0, np.zeros(self.control.shape), self.maximum_control_strength
         )  # To avoid issues in repeated executions.
 
         if self.M == 1:
@@ -662,10 +820,6 @@ class OC:
                 print("nan in gradient, break")
                 break
 
-            if self.zero_step_encountered:
-                print(f"Converged in iteration %s with cost %s" % (i, cost))
-                break
-
             self.step_size(-self.gradient)
             self.simulate_forward()
 
@@ -673,6 +827,10 @@ class OC:
             if i in self.print_array:
                 print(f"Cost in iteration %s: %s" % (i, cost))
             self.cost_history.append(cost)
+
+            if self.zero_step_encountered:
+                print(f"Converged in iteration %s with cost %s" % (i, cost))
+                break
 
         print(f"Final cost : %s" % (cost))
 
@@ -684,7 +842,7 @@ class OC:
         """
 
         # initialize array containing M gradients (one per noise realization) for each iteration
-        grad_m = np.zeros((self.M, self.N, self.dim_out, self.T))
+        grad_m = np.zeros((self.M, self.N, self.dim_in, self.T))
         consecutive_zero_step = 0
 
         if len(self.control_history) == 0:
@@ -709,14 +867,13 @@ class OC:
             self.cost_history.append(cost)
 
         for i in range(1, n_max_iterations + 1):
-
             self.gradient = np.mean(grad_m, axis=0)
 
             count = 0
             while count < self.count_noisy_step:
                 count += 1
                 self.zero_step_encountered = False
-                _ = self.step_size(-self.gradient)
+                self.step_size(-self.gradient)
                 if not self.zero_step_encountered:
                     consecutive_zero_step = 0
                     break
@@ -761,6 +918,9 @@ class OC:
 
     def compute_cost_noisy(self, M):
         """Computes the average cost from 'M_validation' noise realizations.
+
+        :param M:                   Number of noise realizations. M=1 implies deterministic case. Defaults to 1.
+        :type M:                    int, optional
 
         :rtype: float
         """

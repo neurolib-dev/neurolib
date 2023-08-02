@@ -71,7 +71,7 @@ class MultiModel(Model):
         # all matrices to floats
         for k, v in params.items():
             if isinstance(v, np.ndarray):
-                params[k] = v.astype(np.float)
+                params[k] = v.astype(float)
         params.update(DEFAULT_RUN_PARAMS)
         params["name"] = self.model_instance.label
         params["description"] = self.model_instance.name
@@ -79,7 +79,7 @@ class MultiModel(Model):
             params.update({"N": 1, "Cmat": np.zeros((1, 1))})
         else:
             params.update(
-                {"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(np.floating)}
+                {"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(float)}
             )
         return params
 

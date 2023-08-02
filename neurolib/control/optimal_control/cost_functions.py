@@ -39,7 +39,7 @@ def accuracy_cost(x, target_timeseries, weights, cost_matrix, dt, interval=(0, N
 
 @numba.njit
 def derivative_accuracy_cost(x, target_timeseries, weights, cost_matrix, interval=(0, None)):
-    """Derivative of the 'accuracy_cost' wrt. to the state 'x'.
+    """Derivative of the 'accuracy_cost' wrt. the state 'x'.
 
     :param x:               State of dynamical system.
     :type x:                np.ndarray
@@ -53,7 +53,7 @@ def derivative_accuracy_cost(x, target_timeseries, weights, cost_matrix, interva
     :rtype:                 ndarray
     """
 
-    der = np.zeros((cost_matrix.shape[0], cost_matrix.shape[1], x.shape[2]))
+    der = np.zeros((target_timeseries.shape))
 
     if weights["w_p"] != 0.0:
         der += weights["w_p"] * derivative_precision_cost(x, target_timeseries, cost_matrix, interval)
@@ -96,7 +96,7 @@ def precision_cost(x_sim, x_target, cost_matrix, interval=(0, None)):
 
 @numba.njit
 def derivative_precision_cost(x_sim, x_target, cost_matrix, interval):
-    """Derivative of 'precision_cost' wrt. to 'x_sim'.
+    """Derivative of 'precision_cost' wrt. 'x_sim'.
 
     :param x_target:    N x V x T array that contains the target time series.
     :type x_target:     np.ndarray
@@ -157,7 +157,7 @@ def control_strength_cost(u, weights, dt):
 
 @numba.njit
 def derivative_control_strength_cost(u, weights):
-    """Derivative of the 'control_strength_cost' wrt. to the control 'u'.
+    """Derivative of the 'control_strength_cost' wrt. the control 'u'.
 
     :param u:           Control-dimensions x T array. Control signals.
     :type u:            np.ndarray
@@ -192,7 +192,7 @@ def L2_cost(u):
 
 @numba.njit
 def derivative_L2_cost(u):
-    """Derivative of the 'L2_cost' wrt. to the control 'u'.
+    """Derivative of the 'L2_cost' wrt. the control 'u'.
 
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray

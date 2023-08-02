@@ -32,21 +32,21 @@ class ALNModel(Model):
     ]
 
     state_vars = [
-        "rates_exc",
-        "rates_inh",
-        "mufe",
-        "mufi",
-        "IA",
-        "seem",
-        "seim",
-        "siem",
-        "siim",
-        "seev",
-        "seiv",
-        "siev",
-        "siiv",
-        "mue_ou",
-        "mui_ou",
+        "rates_exc",  # 0
+        "rates_inh",  # 1
+        "mufe",  # 2
+        "mufi",  # 3
+        "IA",  # 4
+        "seem",  # 5
+        "seim",  # 6
+        "siem",  # 7
+        "siim",  # 8
+        "seev",  # 9
+        "seiv",  # 10
+        "siev",  # 11
+        "siiv",  # 12
+        "mue_ou",  # 13
+        "mui_ou",  # 14
     ]
     output_vars = ["rates_exc", "rates_inh", "IA"]
     default_output = "rates_exc"
