@@ -17,6 +17,7 @@ from neurolib.models.ww import WWModel
 from neurolib.utils.collections import star_dotdict
 from neurolib.utils.loadData import Dataset
 from neurolib.utils.stimulus import ZeroInput
+from neurolib.models.kuramoto import KuramotoModel
 
 class TestAln(unittest.TestCase):
     """
@@ -190,6 +191,42 @@ class TestWW(unittest.TestCase):
         model.params["K_gl"] = 0.6
 
         model.run(chunkwise=True, bold=True, append_outputs=True)
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+
+class TestKuramoto(unittest.TestCase):
+    """
+    Basic test for Kuramoto model.
+    """
+
+    def test_single_node(self):
+        logging.info("\t > Kuramoto: Testing single node ...")
+        start = time.time()
+        model = KuramotoModel()
+        model.params["duration"] = 2.0 * 1000
+        model.params["sigma_ou"] = 0.03
+
+        model.run()
+
+        end = time.time()
+        logging.info("\t > Done in {:.2f} s".format(end - start))
+
+    def test_network(self):
+        logging.info("\t > Kuramoto: Testing brain network (chunkwise integration and BOLD simulation) ...")
+        start = time.time()
+        ds = Dataset("gw")
+        model = KuramotoModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
+        model.params["signalV"] = 4.0
+        model.params["duration"] = 10 * 1000
+        model.params["sigma_ou"] = 0.1
+        model.params["k"] = 0.6
+
+        
+        # local node input parameter 
+        model.params["theta_ext"] = 0.72
+
+        model.run(chunkwise=True, append_outputs=True)
         end = time.time()
         logging.info("\t > Done in {:.2f} s".format(end - start))
 
