@@ -396,7 +396,6 @@ def timeIntegration_njit_elementwise(
     noise_exc,
     noise_inh,
 ):
-
     # squared Jee_max
     sq_Jee_max = Jee_max**2
     sq_Jei_max = Jei_max**2
@@ -415,7 +414,6 @@ def timeIntegration_njit_elementwise(
 
     ### integrate ODE system:
     for i in range(startind, startind + len(t)):
-
         if not distr_delay:
             # Get the input from one node into another from the rates at time t - connection_delay - 1
             # remark: assume Kie == Kee and Kei == Kii
@@ -429,7 +427,6 @@ def timeIntegration_njit_elementwise(
 
         # loop through all the nodes
         for no in range(N):
-
             # To save memory, noise is saved in the rates array
             noise_exc[no] = rates_exc[no, i]
             noise_inh[no] = rates_inh[no, i]
@@ -599,7 +596,6 @@ def interpolate_values(table, xid1, yid1, dxid, dyid):
 
 @numba.njit(locals={"idxX": numba.int64, "idxY": numba.int64})
 def lookup_no_interp(x, dx, xi, y, dy, yi):
-
     """
     Return the indices for the closest values for a look-up table
     Choose the closest point in the grid
@@ -642,7 +638,6 @@ def lookup_no_interp(x, dx, xi, y, dy, yi):
 
 @numba.njit(locals={"xid1": numba.int64, "yid1": numba.int64, "dxid": numba.float64, "dyid": numba.float64})
 def fast_interp2_opt(x, dx, xi, y, dy, yi):
-
     """
     Returns the values needed for interpolation:
     - bilinear (2D) interpolation within ranges,
@@ -1721,7 +1716,6 @@ def Duh(
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
         for n in range(N):
-
             z1ee = z1ee_f * fullstate[n, 0, t] + nw_input[n, t]
             z1ei = z1ei_f * fullstate[n, 1, t]
             z1ie = z1ie_f * fullstate[n, 0, t]
