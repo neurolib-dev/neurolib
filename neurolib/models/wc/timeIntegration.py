@@ -192,10 +192,8 @@ def timeIntegration_njit_elementwise(
         return 1.0 / (1.0 + np.exp(-a_inh * (x - mu_inh)))
 
     for i in range(startind, startind + len(t)):
-
         # loop through all the nodes
         for no in range(N):
-
             # To save memory, noise is saved in the activity array
             noise_exc[no] = excs[no, i]
             noise_inh[no] = inhs[no, i]
@@ -218,8 +216,8 @@ def timeIntegration_njit_elementwise(
                         - c_inhexc * inhs[no, i - 1]  # input from the inhibitory population
                         + exc_input_d[no]  # input from other nodes
                         + exc_ext[no, i - 1]  # external input
-                        + exc_ou[no]  # ou noise
                     )
+                    + exc_ou[no]  # ou noise
                 )
             )
             inh_rhs = (
@@ -232,8 +230,8 @@ def timeIntegration_njit_elementwise(
                         c_excinh * excs[no, i - 1]  # input from the excitatory population
                         - c_inhinh * inhs[no, i - 1]  # input from within the inhibitory population
                         + inh_ext[no, i - 1]  # external input
-                        + inh_ou[no]  # ou noise
                     )
+                    + inh_ou[no]  # ou noise
                 )
             )
 

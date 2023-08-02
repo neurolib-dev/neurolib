@@ -44,7 +44,7 @@ params = get_params()  # loads default parameter dictionary
 # (which range is plausible depends on the neuron model parameter values)
 # e.g., for mu from -1 to 5 with spacing 0.025 mV/ms,
 # for sigma from 0.5 to 5 with spacing 0.1 mV/sqrt(ms)
-N_mu_vals = 35  # 241
+N_mu_vals = 350  # 241
 N_sigma_vals = 64
 mu_vals = np.linspace(-1.0, 5.0, N_mu_vals)
 sigma_vals = np.linspace(0.5, 5.0, N_sigma_vals)
