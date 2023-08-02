@@ -11,7 +11,6 @@ from numba.typed import Dict
 
 
 def getdefaultweights():
-
     weights = Dict.empty(
         key_type=types.unicode_type,
         value_type=types.float64,
@@ -198,7 +197,6 @@ def increase_step(controlled_model, N, dim_in, T, cost, cost0, step, control0, f
             break
 
         else:
-
             if noisy:
                 cost = controlled_model.compute_cost_noisy(controlled_model.M)
             else:
@@ -274,7 +272,6 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
         for n in range(N):  # iterate through nodes
             for k in range(state_dim[1]):
                 if dxdoth[n, k, k] == 0:
-
                     res = fx_fullstate[n, k, t]
 
                     for hx, int_delay in zip(hx_list, del_list):
@@ -337,7 +334,6 @@ def update_control_with_limit(N, dim_in, T, control, step, gradient, u_max):
     control_new = control + step * gradient
 
     if u_max is not None:
-
         control_new = control + step * gradient
 
         for n in range(N):
@@ -818,10 +814,6 @@ class OC:
                 print("nan in gradient, break")
                 break
 
-            if self.zero_step_encountered:
-                print(f"Converged in iteration %s with cost %s" % (i, cost))
-                break
-
             self.step_size(-self.gradient)
             self.simulate_forward()
 
@@ -829,6 +821,10 @@ class OC:
             if i in self.print_array:
                 print(f"Cost in iteration %s: %s" % (i, cost))
             self.cost_history.append(cost)
+
+            if self.zero_step_encountered:
+                print(f"Converged in iteration %s with cost %s" % (i, cost))
+                break
 
         print(f"Final cost : %s" % (cost))
 
@@ -865,14 +861,13 @@ class OC:
             self.cost_history.append(cost)
 
         for i in range(1, n_max_iterations + 1):
-
             self.gradient = np.mean(grad_m, axis=0)
 
             count = 0
             while count < self.count_noisy_step:
                 count += 1
                 self.zero_step_encountered = False
-                _ = self.step_size(-self.gradient)
+                self.step_size(-self.gradient)
                 if not self.zero_step_encountered:
                     consecutive_zero_step = 0
                     break
