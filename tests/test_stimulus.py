@@ -10,6 +10,7 @@ from neurolib.models.aln import ALNModel
 from neurolib.models.fhn import FHNModel
 from neurolib.models.hopf import HopfModel
 from neurolib.models.wc import WCModel
+from neurolib.models.kuramoto import KuramotoModel
 from neurolib.utils.stimulus import (
     ConcatenatedStimulus,
     ExponentialInput,
@@ -138,6 +139,28 @@ class TestToWCModel(unittest.TestCase):
         stim = SinusoidalInput(amplitude=1.0, frequency=1.0)
         model_stim = stim.to_model(model)
         model.params["exc_ext"] = model_stim
+        model.run()
+        self.assertTrue(isinstance(model_stim, np.ndarray))
+        self.assertTupleEqual(model_stim.shape, (5, int(model.params["duration"] / model.params["dt"])))
+
+
+class TestToKuramotoModel(unittest.TestCase):
+    def test_single_node(self):
+        model = KuramotoModel()
+        model.params["duration"] = 2 * 1000
+        stim = SinusoidalInput(amplitude=1.0, frequency=1.0)
+        model_stim = stim.to_model(model)
+        model.params["theta_ext"] = model_stim
+        model.run()
+        self.assertTrue(isinstance(model_stim, np.ndarray))
+        self.assertTupleEqual(model_stim.shape, (1, int(model.params["duration"] / model.params["dt"])))
+
+    def test_multi_node_multi_stim(self):
+        model = KuramotoModel(Cmat=np.random.rand(5, 5), Dmat=np.zeros((5, 5)))
+        model.params["duration"] = 2 * 1000
+        stim = SinusoidalInput(amplitude=1.0, frequency=1.0)
+        model_stim = stim.to_model(model)
+        model.params["theta_ext"] = model_stim
         model.run()
         self.assertTrue(isinstance(model_stim, np.ndarray))
         self.assertTupleEqual(model_stim.shape, (5, int(model.params["duration"] / model.params["dt"])))
