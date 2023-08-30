@@ -29,7 +29,7 @@ def _sanitize_matrix(matrix, target_shape):
     """
     assert matrix.shape == target_shape
     if isinstance(matrix, np.ndarray) and matrix.dtype.kind == "i":
-        return matrix.astype(np.float)
+        return matrix.astype(float)
     else:
         return matrix
 
@@ -436,7 +436,7 @@ class SingleCouplingExcitatoryInhibitoryNode(Node):
         assert self.idx_state_var is not None
         # gather inputs form this node - assumes constant delays
         var_idx = 0
-        self.inputs = np.zeros_like(self.connectivity, dtype=np.object)
+        self.inputs = np.zeros_like(self.connectivity, dtype=object)
         # iterate over masses as `from`, hence columns
         for from_mass, mass in enumerate(self.masses):
             # iterate over indices as `to`, hence rows
@@ -800,7 +800,7 @@ class Network(BackendIntegrator):
         if isinstance(within_node_idx, int):
             within_node_idx = [within_node_idx] * self.num_nodes
         assert self.num_nodes == len(within_node_idx)
-        inputs = np.zeros_like(self.connectivity, dtype=np.object)
+        inputs = np.zeros_like(self.connectivity, dtype=object)
 
         # iterate over nodes as `from`, hence columns
         for from_node, (node, node_var_idx) in enumerate(zip(self.nodes, within_node_idx)):

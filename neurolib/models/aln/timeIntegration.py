@@ -1,7 +1,6 @@
 import numpy as np
 import numba
 
-from . import loadDefaultParams as dp
 from ...utils import model_utils as mu
 
 
@@ -53,7 +52,7 @@ def timeIntegration(params):
     if N == 1:
         Dmat = np.ones((N, N)) * params["de"]
     else:
-        Dmat = dp.computeDelayMatrix(
+        Dmat = mu.computeDelayMatrix(
             lengthMat, signalV
         )  # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
         Dmat[np.eye(len(Dmat)) == 1] = np.ones(len(Dmat)) * params["de"]
@@ -514,7 +513,7 @@ def timeIntegration_njit_elementwise(
             mufi_rhs = (mui - mufi[no]) / tau_inh
 
             # rate has to be kHz
-            IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i] * 1e-3) / tauA
+            IA_rhs = (a * (Vmean_exc - EA) - IA[no, i - 1] + tauA * b * rates_exc[no, i-1] * 1e-3) / tauA
 
             # EQ. 4.43
             if distr_delay:

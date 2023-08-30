@@ -635,11 +635,11 @@ class BackendIntegrator:
         var_idx = 0
         for node_idx, node_results in enumerate(self.state_variable_names):
             for result_idx, result in enumerate(node_results):
-                xr_results[result][:, node_idx] = results[:, var_idx + result_idx].astype(np.floating)
+                xr_results[result][:, node_idx] = results[:, var_idx + result_idx].astype(float)
             var_idx += len(node_results)
 
         for state_var, array in xr_results.items():
-            xr_results[state_var] = array.astype(np.floating)
+            xr_results[state_var] = array.astype(float)
 
         dataset = xr.Dataset(xr_results)
 

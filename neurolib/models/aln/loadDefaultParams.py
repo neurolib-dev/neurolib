@@ -187,27 +187,6 @@ def loadDefaultParams(Cmat=None, Dmat=None, lookupTableFileName=None, seed=None)
     return params
 
 
-def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
-    """
-    Compute the delay matrix from the fiber length matrix and the signal
-    velocity
-
-        :param lengthMat:       A matrix containing the connection length in
-            segment
-        :param signalV:         Signal velocity in m/s
-        :param segmentLength:   Length of a single segment in mm
-
-        :returns:    A matrix of connexion delay in ms
-    """
-
-    normalizedLenMat = lengthMat * segmentLength
-    if signalV > 0:
-        Dmat = normalizedLenMat / signalV  # Interareal delays in ms
-    else:
-        Dmat = lengthMat * 0.0
-    return Dmat
-
-
 def generateRandomICs(N, seed=None):
     """Generates random Initial Conditions for the interareal network
 
