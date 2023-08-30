@@ -431,8 +431,8 @@ def timeIntegration_njit_elementwise(
             noise_exc[no] = rates_exc[no, i]
             noise_inh[no] = rates_inh[no, i]
 
-            mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ou[no] + ext_exc_current[no, i]
-            mui = Jie_max * siem[no] + Jii_max * siim[no] + mui_ou[no] + ext_inh_current[no, i]
+            mue = Jee_max * seem[no] + Jei_max * seim[no] + mue_ou[no] + ext_exc_current[no, i - 1]
+            mui = Jie_max * siem[no] + Jii_max * siim[no] + mui_ou[no] + ext_inh_current[no, i - 1]
 
             # compute row sum of Cmat*rd_exc and Cmat**2*rd_exc
             rowsum = 0
@@ -446,20 +446,22 @@ def timeIntegration_njit_elementwise(
 
             # z1: weighted sum of delayed rates, weights=c*K
             z1ee = (
-                cee * Ke * rd_exc[no, no] + c_gl * Ke_gl * rowsum + c_gl * Ke_gl * ext_exc_rate[no, i]
+                cee * Ke * rd_exc[no, no] + c_gl * Ke_gl * rowsum + c_gl * Ke_gl * ext_exc_rate[no, i - 1]
             )  # rate from other regions + exc_ext_rate
             z1ei = cei * Ki * rd_inh[no]
             z1ie = (
-                cie * Ke * rd_exc[no, no] + c_gl * Ke_gl * ext_inh_rate[no, i]
+                cie * Ke * rd_exc[no, no] + c_gl * Ke_gl * ext_inh_rate[no, i - 1]
             )  # first test of external rate input to inh. population
             z1ii = cii * Ki * rd_inh[no]
             # z2: weighted sum of delayed rates, weights=c^2*K (see thesis last ch.)
             z2ee = (
-                cee**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * rowsumsq + c_gl**2 * Ke_gl * ext_exc_rate[no, i]
+                cee**2 * Ke * rd_exc[no, no]
+                + c_gl**2 * Ke_gl * rowsumsq
+                + c_gl**2 * Ke_gl * ext_exc_rate[no, i - 1]
             )
             z2ei = cei**2 * Ki * rd_inh[no]
             z2ie = (
-                cie**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * ext_inh_rate[no, i]
+                cie**2 * Ke * rd_exc[no, no] + c_gl**2 * Ke_gl * ext_inh_rate[no, i - 1]
             )  # external rate input to inh. population
             z2ii = cii**2 * Ki * rd_inh[no]
 
