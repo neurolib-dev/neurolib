@@ -280,7 +280,7 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
 
                     adjoint_state[n, k, t] = -res
 
-                elif dxdoth[n, k, k] != 0:
+                elif dxdoth[n, k, k] == 1:
                     # differences in "IA" state need to be passed to the same time step of the adjoint state
                     if model_name == "aln":
                         der = fx_fullstate[n, k, t]
@@ -291,6 +291,10 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
                     der += adjoint_nw_input(N, n, k, dmat_ndt, t, T - 1, state_dim[1], adjoint_state, hx_nw)
 
                     adjoint_state[n, k, t] = adjoint_state[n, k, t + 1] - dt * der
+
+                else:
+                    print("WARNING: Case dh_dxdot != 0 or 1 not implemented")
+                    raise NotImplementedError
 
     return adjoint_state
 

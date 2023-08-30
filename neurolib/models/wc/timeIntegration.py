@@ -319,16 +319,29 @@ def jacobian_wc(model_params, nw_e, e, i, ue, ui, V):
     :return:        4 x 4 Jacobian matrix.
     :rtype:         np.ndarray
     """
-    (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh) = model_params
+    (
+        tau_exc,
+        tau_inh,
+        a_exc,
+        a_inh,
+        mu_exc,
+        mu_inh,
+        c_excexc,
+        c_inhexc,
+        c_excinh,
+        c_inhinh,
+        exc_ext_baseline,
+        inh_ext_baseline,
+    ) = model_params
 
     jacobian = np.zeros((V, V))
-    input_exc = c_excexc * e - c_inhexc * i + nw_e + ue
+    input_exc = c_excexc * e - c_inhexc * i + nw_e + exc_ext_baseline + ue
     jacobian[0, 0] = (
         -(-1.0 - logistic(input_exc, a_exc, mu_exc) + (1.0 - e) * c_excexc * logistic_der(input_exc, a_exc, mu_exc))
         / tau_exc
     )
     jacobian[0, 1] = -((1.0 - e) * (-c_inhexc) * logistic_der(input_exc, a_exc, mu_exc)) / tau_exc
-    input_inh = c_excinh * e - c_inhinh * i + ui
+    input_inh = c_excinh * e - c_inhinh * i + inh_ext_baseline + ui
     jacobian[1, 0] = -((1.0 - i) * c_excinh * logistic_der(input_inh, a_inh, mu_inh)) / tau_inh
     jacobian[1, 1] = (
         -(-1.0 - logistic(input_inh, a_inh, mu_inh) + (1.0 - i) * (-c_inhinh) * logistic_der(input_inh, a_inh, mu_inh))
@@ -463,11 +476,24 @@ def compute_hx_nw(
     :return:         Jacobians for network connectivity in all time steps.
     :rtype:          np.ndarray of shape N x N x T x 4 x 4
     """
-    (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh) = model_params
+    (
+        tau_exc,
+        tau_inh,
+        a_exc,
+        a_inh,
+        mu_exc,
+        mu_inh,
+        c_excexc,
+        c_inhexc,
+        c_excinh,
+        c_inhinh,
+        exc_ext_baseline,
+        inh_ext_baseline,
+    ) = model_params
     hx_nw = np.zeros((N, N, T, V, V))
 
     nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, e_delay)
-    exc_input = c_excexc * e - c_inhexc * i + nw_e + ue
+    exc_input = c_excexc * e - c_inhexc * i + nw_e + exc_ext_baseline + ue
 
     for n1 in range(N):
         for n2 in range(N):
@@ -519,16 +545,29 @@ def Duh(
     :rtype:     np.ndarray of shape N x V x V x T
     """
 
-    (tau_exc, tau_inh, a_exc, a_inh, mu_exc, mu_inh, c_excexc, c_inhexc, c_excinh, c_inhinh) = model_params
+    (
+        tau_exc,
+        tau_inh,
+        a_exc,
+        a_inh,
+        mu_exc,
+        mu_inh,
+        c_excexc,
+        c_inhexc,
+        c_excinh,
+        c_inhinh,
+        exc_ext_baseline,
+        inh_ext_baseline,
+    ) = model_params
 
     nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, ed)
 
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
         for n in range(N):
-            input_exc = c_excexc * e[n, t] - c_inhexc * i[n, t] + nw_e[n, t] + ue[n, t]
+            input_exc = c_excexc * e[n, t] - c_inhexc * i[n, t] + nw_e[n, t] + exc_ext_baseline + ue[n, t]
             duh[n, 0, 0, t] = -(1.0 - e[n, t]) * logistic_der(input_exc, a_exc, mu_exc) / tau_exc
-            input_inh = c_excinh * e[n, t] - c_inhinh * i[n, t] + ui[n, t]
+            input_inh = c_excinh * e[n, t] - c_inhinh * i[n, t] + inh_ext_baseline + ui[n, t]
             duh[n, 1, 1, t] = -(1.0 - i[n, t]) * logistic_der(input_inh, a_inh, mu_inh) / tau_inh
     return duh
 

@@ -48,7 +48,8 @@ class OcFhn(OC):
         # ToDo: here, a method like neurolib.model_utils.adjustArrayShape() should be applied!
         if self.N == 1:  # single-node model
             if self.model.params["x_ext"].ndim == 1:
-                print("not implemented yet")
+                print("WARNING: case dim(x_ext) = 1 not implemented")
+                raise NotImplementedError
             else:
                 control = np.concatenate((self.model.params["x_ext"], self.model.params["y_ext"]), axis=0)[
                     np.newaxis, :, :

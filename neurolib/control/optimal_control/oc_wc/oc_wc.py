@@ -1,4 +1,4 @@
-from neurolib.control.optimal_control.oc import OC
+from neurolib.control.optimal_control.oc import OC, update_control_with_limit
 from neurolib.control.optimal_control import cost_functions
 import numpy as np
 import numba
@@ -48,19 +48,23 @@ class OcWc(OC):
         # ToDo: here, a method like neurolib.model_utils.adjustArrayShape() should be applied!
         if self.N == 1:  # single-node model
             if self.model.params["exc_ext"].ndim == 1:
-                print("not implemented yet")
+                print("WARNING: case dim(exc_ext) = 1 not implemented")
+                raise NotImplementedError
             else:
-                self.background = np.concatenate((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=0)[
+                control = np.concatenate((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=0)[
                     np.newaxis, :, :
                 ]
         else:
-            self.background = np.stack((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=1)
+            control = np.stack((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=1)
 
         for n in range(self.N):
-            assert (self.background[n, 0, :] == self.model.params["exc_ext"][n, :]).all()
-            assert (self.background[n, 1, :] == self.model.params["inh_ext"][n, :]).all()
+            assert (control[n, 0, :] == self.model.params["exc_ext"][n, :]).all()
+            assert (control[n, 1, :] == self.model.params["inh_ext"][n, :]).all()
 
-        self.control = np.zeros((self.background.shape))  # control is of shape N x 2 x T, controls of 'exc' and 'inh'
+        self.control = update_control_with_limit(
+            self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
+        )
+
         self.model_params = self.get_model_params()
 
     def get_xs_delay(self):
@@ -133,15 +137,14 @@ class OcWc(OC):
         """Update the parameters in 'self.model' according to the current control such that 'self.simulate_forward'
         operates with the appropriate control signal.
         """
-        input = self.background + self.control
         # ToDo: find elegant way to combine the cases
         if self.N == 1:
-            self.model.params["exc_ext"] = input[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
-            self.model.params["inh_ext"] = input[:, 1, :].reshape(1, -1)  # in model's time integration.
+            self.model.params["exc_ext"] = self.control[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
+            self.model.params["inh_ext"] = self.control[:, 1, :].reshape(1, -1)  # in model's time integration.
 
         else:
-            self.model.params["exc_ext"] = input[:, 0, :]
-            self.model.params["inh_ext"] = input[:, 1, :]
+            self.model.params["exc_ext"] = self.control[:, 0, :]
+            self.model.params["inh_ext"] = self.control[:, 1, :]
 
     def compute_dxdoth(self):
         """Derivative of systems dynamics wrt. change of systems variables."""
@@ -160,6 +163,8 @@ class OcWc(OC):
             self.model.params.c_inhexc,
             self.model.params.c_excinh,
             self.model.params.c_inhinh,
+            self.model.params.exc_ext_baseline,
+            self.model.params.inh_ext_baseline,
         )
 
     def Duh(self):
@@ -175,9 +180,8 @@ class OcWc(OC):
         xsd = self.get_xs_delay()
         ed = xsd[:, 0, :]
 
-        input = self.background + self.control
-        ue = input[:, 0, :]
-        ui = input[:, 1, :]
+        ue = self.control[:, 0, :]
+        ui = self.control[:, 1, :]
 
         return Duh(
             self.model_params,
@@ -220,7 +224,7 @@ class OcWc(OC):
             self.T,
             self.get_xs(),
             self.get_xs_delay(),
-            self.background + self.control,
+            self.control,
         )
 
     def compute_hx_nw(self):
@@ -235,7 +239,7 @@ class OcWc(OC):
         i = xs[:, 1, :]
         xsd = self.get_xs_delay()
         e_delay = xsd[:, 0, :]
-        ue = self.background[:, 0, :] + self.control[:, 0, :]
+        ue = self.control[:, 0, :]
 
         return compute_hx_nw(
             self.model_params,

@@ -56,7 +56,8 @@ class OcAln(OC):
         # ToDo: here, a method like neurolib.model_utils.adjustArrayShape() should be applied!
         if self.N == 1:  # single-node model
             if self.model.params["ext_exc_current"].ndim == 1:
-                print("not implemented yet")
+                print("WARNING: case dim(ext_exc_current) = 1 not implemented")
+                raise NotImplementedError
             else:
                 control = np.concatenate(
                     (self.model.params["ext_exc_current"], self.model.params["ext_inh_current"]), axis=0
@@ -426,7 +427,6 @@ class OcAln(OC):
         fullstate[:, :, 1] = finalstate
 
         for t in range(0, T - 2 + maxdel):
-
             if t != 0:
                 self.setasinit(fullstate, t)
             self.model.params.duration = 2.0 * self.dt
