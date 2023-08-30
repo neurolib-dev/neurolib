@@ -80,6 +80,9 @@ def timeIntegration(params):
     excs = np.zeros((N, startind + len(t)))
     inhs = np.zeros((N, startind + len(t)))
 
+    exc_ext_baseline = params["exc_ext_baseline"]
+    inh_ext_baseline = params["inh_ext_baseline"]
+
     exc_ext = mu.adjustArrayShape(params["exc_ext"], excs)
     inh_ext = mu.adjustArrayShape(params["inh_ext"], inhs)
 
@@ -125,6 +128,8 @@ def timeIntegration(params):
         inhs,
         exc_input_d,
         inh_input_d,
+        exc_ext_baseline,
+        inh_ext_baseline,
         exc_ext,
         inh_ext,
         tau_exc,
@@ -162,6 +167,8 @@ def timeIntegration_njit_elementwise(
     inhs,
     exc_input_d,
     inh_input_d,
+    exc_ext_baseline,
+    inh_ext_baseline,
     exc_ext,
     inh_ext,
     tau_exc,
@@ -192,10 +199,8 @@ def timeIntegration_njit_elementwise(
         return 1.0 / (1.0 + np.exp(-a_inh * (x - mu_inh)))
 
     for i in range(startind, startind + len(t)):
-
         # loop through all the nodes
         for no in range(N):
-
             # To save memory, noise is saved in the activity array
             noise_exc[no] = excs[no, i]
             noise_inh[no] = inhs[no, i]
@@ -217,8 +222,9 @@ def timeIntegration_njit_elementwise(
                         c_excexc * excs[no, i - 1]  # input from within the excitatory population
                         - c_inhexc * inhs[no, i - 1]  # input from the inhibitory population
                         + exc_input_d[no]  # input from other nodes
-                        + exc_ext[no, i - 1]
-                    )  # external input
+                        + exc_ext_baseline  # baseline external input (static)
+                        + exc_ext[no, i - 1]  # time-dependent external input
+                    )
                     + exc_ou[no]  # ou noise
                 )
             )
@@ -231,8 +237,9 @@ def timeIntegration_njit_elementwise(
                     * S_I(
                         c_excinh * excs[no, i - 1]  # input from the excitatory population
                         - c_inhinh * inhs[no, i - 1]  # input from within the inhibitory population
-                        + inh_ext[no, i - 1]
-                    )  # external input
+                        + inh_ext_baseline  # baseline external input (static)
+                        + inh_ext[no, i - 1]  # time-dependent external input
+                    )
                     + inh_ou[no]  # ou noise
                 )
             )
@@ -246,7 +253,7 @@ def timeIntegration_njit_elementwise(
                 excs[no, i] = 1.0
             if excs[no, i] < 0.0:
                 excs[no, i] = 0.0
-                
+
             if inhs[no, i] > 1.0:
                 inhs[no, i] = 1.0
             if inhs[no, i] < 0.0:

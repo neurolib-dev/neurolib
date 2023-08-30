@@ -25,14 +25,14 @@ def timeIntegration(params):
     tau_exc = params["tau_exc"]
     gamma_exc = params["gamma_exc"]
     w_exc = params["w_exc"]
-    exc_current = params["exc_current"]
+    exc_current_baseline = params["exc_current_baseline"]
 
     a_inh = params["a_inh"]
     b_inh = params["b_inh"]
     d_inh = params["d_inh"]
     tau_inh = params["tau_exc"]
     w_inh = params["w_inh"]
-    inh_current = params["inh_current"]
+    inh_current_baseline = params["inh_current_baseline"]
 
     J_NMDA = params["J_NMDA"]
     J_I = params["J_I"]
@@ -102,6 +102,9 @@ def timeIntegration(params):
     r_exc = np.zeros((N, startind + len(t)))
     r_inh = np.zeros((N, startind + len(t)))
 
+    exc_current = mu.adjustArrayShape(params["exc_current"], r_exc)
+    inh_current = mu.adjustArrayShape(params["inh_current"], r_inh)
+
     # ------------------------------------------------------------------------
     # Set initial values
     # if initial values are just a Nx1 array
@@ -152,12 +155,14 @@ def timeIntegration(params):
         gamma_exc,
         w_exc,
         exc_current,
+        exc_current_baseline,
         a_inh,
         b_inh,
         d_inh,
         tau_inh,
         w_inh,
         inh_current,
+        inh_current_baseline,
         J_NMDA,
         J_I,
         w_ee,
@@ -197,12 +202,14 @@ def timeIntegration_njit_elementwise(
     gamma_exc,
     w_exc,
     exc_current,
+    exc_current_baseline,
     a_inh,
     b_inh,
     d_inh,
     tau_inh,
     w_inh,
     inh_current,
+    inh_current_baseline,
     J_NMDA,
     J_I,
     w_ee,
@@ -232,16 +239,15 @@ def timeIntegration_njit_elementwise(
     r = (a * I - b) / (1.0 - exp(-d * (a * I - b)))
 
     """
+
     #  firing rate transfer function
     def r(I, a, b, d):
         return (a * I - b) / (1.0 - np.exp(-d * (a * I - b)))
 
     ### integrate ODE system:
     for i in range(startind, startind + len(t)):
-
         # loop through all the nodes
         for no in range(N):
-
             # To save memory, noise is saved in the activity array
             noise_se[no] = ses[no, i]
             noise_si[no] = sis[no, i]
@@ -257,8 +263,13 @@ def timeIntegration_njit_elementwise(
             se = ses[no, i - 1]
             si = sis[no, i - 1]
 
-            I_exc = w_exc * exc_current + w_ee * J_NMDA * se - J_I * si + J_NMDA * ses_input_d[no]
-            I_inh = w_inh * inh_current + J_NMDA * se - si
+            I_exc = (
+                w_exc * (exc_current_baseline + exc_current[no, i - 1])
+                + w_ee * J_NMDA * se
+                - J_I * si
+                + J_NMDA * ses_input_d[no]
+            )
+            I_inh = w_inh * (inh_current_baseline + inh_current[no, i - 1]) + J_NMDA * se - si
 
             r_exc[no, i] = r(I_exc, a_exc, b_exc, d_exc)
             r_inh[no, i] = r(I_inh, a_inh, b_inh, d_inh)
