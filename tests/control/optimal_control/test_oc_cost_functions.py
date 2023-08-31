@@ -2,7 +2,6 @@ import unittest
 import numpy as np
 from neurolib.control.optimal_control import cost_functions
 from neurolib.control.optimal_control.oc import getdefaultweights
-from neurolib.utils.stimulus import ZeroInput
 from neurolib.models.fhn import FHNModel
 from neurolib.control.optimal_control import oc_fhn
 

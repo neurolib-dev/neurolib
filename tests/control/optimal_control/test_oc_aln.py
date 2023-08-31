@@ -2,7 +2,6 @@ import unittest
 import numpy as np
 
 from neurolib.models.aln import ALNModel
-from neurolib.utils.stimulus import ZeroInput
 from neurolib.control.optimal_control import oc_aln
 
 import test_oc_params

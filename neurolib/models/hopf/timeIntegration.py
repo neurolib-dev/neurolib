@@ -177,10 +177,8 @@ def timeIntegration_njit_elementwise(
 ):
     ### integrate ODE system:
     for i in range(startind, startind + len(t)):
-
         # loop through all the nodes
         for no in range(N):
-
             # To save memory, noise is saved in the activity array
             noise_xs[no] = xs[no, i]
             noise_ys[no] = ys[no, i]

@@ -4,6 +4,7 @@ from neurolib.utils.collections import dotdict
 params = dotdict({})
 
 params.LIMIT_DIFF = 1e-4
+params.LIMIT_DIFF_ID = 1e-12
 params.TEST_DURATION_6 = 0.6
 params.TEST_DURATION_8 = 0.8
 params.TEST_DURATION_10 = 1.0
@@ -30,8 +31,6 @@ params.TEST_INPUT_1N_6 = TEST_INPUT_1N_6
 params.INIT_INPUT_1N_6 = INIT_INPUT_1N_6
 
 params.INT_INPUT_1N_6 = np.sum(TEST_INPUT_1N_6**2)
-print(params.INT_INPUT_1N_6)
-
 
 ###################################################
 ZERO_INPUT_1N_8 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_8 / 0.1, 1))))
@@ -96,7 +95,7 @@ params.INIT_INPUT_2N_8 = INIT_INPUT_2N_8
 ###################################################
 ZERO_INPUT_2N_10 = np.zeros((2, 1 + int(np.around(params.TEST_DURATION_10 / 0.1, 1))))
 TEST_INPUT_2N_10 = ZERO_INPUT_2N_10.copy()
-INIT_INPUT_2N_10 = ZERO_INPUT_1N_10.copy()
+INIT_INPUT_2N_10 = ZERO_INPUT_2N_10.copy()
 
 TEST_INPUT_2N_10[0, :] = TEST_INPUT_1N_10[0, :]
 INIT_INPUT_2N_10[0, :] = INIT_INPUT_1N_10[0, :]
@@ -116,3 +115,28 @@ INIT_INPUT_2N_12[0, :] = INIT_INPUT_1N_12[0, :]
 params.ZERO_INPUT_2N_12 = ZERO_INPUT_2N_12
 params.TEST_INPUT_2N_12 = TEST_INPUT_2N_12
 params.INIT_INPUT_2N_12 = INIT_INPUT_2N_12
+
+
+def gettarget_1n(model):
+    return np.concatenate(
+        (
+            np.concatenate((model.params[model.init_vars[0]], model.params[model.init_vars[0]]), axis=1)[
+                :, :, np.newaxis
+            ],
+            np.stack((model[model.state_vars[0]], model[model.state_vars[1]]), axis=1),
+        ),
+        axis=2,
+    )
+
+
+def gettarget_2n(model):
+    return np.concatenate(
+        (
+            np.stack(
+                (model.params[model.init_vars[0]][:, -1], model.params[model.init_vars[1]][:, -1]),
+                axis=1,
+            )[:, :, np.newaxis],
+            np.stack((model[model.state_vars[0]], model[model.state_vars[1]]), axis=1),
+        ),
+        axis=2,
+    )

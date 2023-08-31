@@ -2,35 +2,11 @@ import unittest
 import numpy as np
 
 from neurolib.models.wc import WCModel
-from neurolib.utils.stimulus import ZeroInput
 from neurolib.control.optimal_control import oc_wc
 
 import test_oc_params
 
 p = test_oc_params.params
-
-
-def gettarget_1n(model):
-    return np.concatenate(
-        (
-            np.concatenate((model.params["exc_init"], model.params["inh_init"]), axis=1)[:, :, np.newaxis],
-            np.stack((model.exc, model.inh), axis=1),
-        ),
-        axis=2,
-    )
-
-
-def gettarget_2n(model):
-    return np.concatenate(
-        (
-            np.stack(
-                (model.params["exc_init"][:, -1], model.params["inh_init"][:, -1]),
-                axis=1,
-            )[:, :, np.newaxis],
-            np.stack((model.exc, model.inh), axis=1),
-        ),
-        axis=2,
-    )
 
 
 class TestWC(unittest.TestCase):
@@ -62,7 +38,7 @@ class TestWC(unittest.TestCase):
                 model.params["inh_ext"] = p.TEST_INPUT_1N_6
 
             model.run()
-            target = gettarget_1n(model)
+            target = test_oc_params.gettarget_1n(model)
 
             model.params["inh_ext"] = p.ZERO_INPUT_1N_6
             model.params["exc_ext"] = p.ZERO_INPUT_1N_6
@@ -72,11 +48,11 @@ class TestWC(unittest.TestCase):
 
             if input_channel == 0:
                 model_controlled.control = np.concatenate(
-                    [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
+                    [p.INIT_INPUT_1N_6[:, np.newaxis, :], p.ZERO_INPUT_1N_6[:, np.newaxis, :]], axis=1
                 )
             elif input_channel == 1:
                 model_controlled.control = np.concatenate(
-                    [p.ZERO_INPUT_2N_6[:, np.newaxis, :], p.INIT_INPUT_2N_6[:, np.newaxis, :]], axis=1
+                    [p.ZERO_INPUT_1N_6[:, np.newaxis, :], p.INIT_INPUT_1N_6[:, np.newaxis, :]], axis=1
                 )
             model_controlled.update_input()
 
@@ -124,7 +100,7 @@ class TestWC(unittest.TestCase):
             model.params["inh_ext"] = p.ZERO_INPUT_2N_6
             model.run()
 
-            target = gettarget_2n(model)
+            target = test_oc_params.gettarget_2n(model)
             model.params["exc_ext"] = p.ZERO_INPUT_2N_6
 
             model_controlled = oc_wc.OcWc(
@@ -138,6 +114,7 @@ class TestWC(unittest.TestCase):
             model_controlled.control = np.concatenate(
                 [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
             )
+            print(model_controlled.control)
             model_controlled.update_input()
 
             control_coincide = False
@@ -180,7 +157,7 @@ class TestWC(unittest.TestCase):
         model.params["inh_init"] = np.vstack([zeroinit, zeroinit])
         model.run()
 
-        target = gettarget_2n(model)
+        target = test_oc_params.gettarget_2n(model)
         model.params["exc_ext"] = p.ZERO_INPUT_2N_8
 
         model_controlled = oc_wc.OcWc(
@@ -192,7 +169,7 @@ class TestWC(unittest.TestCase):
         model_controlled.maximum_control_strength = 2.0
 
         model_controlled.control = np.concatenate(
-            [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
+            [p.INIT_INPUT_2N_8[:, np.newaxis, :], p.ZERO_INPUT_2N_8[:, np.newaxis, :]], axis=1
         )
         model_controlled.update_input()
 
@@ -225,7 +202,7 @@ class TestWC(unittest.TestCase):
 
         model.params["exc_ext"] = p.TEST_INPUT_2N_6
         model.params["inh_ext"] = -p.TEST_INPUT_2N_6
-        target = np.ones((2, 2, p.TEST_INPUT_2N.shape[1]))
+        target = np.ones((2, 2, p.TEST_INPUT_2N_6.shape[1]))
 
         model_controlled = oc_wc.OcWc(
             model,
