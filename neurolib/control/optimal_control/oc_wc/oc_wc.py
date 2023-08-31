@@ -1,8 +1,9 @@
-from neurolib.control.optimal_control.oc import OC, update_control_with_limit
-from neurolib.control.optimal_control import cost_functions
 import numpy as np
 import numba
-from neurolib.models.wc.timeIntegration import compute_hx, compute_nw_input, compute_hx_nw, Duh, Dxdoth
+
+from neurolib.control.optimal_control.oc import OC, update_control_with_limit
+from neurolib.utils import model_utils as mu
+from neurolib.models.wc.timeIntegration import compute_hx, compute_hx_nw, Duh, Dxdoth
 
 
 class OcWc(OC):

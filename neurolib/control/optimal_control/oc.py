@@ -256,37 +256,18 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
     if model_name == "aln":
         fx_fullstate[:, 4, :] = fx[:, 2, :].copy()
 
-    ### t = T-1
-    for n in range(N):  # iterate through nodes
-        for k in range(state_dim[1]):
-            if dxdoth[n, k, k] == 0:
-                adjoint_state[n, k, -1] = -fx_fullstate[n, k, -1]
-            else:
-                if model_name == "aln":
-                    adjoint_state[n, k, -1] = -dt * fx_fullstate[n, k, -1]
-
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
-        if t == 0:
-            if model_name == "aln":
-                break
-
         for n in range(N):  # iterate through nodes
             for k in range(state_dim[1]):
                 if dxdoth[n, k, k] == 0:
-                    res = fx_fullstate[n, k, t]
-
+                    res = fx_fullstate[n, k, t + 1]
                     res += adjoint_input(hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k)
                     res += adjoint_nw_input(N, n, k, dmat_ndt, t, T, state_dim[1], adjoint_state, hx_nw)
 
                     adjoint_state[n, k, t] = -res
 
                 elif dxdoth[n, k, k] == 1:
-                    # differences in "IA" state need to be passed to the same time step of the adjoint state
-                    if model_name == "aln":
-                        der = fx_fullstate[n, k, t]
-                    else:
-                        der = fx_fullstate[n, k, t + 1]
-
+                    der = fx_fullstate[n, k, t + 1]
                     der += adjoint_input(hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k)
                     der += adjoint_nw_input(N, n, k, dmat_ndt, t, T - 1, state_dim[1], adjoint_state, hx_nw)
 

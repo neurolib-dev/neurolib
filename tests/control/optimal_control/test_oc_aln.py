@@ -135,9 +135,7 @@ class TestALN(unittest.TestCase):
                 inp_init[0, t] = input[0, t] + 1e-2 * amplitude * rs.uniform(-amplitude, amplitude)
 
             for input_channel in [0, 1]:
-
                 for measure_channel in [0, 1]:
-
                     print("----------------- input channel, measure channel = ", input_channel, measure_channel)
 
                     cost_mat = np.zeros((model.params.N, len(model.output_vars)))
@@ -220,9 +218,7 @@ class TestALN(unittest.TestCase):
             inp_init[0, t] = input[0, t] + 1e-2 * amplitude * rs.uniform(-amplitude, amplitude)
 
         for input_channel in [0, 1]:
-
             for measure_channel in [0, 1]:
-
                 print("----------------- input channel, measure channel = ", input_channel, measure_channel)
 
                 cost_mat = np.zeros((model.params.N, len(model.output_vars)))

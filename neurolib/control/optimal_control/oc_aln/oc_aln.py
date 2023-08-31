@@ -50,6 +50,8 @@ class OcAln(OC):
 
         assert self.model.name == "aln"
 
+        # if self.model.params["ext_exc_current"].shape[1]
+
         assert self.T == self.model.params["ext_exc_current"].shape[1]
         assert self.T == self.model.params["ext_inh_current"].shape[1]
 

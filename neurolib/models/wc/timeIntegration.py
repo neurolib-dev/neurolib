@@ -153,7 +153,7 @@ def timeIntegration(params):
     )
 
 
-@numba.njit
+# @numba.njit
 def timeIntegration_njit_elementwise(
     startind,
     t,
