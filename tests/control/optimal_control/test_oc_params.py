@@ -29,6 +29,10 @@ params.ZERO_INPUT_1N_6 = ZERO_INPUT_1N_6
 params.TEST_INPUT_1N_6 = TEST_INPUT_1N_6
 params.INIT_INPUT_1N_6 = INIT_INPUT_1N_6
 
+params.INT_INPUT_1N_6 = np.sum(TEST_INPUT_1N_6**2)
+print(params.INT_INPUT_1N_6)
+
+
 ###################################################
 ZERO_INPUT_1N_8 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_8 / 0.1, 1))))
 TEST_INPUT_1N_8 = ZERO_INPUT_1N_8.copy()

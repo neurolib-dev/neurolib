@@ -70,9 +70,14 @@ class TestWC(unittest.TestCase):
             model_controlled = oc_wc.OcWc(model, target)
             model_controlled.maximum_control_strength = 2.0
 
-            control_init = np.zeros((target.shape))
-            control_init[0, 0, :] = p.INIT_INPUT_1N_6[0, :]
-            model_controlled.control = control_init.copy()
+            if input_channel == 0:
+                model_controlled.control = np.concatenate(
+                    [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
+                )
+            elif input_channel == 1:
+                model_controlled.control = np.concatenate(
+                    [p.ZERO_INPUT_2N_6[:, np.newaxis, :], p.INIT_INPUT_2N_6[:, np.newaxis, :]], axis=1
+                )
             model_controlled.update_input()
 
             control_coincide = False
@@ -87,6 +92,9 @@ class TestWC(unittest.TestCase):
 
                 if np.amax(c_diff) < p.LIMIT_DIFF:
                     control_coincide = True
+                    break
+
+                if model_controlled.zero_step_encountered:
                     break
 
             self.assertTrue(control_coincide)
@@ -127,9 +135,9 @@ class TestWC(unittest.TestCase):
             )
             model_controlled.maximum_control_strength = 2.0
 
-            control_init = np.zeros((target.shape))
-            control_init[0, 0, :] = p.INIT_INPUT_2N_6[0, :]
-            model_controlled.control = control_init.copy()
+            model_controlled.control = np.concatenate(
+                [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
+            )
             model_controlled.update_input()
 
             control_coincide = False
@@ -183,9 +191,9 @@ class TestWC(unittest.TestCase):
         )
         model_controlled.maximum_control_strength = 2.0
 
-        control_init = np.zeros((target.shape))
-        control_init[0, 0, :] = p.INIT_INPUT_2N_8[0, :]
-        model_controlled.control = control_init.copy()
+        model_controlled.control = np.concatenate(
+            [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
+        )
         model_controlled.update_input()
 
         control_coincide = False
@@ -199,6 +207,9 @@ class TestWC(unittest.TestCase):
             c_diff_max = np.amax(np.abs(model_controlled.control[0, 0, :] - p.TEST_INPUT_2N_8[0, :]))
             if c_diff_max < p.LIMIT_DIFF:
                 control_coincide = True
+                break
+
+            if model_controlled.zero_step_encountered:
                 break
 
         self.assertTrue(control_coincide)
