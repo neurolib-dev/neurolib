@@ -610,10 +610,71 @@ class OC:
 
         self.ndt_de, self.ndt_di = 0.0, 0.0
 
-    @abc.abstractmethod
+        # TODO: implement method to reshape inputs if neccesary
+        for input_var in self.model.input_vars:
+            assert self.T == self.model.params[input_var].shape[1]
+
+        control = np.zeros((self.N, self.dim_in, self.T))
+        for v in range(self.dim_in):
+            control[:, v, :] = self.model.params[self.model.input_vars[v]]
+
+        for n in range(self.N):
+            for v in range(len(self.model.input_vars)):
+                assert (control[n, v, :] == self.model.params[self.model.input_vars[v]][n, :]).all()
+
+        self.control = update_control_with_limit(
+            self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
+        )
+
+        self.model_params = self.get_model_params()
+
     def get_xs(self):
-        """Stack the initial condition with the simulation results for controllable state variables."""
-        pass
+        xs = np.zeros((self.N, self.dim_out, self.T))
+
+        for ind_ov in range(len(self.model.output_vars)):
+            xs[:, ind_ov, 1:] = self.model[self.model.output_vars[ind_ov]]
+            for ind_iv in range(len(self.model.init_vars)):
+                if str(self.model.output_vars[ind_ov]) + "_init" == str(self.model.init_vars[ind_iv]):
+                    xs[:, ind_ov, 0] = self.model.params[self.model.init_vars[ind_iv]][:, 0]
+                    continue
+
+        return xs
+
+    def get_xs_delay(self):
+        maxdel = self.model.getMaxDelay()
+        if maxdel == 0:
+            return self.get_xs()
+
+        xs = np.zeros((self.N, self.dim_out, self.T + maxdel))
+
+        for ind_ov in range(len(self.model.output_vars)):
+            xs[:, ind_ov, 1:-maxdel] = self.model[self.model.output_vars[ind_ov]]
+            for ind_iv in range(len(self.model.init_vars)):
+                if str(self.model.output_vars[ind_ov]) + "_init" == str(self.model.init_vars[ind_iv]):
+                    xs[:, ind_ov, 0] = self.model.params[self.model.init_vars[ind_iv]][:, 0]
+                    if np.shape(self.model.params[self.model.init_vars[ind_iv]])[1] == 1:
+                        xs[:, ind_ov, -maxdel:] = self.model.params[self.model.init_vars[ind_iv]][:, 0]
+                    elif np.shape(self.model.params[self.model.init_vars[ind_iv]])[1] == maxdel + 1:
+                        xs[:, ind_ov, -maxdel:] = self.model.params[self.model.init_vars[ind_iv]][:, 1:]
+                    else:
+                        print("WRONG DIMENSION IN INPUT ARRAY")
+                        raise NotImplementedError
+
+                    continue
+
+        return xs
+
+    def update_input(self):
+        """Update the parameters in 'self.model' according to the current control such that 'self.simulate_forward'
+        operates with the appropriate control signal.
+        """
+        # TODO: find elegant way to combine the cases
+        if self.N == 1:
+            for ind_iv in range(self.dim_in):
+                self.model.params[self.model.input_vars[ind_iv]] = self.control[:, ind_iv, :].reshape(1, -1)
+        else:
+            for ind_iv in range(self.dim_in):
+                self.model.params[self.model.input_vars[ind_iv]] = self.control[:, ind_iv, :]
 
     def simulate_forward(self):
         """Updates 'state_vars' of 'self.model' in accordance to the current 'self.control'. Results for the controllable state
@@ -622,10 +683,8 @@ class OC:
         self.model.run()
 
     @abc.abstractmethod
-    def update_input(self):
-        """Update the parameters in 'self.model' according to the current control such that self.simulate_forward
-        operates with the appropriate control signal.
-        """
+    def get_model_params(self):
+        """Model params as an ordered tuple"""
         pass
 
     @abc.abstractmethod

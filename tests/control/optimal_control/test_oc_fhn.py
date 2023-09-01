@@ -20,6 +20,7 @@ class TestFHN(unittest.TestCase):
         print("Test OC in single-node system")
         model = FHNModel()
         model.params["duration"] = p.TEST_DURATION_6
+        test_oc_params.setinitzero_1n(model)
 
         for input_channel in [0, 1]:
             cost_mat = np.zeros((model.params.N, len(model.output_vars)))
@@ -83,6 +84,7 @@ class TestFHN(unittest.TestCase):
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
         model = FHNModel(Cmat=cmat, Dmat=dmat)
+        test_oc_params.setinitzero_2n(model)
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
@@ -139,6 +141,7 @@ class TestFHN(unittest.TestCase):
         dmat = np.array([[0.0, 0.0], [p.TEST_DELAY, 0.0]])
 
         model = FHNModel(Cmat=cmat, Dmat=dmat)
+        test_oc_params.setinitzero_2n(model)
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))

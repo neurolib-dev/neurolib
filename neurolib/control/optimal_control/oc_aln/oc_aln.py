@@ -50,152 +50,16 @@ class OcAln(OC):
 
         assert self.model.name == "aln"
 
-        # if self.model.params["ext_exc_current"].shape[1]
-
-        assert self.T == self.model.params["ext_exc_current"].shape[1]
-        assert self.T == self.model.params["ext_inh_current"].shape[1]
-
-        # ToDo: here, a method like neurolib.model_utils.adjustArrayShape() should be applied!
-        if self.N == 1:  # single-node model
-            if self.model.params["ext_exc_current"].ndim == 1:
-                print("WARNING: case dim(ext_exc_current) = 1 not implemented")
-                raise NotImplementedError
-            else:
-                control = np.concatenate(
-                    (self.model.params["ext_exc_current"], self.model.params["ext_inh_current"]), axis=0
-                )[np.newaxis, :, :]
-        else:
-            control = np.stack((self.model.params["ext_exc_current"], self.model.params["ext_inh_current"]), axis=1)
-
-        for n in range(self.N):
-            assert (control[n, 0, :] == self.model.params["ext_exc_current"][n, :]).all()
-            assert (control[n, 1, :] == self.model.params["ext_inh_current"][n, :]).all()
-
-            # in aln model, t=0 control does not affect the system
-            control[n, 0, 0] = 0.0
-            control[n, 1, 0] = 0.0
-
-        self.control = update_control_with_limit(
-            self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
-        )
         self.fullstate = self.get_fullstate()
 
         if self.model.params.filter_sigma:
             print("NOT IMPLEMENTED FOR FILTER_SIGMA=TRUE")
+            raise NotImplementedError
 
         self.ndt_de = np.around(self.model.params.de / self.dt).astype(int)
         self.ndt_di = np.around(self.model.params.di / self.dt).astype(int)
 
-        self.model_params = self.get_model_params()
         self.precomp_factors = self.get_precomp_factors()
-
-    def get_xs_delay(self):
-        """Concatenates the initial conditions with simulated values and pads delay contributions at end. In the models
-        timeIntegration, these values can be accessed in a circular fashion in the time-indexing.
-        """
-
-        if self.model.params["rates_exc_init"].shape[1] == 1:  # no delay
-            xs_begin = np.concatenate(
-                (
-                    self.model.params["rates_exc_init"],
-                    self.model.params["rates_inh_init"],
-                    self.model.params["IA_init"],
-                ),
-                axis=1,
-            )[:, :, np.newaxis]
-            xs = np.concatenate(
-                (
-                    xs_begin,
-                    np.stack((self.model.rates_exc, self.model.rates_inh, self.model.IA), axis=1),
-                ),
-                axis=2,
-            )
-        else:
-            xs_begin = np.stack(
-                (
-                    self.model.params["rates_exc_init"][:, -1],
-                    self.model.params["rates_inh_init"][:, -1],
-                    self.model.params["IA_init"][:, -1],
-                ),
-                axis=1,
-            )[:, :, np.newaxis]
-            xs_end = np.stack(
-                (
-                    self.model.params["rates_exc_init"][:, :-1],
-                    self.model.params["rates_inh_init"][:, :-1],
-                    self.model.params["IA_init"][:, :-1],
-                ),
-                axis=1,
-            )
-            xs = np.concatenate(
-                (
-                    xs_begin,
-                    np.stack((self.model.rates_exc, self.model.rates_inh, self.model.IA), axis=1),
-                ),
-                axis=2,
-            )
-            xs = np.concatenate(  # initial conditions for delay-steps are concatenated to the end of the array
-                (xs, xs_end),
-                axis=2,
-            )
-
-        return xs
-
-    def get_xs(self):
-        """Stack the initial condition with the simulation results for both ('exc' and 'inh') populations.
-
-        :return: N x V x T array containing all values of 'exc' and 'inh'.
-        :rtype:  np.ndarray
-        """
-        if self.model.params["rates_exc_init"].shape[1] == 1:
-            xs_begin = np.concatenate(
-                (
-                    self.model.params["rates_exc_init"],
-                    self.model.params["rates_inh_init"],
-                    self.model.params["IA_init"],
-                ),
-                axis=1,
-            )[:, :, np.newaxis]
-            xs = np.concatenate(
-                (
-                    xs_begin,
-                    np.stack((self.model.rates_exc, self.model.rates_inh, self.model.IA), axis=1),
-                ),
-                axis=2,
-            )
-        else:
-            xs_begin = np.stack(
-                (
-                    self.model.params["rates_exc_init"][:, -1],
-                    self.model.params["rates_inh_init"][:, -1],
-                    self.model.params["IA_init"][:, -1],
-                ),
-                axis=1,
-            )[:, :, np.newaxis]
-            xs = np.concatenate(
-                (
-                    xs_begin,
-                    np.stack((self.model.rates_exc, self.model.rates_inh, self.model.IA), axis=1),
-                ),
-                axis=2,
-            )
-
-        return xs
-
-    def update_input(self):
-        """Update the parameters in 'self.model' according to the current control such that 'self.simulate_forward'
-        operates with the appropriate control signal.
-        """
-        # ToDo: find elegant way to combine the cases
-        if self.N == 1:
-            self.model.params["ext_exc_current"] = self.control[:, 0, :].reshape(
-                1, -1
-            )  # Reshape as row vector to match access
-            self.model.params["ext_inh_current"] = self.control[:, 1, :].reshape(1, -1)  # in model's time integration.
-
-        else:
-            self.model.params["ext_exc_current"] = self.control[:, 0, :]
-            self.model.params["ext_inh_current"] = self.control[:, 1, :]
 
     def compute_dxdoth(self):
         """Derivative of systems dynamics wrt. change of systems variables."""

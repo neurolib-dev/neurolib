@@ -140,3 +140,17 @@ def gettarget_2n(model):
         ),
         axis=2,
     )
+
+
+def setinitzero_1n(model):
+    for init_var in model.init_vars:
+        if "ou" in init_var:
+            continue
+        model.params[init_var] = np.array([[0.0]])
+
+
+def setinitzero_2n(model):
+    for init_var in model.init_vars:
+        if "ou" in init_var:
+            continue
+        model.params[init_var] = np.zeros((2, 1))

@@ -19,9 +19,8 @@ class TestWC(unittest.TestCase):
     def test_1n(self):
         print("Test OC in single-node system")
         model = WCModel()
+        test_oc_params.setinitzero_1n(model)
         model.params["duration"] = p.TEST_DURATION_6
-        model.params["exc_init"] = np.array([[0.0]])
-        model.params["inh_init"] = np.array([[0.0]])
 
         for input_channel in [0, 1]:
             cost_mat = np.zeros((model.params.N, len(model.output_vars)))
@@ -84,8 +83,7 @@ class TestWC(unittest.TestCase):
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
         model = WCModel(Cmat=cmat, Dmat=dmat)
-        model.params["exc_init"] = np.vstack([0.0, 0.0])
-        model.params["inh_init"] = np.vstack([0.0, 0.0])
+        test_oc_params.setinitzero_2n(model)
         model.params.duration = p.TEST_DURATION_6
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
@@ -114,7 +112,6 @@ class TestWC(unittest.TestCase):
             model_controlled.control = np.concatenate(
                 [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
             )
-            print(model_controlled.control)
             model_controlled.update_input()
 
             control_coincide = False
@@ -140,6 +137,7 @@ class TestWC(unittest.TestCase):
         dmat = np.array([[0.0, 0.0], [p.TEST_DELAY, 0.0]])
 
         model = WCModel(Cmat=cmat, Dmat=dmat)
+        test_oc_params.setinitzero_2n(model)
         model.params.duration = p.TEST_DURATION_8
         model.params.signalV = 1.0
 
@@ -151,10 +149,6 @@ class TestWC(unittest.TestCase):
         model.params["exc_ext"] = p.TEST_INPUT_2N_8
         model.params["inh_ext"] = p.ZERO_INPUT_2N_8
 
-        zeroinit = np.zeros((2 + int(p.TEST_DELAY / model.params.dt)))
-
-        model.params["exc_init"] = np.vstack([zeroinit, zeroinit])
-        model.params["inh_init"] = np.vstack([zeroinit, zeroinit])
         model.run()
 
         target = test_oc_params.gettarget_2n(model)

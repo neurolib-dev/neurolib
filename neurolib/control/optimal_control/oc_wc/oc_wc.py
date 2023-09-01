@@ -43,110 +43,6 @@ class OcWc(OC):
 
         assert self.model.name == "wc"
 
-        assert self.T == self.model.params["exc_ext"].shape[1]
-        assert self.T == self.model.params["inh_ext"].shape[1]
-
-        # ToDo: here, a method like neurolib.model_utils.adjustArrayShape() should be applied!
-        if self.N == 1:  # single-node model
-            if self.model.params["exc_ext"].ndim == 1:
-                print("WARNING: case dim(exc_ext) = 1 not implemented")
-                raise NotImplementedError
-            else:
-                control = np.concatenate((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=0)[
-                    np.newaxis, :, :
-                ]
-        else:
-            control = np.stack((self.model.params["exc_ext"], self.model.params["inh_ext"]), axis=1)
-
-        for n in range(self.N):
-            assert (control[n, 0, :] == self.model.params["exc_ext"][n, :]).all()
-            assert (control[n, 1, :] == self.model.params["inh_ext"][n, :]).all()
-
-        self.control = update_control_with_limit(
-            self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
-        )
-
-        self.model_params = self.get_model_params()
-
-    def get_xs_delay(self):
-        """Concatenates the initial conditions with simulated values and pads delay contributions at end. In the models
-        timeIntegration, these values can be accessed in a circular fashion in the time-indexing.
-        """
-
-        if self.model.params["exc_init"].shape[1] == 1:  # no delay
-            xs_begin = np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
-                :, :, np.newaxis
-            ]
-            xs = np.concatenate(
-                (
-                    xs_begin,
-                    np.stack((self.model.exc, self.model.inh), axis=1),
-                ),
-                axis=2,
-            )
-        else:
-            xs_begin = np.stack((self.model.params["exc_init"][:, -1], self.model.params["inh_init"][:, -1]), axis=1)[
-                :, :, np.newaxis
-            ]
-            xs_end = np.stack((self.model.params["exc_init"][:, :-1], self.model.params["inh_init"][:, :-1]), axis=1)
-            xs = np.concatenate(
-                (
-                    xs_begin,
-                    np.stack((self.model.exc, self.model.inh), axis=1),
-                ),
-                axis=2,
-            )
-            xs = np.concatenate(  # initial conditions for delay-steps are concatenated to the end of the array
-                (xs, xs_end),
-                axis=2,
-            )
-
-        return xs
-
-    def get_xs(self):
-        """Stack the initial condition with the simulation results for both ('exc' and 'inh') populations.
-
-        :return: N x V x T array containing all values of 'exc' and 'inh'.
-        :rtype:  np.ndarray
-        """
-        if self.model.params["exc_init"].shape[1] == 1:
-            xs_begin = np.concatenate((self.model.params["exc_init"], self.model.params["inh_init"]), axis=1)[
-                :, :, np.newaxis
-            ]
-            xs = np.concatenate(
-                (
-                    xs_begin,
-                    np.stack((self.model.exc, self.model.inh), axis=1),
-                ),
-                axis=2,
-            )
-        else:
-            xs_begin = np.stack((self.model.params["exc_init"][:, -1], self.model.params["inh_init"][:, -1]), axis=1)[
-                :, :, np.newaxis
-            ]
-            xs = np.concatenate(
-                (
-                    xs_begin,
-                    np.stack((self.model.exc, self.model.inh), axis=1),
-                ),
-                axis=2,
-            )
-
-        return xs
-
-    def update_input(self):
-        """Update the parameters in 'self.model' according to the current control such that 'self.simulate_forward'
-        operates with the appropriate control signal.
-        """
-        # ToDo: find elegant way to combine the cases
-        if self.N == 1:
-            self.model.params["exc_ext"] = self.control[:, 0, :].reshape(1, -1)  # Reshape as row vector to match access
-            self.model.params["inh_ext"] = self.control[:, 1, :].reshape(1, -1)  # in model's time integration.
-
-        else:
-            self.model.params["exc_ext"] = self.control[:, 0, :]
-            self.model.params["inh_ext"] = self.control[:, 1, :]
-
     def compute_dxdoth(self):
         """Derivative of systems dynamics wrt. change of systems variables."""
         return Dxdoth(self.N, self.dim_vars)
@@ -176,13 +72,7 @@ class OcWc(OC):
         """
 
         xs = self.get_xs()
-        e = xs[:, 0, :]
-        i = xs[:, 1, :]
         xsd = self.get_xs_delay()
-        ed = xsd[:, 0, :]
-
-        ue = self.control[:, 0, :]
-        ui = self.control[:, 1, :]
 
         return Duh(
             self.model_params,
@@ -190,14 +80,14 @@ class OcWc(OC):
             self.dim_in,
             self.dim_vars,
             self.T,
-            ue,
-            ui,
-            e,
-            i,
+            self.control[:, 0, :],
+            self.control[:, 1, :],
+            xs[:, 0, :],
+            xs[:, 1, :],
             self.model.params.K_gl,
             self.model.params.Cmat,
             self.Dmat_ndt,
-            ed,
+            xsd[:, 0, :],
         )
 
     def compute_hx_list(self):
@@ -236,11 +126,6 @@ class OcWc(OC):
         """
 
         xs = self.get_xs()
-        e = xs[:, 0, :]
-        i = xs[:, 1, :]
-        xsd = self.get_xs_delay()
-        e_delay = xsd[:, 0, :]
-        ue = self.control[:, 0, :]
 
         return compute_hx_nw(
             self.model_params,
@@ -250,8 +135,8 @@ class OcWc(OC):
             self.N,
             self.dim_vars,
             self.T,
-            e,
-            i,
-            e_delay,
-            ue,
+            xs[:, 0, :],
+            xs[:, 1, :],
+            self.get_xs_delay()[:, 0, :],
+            self.control[:, 0, :],
         )

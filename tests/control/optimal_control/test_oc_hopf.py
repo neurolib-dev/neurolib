@@ -19,6 +19,7 @@ class TestHopf(unittest.TestCase):
     def test_1n(self):
         print("Test OC in single-node system")
         model = HopfModel()
+        test_oc_params.setinitzero_1n(model)
         model.params["duration"] = p.TEST_DURATION_6
 
         for input_channel in [0, 1]:
@@ -83,6 +84,7 @@ class TestHopf(unittest.TestCase):
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
         model = HopfModel(Cmat=cmat, Dmat=dmat)
+        test_oc_params.setinitzero_2n(model)
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
@@ -139,6 +141,7 @@ class TestHopf(unittest.TestCase):
         dmat = np.array([[0.0, 0.0], [p.TEST_DELAY, 0.0]])
 
         model = HopfModel(Cmat=cmat, Dmat=dmat)
+        test_oc_params.setinitzero_2n(model)
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
