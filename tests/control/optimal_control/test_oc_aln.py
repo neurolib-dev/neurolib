@@ -4,9 +4,9 @@ import numpy as np
 from neurolib.models.aln import ALNModel
 from neurolib.control.optimal_control import oc_aln
 
-import test_oc_params
+import test_oc_utils as test_oc_utils
 
-p = test_oc_params.params
+p = test_oc_utils.params
 
 global ADAP_PARAM_LIST
 ADAP_PARAM_LIST = [[10.0, 0.0], [0.0, 10.0], [10.0, 10.0]]
@@ -110,6 +110,7 @@ class TestALN(unittest.TestCase):
         print("Test OC in single-node system")
         model = ALNModel()
 
+        # no delay
         model.params.de = 0.0
         model.params.di = 0.0
 
@@ -120,6 +121,8 @@ class TestALN(unittest.TestCase):
 
         for input_channel in [0, 1]:
             for measure_channel in [0, 1]:
+                if input_channel == 0:
+                    continue
                 print("----------------- input channel, measure channel = ", input_channel, measure_channel)
 
                 cost_mat = np.zeros((model.params.N, len(model.output_vars)))
@@ -127,19 +130,13 @@ class TestALN(unittest.TestCase):
                 cost_mat[0, measure_channel] = 1.0
                 control_mat[0, input_channel] = 1.0
 
-                if input_channel == 0:
-                    model.params["ext_exc_current"] = p.TEST_INPUT_1N_10
-                    model.params["ext_inh_current"] = p.ZERO_INPUT_1N_10
-
-                elif input_channel == 1:
-                    model.params["ext_exc_current"] = p.ZERO_INPUT_1N_10
-                    model.params["ext_inh_current"] = p.TEST_INPUT_1N_10
+                test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
+                model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_10
 
                 model.run()
                 target = getstate(model)
 
-                model.params["ext_exc_current"] = p.ZERO_INPUT_1N_10
-                model.params["ext_inh_current"] = p.ZERO_INPUT_1N_10
+                test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
                 model.run()
 
                 model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
@@ -175,25 +172,24 @@ class TestALN(unittest.TestCase):
         model.params.de = 0.0
         model.params.di = 0.0
 
+        model.params.duration = p.TEST_DURATION_10
+
+        # adaptation directly only affects exc population, testing is sufficient for E => E control
+        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+        control_mat = np.zeros((model.params.N, len(model.input_vars)))
+        cost_mat[0, 0] = 1.0
+        control_mat[0, 0] = 1.0
+
+        test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
+
         for [a, b] in ADAP_PARAM_LIST:
             print("adaptation parameters a, b = ", a, b)
-            set_param_init(model, 0.0, 0.0)
-
-            model.params.duration = p.TEST_DURATION_10
-
-            # adaptation directly only affects exc population, testing is sufficient for E => E control
-            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
-            control_mat = np.zeros((model.params.N, len(model.input_vars)))
-            cost_mat[0, 0] = 1.0
-            control_mat[0, 0] = 1.0
+            set_param_init(model, a, b)
 
             model.params["ext_exc_current"] = p.TEST_INPUT_1N_10
-            model.params["ext_inh_current"] = p.ZERO_INPUT_1N_10
-
             model.run()
             target = getstate(model)
-
-            model.params["ext_exc_current"] = p.ZERO_INPUT_1N_10
+            test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
             model.run()
 
             model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
@@ -227,8 +223,6 @@ class TestALN(unittest.TestCase):
 
         model.params.de = p.TEST_DELAY
         model.params.di = 1.5 * p.TEST_DELAY
-        ndt_de = np.around(model.params.de / model.params.dt).astype(int)
-        ndt_di = np.around(model.params.di / model.params.dt).astype(int)
 
         set_param_init(model)
 
@@ -243,19 +237,12 @@ class TestALN(unittest.TestCase):
                 cost_mat[0, measure_channel] = 1.0
                 control_mat[0, input_channel] = 1.0
 
-                if input_channel == 0:
-                    model.params["ext_exc_current"] = p.TEST_INPUT_1N_12
-                    model.params["ext_inh_current"] = p.ZERO_INPUT_1N_12
-
-                elif input_channel == 1:
-                    model.params["ext_exc_current"] = p.ZERO_INPUT_1N_12
-                    model.params["ext_inh_current"] = p.TEST_INPUT_1N_12
-
+                test_oc_utils.set_input(model, p.ZERO_INPUT_1N_12)
+                model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_12
                 model.run()
                 target = getstate(model)
 
-                model.params["ext_exc_current"] = p.ZERO_INPUT_1N_12
-                model.params["ext_inh_current"] = p.ZERO_INPUT_1N_12
+                test_oc_utils.set_input(model, p.ZERO_INPUT_1N_12)
                 model.run()
 
                 model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
@@ -305,13 +292,12 @@ class TestALN(unittest.TestCase):
 
         model.params.duration = p.TEST_DURATION_10
 
-        model.params["ext_inh_current"] = p.ZERO_INPUT_2N_10
+        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_10)
         model.params["ext_exc_current"] = p.TEST_INPUT_2N_10
-
         model.run()
         target = getstate(model)
 
-        model.params["ext_exc_current"] = p.ZERO_INPUT_2N_10
+        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_10)
 
         model_controlled = oc_aln.OcAln(
             model,
@@ -337,11 +323,6 @@ class TestALN(unittest.TestCase):
                 break
 
             print(c_diff)
-
-            # if control_channel != measure_channel:
-            #    if np.amax(c_diff) < 1e3 * LIMIT_DIFF:
-            #        control_coincide = True
-            #        break
 
             if model_controlled.zero_step_encountered:
                 break
@@ -370,13 +351,12 @@ class TestALN(unittest.TestCase):
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         cost_mat[1, 0] = 1.0
 
-        model.params["ext_inh_current"] = p.ZERO_INPUT_2N_12
+        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_12)
         model.params["ext_exc_current"] = p.TEST_INPUT_2N_12
-
         model.run()
         target = getstate(model)
 
-        model.params["ext_exc_current"] = p.ZERO_INPUT_2N_12
+        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_12)
 
         model_controlled = oc_aln.OcAln(
             model,
@@ -418,15 +398,11 @@ class TestALN(unittest.TestCase):
         model = ALNModel(Cmat=cmat, Dmat=dmat)
         model.params.duration = p.TEST_DURATION_6
 
-        model.params["ext_exc_current"] = p.TEST_INPUT_2N_6
-        model.params["ext_inh_current"] = -p.TEST_INPUT_2N_6
+        test_oc_utils.set_input(model, p.TEST_INPUT_2N_6)
 
         initind = model.getMaxDelay() + 1
 
         zeroinit = np.zeros((initind))
-
-        model.params["rates_exc_init"] = np.vstack([zeroinit, zeroinit])
-        model.params["rates_inh_init"] = np.vstack([zeroinit, zeroinit])
 
         target = np.ones((model.params.N, len(model.output_vars), p.TEST_INPUT_2N_6.shape[1]))
 

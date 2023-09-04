@@ -4,9 +4,9 @@ import numpy as np
 from neurolib.models.wc import WCModel
 from neurolib.control.optimal_control import oc_wc
 
-import test_oc_params
+import test_oc_utils as test_oc_utils
 
-p = test_oc_params.params
+p = test_oc_utils.params
 
 
 class TestWC(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestWC(unittest.TestCase):
     def test_1n(self):
         print("Test OC in single-node system")
         model = WCModel()
-        test_oc_params.setinitzero_1n(model)
+        test_oc_utils.setinitzero_1n(model)
         model.params["duration"] = p.TEST_DURATION_6
 
         for input_channel in [0, 1]:
@@ -27,20 +27,13 @@ class TestWC(unittest.TestCase):
             control_mat = np.zeros((model.params.N, len(model.state_vars)))
             control_mat[0, input_channel] = 1.0  # only allow inputs to input_channel
             cost_mat[0, np.abs(input_channel - 1).astype(int)] = 1.0  # only measure other channel
-            if input_channel == 0:
-                print("Input to E channel, measure in I channel")
-                model.params["exc_ext"] = p.TEST_INPUT_1N_6
-                model.params["inh_ext"] = p.ZERO_INPUT_1N_6
-            elif input_channel == 1:
-                print("Input to I channel, measure in E channel")
-                model.params["exc_ext"] = p.ZERO_INPUT_1N_6
-                model.params["inh_ext"] = p.TEST_INPUT_1N_6
 
+            test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
+            model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_6
             model.run()
-            target = test_oc_params.gettarget_1n(model)
+            target = test_oc_utils.gettarget_1n(model)
 
-            model.params["inh_ext"] = p.ZERO_INPUT_1N_6
-            model.params["exc_ext"] = p.ZERO_INPUT_1N_6
+            test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
 
             model_controlled = oc_wc.OcWc(model, target)
             model_controlled.maximum_control_strength = 2.0
@@ -83,7 +76,7 @@ class TestWC(unittest.TestCase):
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
         model = WCModel(Cmat=cmat, Dmat=dmat)
-        test_oc_params.setinitzero_2n(model)
+        test_oc_utils.setinitzero_2n(model)
         model.params.duration = p.TEST_DURATION_6
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
@@ -98,7 +91,7 @@ class TestWC(unittest.TestCase):
             model.params["inh_ext"] = p.ZERO_INPUT_2N_6
             model.run()
 
-            target = test_oc_params.gettarget_2n(model)
+            target = test_oc_utils.gettarget_2n(model)
             model.params["exc_ext"] = p.ZERO_INPUT_2N_6
 
             model_controlled = oc_wc.OcWc(
@@ -137,7 +130,7 @@ class TestWC(unittest.TestCase):
         dmat = np.array([[0.0, 0.0], [p.TEST_DELAY, 0.0]])
 
         model = WCModel(Cmat=cmat, Dmat=dmat)
-        test_oc_params.setinitzero_2n(model)
+        test_oc_utils.setinitzero_2n(model)
         model.params.duration = p.TEST_DURATION_8
         model.params.signalV = 1.0
 
@@ -151,7 +144,7 @@ class TestWC(unittest.TestCase):
 
         model.run()
 
-        target = test_oc_params.gettarget_2n(model)
+        target = test_oc_utils.gettarget_2n(model)
         model.params["exc_ext"] = p.ZERO_INPUT_2N_8
 
         model_controlled = oc_wc.OcWc(
@@ -194,8 +187,6 @@ class TestWC(unittest.TestCase):
         model = WCModel(Cmat=cmat, Dmat=dmat)
         model.params.duration = p.TEST_DURATION_6
 
-        model.params["exc_ext"] = p.TEST_INPUT_2N_6
-        model.params["inh_ext"] = -p.TEST_INPUT_2N_6
         target = np.ones((2, 2, p.TEST_INPUT_2N_6.shape[1]))
 
         model_controlled = oc_wc.OcWc(

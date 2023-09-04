@@ -549,6 +549,10 @@ class OC:
         if isinstance(self.control_matrix, type(None)):
             self.control_matrix = np.ones((self.N, self.dim_in))  # default: all channels in all nodes active
 
+        if self.model.name == "aln" and (self.control_matrix[:, 2] != 0.0).any():
+            print("ALN rate control not implemented yet.")
+            raise NotImplementedError
+
         # check if matrix is binary
         assert np.array_equal(self.control_matrix, self.control_matrix.astype(bool))
 

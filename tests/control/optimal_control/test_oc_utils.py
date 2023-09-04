@@ -154,3 +154,8 @@ def setinitzero_2n(model):
         if "ou" in init_var:
             continue
         model.params[init_var] = np.zeros((2, 1))
+
+
+def set_input(model, testinput):
+    for iv in model.input_vars:
+        model.params[iv] = testinput

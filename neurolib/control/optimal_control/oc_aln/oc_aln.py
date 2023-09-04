@@ -299,13 +299,16 @@ class OcAln(OC):
             if t <= T - 2:
                 self.model.params.ext_exc_current = control[:, 0, t : t + 2]
                 self.model.params.ext_inh_current = control[:, 1, t : t + 2]
+                self.model.params.ext_exc_rate = control[:, 2, t : t + 2]
             elif t == T - 1:
                 ec = np.concatenate((control[:, 0, t:], np.zeros((N, 1))), axis=1)
                 self.model.params.ext_exc_current = np.concatenate((control[:, 0, t:], np.zeros((N, 1))), axis=1)
                 self.model.params.ext_inh_current = np.concatenate((control[:, 1, t:], np.zeros((N, 1))), axis=1)
+                self.model.params.ext_exc_rate = np.concatenate((control[:, 2, t:], np.zeros((N, 1))), axis=1)
             else:
                 self.model.params.ext_exc_current = 0.0
                 self.model.params.ext_inh_current = 0.0
+                self.model.params.ext_exc_rate = 0.0
             self.model.run()
 
             finalstate = self.getfinalstate()
@@ -315,6 +318,7 @@ class OcAln(OC):
         self.model.params.duration = duration
         self.model.params.ext_exc_current = control[:, 0, :]
         self.model.params.ext_inh_current = control[:, 1, :]
+        self.model.params.ext_exc_rate = control[:, 2, :]
         self.setinitstate(initstate)
         self.simulate_forward()
 

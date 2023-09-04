@@ -5,9 +5,9 @@ from neurolib.models.fhn import FHNModel
 from neurolib.utils.stimulus import ZeroInput
 from neurolib.control.optimal_control import oc_fhn
 
-import test_oc_params
+import test_oc_utils as test_oc_utils
 
-p = test_oc_params.params
+p = test_oc_utils.params
 
 
 class TestFHNNoisy(unittest.TestCase):
@@ -18,21 +18,18 @@ class TestFHNNoisy(unittest.TestCase):
     def test_noisy_1n_fhn_with_noise_approaches_input(self):
         model = FHNModel()
 
-        model.params["x_ext"] = p.TEST_INPUT_1N_6
-        model.params["y_ext"] = -p.TEST_INPUT_1N_6
+        test_oc_utils.set_input(model, p.TEST_INPUT_1N_6)
 
         model.params["duration"] = p.TEST_DURATION_6
         model.params["xs_init"] = np.array([[0.0]])
         model.params["ys_init"] = np.array([[0.0]])
 
         model.run()
-        target = test_oc_params.gettarget_1n(model)
+        target = test_oc_utils.gettarget_1n(model)
 
-        model.params["y_ext"] = p.ZERO_INPUT_1N_6
-        model.params["x_ext"] = p.ZERO_INPUT_1N_6
+        test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
 
         model_controlled_noisy = oc_fhn.OcFhn(model, target, M=2, M_validation=1000)
-
         control_coincide = False
 
         for i in range(100):
@@ -42,7 +39,7 @@ class TestFHNNoisy(unittest.TestCase):
             c_diff = np.vstack(
                 [
                     np.abs(control[0, 0, :] - p.TEST_INPUT_1N_6[0, :]),
-                    np.abs(control[0, 1, :] + p.TEST_INPUT_1N_6[0, :]),
+                    np.abs(control[0, 1, :] - p.TEST_INPUT_1N_6[0, :]),
                 ]
             )
             if np.amax(c_diff) < p.LIMIT_DIFF:
@@ -61,18 +58,16 @@ class TestFHNNoisy(unittest.TestCase):
 
         test_iterations = 6
 
-        model.params["x_ext"] = p.TEST_INPUT_1N_6
-        model.params["y_ext"] = -p.TEST_INPUT_1N_6
+        test_oc_utils.set_input(model, p.TEST_INPUT_1N_6)
 
         model.params["duration"] = p.TEST_DURATION_6
         model.params["xs_init"] = np.array([[0.0]])
         model.params["ys_init"] = np.array([[0.0]])
 
         model.run()
-        target = test_oc_params.gettarget_1n(model)
+        target = test_oc_utils.gettarget_1n(model)
 
-        model.params["y_ext"] = p.ZERO_INPUT_1N_6
-        model.params["x_ext"] = p.ZERO_INPUT_1N_6
+        test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
         model_controlled_noisy = oc_fhn.OcFhn(model, target, M=2, M_validation=1000)
 
         model_controlled_noisy.optimize(test_iterations)
@@ -99,13 +94,11 @@ class TestFHNNoisy(unittest.TestCase):
         model.params["xs_init"] = np.vstack([0.0, 0.0])
         model.params["ys_init"] = np.vstack([0.0, 0.0])
 
-        model.params["x_ext"] = p.TEST_INPUT_2N_6
-        model.params["y_ext"] = -p.TEST_INPUT_2N_6
+        test_oc_utils.set_input(model, p.TEST_INPUT_2N_6)
 
         model.run()
-        target = test_oc_params.gettarget_2n(model)
-        model.params["y_ext"] = p.ZERO_INPUT_2N_6
-        model.params["x_ext"] = p.ZERO_INPUT_2N_6
+        target = test_oc_utils.gettarget_2n(model)
+        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_6)
 
         model_controlled_noisy = oc_fhn.OcFhn(model, target, M=2, M_validation=10)
         model_controlled_noisy.optimize(test_iterations)
@@ -126,11 +119,10 @@ class TestFHNNoisy(unittest.TestCase):
 
         model.params["duration"] = p.TEST_DURATION_6
 
-        model.params["x_ext"] = p.TEST_INPUT_1N_6
-        model.params["y_ext"] = -p.TEST_INPUT_1N_6
+        test_oc_utils.set_input(model, p.TEST_INPUT_1N_6)
 
         model.run()
-        target = test_oc_params.gettarget_1n(model)
+        target = test_oc_utils.gettarget_1n(model)
         model.params.sigma_ou = 1.0
 
         model_controlled = oc_fhn.OcFhn(model, target, M=2, M_validation=1000)
@@ -161,11 +153,10 @@ class TestFHNNoisy(unittest.TestCase):
         model = FHNModel(Cmat=cmat, Dmat=dmat)
 
         model.params["duration"] = p.TEST_DURATION_6
-        model.params["x_ext"] = p.TEST_INPUT_2N_6
-        model.params["y_ext"] = p.TEST_INPUT_2N_6
+        test_oc_utils.set_input(model, p.TEST_INPUT_2N_6)
 
         model.run()
-        target = test_oc_params.gettarget_2n(model)
+        target = test_oc_utils.gettarget_2n(model)
         model.params.sigma_ou = 1.0
 
         model_controlled = oc_fhn.OcFhn(model, target, M=2, M_validation=1000)

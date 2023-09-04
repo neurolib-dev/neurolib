@@ -4,9 +4,9 @@ import numpy as np
 from neurolib.models.hopf import HopfModel
 from neurolib.control.optimal_control import oc_hopf
 
-import test_oc_params
+import test_oc_utils as test_oc_utils
 
-p = test_oc_params.params
+p = test_oc_utils.params
 
 
 class TestHopf(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestHopf(unittest.TestCase):
     def test_1n(self):
         print("Test OC in single-node system")
         model = HopfModel()
-        test_oc_params.setinitzero_1n(model)
+        test_oc_utils.setinitzero_1n(model)
         model.params["duration"] = p.TEST_DURATION_6
 
         for input_channel in [0, 1]:
@@ -27,21 +27,13 @@ class TestHopf(unittest.TestCase):
             control_mat = np.zeros((model.params.N, len(model.state_vars)))
             control_mat[0, input_channel] = 1.0  # only allow inputs to input_channel
             cost_mat[0, np.abs(input_channel - 1).astype(int)] = 1.0  # only measure other channel
-            if input_channel == 0:
-                print("Input to x channel, measure in y channel")
-                model.params["x_ext"] = p.TEST_INPUT_1N_6
-                model.params["y_ext"] = p.ZERO_INPUT_1N_6
-            elif input_channel == 1:
-                print("Input to y channel, measure in x channel")
-                model.params["x_ext"] = p.ZERO_INPUT_1N_6
-                model.params["y_ext"] = p.TEST_INPUT_1N_6
 
+            test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
+            model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_6
             model.run()
-            target = test_oc_params.gettarget_1n(model)
+            target = test_oc_utils.gettarget_1n(model)
 
-            model.params["y_ext"] = p.ZERO_INPUT_1N_6
-            model.params["x_ext"] = p.ZERO_INPUT_1N_6
-
+            test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
             model_controlled = oc_hopf.OcHopf(model, target)
 
             if input_channel == 0:
@@ -84,7 +76,7 @@ class TestHopf(unittest.TestCase):
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
         model = HopfModel(Cmat=cmat, Dmat=dmat)
-        test_oc_params.setinitzero_2n(model)
+        test_oc_utils.setinitzero_2n(model)
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
@@ -100,7 +92,7 @@ class TestHopf(unittest.TestCase):
             model.params["y_ext"] = p.ZERO_INPUT_2N_8
 
             model.run()
-            target = test_oc_params.gettarget_2n(model)
+            target = test_oc_utils.gettarget_2n(model)
             model.params["x_ext"] = p.ZERO_INPUT_2N_8
 
             model_controlled = oc_hopf.OcHopf(
@@ -141,7 +133,7 @@ class TestHopf(unittest.TestCase):
         dmat = np.array([[0.0, 0.0], [p.TEST_DELAY, 0.0]])
 
         model = HopfModel(Cmat=cmat, Dmat=dmat)
-        test_oc_params.setinitzero_2n(model)
+        test_oc_utils.setinitzero_2n(model)
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
@@ -155,7 +147,7 @@ class TestHopf(unittest.TestCase):
         model.params["y_ext"] = p.ZERO_INPUT_2N_10
 
         model.run()
-        target = test_oc_params.gettarget_2n(model)
+        target = test_oc_utils.gettarget_2n(model)
         model.params["x_ext"] = p.ZERO_INPUT_2N_10
 
         model_controlled = oc_hopf.OcHopf(

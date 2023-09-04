@@ -5,9 +5,9 @@ from neurolib.control.optimal_control.oc import getdefaultweights
 from neurolib.models.fhn import FHNModel
 from neurolib.control.optimal_control import oc_fhn
 
-import test_oc_params
+import test_oc_utils as test_oc_utils
 
-p = test_oc_params.params
+p = test_oc_utils.params
 
 
 class TestCostFunctions(unittest.TestCase):
