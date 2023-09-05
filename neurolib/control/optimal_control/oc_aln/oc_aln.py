@@ -183,6 +183,10 @@ class OcAln(OC):
             self.fullstate,
             self.model.params.Cmat,
             self.Dmat_ndt,
+            self.control[:, 0, :],
+            self.control[:, 1, :],
+            self.control[:, 2, :],
+            self.control[:, 3, :],
             self.svdict,
         )
 
@@ -314,15 +318,13 @@ class OcAln(OC):
             if t != 0:
                 self.setasinit(fullstate, t)
             self.model.params.duration = 2.0 * self.dt
-            for iv_ind in range(len(self.model.input_vars)):
+            for iv_ind, iv in enumerate(self.model.input_vars):
                 if t <= T - 2:
-                    self.model.params[self.model.input_vars[iv_ind]] = control[:, iv_ind, t : t + 2]
+                    self.model.params[iv] = control[:, iv_ind, t : t + 2]
                 elif t == T - 1:
-                    self.model.params[self.model.input_vars[iv_ind]] = np.concatenate(
-                        (control[:, iv_ind, t:], np.zeros((N, 1))), axis=1
-                    )
+                    self.model.params[iv] = np.concatenate((control[:, iv_ind, t:], np.zeros((N, 1))), axis=1)
                 else:
-                    self.model.params[self.model.input_vars[iv_ind]] = 0.0
+                    self.model.params[iv] = 0.0
             self.model.run()
 
             finalstate = self.getfinalstate()
@@ -330,8 +332,8 @@ class OcAln(OC):
 
         # reset to starting values
         self.model.params.duration = duration
-        for iv_ind in range(len(self.model.input_vars)):
-            self.model.params[self.model.input_vars[iv_ind]] = control[:, iv_ind, :]
+        for iv_ind, iv in enumerate(self.model.input_vars):
+            self.model.params[iv] = control[:, iv_ind, :]
         self.setinitstate(initstate)
         self.simulate_forward()
 

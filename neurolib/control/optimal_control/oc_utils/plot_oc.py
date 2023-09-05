@@ -1,10 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-colors = ["red", "blue", "green"]
+colors = ["red", "blue", "green", "orange"]
 
 
-def plot_oc_singlenode(duration, dt, state, target, control, orig_input, cost_array=()):
+def plot_oc_singlenode(
+    duration,
+    dt,
+    state,
+    target,
+    control,
+    orig_input,
+    cost_array=(),
+    plot_state_vars=[0, 1],
+    plot_control_vars=[0, 1],
+):
     """Plot target and controlled dynamics for a network with a single node.
     :param duration:    Duration of simulation (in ms).
     :param dt:          Time discretization (in ms).
@@ -21,14 +31,14 @@ def plot_oc_singlenode(duration, dt, state, target, control, orig_input, cost_ar
     # Plot the target (dashed line) and unperturbed activity
     t_array = np.arange(0, duration + dt, dt)
 
-    for v in range(state.shape[1]):
+    for v in plot_state_vars:
         ax[0].plot(t_array, state[0, v, :], label="state var " + str(v), color=colors[v])
         ax[0].plot(t_array, target[0, v, :], linestyle="dashed", label="target var " + str(v), color=colors[v])
     ax[0].legend(loc="upper right")
     ax[0].set_title("Activity without stimulation and target activity")
 
     # Plot the target control signal (dashed line) and "initial" zero control signal
-    for v in range(control.shape[1]):
+    for v in plot_control_vars:
         ax[1].plot(t_array, control[0, v, :], label="stimulation var " + str(v), color=colors[v])
         ax[1].plot(t_array, orig_input[0, v, :], linestyle="dashed", label="input var " + str(v), color=colors[v])
     ax[1].legend(loc="upper right")
@@ -40,7 +50,19 @@ def plot_oc_singlenode(duration, dt, state, target, control, orig_input, cost_ar
     plt.show()
 
 
-def plot_oc_network(N, duration, dt, state, target, control, orig_input, cost_array=(), step_array=()):
+def plot_oc_network(
+    N,
+    duration,
+    dt,
+    state,
+    target,
+    control,
+    orig_input,
+    cost_array=(),
+    step_array=(),
+    plot_state_vars=[0, 1],
+    plot_control_vars=[0, 1],
+):
     """Plot target and controlled dynamics for a network with a single node.
     :param N:           Number of nodes in the network.
     :param duration:    Duration of simulation (in ms).
@@ -59,14 +81,14 @@ def plot_oc_network(N, duration, dt, state, target, control, orig_input, cost_ar
     fig, ax = plt.subplots(3, N, figsize=(12, 8), constrained_layout=True)
 
     for n in range(N):
-        for v in range(state.shape[1]):
+        for v in plot_state_vars:
             ax[0, n].plot(t_array, state[n, v, :], label="state var " + str(v), color=colors[v])
             ax[0, n].plot(t_array, target[n, v, :], linestyle="dashed", label="target var " + str(v), color=colors[v])
         # ax[0, n].legend(loc="upper right")
         ax[0, n].set_title(f"Activity and target, node %s" % (n))
 
         # Plot the target control signal (dashed line) and "initial" zero control signal
-        for v in range(control.shape[1]):
+        for v in plot_control_vars:
             ax[1, n].plot(t_array, control[0, v, :], label="stimulation var " + str(v), color=colors[v])
             ax[1, n].plot(
                 t_array, orig_input[0, v, :], linestyle="dashed", label="input var " + str(v), color=colors[v]

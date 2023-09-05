@@ -546,9 +546,9 @@ class OC:
         if isinstance(self.control_matrix, type(None)):
             self.control_matrix = np.ones((self.N, self.dim_in))  # default: all channels and all nodes active
 
-        if self.model.name == "aln" and (self.control_matrix[:, 2] != 0.0).any():
-            print("ALN rate control not implemented yet.")
-            raise NotImplementedError
+        # if self.model.name == "aln" and (self.control_matrix[:, 2] != 0.0).any():
+        #    print("ALN rate control not implemented yet.")
+        #    raise NotImplementedError
 
         # check if matrix is binary
         assert np.array_equal(self.control_matrix, self.control_matrix.astype(bool))
@@ -616,12 +616,10 @@ class OC:
             assert self.T == self.model.params[input_var].shape[1]
 
         control = np.zeros((self.N, self.dim_in, self.T))
-        for v in range(self.dim_in):
-            control[:, v, :] = self.model.params[self.model.input_vars[v]]
-
-        for n in range(self.N):
-            for v in range(len(self.model.input_vars)):
-                assert (control[n, v, :] == self.model.params[self.model.input_vars[v]][n, :]).all()
+        for v, iv in enumerate(self.model.input_vars):
+            control[:, v, :] = self.model.params[iv]
+            for n in range(self.N):
+                assert (control[n, v, :] == self.model.params[iv][n, :]).all()
 
         self.control = update_control_with_limit(
             self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
@@ -671,11 +669,11 @@ class OC:
     def get_xs(self):
         xs = np.zeros((self.N, self.dim_out, self.T))
 
-        for ind_ov in range(len(self.model.output_vars)):
-            xs[:, ind_ov, 1:] = self.model[self.model.output_vars[ind_ov]]
-            for ind_iv in range(len(self.model.init_vars)):
-                if str(self.model.output_vars[ind_ov]) + "_init" == str(self.model.init_vars[ind_iv]):
-                    xs[:, ind_ov, 0] = self.model.params[self.model.init_vars[ind_iv]][:, 0]
+        for ind_ov, ov in enumerate(self.model.output_vars):
+            xs[:, ind_ov, 1:] = self.model[ov]
+            for ind_iv, iv in enumerate(self.model.init_vars):
+                if str(ov) + "_init" == str(iv):
+                    xs[:, ind_ov, 0] = self.model.params[iv][:, 0]
                     continue
 
         return xs
@@ -687,15 +685,15 @@ class OC:
 
         xs = np.zeros((self.N, self.dim_out, self.T + maxdel))
 
-        for ind_ov in range(len(self.model.output_vars)):
-            xs[:, ind_ov, 1:-maxdel] = self.model[self.model.output_vars[ind_ov]]
-            for ind_iv in range(len(self.model.init_vars)):
-                if str(self.model.output_vars[ind_ov]) + "_init" == str(self.model.init_vars[ind_iv]):
-                    xs[:, ind_ov, 0] = self.model.params[self.model.init_vars[ind_iv]][:, 0]
-                    if np.shape(self.model.params[self.model.init_vars[ind_iv]])[1] == 1:
-                        xs[:, ind_ov, -maxdel:] = self.model.params[self.model.init_vars[ind_iv]][:, 0]
-                    elif np.shape(self.model.params[self.model.init_vars[ind_iv]])[1] == maxdel + 1:
-                        xs[:, ind_ov, -maxdel:] = self.model.params[self.model.init_vars[ind_iv]][:, 1:]
+        for ind_ov, ov in enumerate(self.model.output_vars):
+            xs[:, ind_ov, 1:-maxdel] = self.model[ov]
+            for ind_iv, iv in enumerate(self.model.init_vars):
+                if str(ov) + "_init" == str(iv):
+                    xs[:, ind_ov, 0] = self.model.params[iv][:, 0]
+                    if np.shape(self.model.params[iv])[1] == 1:
+                        xs[:, ind_ov, -maxdel:] = self.model.params[iv][:, 0]
+                    elif np.shape(self.model.params[iv])[1] == maxdel + 1:
+                        xs[:, ind_ov, -maxdel:] = self.model.params[iv][:, 1:]
                     else:
                         print("WRONG DIMENSION IN INPUT ARRAY")
                         raise NotImplementedError
@@ -709,12 +707,11 @@ class OC:
         operates with the appropriate control signal.
         """
         # TODO: find elegant way to combine the cases
-        if self.N == 1:
-            for ind_iv in range(self.dim_in):
-                self.model.params[self.model.input_vars[ind_iv]] = self.control[:, ind_iv, :].reshape(1, -1)
-        else:
-            for ind_iv in range(self.dim_in):
-                self.model.params[self.model.input_vars[ind_iv]] = self.control[:, ind_iv, :]
+        for ind_iv, iv in enumerate(self.model.input_vars):
+            if self.N == 1:
+                self.model.params[iv] = self.control[:, ind_iv, :].reshape(1, -1)
+            else:
+                self.model.params[iv] = self.control[:, ind_iv, :]
 
     def simulate_forward(self):
         """Updates 'state_vars' of 'self.model' in accordance to the current 'self.control'. Results for the controllable state

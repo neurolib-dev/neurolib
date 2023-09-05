@@ -721,7 +721,7 @@ def fast_interp2_opt(x, dx, xi, y, dy, yi):
 
 
 @numba.njit
-def jacobian_aln(model_params, precomp_factors, V, fullstate, ue, ui, nw_input, nw_input_sq, re_del, ri_del):
+def jacobian_aln(model_params, precomp_factors, V, fullstate, ue, ui, ure, uri, nw_input, nw_input_sq, re_del, ri_del):
     """Jacobian of the ALN dynamical system.
 
     :param model_params:    Ordered tuple of parameters in the ALNModel in order
@@ -790,13 +790,13 @@ def jacobian_aln(model_params, precomp_factors, V, fullstate, ue, ui, nw_input, 
 
     jacobian = np.zeros((V, V))
 
-    z1ee = z1ee_f * re_del + nw_input
-    z2ee = z2ee_f * re_del + nw_input_sq
+    z1ee = z1ee_f * re_del + nw_input + c_gl * Ke_gl * ure
+    z2ee = z2ee_f * re_del + nw_input_sq + c_gl**2 * Ke_gl * ure
     z1ei = z1ei_f * ri_del
     z2ei = z2ei_f * ri_del
 
-    z1ie = z1ie_f * re_del
-    z2ie = z2ie_f * re_del
+    z1ie = z1ie_f * re_del + c_gl * Ke_gl * uri
+    z2ie = z2ie_f * re_del + c_gl**2 * Ke_gl * uri
     z1ii = z1ii_f * ri_del
     z2ii = z2ii_f * ri_del
 
@@ -967,6 +967,8 @@ def compute_hx(
         for t in range(T):
             ue = control[n, 0, t]
             ui = control[n, 1, t]
+            ure = control[n, 2, t]
+            uri = control[n, 3, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_aln(
                 model_params,
@@ -975,6 +977,8 @@ def compute_hx(
                 dyn_vars[n, :, t],
                 ue,
                 ui,
+                ure,
+                uri,
                 nw_input[n, t],
                 nw_input_sq[n, t],
                 re_del,
@@ -1013,6 +1017,8 @@ def jacobian_de(
     fullstate,
     ue,
     ui,
+    ure,
+    uri,
     nw_input,
     re_del,
     ri_del,
@@ -1082,9 +1088,9 @@ def jacobian_de(
 
     jacobian = np.zeros((V, V))
 
-    z1ee = z1ee_f * re_del + nw_input  # factors 1e-3 are in z1ee_f and in ne_input
+    z1ee = z1ee_f * re_del + nw_input + c_gl * Ke_gl * ure  # factors 1e-3 are in z1ee_f and in ne_input
     z1ei = z1ei_f * ri_del
-    z1ie = z1ie_f * re_del
+    z1ie = z1ie_f * re_del + c_gl * Ke_gl * uri
     z1ii = z1ii_f * ri_del
 
     sig_ee_den = (1 + z1ee) * taum + tau_se
@@ -1210,6 +1216,8 @@ def compute_hx_de(
         for t in range(T):
             ue = control[n, 0, t]
             ui = control[n, 1, t]
+            ure = control[n, 2, t]
+            uri = control[n, 3, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_de(
                 model_params,
@@ -1218,6 +1226,8 @@ def compute_hx_de(
                 dyn_vars[n, :, t],
                 ue,
                 ui,
+                ure,
+                uri,
                 nw_input[n, t],
                 re_del,
                 ri_del,
@@ -1234,6 +1244,8 @@ def jacobian_di(
     fullstate,
     ue,
     ui,
+    ure,
+    uri,
     nw_input,
     re_del,
     ri_del,
@@ -1302,9 +1314,9 @@ def jacobian_di(
 
     jacobian = np.zeros((V, V))
 
-    z1ee = z1ee_f * re_del + nw_input
+    z1ee = z1ee_f * re_del + nw_input + c_gl * Ke_gl * ure
     z1ei = z1ei_f * ri_del
-    z1ie = z1ie_f * re_del
+    z1ie = z1ie_f * re_del + c_gl * Ke_gl * uri
     z1ii = z1ii_f * ri_del
 
     sig_ee_den = (1 + z1ee) * taum + tau_se
@@ -1430,6 +1442,8 @@ def compute_hx_di(
         for t in range(T):
             ue = control[n, 0, t]
             ui = control[n, 1, t]
+            ure = control[n, 2, t]
+            uri = control[n, 3, t]
             re_del, ri_del = dyn_vars[n, 0, t - ndt_de], dyn_vars[n, 1, t - ndt_di]
             hx[n, t, :, :] = jacobian_di(
                 model_params,
@@ -1438,6 +1452,8 @@ def compute_hx_di(
                 dyn_vars[n, :, t],
                 ue,
                 ui,
+                ure,
+                uri,
                 nw_input[n, t],
                 re_del,
                 ri_del,
@@ -1503,6 +1519,7 @@ def compute_hx_nw(
             for t in range(T):
                 re_del, ri_del = dyn_vars[n1, 0, t - ndt_de], dyn_vars[n1, 1, t - ndt_di]
                 ue = control[n1, 0, t]
+                ure = control[n1, 2, t]
                 hx_nw[n1, n2, t, :, :] = jacobian_nw(
                     model_params,
                     precomp_factors,
@@ -1513,23 +1530,14 @@ def compute_hx_nw(
                     nw_input[n1, t],
                     cmat[n1, n2],
                     ue,
+                    ure,
                 )
 
     return hx_nw
 
 
 @numba.njit
-def jacobian_nw(
-    model_params,
-    precomp_factors,
-    V,
-    fullstate,
-    re_del,
-    ri_del,
-    nw_input,
-    cmat_entry,
-    ue,
-):
+def jacobian_nw(model_params, precomp_factors, V, fullstate, re_del, ri_del, nw_input, cmat_entry, ue, ure):
     """Jacobian of the ALN dynamical system wrt network connections
 
     :param model_params:    Ordered tuple of parameters in the ALNModel in order
@@ -1596,7 +1604,7 @@ def jacobian_nw(
 
     jac_nw = np.zeros((V, V))
 
-    z1ee = z1ee_f * re_del + nw_input
+    z1ee = z1ee_f * re_del + nw_input + c_gl * Ke_gl * ure
     z1ei = z1ei_f * ri_del
 
     sig_ee_den = (1 + z1ee) * taum + tau_se
@@ -1653,6 +1661,10 @@ def Duh(
     fullstate,
     cmat,
     dmat_ndt,
+    ue,
+    ui,
+    ure,
+    uri,
     sv,
 ):
     """Derivative of systems dynamics wrt. external inputs (control signals).
@@ -1723,9 +1735,9 @@ def Duh(
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
         for n in range(N):
-            z1ee = z1ee_f * fullstate[n, 0, t] + nw_input[n, t]
+            z1ee = z1ee_f * fullstate[n, 0, t] + nw_input[n, t] + c_gl * Ke_gl * ure[n, t]
             z1ei = z1ei_f * fullstate[n, 1, t]
-            z1ie = z1ie_f * fullstate[n, 0, t]
+            z1ie = z1ie_f * fullstate[n, 0, t] + c_gl * Ke_gl * uri[n, t]
             z1ii = z1ii_f * fullstate[n, 1, t]
 
             sig_ee_den = (1 + z1ee) * taum + tau_se
@@ -1750,14 +1762,90 @@ def Duh(
                 sigmarange, ds, sigmae_f, Irange, dI, fullstate[n, 2, t] - fullstate[n, 4, t] / C
             )
             xid1, yid1 = int(xid1), int(yid1)
+            re0 = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
             te0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+            v0 = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
+
+            xid1, yid1, dxid, dyid = fast_interp2_opt(
+                sigmarange, ds, sigmae_f + ds, Irange, dI, fullstate[n, 2, t] - fullstate[n, 4, t] / C
+            )
+            xid1, yid1 = int(xid1), int(yid1)
+            re1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+            te1s = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+            v1s = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
 
             xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f, Irange, dI, fullstate[n, 3, t])
             xid1, yid1 = int(xid1), int(yid1)
+            ri0 = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
             ti0 = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
+
+            xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmai_f + ds, Irange, dI, fullstate[n, 3, t])
+            xid1, yid1 = int(xid1), int(yid1)
+            ri1s = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
+            ti1s = interpolate_values(precalc_tau_mu, xid1, yid1, dxid, dyid)
 
             duh[n, 2, 0, t] = -1.0 / te0
             duh[n, 3, 1, t] = -1.0 / ti0
+
+            factor_r_ext = c_gl * Ke_gl
+            factor_r_ext_sq = c_gl**2 * Ke_gl
+            dsigmaef_dre_ext = (
+                -0.5 * (sigmae_f**-1.0) * sig_ee_factor * fullstate[n, 9, t] * taum * factor_r_ext / sig_ee_den**2
+            )
+            dsigmaif_dri_ext = (
+                -0.5 * (sigmai_f**-1.0) * sig_ie_factor * fullstate[n, 11, t] * taum * factor_r_ext / sig_ie_den**2
+            )
+
+            duh[n, 0, 2, t] = -((re1s - re0) / (ds)) * dsigmaef_dre_ext
+            duh[n, 2, 2, t] = (
+                (
+                    (
+                        Jee_max * fullstate[n, 5, t]
+                        + Jei_max * fullstate[n, 6, t]
+                        + fullstate[n, 13, t]
+                        + ue[n, t]
+                        - fullstate[n, 2, t]
+                    )
+                    / te0**2
+                )
+                * ((te1s - te0) / ds)
+                * dsigmaef_dre_ext
+            )
+
+            duh[n, 1, 3, t] = -((ri1s - ri0) / (ds)) * dsigmaif_dri_ext
+            duh[n, 3, 3, t] = (
+                (
+                    (
+                        Jie_max * fullstate[n, 7, t]
+                        + Jii_max * fullstate[n, 8, t]
+                        + fullstate[n, 14, t]
+                        + ui[n, t]
+                        - fullstate[n, 3, t]
+                    )
+                    / ti0**2
+                )
+                * ((ti1s - ti0) / ds)
+                * dsigmaif_dri_ext
+            )
+
+            duh[n, 4, 2, t] = -a * ((v1s - v0) / ds) * dsigmaef_dre_ext / tauA
+
+            duh[n, 5, 2, t] = -(1.0 - fullstate[n, 5, t]) * factor_r_ext / tau_se
+            duh[n, 9, 2, t] = (
+                -(
+                    ((1.0 - fullstate[n, 5, t]) ** 2) * factor_r_ext_sq
+                    + (factor_r_ext_sq - 2.0 * tau_se * factor_r_ext) * fullstate[n, 9, t]
+                )
+                / tau_se**2
+            )
+            duh[n, 7, 3, t] = -(1.0 - fullstate[n, 7, t]) * factor_r_ext / tau_se
+            duh[n, 11, 3, t] = (
+                -(
+                    ((1.0 - fullstate[n, 7, t]) ** 2) * factor_r_ext_sq
+                    + (factor_r_ext_sq - 2.0 * tau_se * factor_r_ext) * fullstate[n, 11, t]
+                )
+                / tau_se**2
+            )
     return duh
 
 

@@ -18,9 +18,9 @@ ZERO_INPUT_1N_6 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1
 TEST_INPUT_1N_6 = ZERO_INPUT_1N_6.copy()
 INIT_INPUT_1N_6 = ZERO_INPUT_1N_6.copy()
 
-TEST_INPUT_1N_6[0, 1] = 1.0
-TEST_INPUT_1N_6[0, 2] = -1.0
-TEST_INPUT_1N_6[0, 3] = 0.5
+TEST_INPUT_1N_6[0, 1] = 2.0  # no negative values because rate inputs should be positive
+TEST_INPUT_1N_6[0, 2] = 0.5
+TEST_INPUT_1N_6[0, 3] = 1.0
 
 INIT_INPUT_1N_6[0, 1] = TEST_INPUT_1N_6[0, 1] - 1e-2
 INIT_INPUT_1N_6[0, 2] = TEST_INPUT_1N_6[0, 2] + 1e-3
