@@ -50,7 +50,7 @@ class ALNModel(Model):
     ]
     output_vars = ["rates_exc", "rates_inh", "IA"]
     default_output = "rates_exc"
-    input_vars = ["ext_exc_current", "ext_exc_rate"]
+    input_vars = ["ext_exc_current", "ext_inh_current", "ext_exc_rate", "ext_inh_rate"]
     default_input = "ext_exc_rate"
 
     def __init__(self, params=None, Cmat=None, Dmat=None, lookupTableFileName=None, seed=None):
