@@ -494,11 +494,9 @@ class OC:
         self.maximum_control_strength = maximum_control_strength
 
         if type(weights) != type(dict()):
-            if weights is None:
-                self.weights = getdefaultweights()
-            else:
+            if weights is not None:
                 print("Weights parameter must be dictionary, use default weights instead.")
-                self.weights = getdefaultweights()
+            self.weights = getdefaultweights()
         else:
             defaultweights = getdefaultweights()
             for k in defaultweights.keys():
@@ -518,6 +516,7 @@ class OC:
         self.dim_in = len(self.model.input_vars)
         self.dim_out = len(self.model.output_vars)
 
+        self.adjust_init()
         self.simulate_forward()
 
         if self.N == 1:
@@ -538,16 +537,14 @@ class OC:
 
         self.cost_matrix = cost_matrix
         if isinstance(self.cost_matrix, type(None)):
-            self.cost_matrix = np.ones(
-                (self.N, self.dim_out)
-            )  # default: measure precision in all variables in all nodes
+            self.cost_matrix = np.ones((self.N, self.dim_out))  # default: measure precision in all variables and nodes
 
         # check if matrix is binary
         assert np.array_equal(self.cost_matrix, self.cost_matrix.astype(bool))
 
         self.control_matrix = control_matrix
         if isinstance(self.control_matrix, type(None)):
-            self.control_matrix = np.ones((self.N, self.dim_in))  # default: all channels in all nodes active
+            self.control_matrix = np.ones((self.N, self.dim_in))  # default: all channels and all nodes active
 
         if self.model.name == "aln" and (self.control_matrix[:, 2] != 0.0).any():
             print("ALN rate control not implemented yet.")
@@ -631,6 +628,45 @@ class OC:
         )
 
         self.model_params = self.get_model_params()
+
+    def adjust_init(self):
+        init_dur = self.model.getMaxDelay() + 1
+        for init_var in self.model.init_vars:
+            if init_var[:-5] not in self.model.output_vars:
+                continue
+
+            if isinstance(self.model.params[init_var], float):
+                iv = self.model.params[init_var]
+            elif isinstance(self.model.params[init_var], list):
+                iv = np.array(self.model.params[init_var])
+            else:
+                iv = self.model.params[init_var].copy()
+
+            if not hasattr(iv, "__len__"):
+                # init variable is given as single value
+                self.model.params[init_var] = iv * np.ones((self.N, init_dur))
+            elif len(iv.shape) == 1:
+                # only 1-dimensional init variable
+                if iv.shape[0] == self.N:
+                    # assume static init var is given for each node
+                    self.model.params[init_var] = np.outer(iv, np.ones((init_dur)))
+                elif iv.shape[0] == 1:
+                    # only one init value is given
+                    self.model.params[init_var] = iv[0] * np.ones((self.N, init_dur))
+                else:
+                    print("Init variable ", init_var, " is not provided in adequate dimension.")
+                    raise ValueError
+            elif len(iv.shape) == 2:
+                if iv.shape[0] != self.N:
+                    print("Init variable ", init_var, " is not provided in adequate dimension.")
+                    raise ValueError
+                if iv.shape[1] == 1:
+                    self.model.params[init_var] = np.dot(iv, np.ones((1, init_dur)))
+                elif iv.shape[1] > init_dur:
+                    self.model.params[init_var] = iv[:, -init_dur:]
+                elif iv.shape[1] < init_dur:
+                    tiled_init = np.tile(iv[:, -init_dur:], (1, int(np.ceil(init_dur / iv.shape[1]))))
+                    self.model.params[init_var] = tiled_init[:, -init_dur:]
 
     def get_xs(self):
         xs = np.zeros((self.N, self.dim_out, self.T))

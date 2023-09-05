@@ -116,6 +116,7 @@ class OcWc(OC):
             self.get_xs(),
             self.get_xs_delay(),
             self.control,
+            self.model.state_vars,
         )
 
     def compute_hx_nw(self):

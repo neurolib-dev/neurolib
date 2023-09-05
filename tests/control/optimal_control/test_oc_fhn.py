@@ -352,6 +352,44 @@ class TestFHN(unittest.TestCase):
         model_controlled.optimize(1)
         self.assertTrue(np.max(np.abs(model_controlled.control) <= maximum_control_strength))
 
+    def test_adjust_init(self):
+        print("Test adjust_init function of OC class")
+
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 10.0], [10.0, 0.0]])  # large delay
+        model = FHNModel(Cmat=cmat, Dmat=dmat)
+        model.params.duration = p.TEST_DURATION_6
+
+        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_6)
+        model.run()
+        target = test_oc_utils.gettarget_2n(model)
+        intmaxdel = model.getMaxDelay()
+        targetinitshape = (2, intmaxdel + 1)
+
+        for test_init in [
+            1.0,
+            [1.0],
+            np.array([1.0]),
+            np.ones((2,)),
+            np.ones((2, 1)),
+            np.ones((2, intmaxdel - 2)),
+            np.ones((2, intmaxdel + 1)),
+            np.ones((2, intmaxdel + 3)),
+        ]:
+            for init_var in model.init_vars:
+                if "ou" in init_var:
+                    continue
+                model.params[init_var] = test_init
+                model_controlled = oc_fhn.OcFhn(
+                    model,
+                    target,
+                )
+
+                for init_var0 in model.init_vars:
+                    if "ou" in init_var0:
+                        continue
+                    self.assertTrue(model_controlled.model.params[init_var0].shape == targetinitshape)
+
 
 if __name__ == "__main__":
     unittest.main()

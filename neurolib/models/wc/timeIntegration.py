@@ -299,7 +299,7 @@ def logistic_der(x, a, mu):
 
 
 @numba.njit
-def jacobian_wc(model_params, nw_e, e, i, ue, ui, V):
+def jacobian_wc(model_params, nw_e, e, i, ue, ui, V, state_vars):
     """Jacobian of the WC dynamical system.
 
     :param model_params:    Tuple of parameters in the WC Model in order
@@ -362,6 +362,7 @@ def compute_hx(
     dyn_vars,
     dyn_vars_delay,
     control,
+    state_vars,
 ):
     """Jacobians of WCModel wrt. the 'e'- and 'i'-variable for each time step.
 
@@ -404,6 +405,7 @@ def compute_hx(
                 ue,
                 ui,
                 V,
+                state_vars,
             )
     return hx
 

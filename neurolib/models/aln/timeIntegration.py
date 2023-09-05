@@ -925,6 +925,7 @@ def compute_hx(
     dmat_ndt,
     ndt_de,
     ndt_di,
+    sv,
 ):
     """Jacobian of the ALN dynamical system.
 
@@ -1169,6 +1170,7 @@ def compute_hx_de(
     dmat_ndt,
     ndt_de,
     ndt_di,
+    sv,
 ):
     """Jacobian of the ALN dynamical system wrt variables delayed by de
 
@@ -1387,6 +1389,7 @@ def compute_hx_di(
     dmat_ndt,
     ndt_de,
     ndt_di,
+    sv,
 ):
     """Jacobian of the ALN dynamical system wrt variables delayed by di
 
@@ -1456,6 +1459,7 @@ def compute_hx_nw(
     dmat_ndt,
     ndt_de,
     ndt_di,
+    sv,
 ):
     """Jacobian of the ALN dynamical system wrt network connections
 
@@ -1649,6 +1653,7 @@ def Duh(
     fullstate,
     cmat,
     dmat_ndt,
+    sv,
 ):
     """Derivative of systems dynamics wrt. external inputs (control signals).
 

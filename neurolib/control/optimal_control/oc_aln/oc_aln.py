@@ -2,6 +2,10 @@ from neurolib.control.optimal_control.oc import OC, update_control_with_limit
 from neurolib.control.optimal_control import cost_functions
 import numpy as np
 import numba
+
+from numba.core import types
+from numba.typed import Dict
+
 from neurolib.models.aln.timeIntegration import (
     compute_hx,
     compute_nw_input,
@@ -60,6 +64,15 @@ class OcAln(OC):
         self.ndt_di = np.around(self.model.params.di / self.dt).astype(int)
 
         self.precomp_factors = self.get_precomp_factors()
+
+        self.state_vars_numbalist = numba.typed.List(self.model.state_vars)
+
+        self.svdict = Dict.empty(
+            key_type=types.unicode_type,
+            value_type=types.int8,
+        )
+        for sv_ind in range(self.dim_vars):
+            self.svdict[str(self.model.state_vars[sv_ind])] = numba.int8(sv_ind)
 
     def compute_dxdoth(self):
         """Derivative of systems dynamics wrt. change of systems variables."""
@@ -170,6 +183,7 @@ class OcAln(OC):
             self.fullstate,
             self.model.params.Cmat,
             self.Dmat_ndt,
+            self.svdict,
         )
 
     def compute_hx_list(self):
@@ -205,6 +219,7 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.ndt_de,
             self.ndt_di,
+            self.svdict,
         )
 
     def compute_hx_de(self):
@@ -225,6 +240,7 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.ndt_de,
             self.ndt_di,
+            self.svdict,
         )
 
     def compute_hx_di(self):
@@ -245,6 +261,7 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.ndt_de,
             self.ndt_di,
+            self.svdict,
         )
 
     def compute_hx_nw(self):
@@ -266,6 +283,7 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.ndt_de,
             self.ndt_di,
+            self.svdict,
         )
 
     def get_fullstate(self):
@@ -296,19 +314,15 @@ class OcAln(OC):
             if t != 0:
                 self.setasinit(fullstate, t)
             self.model.params.duration = 2.0 * self.dt
-            if t <= T - 2:
-                self.model.params.ext_exc_current = control[:, 0, t : t + 2]
-                self.model.params.ext_inh_current = control[:, 1, t : t + 2]
-                self.model.params.ext_exc_rate = control[:, 2, t : t + 2]
-            elif t == T - 1:
-                ec = np.concatenate((control[:, 0, t:], np.zeros((N, 1))), axis=1)
-                self.model.params.ext_exc_current = np.concatenate((control[:, 0, t:], np.zeros((N, 1))), axis=1)
-                self.model.params.ext_inh_current = np.concatenate((control[:, 1, t:], np.zeros((N, 1))), axis=1)
-                self.model.params.ext_exc_rate = np.concatenate((control[:, 2, t:], np.zeros((N, 1))), axis=1)
-            else:
-                self.model.params.ext_exc_current = 0.0
-                self.model.params.ext_inh_current = 0.0
-                self.model.params.ext_exc_rate = 0.0
+            for iv_ind in range(len(self.model.input_vars)):
+                if t <= T - 2:
+                    self.model.params[self.model.input_vars[iv_ind]] = control[:, iv_ind, t : t + 2]
+                elif t == T - 1:
+                    self.model.params[self.model.input_vars[iv_ind]] = np.concatenate(
+                        (control[:, iv_ind, t:], np.zeros((N, 1))), axis=1
+                    )
+                else:
+                    self.model.params[self.model.input_vars[iv_ind]] = 0.0
             self.model.run()
 
             finalstate = self.getfinalstate()
@@ -316,9 +330,8 @@ class OcAln(OC):
 
         # reset to starting values
         self.model.params.duration = duration
-        self.model.params.ext_exc_current = control[:, 0, :]
-        self.model.params.ext_inh_current = control[:, 1, :]
-        self.model.params.ext_exc_rate = control[:, 2, :]
+        for iv_ind in range(len(self.model.input_vars)):
+            self.model.params[self.model.input_vars[iv_ind]] = control[:, iv_ind, :]
         self.setinitstate(initstate)
         self.simulate_forward()
 
