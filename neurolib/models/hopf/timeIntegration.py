@@ -226,7 +226,13 @@ def timeIntegration_njit_elementwise(
 
 
 @numba.njit
-def jacobian_hopf(model_params, V, x, y):
+def jacobian_hopf(
+    model_params,
+    V,
+    x,
+    y,
+    sv,
+):
     """Jacobian of a single node of the Hopf models dynamical system wrt. its 'state_vars' ('x', 'y', 'x_ou',
        'y_ou').
 
@@ -238,6 +244,9 @@ def jacobian_hopf(model_params, V, x, y):
     :type x:    float
     :param y:   Activity of y-population at this time instance.
     :type y:    float
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
     :return:    4 x 4 Jacobian matrix.
     :rtype:     np.ndarray
     """
@@ -247,14 +256,23 @@ def jacobian_hopf(model_params, V, x, y):
     ) = model_params
     jacobian = np.zeros((V, V))
 
-    jacobian[0, :2] = [-a + 3 * x**2 + y**2, 2 * x * y + w]
-    jacobian[1, :2] = [2 * x * y - w, -a + x**2 + 3 * y**2]
+    jacobian[sv["x"], sv["x"]] = -a + 3 * x**2 + y**2
+    jacobian[sv["x"], sv["y"]] = 2 * x * y + w
+    jacobian[sv["y"], sv["x"]] = 2 * x * y - w
+    jacobian[sv["y"], sv["y"]] = -a + x**2 + 3 * y**2
 
     return jacobian
 
 
 @numba.njit
-def compute_hx(model_params, N, V, T, dyn_vars):
+def compute_hx(
+    model_params,
+    N,
+    V,
+    T,
+    dyn_vars,
+    sv,
+):
     """Jacobians of the Hopf model wrt. its 'state_vars' at each time step.
 
     :param model_params:    Ordered tuple of parameters in the Hopf Model in order
@@ -268,6 +286,9 @@ def compute_hx(model_params, N, V, T, dyn_vars):
     :param dyn_vars:        Time series of the activities ('x'- and 'y'-population) in all nodes. 'x' in N x 0 x T and 'y' in
                             N x 1 x T dimensions.
     :type dyn_vars:         np.ndarray of shape N x 2 x T
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
     :return:                Array that contains Jacobians for all nodes in all time steps.
     :rtype:                 np.ndarray of shape N x T x 4 x 4
     """
@@ -275,14 +296,26 @@ def compute_hx(model_params, N, V, T, dyn_vars):
 
     for n in range(N):
         for t in range(T):
-            x = dyn_vars[n, 0, t]
-            y = dyn_vars[n, 1, t]
-            hx[n, t, :, :] = jacobian_hopf(model_params, V, x, y)
+            hx[n, t, :, :] = jacobian_hopf(
+                model_params,
+                V,
+                dyn_vars[n, sv["x"], t],
+                dyn_vars[n, sv["y"], t],
+                sv,
+            )
     return hx
 
 
 @numba.njit
-def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
+def compute_hx_nw(
+    K_gl,
+    cmat,
+    coupling,
+    N,
+    V,
+    T,
+    sv,
+):
     """Jacobians for network connectivity in all time steps.
 
     :param K_gl:        Model parameter of global coupling strength.
@@ -297,6 +330,9 @@ def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
     :type V:            int
     :param T:           Length of simulation (time dimension).
     :type T:            int
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
     :return:            Jacobians for network connectivity in all time steps.
     :rtype:             np.ndarray of shape N x N x T x 4 x 4
     """
@@ -304,9 +340,9 @@ def compute_hx_nw(K_gl, cmat, coupling, N, V, T):
 
     for n1 in range(N):
         for n2 in range(N):
-            hx_nw[n1, n2, :, 0, 0] = K_gl * cmat[n1, n2]  # term corresponding to additive coupling
+            hx_nw[n1, n2, :, sv["x"], sv["x"]] = K_gl * cmat[n1, n2]  # term corresponding to additive coupling
             if coupling == "diffusive":
-                hx_nw[n1, n1, :, 0, 0] += -K_gl * cmat[n1, n2]
+                hx_nw[n1, n1, :, sv["x"], sv["x"]] += -K_gl * cmat[n1, n2]
 
     return -hx_nw
 
@@ -317,6 +353,7 @@ def Duh(
     V_in,
     V_vars,
     T,
+    sv,
 ):
     """Jacobian of systems dynamics wrt. external inputs (control signals).
 
@@ -328,6 +365,8 @@ def Duh(
     :type V_vars:           int
     :param T:               Length of simulation (time dimension).
     :type T:                int
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
 
     :rtype:     np.ndarray of shape N x V x V x T
     """
@@ -335,8 +374,8 @@ def Duh(
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
         for n in range(N):
-            duh[n, 0, 0, t] = -1.0
-            duh[n, 1, 1, t] = -1.0
+            duh[n, sv["x"], sv["x"], t] = -1.0
+            duh[n, sv["y"], sv["y"], t] = -1.0
     return duh
 
 

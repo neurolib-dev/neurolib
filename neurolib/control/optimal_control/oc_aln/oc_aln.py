@@ -65,18 +65,13 @@ class OcAln(OC):
 
         self.precomp_factors = self.get_precomp_factors()
 
-        self.state_vars_numbalist = numba.typed.List(self.model.state_vars)
-
-        self.svdict = Dict.empty(
-            key_type=types.unicode_type,
-            value_type=types.int8,
-        )
-        for sv_ind in range(self.dim_vars):
-            self.svdict[str(self.model.state_vars[sv_ind])] = numba.int8(sv_ind)
-
     def compute_dxdoth(self):
         """Derivative of systems dynamics wrt. change of systems variables."""
-        return Dxdoth(self.N, self.dim_vars)
+        return Dxdoth(
+            self.N,
+            self.dim_vars,
+            self.state_vars_dict,
+        )
 
     def get_model_params(self):
         """Model params as an ordered tuple"""
@@ -187,7 +182,7 @@ class OcAln(OC):
             self.control[:, 1, :],
             self.control[:, 2, :],
             self.control[:, 3, :],
-            self.svdict,
+            self.state_vars_dict,
         )
 
     def compute_hx_list(self):
@@ -223,7 +218,7 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.ndt_de,
             self.ndt_di,
-            self.svdict,
+            self.state_vars_dict,
         )
 
     def compute_hx_de(self):
@@ -244,7 +239,7 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.ndt_de,
             self.ndt_di,
-            self.svdict,
+            self.state_vars_dict,
         )
 
     def compute_hx_di(self):
@@ -265,7 +260,7 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.ndt_de,
             self.ndt_di,
-            self.svdict,
+            self.state_vars_dict,
         )
 
     def compute_hx_nw(self):
@@ -287,7 +282,7 @@ class OcAln(OC):
             self.Dmat_ndt,
             self.ndt_de,
             self.ndt_di,
-            self.svdict,
+            self.state_vars_dict,
         )
 
     def get_fullstate(self):

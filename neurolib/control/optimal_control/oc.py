@@ -516,6 +516,8 @@ class OC:
         self.dim_in = len(self.model.input_vars)
         self.dim_out = len(self.model.output_vars)
 
+        self.state_vars_dict = self.get_state_vars_dict()
+
         self.adjust_init()
         self.simulate_forward()
 
@@ -627,14 +629,28 @@ class OC:
 
         self.model_params = self.get_model_params()
 
+    def get_state_vars_dict(self):
+        state_vars_dict = Dict.empty(
+            key_type=types.unicode_type,
+            value_type=types.int8,
+        )
+        for sv_ind in range(self.dim_vars):
+            state_vars_dict[str(self.model.state_vars[sv_ind])] = numba.int8(sv_ind)
+
+        return state_vars_dict
+
     def adjust_init(self):
         init_dur = self.model.getMaxDelay() + 1
         for init_var in self.model.init_vars:
-            if init_var[:-5] not in self.model.output_vars:
+            if "ou" in init_var:
+                continue
+            if init_var[:-5] not in self.model.output_vars and init_var[:-6] not in self.model.output_vars:
                 continue
 
             if isinstance(self.model.params[init_var], float):
                 iv = self.model.params[init_var]
+            elif isinstance(self.model.params[init_var], int):
+                iv = float(self.model.params[init_var])
             elif isinstance(self.model.params[init_var], list):
                 iv = np.array(self.model.params[init_var])
             else:

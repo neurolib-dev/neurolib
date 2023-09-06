@@ -299,7 +299,16 @@ def logistic_der(x, a, mu):
 
 
 @numba.njit
-def jacobian_wc(model_params, nw_e, e, i, ue, ui, V, state_vars):
+def jacobian_wc(
+    model_params,
+    nw_e,
+    e,
+    i,
+    ue,
+    ui,
+    V,
+    sv,
+):
     """Jacobian of the WC dynamical system.
 
     :param model_params:    Tuple of parameters in the WC Model in order
@@ -316,6 +325,9 @@ def jacobian_wc(model_params, nw_e, e, i, ue, ui, V, state_vars):
     :type ui:       np.ndarray
     :param V:       Number of system variables.
     :type V:        int
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
     :return:        4 x 4 Jacobian matrix.
     :rtype:         np.ndarray
     """
@@ -336,14 +348,14 @@ def jacobian_wc(model_params, nw_e, e, i, ue, ui, V, state_vars):
 
     jacobian = np.zeros((V, V))
     input_exc = c_excexc * e - c_inhexc * i + nw_e + exc_ext_baseline + ue
-    jacobian[0, 0] = (
+    jacobian[sv["exc"], sv["exc"]] = (
         -(-1.0 - logistic(input_exc, a_exc, mu_exc) + (1.0 - e) * c_excexc * logistic_der(input_exc, a_exc, mu_exc))
         / tau_exc
     )
-    jacobian[0, 1] = -((1.0 - e) * (-c_inhexc) * logistic_der(input_exc, a_exc, mu_exc)) / tau_exc
+    jacobian[sv["exc"], sv["inh"]] = -((1.0 - e) * (-c_inhexc) * logistic_der(input_exc, a_exc, mu_exc)) / tau_exc
     input_inh = c_excinh * e - c_inhinh * i + inh_ext_baseline + ui
-    jacobian[1, 0] = -((1.0 - i) * c_excinh * logistic_der(input_inh, a_inh, mu_inh)) / tau_inh
-    jacobian[1, 1] = (
+    jacobian[sv["inh"], sv["exc"]] = -((1.0 - i) * c_excinh * logistic_der(input_inh, a_inh, mu_inh)) / tau_inh
+    jacobian[sv["inh"], sv["inh"]] = (
         -(-1.0 - logistic(input_inh, a_inh, mu_inh) + (1.0 - i) * (-c_inhinh) * logistic_der(input_inh, a_inh, mu_inh))
         / tau_inh
     )
@@ -362,7 +374,7 @@ def compute_hx(
     dyn_vars,
     dyn_vars_delay,
     control,
-    state_vars,
+    sv,
 ):
     """Jacobians of WCModel wrt. the 'e'- and 'i'-variable for each time step.
 
@@ -386,17 +398,21 @@ def compute_hx(
     :type dyn_vars_delay:     np.ndarray
     :param control:     N x 2 x T control inputs to 'exc' and 'inh'.
     :type control:      np.ndarray
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
     :return:            N x T x 4 x 4 Jacobians.
     :rtype:             np.ndarray
     """
     hx = np.zeros((N, T, V, V))
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, dyn_vars_delay[:, 0, :])
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, dyn_vars_delay[:, sv["exc"], :])
 
     for n in range(N):
-        for t, e in enumerate(dyn_vars[n, 0, :]):
-            i = dyn_vars[n, 1, t]
-            ue = control[n, 0, t]
-            ui = control[n, 1, t]
+        for t in range(T):
+            e = dyn_vars[n, sv["exc"], t]
+            i = dyn_vars[n, sv["inh"], t]
+            ue = control[n, sv["exc"], t]
+            ui = control[n, sv["inh"], t]
             hx[n, t, :, :] = jacobian_wc(
                 wc_model_params,
                 nw_e[n, t],
@@ -405,7 +421,7 @@ def compute_hx(
                 ue,
                 ui,
                 V,
-                state_vars,
+                sv,
             )
     return hx
 
@@ -451,6 +467,7 @@ def compute_hx_nw(
     i,
     e_delay,
     ue,
+    sv,
 ):
     """Jacobians for network connectivity in all time steps.
 
@@ -474,6 +491,8 @@ def compute_hx_nw(
     :type i:        float
     :param ue:      N x T array of the total input received by 'exc' population in every node at any time.
     :type ue:       np.ndarray
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
 
     :return:         Jacobians for network connectivity in all time steps.
     :rtype:          np.ndarray of shape N x N x T x 4 x 4
@@ -500,7 +519,9 @@ def compute_hx_nw(
     for n1 in range(N):
         for n2 in range(N):
             for t in range(T - 1):
-                hx_nw[n1, n2, t, 0, 0] = (logistic_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]) / tau_exc
+                hx_nw[n1, n2, t, sv["exc"], sv["exc"]] = (
+                    logistic_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]
+                ) / tau_exc
 
     return -hx_nw
 
@@ -519,7 +540,8 @@ def Duh(
     K_gl,
     cmat,
     dmat_ndt,
-    ed,
+    exc_values,
+    sv,
 ):
     """Jacobian of systems dynamics wrt. external inputs (control signals).
 
@@ -543,6 +565,16 @@ def Duh(
     :type e:                np.ndarray
     :param i:               Value of the I-variable for each node and timepoint
     :type i:                np.ndarray
+    :param K_gl:            global coupling strength
+    :type K_gl              float
+    :param cmat:            coupling matrix
+    :type cmat:             np.ndarray
+    :param dmat_ndt:        delay index matrix
+    :type dmat_ndt:         np.ndarray
+    :param exc_values:      N x T array containing values of 'exc' of all nodes through time.
+    :type exc_values:       np.ndarray
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
 
     :rtype:     np.ndarray of shape N x V x V x T
     """
@@ -562,15 +594,15 @@ def Duh(
         inh_ext_baseline,
     ) = model_params
 
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, ed)
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_values)
 
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
         for n in range(N):
             input_exc = c_excexc * e[n, t] - c_inhexc * i[n, t] + nw_e[n, t] + exc_ext_baseline + ue[n, t]
-            duh[n, 0, 0, t] = -(1.0 - e[n, t]) * logistic_der(input_exc, a_exc, mu_exc) / tau_exc
+            duh[n, sv["exc"], sv["exc"], t] = -(1.0 - e[n, t]) * logistic_der(input_exc, a_exc, mu_exc) / tau_exc
             input_inh = c_excinh * e[n, t] - c_inhinh * i[n, t] + inh_ext_baseline + ui[n, t]
-            duh[n, 1, 1, t] = -(1.0 - i[n, t]) * logistic_der(input_inh, a_inh, mu_inh) / tau_inh
+            duh[n, sv["inh"], sv["inh"], t] = -(1.0 - i[n, t]) * logistic_der(input_inh, a_inh, mu_inh) / tau_inh
     return duh
 
 

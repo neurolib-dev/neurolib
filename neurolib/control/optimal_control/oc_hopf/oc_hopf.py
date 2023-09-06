@@ -66,6 +66,7 @@ class OcHopf(OC):
             self.dim_in,
             self.dim_vars,
             self.T,
+            self.state_vars_dict,
         )
 
     def compute_hx_list(self):
@@ -89,6 +90,7 @@ class OcHopf(OC):
             self.dim_vars,
             self.T,
             self.get_xs(),
+            self.state_vars_dict,
         )
 
     def compute_hx_nw(self):
@@ -104,4 +106,5 @@ class OcHopf(OC):
             self.N,
             self.dim_vars,
             self.T,
+            self.state_vars_dict,
         )

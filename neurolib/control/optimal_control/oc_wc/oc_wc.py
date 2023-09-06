@@ -80,14 +80,15 @@ class OcWc(OC):
             self.dim_in,
             self.dim_vars,
             self.T,
-            self.control[:, 0, :],
-            self.control[:, 1, :],
-            xs[:, 0, :],
-            xs[:, 1, :],
+            self.control[:, self.state_vars_dict["exc"], :],
+            self.control[:, self.state_vars_dict["inh"], :],
+            xs[:, self.state_vars_dict["exc"], :],
+            xs[:, self.state_vars_dict["inh"], :],
             self.model.params.K_gl,
             self.model.params.Cmat,
             self.Dmat_ndt,
-            xsd[:, 0, :],
+            xsd[:, self.state_vars_dict["exc"], :],
+            self.state_vars_dict,
         )
 
     def compute_hx_list(self):
@@ -116,7 +117,7 @@ class OcWc(OC):
             self.get_xs(),
             self.get_xs_delay(),
             self.control,
-            self.model.state_vars,
+            self.state_vars_dict,
         )
 
     def compute_hx_nw(self):
@@ -136,8 +137,9 @@ class OcWc(OC):
             self.N,
             self.dim_vars,
             self.T,
-            xs[:, 0, :],
-            xs[:, 1, :],
-            self.get_xs_delay()[:, 0, :],
-            self.control[:, 0, :],
+            xs[:, self.state_vars_dict["exc"], :],
+            xs[:, self.state_vars_dict["inh"], :],
+            self.get_xs_delay()[:, self.state_vars_dict["exc"], :],
+            self.control[:, self.state_vars_dict["exc"], :],
+            self.state_vars_dict,
         )

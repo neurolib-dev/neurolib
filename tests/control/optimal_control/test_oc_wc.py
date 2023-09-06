@@ -186,6 +186,7 @@ class TestWC(unittest.TestCase):
         dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
         model = WCModel(Cmat=cmat, Dmat=dmat)
         model.params.duration = p.TEST_DURATION_6
+        test_oc_utils.set_input(model, p.TEST_INPUT_2N_6)
 
         target = np.ones((2, 2, p.TEST_INPUT_2N_6.shape[1]))
 
