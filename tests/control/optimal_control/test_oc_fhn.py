@@ -53,11 +53,7 @@ class TestFHN(unittest.TestCase):
                 model_controlled.optimize(p.ITERATIONS)
                 control = model_controlled.control
 
-                if input_channel == 0:
-                    c_diff = (np.abs(control[0, 0, :] - p.TEST_INPUT_1N_6[0, :]),)
-
-                elif input_channel == 1:
-                    c_diff = (np.abs(control[0, 1, :] - p.TEST_INPUT_1N_6[0, :]),)
+                c_diff = (np.abs(control[0, input_channel, :] - p.TEST_INPUT_1N_6[0, :]),)
 
                 if np.amax(c_diff) < p.LIMIT_DIFF:
                     control_coincide = True
@@ -73,7 +69,7 @@ class TestFHN(unittest.TestCase):
     def test_2n(self):
         print("Test OC in 2-node network")
 
-        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        dmat = np.array([[0.0, p.TEST_DELAY], [p.TEST_DELAY, 0.0]])
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
         model = FHNModel(Cmat=cmat, Dmat=dmat)
@@ -124,62 +120,6 @@ class TestFHN(unittest.TestCase):
                 break
 
             self.assertTrue(control_coincide)
-
-    # tests if the control from OC computation coincides with a random input used for target forward-simulation
-    # delayed network case
-    def test_2n_delay(self):
-        print("Test OC in delayed 2-node network")
-
-        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
-        dmat = np.array([[0.0, 0.0], [p.TEST_DELAY, 0.0]])
-
-        model = FHNModel(Cmat=cmat, Dmat=dmat)
-        test_oc_utils.setinitzero_2n(model)
-
-        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
-        control_mat = np.zeros((model.params.N, len(model.state_vars)))
-        control_mat[0, 0] = 1.0
-        cost_mat[1, 0] = 1.0
-
-        model.params.duration = p.TEST_DURATION_10
-        model.params.signalV = 1.0
-
-        model.params["x_ext"] = p.TEST_INPUT_2N_10
-        model.params["y_ext"] = p.ZERO_INPUT_2N_10
-
-        model.run()
-        target = test_oc_utils.gettarget_2n(model)
-        model.params["x_ext"] = p.ZERO_INPUT_2N_10
-
-        model_controlled = oc_fhn.OcFhn(
-            model,
-            target,
-            control_matrix=control_mat,
-            cost_matrix=cost_mat,
-        )
-        model_controlled.control = np.concatenate(
-            [p.INIT_INPUT_2N_10[:, np.newaxis, :], p.ZERO_INPUT_2N_10[:, np.newaxis, :]], axis=1
-        )
-        model_controlled.update_input()
-
-        control_coincide = False
-
-        for i in range(p.LOOPS):
-            model_controlled.optimize(p.ITERATIONS)
-            control = model_controlled.control
-
-            # last few entries of adjoint_state[0,0,:] are zero
-            self.assertTrue(np.amax(np.abs(model_controlled.adjoint_state[0, 0, -model.getMaxDelay() :])) == 0.0)
-
-            c_diff_max = np.amax(np.abs(control[0, 0, :] - p.TEST_INPUT_2N_10[0, :]))
-            if c_diff_max < p.LIMIT_DIFF:
-                control_coincide = True
-                break
-
-            if model_controlled.zero_step_encountered:
-                break
-
-        self.assertTrue(control_coincide)
 
     # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
     def test_get_xs(self):

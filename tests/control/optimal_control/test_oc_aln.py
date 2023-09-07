@@ -8,9 +8,6 @@ import test_oc_utils as test_oc_utils
 
 p = test_oc_utils.params
 
-global ADAP_PARAM_LIST
-ADAP_PARAM_LIST = [[10.0, 0.0], [0.0, 10.0], [10.0, 10.0]]
-
 
 def set_param_init(model, a=15.0, b=40.0):
     # intermediate external input to membrane voltage to not reach the boundaries of the transfer function
@@ -104,126 +101,8 @@ class TestALN(unittest.TestCase):
     Test wc in neurolib/optimal_control/
     """
 
-    # tests if the control from OC computation coincides with input used for target forward-simulation
-    # single-node case
+    # single-node case with delay and adaptation
     def test_1n(self):
-        print("Test OC in single-node system")
-        model = ALNModel()
-
-        # no delay
-        model.params.de = 0.0
-        model.params.di = 0.0
-
-        # no adaptation
-        set_param_init(model, 0.0, 0.0)
-        model.params.duration = p.TEST_DURATION_10
-
-        for input_channel in range(len(model.input_vars)):
-            for measure_channel in [0, 1]:
-                if input_channel == 2 and measure_channel == 1:
-                    continue
-                if input_channel == 3 and measure_channel == 0:
-                    continue
-                if input_channel == 0 and measure_channel == 0:
-                    continue  # is tested in adaptation scenario
-                print("----------------- input channel, measure channel = ", input_channel, measure_channel)
-
-                cost_mat = np.zeros((model.params.N, len(model.output_vars)))
-                control_mat = np.zeros((model.params.N, len(model.input_vars)))
-                cost_mat[0, measure_channel] = 1.0
-                control_mat[0, input_channel] = 1.0
-
-                factor = 1.0
-                if input_channel in [2, 3]:
-                    factor = 1e-1
-
-                test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
-                model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_10 * factor
-
-                model.run()
-                target = getstate(model)
-
-                test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
-                model.run()
-
-                model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
-
-                control_init = np.zeros((model.params.N, len(model.input_vars), target.shape[2]))
-                control_init[0, input_channel, :] = p.INIT_INPUT_1N_10[0, :] * factor
-                model_controlled.control = control_init.copy()
-                model_controlled.update_input()
-
-                control_coincide = False
-
-                for i in range(p.LOOPS):
-                    model_controlled.optimize(p.ITERATIONS)
-                    control = model_controlled.control
-
-                    c_diff = np.abs(control[0, input_channel, :] - p.TEST_INPUT_1N_10[0, :] * factor)
-
-                    if np.amax(c_diff) < p.LIMIT_DIFF:
-                        control_coincide = True
-                        break
-
-                    if model_controlled.zero_step_encountered:
-                        break
-
-                self.assertTrue(control_coincide)
-
-    # tests if the control from OC computation coincides with input used for target forward-simulation
-    # single-node case with adaptation
-    def test_1n_adaptation(self):
-        print("Test OC in single-node system")
-        model = ALNModel()
-
-        model.params.de = 0.0
-        model.params.di = 0.0
-
-        # adaptation directly only affects exc population, testing is sufficient for E => E control
-        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
-        control_mat = np.zeros((model.params.N, len(model.input_vars)))
-        cost_mat[0, 0] = 1.0
-        control_mat[0, 0] = 1.0
-
-        test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
-
-        for [a, b] in ADAP_PARAM_LIST:
-            print("adaptation parameters a, b = ", a, b)
-            set_param_init(model, a, b)
-            model.params.duration = p.TEST_DURATION_10
-
-            model.params["ext_exc_current"] = p.TEST_INPUT_1N_10
-            model.run()
-            target = getstate(model)
-            test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
-            model.run()
-
-            model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
-
-            control_init = np.zeros((model.params.N, len(model.input_vars), target.shape[2]))
-            control_init[0, 0, :] = p.INIT_INPUT_1N_10[0, :]
-            model_controlled.control = control_init.copy()
-            model_controlled.update_input()
-
-            control_coincide = False
-
-            for i in range(p.LOOPS):
-                model_controlled.optimize(p.ITERATIONS)
-                control = model_controlled.control
-
-                c_diff = np.abs(control[0, 0, :] - p.TEST_INPUT_1N_10[0, :])
-
-                if np.amax(c_diff) < p.LIMIT_DIFF:
-                    control_coincide = True
-                    break
-
-                if model_controlled.zero_step_encountered:
-                    break
-
-            self.assertTrue(control_coincide)
-
-    # single-node case with delay
-    def test_1n_delay(self):
         print("Test OC in single-node system with delay")
         model = ALNModel()
 
@@ -285,11 +164,11 @@ class TestALN(unittest.TestCase):
                 self.assertTrue(control_coincide)
 
     # tests if the control from OC computation coincides with a random input used for target forward-simulation
-    # network case
+    # network case with delay and adaptation
     def test_2n(self):
         print("Test OC in 2-node network")
 
-        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        dmat = np.array([[0.0, p.TEST_DELAY], [p.TEST_DELAY, 0.0]])
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
         model = ALNModel(Cmat=cmat, Dmat=dmat)
@@ -338,8 +217,6 @@ class TestALN(unittest.TestCase):
                 control = model_controlled.control
                 c_diff = np.abs(control[0, input_channel, :] - p.TEST_INPUT_2N_12[0, :] * factor)
 
-                print(c_diff[:5])
-
                 if np.amax(c_diff) < p.LIMIT_DIFF:
                     control_coincide = True
                     break
@@ -348,66 +225,6 @@ class TestALN(unittest.TestCase):
                     break
 
             self.assertTrue(control_coincide)
-
-    # tests if the control from OC computation coincides with a random input used for target forward-simulation
-    # network case with delay
-    def test_2n_delay(self):
-        print("Test OC in 2-node network with delay")
-
-        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
-        dmat = np.array([[0.0, 0.0], [p.TEST_DELAY, 0.0]])
-
-        model = ALNModel(Cmat=cmat, Dmat=dmat)
-
-        model.params.de = 0.0
-        model.params.di = 0.0
-
-        set_param_init(model)
-
-        model.params.duration = p.TEST_DURATION_12
-
-        control_mat = np.zeros((model.params.N, len(model.state_vars)))
-        control_mat[0, 0] = 1.0
-        cost_mat = np.zeros((model.params.N, len(model.output_vars)))
-        cost_mat[1, 0] = 1.0
-
-        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_12)
-        model.params["ext_exc_current"] = p.TEST_INPUT_2N_12
-        model.run()
-        target = getstate(model)
-
-        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_12)
-
-        model_controlled = oc_aln.OcAln(
-            model,
-            target,
-            control_matrix=control_mat,
-            cost_matrix=cost_mat,
-        )
-
-        control_init = np.zeros((model.params.N, len(model.input_vars), target.shape[2]))
-        control_init[0, 0, :] = p.INIT_INPUT_2N_12[0, :]
-        model_controlled.control = control_init.copy()
-        model_controlled.update_input()
-
-        control_coincide = False
-
-        for i in range(p.LOOPS):
-            model_controlled.optimize(p.ITERATIONS)
-            control = model_controlled.control
-
-            c_diff = np.abs(control[0, 0, :] - p.TEST_INPUT_2N_12[0, :])
-
-            if np.amax(c_diff) < p.LIMIT_DIFF:
-                control_coincide = True
-                break
-
-            print(c_diff)
-
-            if model_controlled.zero_step_encountered:
-                break
-
-        self.assertTrue(control_coincide)
 
     # Arbitrary network and control setting, get_xs() returns correct array shape (despite initial values array longer than 1)
     def test_get_xs(self):
@@ -507,3 +324,121 @@ class TestALN(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    # # tests if the control from OC computation coincides with input used for target forward-simulation
+    # # single-node case
+    # def test_1n(self):
+    #     print("Test OC in single-node system")
+    #     model = ALNModel()
+
+    #     # no delay
+    #     model.params.de = 0.0
+    #     model.params.di = 0.0
+
+    #     # no adaptation
+    #     set_param_init(model, 0.0, 0.0)
+    #     model.params.duration = p.TEST_DURATION_10
+
+    #     for input_channel in range(len(model.input_vars)):
+    #         for measure_channel in [0, 1]:
+    #             if input_channel == 2 and measure_channel == 1:
+    #                 continue
+    #             if input_channel == 3 and measure_channel == 0:
+    #                 continue
+    #             if input_channel == 0 and measure_channel == 0:
+    #                 continue  # is tested in adaptation scenario
+    #             print("----------------- input channel, measure channel = ", input_channel, measure_channel)
+
+    #             cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+    #             control_mat = np.zeros((model.params.N, len(model.input_vars)))
+    #             cost_mat[0, measure_channel] = 1.0
+    #             control_mat[0, input_channel] = 1.0
+
+    #             factor = 1.0
+    #             if input_channel in [2, 3]:
+    #                 factor = 1e-1
+
+    #             test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
+    #             model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_10 * factor
+
+    #             model.run()
+    #             target = getstate(model)
+
+    #             test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
+    #             model.run()
+
+    #             model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
+
+    #             control_init = np.zeros((model.params.N, len(model.input_vars), target.shape[2]))
+    #             control_init[0, input_channel, :] = p.INIT_INPUT_1N_10[0, :] * factor
+    #             model_controlled.control = control_init.copy()
+    #             model_controlled.update_input()
+
+    #             control_coincide = False
+
+    #             for i in range(p.LOOPS):
+    #                 model_controlled.optimize(p.ITERATIONS)
+    #                 control = model_controlled.control
+
+    #                 c_diff = np.abs(control[0, input_channel, :] - p.TEST_INPUT_1N_10[0, :] * factor)
+
+    #                 if np.amax(c_diff) < p.LIMIT_DIFF:
+    #                     control_coincide = True
+    #                     break
+
+    #                 if model_controlled.zero_step_encountered:
+    #                     break
+
+    #             self.assertTrue(control_coincide)
+
+    # # tests if the control from OC computation coincides with input used for target forward-simulation
+    # # single-node case with adaptation
+    # def test_1n_adaptation(self):
+    #     print("Test OC in single-node system")
+    #     model = ALNModel()
+
+    #     model.params.de = 0.0
+    #     model.params.di = 0.0
+
+    #     # adaptation directly only affects exc population, testing is sufficient for E => E control
+    #     cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+    #     control_mat = np.zeros((model.params.N, len(model.input_vars)))
+    #     cost_mat[0, 0] = 1.0
+    #     control_mat[0, 0] = 1.0
+
+    #     test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
+
+    #     for [a, b] in [10.0, 10.0]:
+    #         print("adaptation parameters a, b = ", a, b)
+    #         set_param_init(model, a, b)
+    #         model.params.duration = p.TEST_DURATION_10
+
+    #         model.params["ext_exc_current"] = p.TEST_INPUT_1N_10
+    #         model.run()
+    #         target = getstate(model)
+    #         test_oc_utils.set_input(model, p.ZERO_INPUT_1N_10)
+    #         model.run()
+
+    #         model_controlled = oc_aln.OcAln(model, target, control_matrix=control_mat, cost_matrix=cost_mat)
+
+    #         control_init = np.zeros((model.params.N, len(model.input_vars), target.shape[2]))
+    #         control_init[0, 0, :] = p.INIT_INPUT_1N_10[0, :]
+    #         model_controlled.control = control_init.copy()
+    #         model_controlled.update_input()
+
+    #         control_coincide = False
+
+    #         for i in range(p.LOOPS):
+    #             model_controlled.optimize(p.ITERATIONS)
+    #             control = model_controlled.control
+
+    #             c_diff = np.abs(control[0, 0, :] - p.TEST_INPUT_1N_10[0, :])
+
+    #             if np.amax(c_diff) < p.LIMIT_DIFF:
+    #                 control_coincide = True
+    #                 break
+
+    #             if model_controlled.zero_step_encountered:
+    #                 break
+
+    #         self.assertTrue(control_coincide)

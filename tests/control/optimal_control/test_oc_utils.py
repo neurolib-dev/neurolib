@@ -107,7 +107,7 @@ params.INIT_INPUT_2N_10 = INIT_INPUT_2N_10
 ###################################################
 ZERO_INPUT_2N_12 = np.zeros((2, 1 + int(np.around(params.TEST_DURATION_12 / 0.1, 1))))
 TEST_INPUT_2N_12 = ZERO_INPUT_2N_12.copy()
-INIT_INPUT_2N_12 = ZERO_INPUT_1N_12.copy()
+INIT_INPUT_2N_12 = ZERO_INPUT_2N_12.copy()
 
 TEST_INPUT_2N_12[0, :] = TEST_INPUT_1N_12[0, :]
 INIT_INPUT_2N_12[0, :] = INIT_INPUT_1N_12[0, :]

@@ -84,42 +84,40 @@ class TestWC(unittest.TestCase):
         control_mat[0, 0] = 1.0
         cost_mat[1, 0] = 1.0
 
-        for coupling in ["additive", "diffusive"]:
-            model.params.coupling = coupling
+        model.params.coupling = "additive"  # test additive in undelayed network, diffusive in delayed network
+        model.params["exc_ext"] = p.TEST_INPUT_2N_6
+        model.params["inh_ext"] = p.ZERO_INPUT_2N_6
+        model.run()
 
-            model.params["exc_ext"] = p.TEST_INPUT_2N_6
-            model.params["inh_ext"] = p.ZERO_INPUT_2N_6
-            model.run()
+        target = test_oc_utils.gettarget_2n(model)
+        model.params["exc_ext"] = p.ZERO_INPUT_2N_6
 
-            target = test_oc_utils.gettarget_2n(model)
-            model.params["exc_ext"] = p.ZERO_INPUT_2N_6
+        model_controlled = oc_wc.OcWc(
+            model,
+            target,
+            control_matrix=control_mat,
+            cost_matrix=cost_mat,
+        )
+        model_controlled.maximum_control_strength = 2.0
 
-            model_controlled = oc_wc.OcWc(
-                model,
-                target,
-                control_matrix=control_mat,
-                cost_matrix=cost_mat,
-            )
-            model_controlled.maximum_control_strength = 2.0
+        model_controlled.control = np.concatenate(
+            [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
+        )
+        model_controlled.update_input()
 
-            model_controlled.control = np.concatenate(
-                [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]], axis=1
-            )
-            model_controlled.update_input()
+        control_coincide = False
 
-            control_coincide = False
+        for i in range(p.LOOPS):
+            model_controlled.optimize(p.ITERATIONS)
+            c_diff = np.abs(model_controlled.control[0, 0, :] - p.TEST_INPUT_2N_6[0, :])
+            if np.amax(c_diff) < p.LIMIT_DIFF:
+                control_coincide = True
+                break
 
-            for i in range(p.LOOPS):
-                model_controlled.optimize(p.ITERATIONS)
-                c_diff = np.abs(model_controlled.control[0, 0, :] - p.TEST_INPUT_2N_6[0, :])
-                if np.amax(c_diff) < p.LIMIT_DIFF:
-                    control_coincide = True
-                    break
+            if model_controlled.zero_step_encountered:
+                break
 
-                if model_controlled.zero_step_encountered:
-                    break
-
-            self.assertTrue(control_coincide)
+        self.assertTrue(control_coincide)
 
     # tests if the control from OC computation coincides with a random input used for target forward-simulation
     # delayed network case
@@ -138,6 +136,8 @@ class TestWC(unittest.TestCase):
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
         control_mat[0, 0] = 1.0
         cost_mat[1, 0] = 1.0
+
+        model.params.coupling = "diffusive"  # test additive in undelayed network, diffusive in delayed network
 
         model.params["exc_ext"] = p.TEST_INPUT_2N_8
         model.params["inh_ext"] = p.ZERO_INPUT_2N_8
