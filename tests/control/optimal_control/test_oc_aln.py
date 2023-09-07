@@ -124,6 +124,8 @@ class TestALN(unittest.TestCase):
                     continue
                 if input_channel == 3 and measure_channel == 0:
                     continue
+                if input_channel == 0 and measure_channel == 0:
+                    continue  # is tested in adaptation scenario
                 print("----------------- input channel, measure channel = ", input_channel, measure_channel)
 
                 cost_mat = np.zeros((model.params.N, len(model.output_vars)))
@@ -417,10 +419,6 @@ class TestALN(unittest.TestCase):
         model.params.duration = p.TEST_DURATION_6
 
         test_oc_utils.set_input(model, p.TEST_INPUT_2N_6)
-
-        initind = model.getMaxDelay() + 1
-
-        zeroinit = np.zeros((initind))
 
         target = np.ones((model.params.N, len(model.output_vars), p.TEST_INPUT_2N_6.shape[1]))
 

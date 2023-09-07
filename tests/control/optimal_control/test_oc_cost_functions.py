@@ -161,7 +161,7 @@ class TestCostFunctions(unittest.TestCase):
         self.assertTrue(np.all(cost_functions.derivative_L2_cost(u) == desired_output))
 
     def test_weights_dictionary(self):
-        print("Test ditionary of cost weights")
+        print("Test dictionary of cost weights")
         model = FHNModel()
         model.params.duration = p.TEST_DURATION_6
         model.run()
