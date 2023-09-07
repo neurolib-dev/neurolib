@@ -86,15 +86,17 @@ class TestALNAutochunk(AutochunkTests):
         ous = np.zeros((model.params["N"], duration_dt))
 
         # prepare input
-        inp_x = np.zeros((model.params["N"], duration_dt))
-        inp_y = np.zeros((model.params["N"], duration_dt))
+        inp_exc_current = np.zeros((model.params["N"], duration_dt))
+        inp_inh_current = np.zeros((model.params["N"], duration_dt))
+        inp_exc_rate = np.zeros((model.params["N"], duration_dt))
+        inp_inh_rate = np.zeros((model.params["N"], duration_dt))
 
         for n in range(model.params["N"]):
             fr = 1
-            inp_x[n, :] = np.sin(np.linspace(0, fr * 2 * np.pi, duration_dt)) * 0.1
+            inp_exc_current[n, :] = np.sin(np.linspace(0, fr * 2 * np.pi, duration_dt)) * 0.1
 
         for i in range(duration_dt):
-            inputs = [inp_x[:, i], inp_y[:, i]]
+            inputs = [inp_exc_current[:, i], inp_inh_current[:, i], inp_exc_rate[:, i], inp_inh_rate[:, i]]
             model.autochunk(inputs=inputs, append_outputs=True)
 
 
