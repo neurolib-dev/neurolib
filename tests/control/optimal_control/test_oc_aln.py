@@ -433,6 +433,79 @@ class TestALN(unittest.TestCase):
         xs = model_controlled.get_xs()
         self.assertTrue(xs.shape == target.shape)
 
+    def test_adjust_init(self):
+        print("Test adjust_init function of OC class")
+
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 10.0], [10.0, 0.0]])  # large delay
+        model = ALNModel(Cmat=cmat, Dmat=dmat)
+        model.params.duration = p.TEST_DURATION_6
+
+        test_oc_utils.set_input(model, p.ZERO_INPUT_2N_6)
+        model.run()
+        target = test_oc_utils.gettarget_2n(model)
+        intmaxdel = model.getMaxDelay()
+        targetinitshape = (2, intmaxdel + 1)
+
+        for test_init in [
+            1.0,
+            [1.0],
+            np.array([1.0]),
+            np.ones((2,)),
+            np.ones((2, 1)),
+            np.ones((2, intmaxdel - 2)),
+            np.ones((2, intmaxdel + 1)),
+            np.ones((2, intmaxdel + 3)),
+        ]:
+            for init_var in model.init_vars:
+                if "ou" in init_var:
+                    continue
+                if init_var[:-5] not in model.output_vars:
+                    continue
+                model.params[init_var] = test_init
+                model_controlled = oc_aln.OcAln(
+                    model,
+                    target,
+                )
+
+                for init_var0 in model.init_vars:
+                    if "ou" in init_var0:
+                        continue
+                    if init_var0[:-5] not in model.output_vars:
+                        continue
+                    self.assertTrue(model_controlled.model.params[init_var0].shape == targetinitshape)
+
+    def test_adjust_input(self):
+        print("Test test_adjust_input function of OC class")
+
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        model = ALNModel(Cmat=cmat, Dmat=dmat)
+        model.params.duration = p.TEST_DURATION_6
+
+        target = np.zeros((model.params.N, len(model.state_vars), p.TEST_INPUT_2N_6.shape[1]))
+        targetinputshape = (target.shape[0], target.shape[2])
+
+        for test_input in [
+            1.0,
+            [1.0],
+            np.array([1.0]),
+            np.ones((2,)),
+            np.ones((2, 1)),
+            np.ones((2, target.shape[2] - 2)),
+            np.ones((2, target.shape[2])),
+            np.ones((2, target.shape[2] + 2)),
+        ]:
+            for input_var in model.input_vars:
+                model.params[input_var] = test_input
+                model_controlled = oc_aln.OcAln(
+                    model,
+                    target,
+                )
+
+                for input_var0 in model.input_vars:
+                    self.assertTrue(model_controlled.model.params[input_var0].shape == targetinputshape)
+
 
 if __name__ == "__main__":
     unittest.main()

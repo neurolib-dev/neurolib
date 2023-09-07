@@ -390,6 +390,37 @@ class TestFHN(unittest.TestCase):
                         continue
                     self.assertTrue(model_controlled.model.params[init_var0].shape == targetinitshape)
 
+    def test_adjust_input(self):
+        print("Test test_adjust_input function of OC class")
+
+        cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
+        dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
+        model = FHNModel(Cmat=cmat, Dmat=dmat)
+        model.params.duration = p.TEST_DURATION_6
+
+        target = np.zeros((model.params.N, len(model.state_vars), p.TEST_INPUT_2N_6.shape[1]))
+        targetinputshape = (target.shape[0], target.shape[2])
+
+        for test_input in [
+            1.0,
+            [1.0],
+            np.array([1.0]),
+            np.ones((2,)),
+            np.ones((2, 1)),
+            np.ones((2, target.shape[2] - 2)),
+            np.ones((2, target.shape[2])),
+            np.ones((2, target.shape[2] + 2)),
+        ]:
+            for input_var in model.input_vars:
+                model.params[input_var] = test_input
+                model_controlled = oc_fhn.OcFhn(
+                    model,
+                    target,
+                )
+
+                for input_var0 in model.input_vars:
+                    self.assertTrue(model_controlled.model.params[input_var0].shape == targetinputshape)
+
 
 if __name__ == "__main__":
     unittest.main()

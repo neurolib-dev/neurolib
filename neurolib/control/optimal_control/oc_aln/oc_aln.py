@@ -1,20 +1,8 @@
-from neurolib.control.optimal_control.oc import OC, update_control_with_limit
-from neurolib.control.optimal_control import cost_functions
-import numpy as np
 import numba
+import numpy as np
 
-from numba.core import types
-from numba.typed import Dict
-
-from neurolib.models.aln.timeIntegration import (
-    compute_hx,
-    compute_nw_input,
-    compute_hx_nw,
-    Duh,
-    Dxdoth,
-    compute_hx_de,
-    compute_hx_di,
-)
+from neurolib.control.optimal_control.oc import OC
+from neurolib.models.aln.timeIntegration import compute_hx, compute_hx_nw, Duh, Dxdoth, compute_hx_de, compute_hx_di
 
 
 class OcAln(OC):
@@ -66,7 +54,10 @@ class OcAln(OC):
         self.precomp_factors = self.get_precomp_factors()
 
     def compute_dxdoth(self):
-        """Derivative of systems dynamics wrt. change of systems variables."""
+        """Derivative of systems dynamics wrt. change of systems variables.
+
+        :return:        N x V x V array
+        :rtuype:        np.ndarray"""
         return Dxdoth(
             self.N,
             self.dim_vars,
@@ -74,7 +65,11 @@ class OcAln(OC):
         )
 
     def get_model_params(self):
-        """Model params as an ordered tuple"""
+        """Model params as an ordered tuple.
+
+        :return:    22 ordered parameters
+        :rtype:     tuple
+        """
         return (
             self.model.params.sigmarange,
             self.model.params.ds,
@@ -101,7 +96,12 @@ class OcAln(OC):
         )
 
     def get_precomp_factors(self):
-        """Precomputed factors as an ordered tuple"""
+        """Precomputed factors as an ordered tuple.
+
+        :return:    12 prefactors
+        :rtype:     tuple
+        """
+
         return (
             self.model.params.cee
             * self.model.params.Ke

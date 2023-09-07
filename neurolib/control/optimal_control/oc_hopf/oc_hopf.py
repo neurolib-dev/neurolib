@@ -1,7 +1,6 @@
-from neurolib.control.optimal_control.oc import OC, update_control_with_limit
-from neurolib.control.optimal_control import cost_functions
 import numba
-import numpy as np
+
+from neurolib.control.optimal_control.oc import OC
 from neurolib.models.hopf.timeIntegration import compute_hx, compute_hx_nw, Dxdoth, Duh
 
 
@@ -49,7 +48,10 @@ class OcHopf(OC):
         return Dxdoth(self.N, self.dim_vars)
 
     def get_model_params(self):
-        """Model params as an ordered tuple"""
+        """Model params as an ordered tuple.
+
+        :rtype:     tuple
+        """
         return (
             self.model.params.a,
             self.model.params.w,
