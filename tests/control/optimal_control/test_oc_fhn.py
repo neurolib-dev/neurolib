@@ -37,14 +37,13 @@ class TestFHN(unittest.TestCase):
 
             model_controlled = oc_fhn.OcFhn(model, target)
 
-            if input_channel == 0:
-                model_controlled.control = np.concatenate(
-                    [p.INIT_INPUT_1N_6[:, np.newaxis, :], p.ZERO_INPUT_1N_6[:, np.newaxis, :]], axis=1
-                )
-            elif input_channel == 1:
-                model_controlled.control = np.concatenate(
-                    [p.ZERO_INPUT_1N_6[:, np.newaxis, :], p.INIT_INPUT_1N_6[:, np.newaxis, :]], axis=1
-                )
+            model_controlled.control = np.concatenate(
+                [
+                    control_mat[0, 0] * p.INIT_INPUT_1N_6[:, np.newaxis, :],
+                    control_mat[0, 1] * p.INIT_INPUT_1N_6[:, np.newaxis, :],
+                ],
+                axis=1,
+            )
             model_controlled.update_input()
 
             control_coincide = False

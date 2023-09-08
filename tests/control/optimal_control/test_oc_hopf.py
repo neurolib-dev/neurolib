@@ -36,14 +36,13 @@ class TestHopf(unittest.TestCase):
             test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
             model_controlled = oc_hopf.OcHopf(model, target)
 
-            if input_channel == 0:
-                model_controlled.control = np.concatenate(
-                    [p.INIT_INPUT_1N_6[:, np.newaxis, :], p.ZERO_INPUT_1N_6[:, np.newaxis, :]], axis=1
-                )
-            elif input_channel == 1:
-                model_controlled.control = np.concatenate(
-                    [p.ZERO_INPUT_1N_6[:, np.newaxis, :], p.INIT_INPUT_1N_6[:, np.newaxis, :]], axis=1
-                )
+            model_controlled.control = np.concatenate(
+                [
+                    control_mat[0, 0] * p.INIT_INPUT_1N_6[:, np.newaxis, :],
+                    control_mat[0, 1] * p.INIT_INPUT_1N_6[:, np.newaxis, :],
+                ],
+                axis=1,
+            )
             model_controlled.update_input()
 
             control_coincide = False
@@ -52,11 +51,7 @@ class TestHopf(unittest.TestCase):
                 model_controlled.optimize(p.ITERATIONS)
                 control = model_controlled.control
 
-                if input_channel == 0:
-                    c_diff = (np.abs(control[0, 0, :] - p.TEST_INPUT_1N_6[0, :]),)
-
-                elif input_channel == 1:
-                    c_diff = (np.abs(control[0, 1, :] - p.TEST_INPUT_1N_6[0, :]),)
+                c_diff = (np.abs(control[0, input_channel, :] - p.TEST_INPUT_1N_6[0, :]),)
 
                 if np.amax(c_diff) < p.LIMIT_DIFF:
                     control_coincide = True
