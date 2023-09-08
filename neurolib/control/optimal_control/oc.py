@@ -67,7 +67,20 @@ def compute_gradient(
 
 
 @numba.njit
-def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, dxdoth, model_name):
+def solve_adjoint(
+    hx_list,
+    del_list,
+    hx_nw,
+    fx,
+    state_dim,
+    dt,
+    N,
+    T,
+    dmat_ndt,
+    dxdoth,
+    state_vars,
+    output_vars,
+):
     """Backwards integration of the adjoint state.
 
     :param hx_list:     list of Jacobians of systems dynamics wrt. 'state_vars'
@@ -88,6 +101,13 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
     :type T:            int
     :param dmat_ndt:    N x N delay matrix (discrete number of delayed time-intervals).
     :type dmat_ndt:     np.ndarray
+    :param dxdoth:      derivative of system dynamics wrt x dot
+    :type dxdoth:       np.ndarray
+    :param state_vars:      list of state variables of model
+    :type state_vars:       list
+    :param output_vars:     list of output variables of model
+    :type output_vars:      list
+
     :return:            Adjoint state.
     :rtype:             np.ndarray of shape `state_dim`
     """
@@ -95,9 +115,10 @@ def solve_adjoint(hx_list, del_list, hx_nw, fx, state_dim, dt, N, T, dmat_ndt, d
     adjoint_state = np.zeros(state_dim)
     fx_fullstate = np.zeros(state_dim)
 
-    fx_fullstate[:, :2, :] = fx[:, :2, :].copy()
-    if model_name == "aln":
-        fx_fullstate[:, 4, :] = fx[:, 2, :].copy()
+    for sv_ind, sv in enumerate(state_vars):
+        for ov_ind, ov in enumerate(output_vars):
+            if sv == ov:
+                fx_fullstate[:, sv_ind, :] = fx[:, ov_ind, :]
 
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
         for n in range(N):  # iterate through nodes
@@ -657,7 +678,8 @@ class OC:
             self.T,
             self.Dmat_ndt,
             dxdoth,
-            self.model.name,
+            numba.typed.List(self.model.state_vars),
+            numba.typed.List(self.model.output_vars),
         )
 
     def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):

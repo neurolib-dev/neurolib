@@ -23,49 +23,49 @@ class TestWC(unittest.TestCase):
         model.params["duration"] = p.TEST_DURATION_6
 
         for input_channel in [0, 1]:
-            cost_mat = np.zeros((model.params.N, len(model.output_vars)))
-            control_mat = np.zeros((model.params.N, len(model.state_vars)))
-            control_mat[0, input_channel] = 1.0  # only allow inputs to input_channel
-            cost_mat[0, np.abs(input_channel - 1).astype(int)] = 1.0  # only measure other channel
+            for measure_channel in [0, 1]:
+                print("input_channel, measure_channel = ", input_channel, measure_channel)
 
-            test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
-            model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_6
-            model.run()
-            target = test_oc_utils.gettarget_1n(model)
+                cost_mat = np.zeros((model.params.N, len(model.output_vars)))
+                control_mat = np.zeros((model.params.N, len(model.state_vars)))
+                control_mat[0, input_channel] = 1.0  # only allow inputs to input_channel
+                cost_mat[0, measure_channel] = 1.0  # only measure other channel
 
-            test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
+                test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
+                model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_6
+                model.run()
+                target = test_oc_utils.gettarget_1n(model)
 
-            model_controlled = oc_wc.OcWc(model, target)
-            model_controlled.maximum_control_strength = 2.0
+                test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
 
-            if input_channel == 0:
+                model_controlled = oc_wc.OcWc(model, target)
+                model_controlled.maximum_control_strength = 2.0
+
                 model_controlled.control = np.concatenate(
-                    [p.INIT_INPUT_1N_6[:, np.newaxis, :], p.ZERO_INPUT_1N_6[:, np.newaxis, :]], axis=1
+                    [
+                        control_mat[0, 0] * p.INIT_INPUT_1N_6[:, np.newaxis, :],
+                        control_mat[0, 1] * p.INIT_INPUT_1N_6[:, np.newaxis, :],
+                    ],
+                    axis=1,
                 )
-            elif input_channel == 1:
-                model_controlled.control = np.concatenate(
-                    [p.ZERO_INPUT_1N_6[:, np.newaxis, :], p.INIT_INPUT_1N_6[:, np.newaxis, :]], axis=1
-                )
-            model_controlled.update_input()
 
-            control_coincide = False
+                model_controlled.update_input()
 
-            for i in range(p.LOOPS):
-                model_controlled.optimize(p.ITERATIONS)
+                control_coincide = False
 
-                if input_channel == 0:
-                    c_diff = np.abs(model_controlled.control[0, 0, :] - p.TEST_INPUT_1N_6[0, :])
-                elif input_channel == 1:
-                    c_diff = np.abs(model_controlled.control[0, 1, :] - p.TEST_INPUT_1N_6[0, :])
+                for i in range(p.LOOPS):
+                    model_controlled.optimize(p.ITERATIONS)
 
-                if np.amax(c_diff) < p.LIMIT_DIFF:
-                    control_coincide = True
-                    break
+                    c_diff = np.abs(model_controlled.control[0, input_channel, :] - p.TEST_INPUT_1N_6[0, :])
 
-                if model_controlled.zero_step_encountered:
-                    break
+                    if np.amax(c_diff) < p.LIMIT_DIFF:
+                        control_coincide = True
+                        break
 
-            self.assertTrue(control_coincide)
+                    if model_controlled.zero_step_encountered:
+                        break
+
+                self.assertTrue(control_coincide)
 
     def test_2n(self):
         print("Test OC in 2-node network")
