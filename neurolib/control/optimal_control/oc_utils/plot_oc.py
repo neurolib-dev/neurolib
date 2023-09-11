@@ -89,9 +89,9 @@ def plot_oc_network(
 
         # Plot the target control signal (dashed line) and "initial" zero control signal
         for v in plot_control_vars:
-            ax[1, n].plot(t_array, control[0, v, :], label="stimulation var " + str(v), color=colors[v])
+            ax[1, n].plot(t_array, control[n, v, :], label="stimulation var " + str(v), color=colors[v])
             ax[1, n].plot(
-                t_array, orig_input[0, v, :], linestyle="dashed", label="input var " + str(v), color=colors[v]
+                t_array, orig_input[n, v, :], linestyle="dashed", label="input var " + str(v), color=colors[v]
             )
         # ax[1, n].legend(loc="upper right")
         ax[1, n].set_title(f"Stimulation and input, node %s" % (n))
