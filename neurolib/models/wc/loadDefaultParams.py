@@ -67,8 +67,10 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.mu_inh = 3.0  # inhibitory firing threshold
 
     # values of the external inputs
-    params.exc_ext = 0  # baseline external input to E
-    params.inh_ext = 0  # baseline external input to I
+    params.exc_ext_baseline = 0  # baseline external input to E (static)
+    params.inh_ext_baseline = 0  # baseline external input to I (static)
+    params.exc_ext = 0  # time-dependent external input to E
+    params.inh_ext = 0  # time-dependent external input to I
 
     # ------------------------------------------------------------------------
 
