@@ -65,14 +65,16 @@ def loadDefaultParams(Cmat=None, Dmat=None, seed=None):
     params.tau_exc = 100.0  # ms
     params.gamma_exc = 0.641
     params.w_exc = 1.0
-    params.exc_current = 0.382  # nA
+    params.exc_current_baseline = 0.382  # nA, baseline external input current (static)
+    params.exc_current = 0  # time-dependent external input current to E
 
     params.a_inh = 0.615  # nC^-1
     params.b_inh = 0.177  # kHz
     params.d_inh = 87.0  # ms
     params.tau_inh = 10.0  # ms
     params.w_inh = 0.7
-    params.inh_current = 0.382  # nA
+    params.inh_current_baseline = 0.382  # nA, baseline external input current (static)
+    params.inh_current = 0  # time-dependent external input current to E
 
     params.J_NMDA = 0.15  # nA, excitatory synaptic coupling
     params.J_I = 1.0  # nA, inhibitory synaptic coupling
