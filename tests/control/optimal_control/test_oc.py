@@ -84,8 +84,58 @@ class TestOC(unittest.TestCase):
         return model, target
 
     def test_solve_adjoint(self):
-        # ToDo: Implement test for the solve_adjoint-function.
-        pass
+        print("Test solve adjoint method.")
+        N, V, T = 1, 2, 6
+        dt = 1.0
+
+        jacobian = np.ones((N, T, V, V))
+        jacobian_nw = np.zeros((N, N, T, V, V))
+        fx = np.zeros((N, V, T))
+        dh_dxdot = np.ones((N, V, V))
+        vars_names = ["a", "b"]
+
+        # # Fx = 0 should lead to adjoint = 0
+        adjoint = solve_adjoint(
+            [jacobian],
+            [0],  # delay
+            jacobian_nw,
+            fx,
+            (N, V, T),
+            dt,
+            N,
+            T,
+            np.zeros((N, N)).astype(int),
+            dh_dxdot,
+            vars_names,
+            vars_names,
+        )
+
+        self.assertTrue(np.all(adjoint == np.zeros((adjoint.shape))))
+
+        # Fx = 1 should lead to adjoint != 0
+        fx = np.ones((N, V, T))
+
+        adjoint = solve_adjoint(
+            [jacobian],
+            [0],  # delay
+            jacobian_nw,
+            fx,
+            (N, V, T),
+            dt,
+            N,
+            T,
+            np.zeros((N, N)).astype(int),
+            dh_dxdot,
+            vars_names,
+            vars_names,
+        )
+
+        result = np.zeros((T))
+        result[-2] = -1.0
+        result[-4] = -1.0
+        result[-6] = -1.0
+
+        self.assertTrue(np.all(adjoint == result))
 
     def test_step_size(self):
         # Run the test with an instance of an arbitrary derived class.
