@@ -16,6 +16,10 @@ def accuracy_cost(x, target_timeseries, weights, cost_matrix, dt, interval=(0, N
     :type cost_matrix:      ndarray
     :param dt:              Time step.
     :type dt:               float
+    :param interval:        (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
+                            dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
+    :type interval:         tuple, optional
+    
     :return:                Accuracy cost.
     :rtype:                 float
     """
@@ -49,6 +53,10 @@ def derivative_accuracy_cost(x, target_timeseries, weights, cost_matrix, interva
     :type weights:          dictionary
     :param cost_matrix:     Matrix of channels to take into account
     :type cost_matrix:      ndarray
+    :param interval:        (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
+                            dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
+    :type interval:         tuple, optional
+    
     :return:                Accuracy cost derivative.
     :rtype:                 ndarray
     """
@@ -66,26 +74,24 @@ def precision_cost(x_sim, x_target, cost_matrix, interval=(0, None)):
     """Summed squared difference between target and simulation within specified time interval weighted by w_p.
        Penalizes deviation from the target.
 
-    :param x_target:    N x V x T array that contains the target time series.
-    :type x_target:     np.ndarray
     :param x_sim:       N x V x T array that contains the simulated time series.
     :type x_sim:        np.ndarray
-    :param w_p:         Weight that is multiplied with the precision cost.
-    :type w_p:          float
+    :param x_target:    N x V x T array that contains the target time series.
+    :type x_target:     np.ndarray
     :param cost_matrix: N x V binary matrix that defines nodes and channels of precision measurement. Defaults to
                              None.
     :type cost_matrix:  np.ndarray
-    :param dt:          Time step.
-    :type dt:           float
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                         dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:     tuple
+    
     :return:            Precision cost for time interval.
     :rtype:             float
     """
 
     cost = np.zeros((x_target.shape))
 
+    # integrate over nodes, channels, and time
     for n in range(x_target.shape[0]):
         for v in range(x_target.shape[1]):
             for t in range(interval[0], interval[1]):
@@ -98,24 +104,24 @@ def precision_cost(x_sim, x_target, cost_matrix, interval=(0, None)):
 def derivative_precision_cost(x_sim, x_target, cost_matrix, interval):
     """Derivative of 'precision_cost' wrt. 'x_sim'.
 
-    :param x_target:    N x V x T array that contains the target time series.
-    :type x_target:     np.ndarray
     :param x_sim:       N x V x T array that contains the simulated time series.
     :type x_sim:        np.ndarray
-    :param w_p:         Weight that is multiplied with the precision cost.
-    :type w_p:          float
+    :param x_target:    N x V x T array that contains the target time series.
+    :type x_target:     np.ndarray
     :param cost_matrix: N x V binary matrix that defines nodes and channels of precision measurement, defaults to
-                                 None
+                        None
     :type cost_matrix:  np.ndarray
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                         dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:     tuple
+    
     :return:            Control-dimensions x T array of precision cost gradients.
     :rtype:             np.ndarray
     """
 
     derivative = np.zeros(x_target.shape)
 
+    # integrate over nodes, variables, and time
     for n in range(x_target.shape[0]):
         for v in range(x_target.shape[1]):
             for t in range(interval[0], interval[1]):
@@ -134,6 +140,7 @@ def control_strength_cost(u, weights, dt):
     :type weights:      dictionary
     :param dt:          Time step.
     :type dt:           float
+    
     :return:            control strength cost of the control.
     :rtype:             float
     """
@@ -163,8 +170,7 @@ def derivative_control_strength_cost(u, weights):
     :type u:            np.ndarray
     :param weights:     Dictionary of weights.
     :type weights:      dictionary
-    :param dt:          Time step.
-    :type dt:           float
+
     :return:    Control-dimensions x T array of L2-cost gradients.
     :rtype:     np.ndarray
     """
@@ -183,6 +189,7 @@ def L2_cost(u):
 
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
+    
     :return:    L2 cost of the control.
     :rtype:     float
     """
@@ -196,6 +203,7 @@ def derivative_L2_cost(u):
 
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
+    
     :return:    Control-dimensions x T array of L2-cost gradients.
     :rtype:     np.ndarray
     """
