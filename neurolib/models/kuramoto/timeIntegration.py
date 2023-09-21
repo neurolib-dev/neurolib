@@ -84,17 +84,9 @@ def timeIntegration(params):
     theta[:, :startind] = theta_init
     theta[:, startind:] = np.random.standard_normal((N, len(t)))
     
-    theta_input_d = np.zeros(N)
-
-    noise_theta = 0
-
-    # ------------------------------------------------------------------------
-    # some helper variables
-    # ------------------------------------------------------------------------
-
-    k_n = k/N
-    theta_rhs = np.zeros((N,))
-
+    
+    k_n = k/N # auxiliary variable
+    
     # ------------------------------------------------------------------------
     # time integration
     # ------------------------------------------------------------------------
@@ -110,13 +102,10 @@ def timeIntegration(params):
         Cmat,
         Dmat,
         theta,
-        theta_input_d,
         theta_ext,
         tau_ou,
         sigma_ou,
         theta_ou,
-        noise_theta,
-        theta_rhs,
     )
 
 
@@ -132,37 +121,33 @@ def timeIntegration_njit_elementwise(
     Cmat,
     Dmat,
     theta,
-    theta_input_d,
     theta_ext,
     tau_ou,
     sigma_ou,
     theta_ou,
-    noise_theta,
-    theta_rhs, 
 ):
     """
     Kuramoto Model 
     """
     for i in range(startind, startind+len(t)):
         # Kuramoto model
-        for n in range(N): 
-            noise_theta = theta[n, i]
-            
-            theta_input_d[n] = 0.0
+        for no in range(N): 
+            noise_theta = theta[no, i]
+            theta_input_d = 0.0
 
             # adding input from other nodes
             for m in range(N):
-                theta_input_d[n] +=  k_n * Cmat[n, m] * np.sin(theta[m, i-1-Dmat[n, m]] - theta[n, i-1])
+                theta_input_d +=  k_n * Cmat[no, m] * np.sin(theta[m, i-1-Dmat[no, m]] - theta[no, i-1])
 
-            theta_rhs[n] = omega[n] + theta_input_d[n] + theta_ou[n] + theta_ext[n, i-1]
+            theta_rhs = omega[no] + theta_input_d + theta_ou[no] + theta_ext[no, i-1]
             
             # time integration
-            theta[n, i] = theta[n, i-1] + dt * theta_rhs[n]
+            theta[no, i] = theta[no, i-1] + dt * theta_rhs
             
             # phase reset
-            theta[n, i] = np.mod(theta[n, i], 2*np.pi)
+            theta[no, i] = np.mod(theta[no, i], 2*np.pi)
 
             # Ornstein-Uhlenbeck
-            theta_ou[n] = theta_ou[n] - theta_ou[n] * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta
+            theta_ou[no] = theta_ou[no] - theta_ou[no] * dt / tau_ou + sigma_ou * sqrt_dt * noise_theta
 
     return t, theta, theta_ou
