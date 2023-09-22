@@ -1,8 +1,9 @@
 import unittest
 import numpy as np
-import neurolib
+import numba
 from neurolib.control.optimal_control.oc import (
     solve_adjoint,
+    compute_gradient,
     update_control_with_limit,
     convert_interval,
     limit_control_to_interval,
@@ -136,6 +137,64 @@ class TestOC(unittest.TestCase):
         result[-6] = -1.0
 
         self.assertTrue(np.all(adjoint == result))
+
+    def test_compute_gradient(self):
+        print("Test compute gradient method.")
+        N, V, T = 1, 2, 6
+
+        adjoint_state = np.zeros((N, V, T))
+        control_matrix = np.ones((N, V))
+        dh_du = np.ones((N, V, V, T))
+        control_interval = numba.typed.List([0, T])
+        df_du = np.zeros((N, V, T))
+
+        # # df_du = 0 should lead to gadient = 0
+        gradient = compute_gradient(
+            N,
+            V,
+            V,
+            df_du,
+            adjoint_state,
+            control_matrix,
+            dh_du,
+            control_interval,
+        )
+
+        self.assertTrue(np.all(gradient == np.zeros((gradient.shape))))
+
+        df_du = np.ones((N, V, T))
+        # df_du = 1 should lead to gadient == df_du
+        gadient = compute_gradient(
+            N,
+            V,
+            V,
+            df_du,
+            adjoint_state,
+            control_matrix,
+            dh_du,
+            control_interval,
+        )
+
+        self.assertTrue(np.all(gadient == df_du))
+
+        df_du = np.ones((N, V, T))
+        adjoint_state = np.ones((N, V, T))
+        # df_du = 1 and adjoint == 1 should lead to gadient != 0
+        gadient = compute_gradient(
+            N,
+            V,
+            V,
+            df_du,
+            adjoint_state,
+            control_matrix,
+            dh_du,
+            control_interval,
+        )
+
+        result = 3.0 * np.ones((T))
+
+        for n in range(N):
+            self.assertTrue(np.all(gadient[n, :, :] == result))
 
     def test_step_size(self):
         # Run the test with an instance of an arbitrary derived class.
