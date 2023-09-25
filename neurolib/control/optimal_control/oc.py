@@ -477,6 +477,8 @@ class OC:
 
         self.model_params = self.get_model_params()
 
+        self.check_params()
+
     def check_params(self):
         """Checks a subset of parameters and throws an error if a wrong dimension is found."""
         # check if cost matrix is binary
