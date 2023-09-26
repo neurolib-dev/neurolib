@@ -471,13 +471,14 @@ class OC:
         for v, iv in enumerate(self.model.input_vars):
             control[:, v, :] = self.model.params[iv]
 
+        self.control =  control.copy()
+        self.check_params()
+
         self.control = update_control_with_limit(
             self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
         )
 
-        self.model_params = self.get_model_params()
-
-        self.check_params()
+        self.model_params = self.get_model_params()        
 
     def check_params(self):
         """Checks a subset of parameters and throws an error if a wrong dimension is found."""
