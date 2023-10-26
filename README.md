@@ -35,6 +35,8 @@ You can chose from different neural mass [models](https://github.com/neurolib-de
 
 📚 Please read the [gentle introduction](https://caglorithm.github.io/notebooks/neurolib-intro/) to `neurolib` for an overview of the basic functionality and the science behind whole-brain simulations or read the [documentation](https://neurolib-dev.github.io/) for getting started.
 
+To browse the source code of `neurolib` visit out [GitHub repository](https://github.com/neurolib-dev/neurolib).
+
 📝 <a href="#how-to-cite">Cite</a> the following paper if you use `neurolib` for your own research:
 
 > Cakan, C., Jajcay, N. & Obermayer, K. neurolib: A Simulation Framework for Whole-Brain Neural Mass Modeling. [Cogn. Comput. (2021)](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007822). 
