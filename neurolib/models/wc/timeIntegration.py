@@ -520,7 +520,10 @@ def compute_hx_nw(
         for n2 in range(N):
             for t in range(T - 1):
                 hx_nw[n1, n2, t, sv["exc"], sv["exc"]] = (
-                    logistic_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]
+                    (1.0 - e[n1, t])
+                    * logistic_der(exc_input[n1, t], a_exc, mu_exc)
+                    * K_gl
+                    * cmat[n1, n2]
                 ) / tau_exc
 
     return -hx_nw
