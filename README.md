@@ -288,7 +288,7 @@ This will gives us a summary of the last generation and plots a distribution of 
 </p>
 
 ### Optimal control
-The optimal control modules enables to compute efficient stimulation for your neural model. If you know how your output should look like, this module computes the optimal input. Detailes example notebooks can be found in the [example folder](https://github.com/neurolib-dev/neurolib/tree/master/examples) (examples 5.1, 5.2, 5.3, 5.4). In optimal control computations, you trade precision with respect to a target against control strength. You can determine how much each contribution affects the results, by setting weights accordingly.
+The optimal control module enables to compute efficient stimulation for your neural model. If you know how your output should look like, this module computes the optimal input. Detailes example notebooks can be found in the [example folder](https://github.com/neurolib-dev/neurolib/tree/master/examples) (examples 5.1, 5.2, 5.3, 5.4). In optimal control computations, you trade precision with respect to a target against control strength. You can determine how much each contribution affects the results, by setting weights accordingly.
 
 To compute an optimal control signal, you need to create a model (e.g., an FHN model) and define a target state (e.g., a sine curve with period 2).
 ```python
@@ -309,6 +309,8 @@ model_controlled.optimize(500) # run 500 iterations
 optimal_control = model_controlled.control
 optimal_state = model_controlled.get_xs()
 ```
+
+For a comprehensive study on optimal control of the Wilson-Cowan model based on the neurolib optimal control module, see Salfenmoser, L. & Obermayer, K. Optimal control of a Wilson–Cowan model of neural population dynamics. Chaos 33, 043135 (2023). https://doi.org/10.1063/5.0144682.
 
 ## More information
 
