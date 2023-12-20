@@ -95,7 +95,7 @@ neurolib/	 				# Main module
 ├── optimize/ 					# Optimization submodule
 	├── evolution/ 				# Evolutionary optimization
 	└── exploration/ 			# Parameter exploration
-├── control/optimal_control/			# (Optimal) control submodule
+├── control/optimal_control/			# Optimal control submodule
 	├── oc.py 				# Optimal control base class
 	├── cost_functions.py 			# cost functions for OC
 	├── /.../ 				# Implemented OC models
