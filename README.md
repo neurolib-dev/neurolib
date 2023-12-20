@@ -95,7 +95,7 @@ neurolib/	 				# Main module
 ├── optimize/ 					# Optimization submodule
 	├── evolution/ 				# Evolutionary optimization
 	└── exploration/ 			# Parameter exploration
-├── control/optimal_control/			# (Optimal) control submodule
+├── control/optimal_control/			# Optimal control submodule
 	├── oc.py 				# Optimal control base class
 	├── cost_functions.py 			# cost functions for OC
 	├── /.../ 				# Implemented OC models
@@ -124,7 +124,7 @@ Example [IPython Notebooks](examples/) on how to use the library can be found in
 - [Example 0.6](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-0.6-custom-model.ipynb) - Minimal example of how to implement your own model in `neurolib`
 - [Example 1.2](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-1.2-brain-network-exploration.ipynb) - Parameter exploration of a brain network and fitting to BOLD data
 - [Example 2.0](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-2-evolutionary-optimization-minimal.ipynb) - A simple example of the evolutionary optimization framework 
-- [Example 5.3](examples/example-5-optimal-control/example-5.3-oc-wc-model-deterministic.ipynb) - Example of optimal control of the noise-free Wilson-Cowan model
+- [Example 5.2](https://mybinder.org/v2/gh/neurolib-dev/neurolib/master?filepath=examples%2Fexample-5.2-oc-wc-model-deterministic.ipynb) - Example of optimal control of the noise-free Wilson-Cowan model
 
 A basic overview of the functionality of `neurolib` is also given in the following. 
 
@@ -288,7 +288,7 @@ This will gives us a summary of the last generation and plots a distribution of 
 </p>
 
 ### Optimal control
-The optimal control modules enables to compute efficient stimulation for your neural model. If you know how your output should look like, this module computes the optimal input. Detailes example notebooks can be found in the [optimal control example folder](https://github.com/lenasal/neurolib/tree/readme_update/examples/example-5-optimal-control). In optimal control computations, you trade precision with respect to a target against control strength. You can determine how much each contribution affects the results, by setting weights accordingly.
+The optimal control module enables to compute efficient stimulation for your neural model. If you know how your output should look like, this module computes the optimal input. Detailes example notebooks can be found in the [example folder](https://github.com/neurolib-dev/neurolib/tree/master/examples) (examples 5.1, 5.2, 5.3, 5.4). In optimal control computations, you trade precision with respect to a target against control strength. You can determine how much each contribution affects the results, by setting weights accordingly.
 
 To compute an optimal control signal, you need to create a model (e.g., an FHN model) and define a target state (e.g., a sine curve with period 2).
 ```python
@@ -309,6 +309,8 @@ model_controlled.optimize(500) # run 500 iterations
 optimal_control = model_controlled.control
 optimal_state = model_controlled.get_xs()
 ```
+
+For a comprehensive study on optimal control of the Wilson-Cowan model based on the neurolib optimal control module, see Salfenmoser, L. & Obermayer, K. Optimal control of a Wilson–Cowan model of neural population dynamics. Chaos 33, 043135 (2023). https://doi.org/10.1063/5.0144682.
 
 ## More information
 
@@ -343,14 +345,9 @@ Caglar Cakan (cakan@ni.tu-berlin.de)
 Department of Software Engineering and Theoretical Computer Science, Technische Universität Berlin, Germany  
 Bernstein Center for Computational Neuroscience Berlin, Germany 
 
-For questions or comments on the optimal control module, please contact
-Lena Salfenmoser (lena.salfenmoser@tu-berlin.de)
-Department of Software Engineering and Theoretical Computer Science, Technische Universität Berlin, Germany  
-
-
 ### Acknowledgments
 This work was supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) with the project number 327654276 (SFB 1315) and the Research Training Group GRK1589/2.
 
-The optimal control module was developed and implemented by Lena Salfenmoser and Martin Krück, and supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) with the project number 163436311 (SFB 910).
+The optimal control module was developed by Lena Salfenmoser and Martin Krück supported by the DFG project 163436311 (SFB 910).
 
 <!--end-include-in-documentation-->
