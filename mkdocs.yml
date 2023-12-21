@@ -23,7 +23,6 @@ plugins:
       binder: true
       binder_service_name: "gh"
       binder_branch: "master"
-  - include-markdown
 
 markdown_extensions:
   - codehilite
