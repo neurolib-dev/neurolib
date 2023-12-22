@@ -196,10 +196,8 @@ def timeIntegration_njit_elementwise(
     """
     ### integrate ODE system:
     for i in range(startind, startind + len(t)):
-
         # loop through all the nodes
         for no in range(N):
-
             # To save memory, noise is saved in the rates array
             noise_xs[no] = xs[no, i]
             noise_ys[no] = ys[no, i]
@@ -245,3 +243,170 @@ def timeIntegration_njit_elementwise(
             y_ou[no] = y_ou[no] + (y_ou_mean - y_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
 
     return t, xs, ys, x_ou, y_ou
+
+
+@numba.njit
+def jacobian_fhn(
+    model_params,
+    x,
+    V,
+    sv,
+):
+    """Jacobian of a single node of the FHN dynamical system wrt. its 'state_vars' ('x', 'y', 'x_ou', 'y_ou'). The
+       Jacobian of the FHN systems dynamics depends only on the constant model parameters and the values of the 'x'-
+       population.
+
+    :param model_params:    Ordered tuple of parameters in the FHN Model in order
+    :type model_params:     tuple of float
+    :param x:                   Value of the 'x'-population in the FHN node at a specific time step.
+    :type x:                    float
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
+
+    :return:                    V x V Jacobian matrix.
+    :rtype:                     np.ndarray
+    """
+    (
+        alpha,
+        beta,
+        gamma,
+        tau,
+        epsilon,
+    ) = model_params
+    jacobian = np.zeros((V, V))
+    jacobian[sv["x"], sv["x"]] = 3 * alpha * x**2 - 2 * beta * x - gamma
+    jacobian[sv["x"], sv["y"]] = 1.0
+    jacobian[sv["y"], sv["x"]] = -1 / tau
+    jacobian[sv["y"], sv["y"]] = epsilon / tau
+    return jacobian
+
+
+@numba.njit
+def compute_hx(
+    model_params,
+    N,
+    V,
+    T,
+    dyn_vars,
+    sv,
+):
+    """Jacobians  of FHN model wrt. its 'state_vars' at each time step.
+
+    :param model_params:    Ordered tuple of parameters in the FHN Model in order
+    :type model_params:     tuple of float
+    :param N:                   Number of nodes in the network.
+    :type N:                    int
+    :param V:                   Number of system variables.
+    :type V:                    int
+    :param T:                   Length of simulation (time dimension).
+    :type T:                    int
+    :param dyn_vars:            Values of the 'x' and 'y' variable of FHN of all nodes through time.
+    :type dyn_vars:             np.ndarray of shape N x 2 x T
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
+    :return:                    Array that contains Jacobians for all nodes in all time steps.
+    :rtype:                     np.ndarray of shape N x T x v X v
+    """
+    hx = np.zeros((N, T, V, V))
+
+    for n in range(N):  # Iterate through nodes.
+        for t in range(T):
+            hx[n, t, :, :] = jacobian_fhn(model_params, dyn_vars[n, sv["x"], t], V, sv)
+    return hx
+
+
+@numba.njit
+def compute_hx_nw(
+    K_gl,
+    cmat,
+    coupling,
+    N,
+    V,
+    T,
+    sv,
+):
+    """Jacobians for network connectivity in all time steps.
+
+    :param K_gl:     Model parameter of global coupling strength.
+    :type K_gl:      float
+    :param cmat:     Model parameter, connectivity matrix.
+    :type cmat:      ndarray
+    :param coupling: Model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
+    :type coupling:  str
+    :param N:        Number of nodes in the network.
+    :type N:         int
+    :param V:        Number of system variables.
+    :type V:         int
+    :param T:        Length of simulation (time dimension).
+    :type T:         int
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
+    :return:         Jacobians for network connectivity in all time steps.
+    :rtype:          np.ndarray of shape N x N x T x 4 x 4
+    """
+    hx_nw = np.zeros((N, N, T, V, V))
+
+    for n1 in range(N):
+        for n2 in range(N):
+            hx_nw[n1, n2, :, sv["x"], sv["x"]] = K_gl * cmat[n1, n2]  # term corresponding to additive coupling
+            if coupling == "diffusive":
+                hx_nw[n1, n1, :, sv["x"], sv["x"]] += -K_gl * cmat[n1, n2]
+
+    return -hx_nw
+
+
+@numba.njit
+def Duh(
+    N,
+    V_in,
+    V_vars,
+    T,
+    sv,
+):
+    """Jacobian of systems dynamics wrt. external inputs (control signals).
+
+    :param N:               Number of nodes in the network.
+    :type N:                int
+    :param V_in:            Number of input variables.
+    :type V_in:             int
+    :param V_vars:          Number of system variables.
+    :type V_vars:           int
+    :param T:               Length of simulation (time dimension).
+    :type T:                int
+    :param sv:                  dictionary of state vars and respective indices
+    :type sv:                   dict
+
+    :rtype:     np.ndarray of shape N x V x V x T
+    """
+
+    duh = np.zeros((N, V_vars, V_in, T))
+    for t in range(T):
+        for n in range(N):
+            duh[n, sv["x"], sv["x"], t] = -1.0
+            duh[n, sv["y"], sv["y"], t] = -1.0
+    return duh
+
+
+@numba.njit
+def Dxdoth(N, V):
+    """Derivative of system dynamics wrt x dot
+
+    :param N:       Number of nodes in the network.
+    :type N:        int
+    :param V:       Number of system variables.
+    :type V:        int
+
+    :return:        N x V x V matrix.
+    :rtype:         np.ndarray
+    """
+    dxdoth = np.zeros((N, V, V))
+    for n in range(N):
+        for v in range(V):
+            dxdoth[n, v, v] = 1
+
+    return dxdoth
