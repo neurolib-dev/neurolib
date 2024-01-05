@@ -209,12 +209,18 @@ def timeIntegration_njit_elementwise(
             # diffusive coupling
             if coupling == 0:
                 for l in range(N):
-                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
+                    xs_input_d[no] += (
+                        K_gl
+                        * Cmat[no, l]
+                        * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
+                    )
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1] - ys[no, i - 1])
             # additive coupling
             elif coupling == 1:
                 for l in range(N):
-                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
+                    xs_input_d[no] += (
+                        K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
+                    )
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1])
 
             # Fitz-Hugh Nagumo equations
@@ -239,8 +245,16 @@ def timeIntegration_njit_elementwise(
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
             # Ornstein-Uhlenberg process
-            x_ou[no] = x_ou[no] + (x_ou_mean - x_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
-            y_ou[no] = y_ou[no] + (y_ou_mean - y_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
+            x_ou[no] = (
+                x_ou[no]
+                + (x_ou_mean - x_ou[no]) * dt / tau_ou
+                + sigma_ou * sqrt_dt * noise_xs[no]
+            )  # mV/ms
+            y_ou[no] = (
+                y_ou[no]
+                + (y_ou_mean - y_ou[no]) * dt / tau_ou
+                + sigma_ou * sqrt_dt * noise_ys[no]
+            )  # mV/ms
 
     return t, xs, ys, x_ou, y_ou
 
@@ -287,6 +301,9 @@ def jacobian_fhn(
 @numba.njit
 def compute_hx(
     model_params,
+    K_gl,
+    cmat,
+    coupling,
     N,
     V,
     T,
@@ -295,8 +312,14 @@ def compute_hx(
 ):
     """Jacobians  of FHN model wrt. its 'state_vars' at each time step.
 
-    :param model_params:    Ordered tuple of parameters in the FHN Model in order
-    :type model_params:     tuple of float
+    :param model_params:        Ordered tuple of parameters in the FHN Model in order
+    :type model_params:         tuple of float
+    :param K_gl:                Model parameter of global coupling strength.
+    :type K_gl:                 float
+    :param cmat:                Model parameter, connectivity matrix.
+    :type cmat:                 ndarray
+    :param coupling:            Model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
+    :type coupling:             str
     :param N:                   Number of nodes in the network.
     :type N:                    int
     :param V:                   Number of system variables.
@@ -316,6 +339,10 @@ def compute_hx(
     for n in range(N):  # Iterate through nodes.
         for t in range(T):
             hx[n, t, :, :] = jacobian_fhn(model_params, dyn_vars[n, sv["x"], t], V, sv)
+
+            if coupling == "diffusive":
+                for l in range(N):
+                    hx[n, t, sv["x"], sv["x"]] += K_gl * cmat[n, l]
     return hx
 
 
@@ -323,7 +350,6 @@ def compute_hx(
 def compute_hx_nw(
     K_gl,
     cmat,
-    coupling,
     N,
     V,
     T,
@@ -335,8 +361,6 @@ def compute_hx_nw(
     :type K_gl:      float
     :param cmat:     Model parameter, connectivity matrix.
     :type cmat:      ndarray
-    :param coupling: Model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
-    :type coupling:  str
     :param N:        Number of nodes in the network.
     :type N:         int
     :param V:        Number of system variables.
@@ -353,9 +377,9 @@ def compute_hx_nw(
 
     for n1 in range(N):
         for n2 in range(N):
-            hx_nw[n1, n2, :, sv["x"], sv["x"]] = K_gl * cmat[n1, n2]  # term corresponding to additive coupling
-            if coupling == "diffusive":
-                hx_nw[n1, n1, :, sv["x"], sv["x"]] += -K_gl * cmat[n1, n2]
+            hx_nw[n1, n2, :, sv["x"], sv["x"]] = (
+                K_gl * cmat[n1, n2]
+            )  # term corresponding to both diffusive and additive coupling
 
     return -hx_nw
 
