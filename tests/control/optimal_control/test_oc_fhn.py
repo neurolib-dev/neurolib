@@ -386,46 +386,16 @@ class TestFHN(unittest.TestCase):
         print("Test OC for control_interval = [0,0] in single-node model")
         model = FHNModel()
 
-        duration = 3.0
-        a = 10.0
+        model.params["duration"] = p.TEST_DURATION_8
+        test_oc_utils.setinitzero_1n(model)
 
-        model.params["duration"] = duration
-        model.params["xs_init"] = np.array([[0.0]])
-        model.params["ys_init"] = np.array([[0.0]])
-
-        rs = RandomState(
-            MT19937(SeedSequence(0))
-        )  # work with fixed seed for reproducibility
-        input_x = ZeroInput().generate_input(
-            duration=duration + model.params.dt, dt=model.params.dt
-        )
-        input_y = np.copy(input_x)
-
-        for t in range(1, input_x.shape[1] - 2):
-            input_x[0, :] = rs.uniform(-a, a)
-            input_y[0, :] = rs.uniform(-a, a)
-        model.params["x_ext"] = input_x
-        model.params["y_ext"] = input_y
-
+        test_oc_utils.set_input(model, p.TEST_INPUT_1N_8)
         model.run()
-        target = np.concatenate(
-            (
-                np.concatenate(
-                    (model.params["xs_init"], model.params["ys_init"]), axis=1
-                )[:, :, np.newaxis],
-                np.stack((model.x, model.y), axis=1),
-            ),
-            axis=2,
-        )
+        target = test_oc_utils.gettarget_1n(model)
 
         model_controlled = oc_fhn.OcFhn(model, target, control_interval=(0, 0))
-        model_controlled.weights["w_p"] = 1.0
-        model_controlled.weights["w_2"] = 1.0
-
         model_controlled.optimize(1)
-        control = model_controlled.control
-        c_max = np.amax(np.abs(control))
-        self.assertEqual(c_max, 0.0)
+        self.assertEqual(np.amax(np.abs(model_controlled.control)), 0.0)
 
 
 if __name__ == "__main__":
