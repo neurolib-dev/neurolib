@@ -393,9 +393,9 @@ class TestFHN(unittest.TestCase):
         model.run()
         target = test_oc_utils.gettarget_1n(model)
 
-        model_controlled = oc_fhn.OcFhn(model, target, control_interval=(0, 0))
+        model_controlled = oc_fhn.OcFhn(model, target, control_interval=(0, 1))
         model_controlled.optimize(1)
-        self.assertEqual(np.amax(np.abs(model_controlled.control)), 0.0)
+        self.assertEqual(np.amax(np.abs(model_controlled.control[:, :, 1:])), 0.0)
 
 
 if __name__ == "__main__":
