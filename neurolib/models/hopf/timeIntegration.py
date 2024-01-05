@@ -190,18 +190,12 @@ def timeIntegration_njit_elementwise(
             # diffusive coupling
             if coupling == 0:
                 for l in range(N):
-                    xs_input_d[no] += (
-                        K_gl
-                        * Cmat[no, l]
-                        * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
-                    )
+                    xs_input_d[no] += xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1] - xs[no, i - 1])
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1] - ys[no, i - 1])
             # additive coupling
             elif coupling == 1:
                 for l in range(N):
-                    xs_input_d[no] += (
-                        K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
-                    )
+                    xs_input_d[no] += K_gl * Cmat[no, l] * (xs[l, i - Dmat_ndt[no, l] - 1])
                     # ys_input_d[no] += K_gl * Cmat[no, l] * (ys[l, i - Dmat_ndt[no, l] - 1])
 
             # Stuart-Landau / Hopf Oscillator
@@ -225,16 +219,8 @@ def timeIntegration_njit_elementwise(
             ys[no, i] = ys[no, i - 1] + dt * y_rhs
 
             # Ornstein-Uhlenbeck process
-            x_ou[no] = (
-                x_ou[no]
-                + (x_ou_mean - x_ou[no]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_xs[no]
-            )  # mV/ms
-            y_ou[no] = (
-                y_ou[no]
-                + (y_ou_mean - y_ou[no]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_ys[no]
-            )  # mV/ms
+            x_ou[no] = x_ou[no] + (x_ou_mean - x_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_xs[no]  # mV/ms
+            y_ou[no] = y_ou[no] + (y_ou_mean - y_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_ys[no]  # mV/ms
 
     return t, xs, ys, x_ou, y_ou
 
