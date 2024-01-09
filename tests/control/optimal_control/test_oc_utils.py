@@ -37,8 +37,12 @@ ZERO_INPUT_1N_8 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_8 / 0.1, 1
 TEST_INPUT_1N_8 = ZERO_INPUT_1N_8.copy()
 INIT_INPUT_1N_8 = ZERO_INPUT_1N_8.copy()
 
-TEST_INPUT_1N_8[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = TEST_INPUT_1N_6
-INIT_INPUT_1N_8[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = INIT_INPUT_1N_6
+TEST_INPUT_1N_8[
+    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
+] = TEST_INPUT_1N_6
+INIT_INPUT_1N_8[
+    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
+] = INIT_INPUT_1N_6
 
 params.ZERO_INPUT_1N_8 = ZERO_INPUT_1N_8
 params.TEST_INPUT_1N_8 = TEST_INPUT_1N_8
@@ -49,8 +53,12 @@ ZERO_INPUT_1N_10 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_10 / 0.1,
 TEST_INPUT_1N_10 = ZERO_INPUT_1N_10.copy()
 INIT_INPUT_1N_10 = ZERO_INPUT_1N_10.copy()
 
-TEST_INPUT_1N_10[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = TEST_INPUT_1N_6
-INIT_INPUT_1N_10[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = INIT_INPUT_1N_6
+TEST_INPUT_1N_10[
+    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
+] = TEST_INPUT_1N_6
+INIT_INPUT_1N_10[
+    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
+] = INIT_INPUT_1N_6
 
 params.ZERO_INPUT_1N_10 = ZERO_INPUT_1N_10
 params.TEST_INPUT_1N_10 = TEST_INPUT_1N_10
@@ -61,8 +69,12 @@ ZERO_INPUT_1N_12 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_12 / 0.1,
 TEST_INPUT_1N_12 = ZERO_INPUT_1N_12.copy()
 INIT_INPUT_1N_12 = ZERO_INPUT_1N_12.copy()
 
-TEST_INPUT_1N_12[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = TEST_INPUT_1N_6
-INIT_INPUT_1N_12[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = INIT_INPUT_1N_6
+TEST_INPUT_1N_12[
+    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
+] = TEST_INPUT_1N_6
+INIT_INPUT_1N_12[
+    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
+] = INIT_INPUT_1N_6
 
 params.ZERO_INPUT_1N_12 = ZERO_INPUT_1N_12
 params.TEST_INPUT_1N_12 = TEST_INPUT_1N_12
@@ -120,10 +132,37 @@ params.INIT_INPUT_2N_12 = INIT_INPUT_2N_12
 def gettarget_1n(model):
     return np.concatenate(
         (
-            np.concatenate((model.params[model.init_vars[0]], model.params[model.init_vars[0]]), axis=1)[
-                :, :, np.newaxis
-            ],
+            np.concatenate(
+                (model.params[model.init_vars[0]], model.params[model.init_vars[0]]),
+                axis=1,
+            )[:, :, np.newaxis],
             np.stack((model[model.state_vars[0]], model[model.state_vars[1]]), axis=1),
+        ),
+        axis=2,
+    )
+
+
+def gettarget_1n_ww(model):
+    return np.concatenate(
+        (
+            np.concatenate(
+                (
+                    model.params[model.init_vars[0]],
+                    model.params[model.init_vars[0]],
+                    model.params[model.init_vars[2]],
+                    model.params[model.init_vars[3]],
+                ),
+                axis=1,
+            )[:, :, np.newaxis],
+            np.stack(
+                (
+                    model[model.state_vars[0]],
+                    model[model.state_vars[1]],
+                    model[model.state_vars[2]],
+                    model[model.state_vars[3]],
+                ),
+                axis=1,
+            ),
         ),
         axis=2,
     )
@@ -133,10 +172,39 @@ def gettarget_2n(model):
     return np.concatenate(
         (
             np.stack(
-                (model.params[model.init_vars[0]][:, -1], model.params[model.init_vars[1]][:, -1]),
+                (
+                    model.params[model.init_vars[0]][:, -1],
+                    model.params[model.init_vars[1]][:, -1],
+                ),
                 axis=1,
             )[:, :, np.newaxis],
             np.stack((model[model.state_vars[0]], model[model.state_vars[1]]), axis=1),
+        ),
+        axis=2,
+    )
+
+
+def gettarget_2n_ww(model):
+    return np.concatenate(
+        (
+            np.stack(
+                (
+                    model.params[model.init_vars[0]][:, -1],
+                    model.params[model.init_vars[1]][:, -1],
+                    model.params[model.init_vars[2]][:, -1],
+                    model.params[model.init_vars[3]][:, -1],
+                ),
+                axis=1,
+            )[:, :, np.newaxis],
+            np.stack(
+                (
+                    model[model.state_vars[0]],
+                    model[model.state_vars[1]],
+                    model[model.state_vars[2]],
+                    model[model.state_vars[3]],
+                ),
+                axis=1,
+            ),
         ),
         axis=2,
     )

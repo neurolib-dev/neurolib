@@ -1,29 +1,29 @@
 import unittest
 import numpy as np
 
-from neurolib.models.wc import WCModel
-from neurolib.control.optimal_control import oc_wc
+from neurolib.models.ww import WWModel
+from neurolib.control.optimal_control import oc_ww
 
 import test_oc_utils as test_oc_utils
 
 p = test_oc_utils.params
 
 
-class TestWC(unittest.TestCase):
+class TestWW(unittest.TestCase):
     """
-    Test wc in neurolib/optimal_control/
+    Test ww in neurolib/optimal_control/
     """
 
     # tests if the control from OC computation coincides with a random input used for target forward-simulation
     # single-node case
     def test_1n(self):
         print("Test OC in single-node system")
-        model = WCModel()
+        model = WWModel()
         test_oc_utils.setinitzero_1n(model)
         model.params["duration"] = p.TEST_DURATION_6
 
         for input_channel in [0, 1]:
-            for measure_channel in [0, 1]:
+            for measure_channel in range(4):
                 print(
                     "input_channel, measure_channel = ", input_channel, measure_channel
                 )
@@ -38,11 +38,11 @@ class TestWC(unittest.TestCase):
                 test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
                 model.params[model.input_vars[input_channel]] = p.TEST_INPUT_1N_6
                 model.run()
-                target = test_oc_utils.gettarget_1n(model)
+                target = test_oc_utils.gettarget_1n_ww(model)
 
                 test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
 
-                model_controlled = oc_wc.OcWc(model, target)
+                model_controlled = oc_ww.OcWw(model, target)
                 model_controlled.maximum_control_strength = 2.0
 
                 model_controlled.control = np.concatenate(
@@ -82,23 +82,23 @@ class TestWC(unittest.TestCase):
         dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
 
-        model = WCModel(Cmat=cmat, Dmat=dmat)
+        model = WWModel(Cmat=cmat, Dmat=dmat)
         test_oc_utils.setinitzero_2n(model)
-        model.params.duration = p.TEST_DURATION_6
+        model.params.duration = p.TEST_DURATION_10
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))
         control_mat[0, 0] = 1.0
         cost_mat[1, 0] = 1.0
 
-        model.params["exc_ext"] = p.TEST_INPUT_2N_6
-        model.params["inh_ext"] = p.ZERO_INPUT_2N_6
+        model.params["exc_current"] = p.TEST_INPUT_2N_10
+        model.params["inh_current"] = p.ZERO_INPUT_2N_10
         model.run()
 
-        target = test_oc_utils.gettarget_2n(model)
-        model.params["exc_ext"] = p.ZERO_INPUT_2N_6
+        target = test_oc_utils.gettarget_2n_ww(model)
+        model.params["exc_current"] = p.ZERO_INPUT_2N_10
 
-        model_controlled = oc_wc.OcWc(
+        model_controlled = oc_ww.OcWw(
             model,
             target,
             control_matrix=control_mat,
@@ -107,7 +107,10 @@ class TestWC(unittest.TestCase):
         model_controlled.maximum_control_strength = 2.0
 
         model_controlled.control = np.concatenate(
-            [p.INIT_INPUT_2N_6[:, np.newaxis, :], p.ZERO_INPUT_2N_6[:, np.newaxis, :]],
+            [
+                p.INIT_INPUT_2N_10[:, np.newaxis, :],
+                p.ZERO_INPUT_2N_10[:, np.newaxis, :],
+            ],
             axis=1,
         )
         model_controlled.update_input()
@@ -116,7 +119,9 @@ class TestWC(unittest.TestCase):
 
         for i in range(p.LOOPS):
             model_controlled.optimize(p.ITERATIONS)
-            c_diff = np.abs(model_controlled.control[0, 0, :] - p.TEST_INPUT_2N_6[0, :])
+            c_diff = np.abs(
+                model_controlled.control[0, 0, :] - p.TEST_INPUT_2N_10[0, :]
+            )
             if np.amax(c_diff) < p.LIMIT_DIFF:
                 control_coincide = True
                 break
@@ -134,7 +139,7 @@ class TestWC(unittest.TestCase):
         cmat = np.array([[0.0, 0.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [p.TEST_DELAY, 0.0]])
 
-        model = WCModel(Cmat=cmat, Dmat=dmat)
+        model = WWModel(Cmat=cmat, Dmat=dmat)
         test_oc_utils.setinitzero_2n(model)
         model.params.duration = p.TEST_DURATION_8
         model.params.signalV = 1.0
@@ -144,15 +149,15 @@ class TestWC(unittest.TestCase):
         control_mat[0, 0] = 1.0
         cost_mat[1, 0] = 1.0
 
-        model.params["exc_ext"] = p.TEST_INPUT_2N_8
-        model.params["inh_ext"] = p.ZERO_INPUT_2N_8
+        model.params["exc_current"] = p.TEST_INPUT_2N_8
+        model.params["inh_current"] = p.ZERO_INPUT_2N_8
 
         model.run()
 
-        target = test_oc_utils.gettarget_2n(model)
-        model.params["exc_ext"] = p.ZERO_INPUT_2N_8
+        target = test_oc_utils.gettarget_2n_ww(model)
+        model.params["exc_current"] = p.ZERO_INPUT_2N_8
 
-        model_controlled = oc_wc.OcWc(
+        model_controlled = oc_ww.OcWw(
             model,
             target,
             control_matrix=control_mat,
@@ -197,13 +202,13 @@ class TestWC(unittest.TestCase):
 
         cmat = np.array([[0.0, 1.0], [1.0, 0.0]])
         dmat = np.array([[0.0, 0.0], [0.0, 0.0]])  # no delay
-        model = WCModel(Cmat=cmat, Dmat=dmat)
+        model = WWModel(Cmat=cmat, Dmat=dmat)
         model.params.duration = p.TEST_DURATION_6
         test_oc_utils.set_input(model, p.TEST_INPUT_2N_6)
 
-        target = np.ones((2, 2, p.TEST_INPUT_2N_6.shape[1]))
+        target = np.ones((2, len(model.output_vars), p.TEST_INPUT_2N_6.shape[1]))
 
-        model_controlled = oc_wc.OcWc(
+        model_controlled = oc_ww.OcWw(
             model,
             target,
         )

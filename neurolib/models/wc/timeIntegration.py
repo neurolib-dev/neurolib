@@ -209,7 +209,9 @@ def timeIntegration_njit_elementwise(
             exc_input_d[no] = 0
 
             for l in range(N):
-                exc_input_d[no] += K_gl * Cmat[no, l] * (excs[l, i - Dmat_ndt[no, l] - 1])
+                exc_input_d[no] += (
+                    K_gl * Cmat[no, l] * (excs[l, i - Dmat_ndt[no, l] - 1])
+                )
 
             # Wilson-Cowan model
             exc_rhs = (
@@ -219,8 +221,10 @@ def timeIntegration_njit_elementwise(
                     -excs[no, i - 1]
                     + (1 - excs[no, i - 1])
                     * S_E(
-                        c_excexc * excs[no, i - 1]  # input from within the excitatory population
-                        - c_inhexc * inhs[no, i - 1]  # input from the inhibitory population
+                        c_excexc
+                        * excs[no, i - 1]  # input from within the excitatory population
+                        - c_inhexc
+                        * inhs[no, i - 1]  # input from the inhibitory population
                         + exc_input_d[no]  # input from other nodes
                         + exc_ext_baseline  # baseline external input (static)
                         + exc_ext[no, i - 1]  # time-dependent external input
@@ -235,8 +239,10 @@ def timeIntegration_njit_elementwise(
                     -inhs[no, i - 1]
                     + (1 - inhs[no, i - 1])
                     * S_I(
-                        c_excinh * excs[no, i - 1]  # input from the excitatory population
-                        - c_inhinh * inhs[no, i - 1]  # input from within the inhibitory population
+                        c_excinh
+                        * excs[no, i - 1]  # input from the excitatory population
+                        - c_inhinh
+                        * inhs[no, i - 1]  # input from within the inhibitory population
                         + inh_ext_baseline  # baseline external input (static)
                         + inh_ext[no, i - 1]  # time-dependent external input
                     )
@@ -261,10 +267,14 @@ def timeIntegration_njit_elementwise(
 
             # Ornstein-Uhlenbeck process
             exc_ou[no] = (
-                exc_ou[no] + (exc_ou_mean - exc_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[no]
+                exc_ou[no]
+                + (exc_ou_mean - exc_ou[no]) * dt / tau_ou
+                + sigma_ou * sqrt_dt * noise_exc[no]
             )  # mV/ms
             inh_ou[no] = (
-                inh_ou[no] + (inh_ou_mean - inh_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[no]
+                inh_ou[no]
+                + (inh_ou_mean - inh_ou[no]) * dt / tau_ou
+                + sigma_ou * sqrt_dt * noise_inh[no]
             )  # mV/ms
 
     return t, excs, inhs, exc_ou, inh_ou
@@ -313,20 +323,20 @@ def jacobian_wc(
 
     :param model_params:    Tuple of parameters in the WC Model in order
     :type model_params:     tuple of float
-    :param  nw_e:   N x T input of network into each node's 'exc'
-    :type  nw_e:    np.ndarray
-    :param e:       Value of the E-variable at specific time.
-    :type e:        float
-    :param i:       Value of the I-variable at specific time.
-    :type i:        float
-    :param ue:      N x T combined input of 'background' and 'control' into 'exc'.
-    :type ue:       np.ndarray
-    :param ui:      N x T combined input of 'background' and 'control' into 'inh'.
-    :type ui:       np.ndarray
-    :param V:       Number of system variables.
-    :type V:        int
-    :param sv:                  dictionary of state vars and respective indices
-    :type sv:                   dict
+    :param  nw_e:           N x T input of network into each node's 'exc'
+    :type  nw_e:            np.ndarray
+    :param e:               Value of the E-variable at specific time.
+    :type e:                float
+    :param i:               Value of the I-variable at specific time.
+    :type i:                float
+    :param ue:              Value of control input to into 'exc' at specific time.
+    :type ue:               float
+    :param ui:              Value of control input to into 'ihn' at specific time.
+    :type ui:               float
+    :param V:               Number of system variables.
+    :type V:                int
+    :param sv:              dictionary of state vars and respective indices
+    :type sv:               dict
 
     :return:        4 x 4 Jacobian matrix.
     :rtype:         np.ndarray
@@ -349,14 +359,26 @@ def jacobian_wc(
     jacobian = np.zeros((V, V))
     input_exc = c_excexc * e - c_inhexc * i + nw_e + exc_ext_baseline + ue
     jacobian[sv["exc"], sv["exc"]] = (
-        -(-1.0 - logistic(input_exc, a_exc, mu_exc) + (1.0 - e) * c_excexc * logistic_der(input_exc, a_exc, mu_exc))
+        -(
+            -1.0
+            - logistic(input_exc, a_exc, mu_exc)
+            + (1.0 - e) * c_excexc * logistic_der(input_exc, a_exc, mu_exc)
+        )
         / tau_exc
     )
-    jacobian[sv["exc"], sv["inh"]] = -((1.0 - e) * (-c_inhexc) * logistic_der(input_exc, a_exc, mu_exc)) / tau_exc
+    jacobian[sv["exc"], sv["inh"]] = (
+        -((1.0 - e) * (-c_inhexc) * logistic_der(input_exc, a_exc, mu_exc)) / tau_exc
+    )
     input_inh = c_excinh * e - c_inhinh * i + inh_ext_baseline + ui
-    jacobian[sv["inh"], sv["exc"]] = -((1.0 - i) * c_excinh * logistic_der(input_inh, a_inh, mu_inh)) / tau_inh
+    jacobian[sv["inh"], sv["exc"]] = (
+        -((1.0 - i) * c_excinh * logistic_der(input_inh, a_inh, mu_inh)) / tau_inh
+    )
     jacobian[sv["inh"], sv["inh"]] = (
-        -(-1.0 - logistic(input_inh, a_inh, mu_inh) + (1.0 - i) * (-c_inhinh) * logistic_der(input_inh, a_inh, mu_inh))
+        -(
+            -1.0
+            - logistic(input_inh, a_inh, mu_inh)
+            + (1.0 - i) * (-c_inhinh) * logistic_der(input_inh, a_inh, mu_inh)
+        )
         / tau_inh
     )
     return jacobian
@@ -450,7 +472,9 @@ def compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_values):
     for t in range(1, T):
         for n in range(N):
             for l in range(N):
-                nw_input[n, t] += K_gl * cmat[n, l] * (exc_values[l, t - dmat_ndt[n, l] - 1])
+                nw_input[n, t] += (
+                    K_gl * cmat[n, l] * (exc_values[l, t - dmat_ndt[n, l] - 1])
+                )
     return nw_input
 
 
@@ -543,7 +567,7 @@ def Duh(
     K_gl,
     cmat,
     dmat_ndt,
-    exc_values,
+    exc_delay,
     sv,
 ):
     """Jacobian of systems dynamics wrt. external inputs (control signals).
@@ -574,8 +598,8 @@ def Duh(
     :type cmat:             np.ndarray
     :param dmat_ndt:        delay index matrix
     :type dmat_ndt:         np.ndarray
-    :param exc_values:      N x T array containing values of 'exc' of all nodes through time.
-    :type exc_values:       np.ndarray
+    :param exc_delay:       N x T array containing values of 'exc' of all nodes through time incl. delay
+    :type exc_delay:        np.ndarray
     :param sv:                  dictionary of state vars and respective indices
     :type sv:                   dict
 
@@ -597,15 +621,27 @@ def Duh(
         inh_ext_baseline,
     ) = model_params
 
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_values)
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_delay)
 
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):
         for n in range(N):
-            input_exc = c_excexc * e[n, t] - c_inhexc * i[n, t] + nw_e[n, t] + exc_ext_baseline + ue[n, t]
-            duh[n, sv["exc"], sv["exc"], t] = -(1.0 - e[n, t]) * logistic_der(input_exc, a_exc, mu_exc) / tau_exc
-            input_inh = c_excinh * e[n, t] - c_inhinh * i[n, t] + inh_ext_baseline + ui[n, t]
-            duh[n, sv["inh"], sv["inh"], t] = -(1.0 - i[n, t]) * logistic_der(input_inh, a_inh, mu_inh) / tau_inh
+            input_exc = (
+                c_excexc * e[n, t]
+                - c_inhexc * i[n, t]
+                + nw_e[n, t]
+                + exc_ext_baseline
+                + ue[n, t]
+            )
+            duh[n, sv["exc"], sv["exc"], t] = (
+                -(1.0 - e[n, t]) * logistic_der(input_exc, a_exc, mu_exc) / tau_exc
+            )
+            input_inh = (
+                c_excinh * e[n, t] - c_inhinh * i[n, t] + inh_ext_baseline + ui[n, t]
+            )
+            duh[n, sv["inh"], sv["inh"], t] = (
+                -(1.0 - i[n, t]) * logistic_der(input_inh, a_inh, mu_inh) / tau_inh
+            )
     return duh
 
 

@@ -30,9 +30,10 @@ class WWModel(Model):
     state_vars = ["r_exc", "r_inh", "se", "si", "exc_ou", "inh_ou"]
     output_vars = ["r_exc", "r_inh", "se", "si"]
     default_output = "r_exc"
+    input_vars = ["exc_current", "inh_current"]
+    default_input = "exc_current"
 
     def __init__(self, params=None, Cmat=None, Dmat=None, seed=None):
-
         self.Cmat = Cmat
         self.Dmat = Dmat
         self.seed = seed
@@ -42,7 +43,9 @@ class WWModel(Model):
 
         # load default parameters if none were given
         if params is None:
-            params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
+            params = dp.loadDefaultParams(
+                Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed
+            )
 
         # Initialize base class Model
         super().__init__(integration=integration, params=params)
