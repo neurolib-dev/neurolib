@@ -43,9 +43,7 @@ class WWModel(Model):
 
         # load default parameters if none were given
         if params is None:
-            params = dp.loadDefaultParams(
-                Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed
-            )
+            params = dp.loadDefaultParams(Cmat=self.Cmat, Dmat=self.Dmat, seed=self.seed)
 
         # Initialize base class Model
         super().__init__(integration=integration, params=params)

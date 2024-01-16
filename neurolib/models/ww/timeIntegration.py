@@ -257,9 +257,7 @@ def timeIntegration_njit_elementwise(
 
             # input from other nodes
             for l in range(N):
-                ses_input_d[no] += (
-                    K_gl * Cmat[no, l] * (ses[l, i - Dmat_ndt[no, l] - 1])
-                )
+                ses_input_d[no] += K_gl * Cmat[no, l] * (ses[l, i - Dmat_ndt[no, l] - 1])
 
             # Wong-Wang
             se = ses[no, i - 1]
@@ -271,18 +269,12 @@ def timeIntegration_njit_elementwise(
                 - J_I * si
                 + J_NMDA * ses_input_d[no]
             )
-            I_inh = (
-                w_inh * (inh_current_baseline + inh_current[no, i - 1])
-                + J_NMDA * se
-                - si
-            )
+            I_inh = w_inh * (inh_current_baseline + inh_current[no, i - 1]) + J_NMDA * se - si
 
             r_exc[no, i] = r(I_exc, a_exc, b_exc, d_exc)
             r_inh[no, i] = r(I_inh, a_inh, b_inh, d_inh)
 
-            se_rhs = (
-                -(se / tau_exc) + (1 - se) * gamma_exc * r_exc[no, i] + exc_ou[no]
-            )  # exc_ou = ou noise
+            se_rhs = -(se / tau_exc) + (1 - se) * gamma_exc * r_exc[no, i] + exc_ou[no]  # exc_ou = ou noise
             si_rhs = -(si / tau_inh) + r_inh[no, i] + inh_ou[no]
 
             # Euler integration
@@ -291,14 +283,10 @@ def timeIntegration_njit_elementwise(
 
             # Ornstein-Uhlenberg process
             exc_ou[no] = (
-                exc_ou[no]
-                + (exc_ou_mean - exc_ou[no]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_se[no]
+                exc_ou[no] + (exc_ou_mean - exc_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_se[no]
             )  # mV/ms
             inh_ou[no] = (
-                inh_ou[no]
-                + (inh_ou_mean - inh_ou[no]) * dt / tau_ou
-                + sigma_ou * sqrt_dt * noise_si[no]
+                inh_ou[no] + (inh_ou_mean - inh_ou[no]) * dt / tau_ou + sigma_ou * sqrt_dt * noise_si[no]
             )  # mV/ms
 
     return t, r_exc, r_inh, ses, sis, exc_ou, inh_ou
@@ -395,15 +383,8 @@ def jacobian_ww(
     ) = model_params
 
     jacobian = np.zeros((V, V))
-    IE = (
-        w_exc * (exc_current_baseline + ue)
-        + w_ee * J_NMDA * se
-        - J_I * si
-        + J_NMDA * nw_se
-    )
-    jacobian[sv["r_exc"], sv["se"]] = (
-        -logistic_der(IE, a_exc, b_exc, d_exc) * w_ee * J_NMDA
-    )
+    IE = w_exc * (exc_current_baseline + ue) + w_ee * J_NMDA * se - J_I * si + J_NMDA * nw_se
+    jacobian[sv["r_exc"], sv["se"]] = -logistic_der(IE, a_exc, b_exc, d_exc) * w_ee * J_NMDA
     jacobian[sv["r_exc"], sv["si"]] = logistic_der(IE, a_exc, b_exc, d_exc) * J_I
     II = w_inh * (inh_current_baseline + ui) + J_NMDA * se - si
     jacobian[sv["r_inh"], sv["se"]] = -logistic_der(II, a_inh, b_inh, d_inh) * J_NMDA
@@ -665,21 +646,13 @@ def compute_hx_nw(
     hx_nw = np.zeros((N, N, T, V, V))
 
     nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, se_delay)
-    IE = (
-        w_exc * (exc_current_baseline + ue)
-        + w_ee * J_NMDA * se
-        - J_I * si
-        + J_NMDA * nw_e
-    )
+    IE = w_exc * (exc_current_baseline + ue) + w_ee * J_NMDA * se - J_I * si + J_NMDA * nw_e
 
     for n1 in range(N):
         for n2 in range(N):
             for t in range(T - 1):
                 hx_nw[n1, n2, t, sv["r_exc"], sv["se"]] = (
-                    logistic_der(IE[n1, t], a_exc, b_exc, d_exc)
-                    * J_NMDA
-                    * K_gl
-                    * cmat[n1, n2]
+                    logistic_der(IE[n1, t], a_exc, b_exc, d_exc) * J_NMDA * K_gl * cmat[n1, n2]
                 )
 
     return -hx_nw
@@ -768,15 +741,9 @@ def Duh(
                 - J_I * si[n, t]
                 + J_NMDA * nw_e[n, t]
             )
-            duh[n, sv["r_exc"], sv["r_exc"], t] = (
-                -logistic_der(IE, a_exc, b_exc, d_exc) * w_exc
-            )
-            II = (
-                w_inh * (inh_current_baseline + ui[n, t]) + J_NMDA * se[n, t] - si[n, t]
-            )
-            duh[n, sv["r_inh"], sv["r_inh"], t] = (
-                -logistic_der(II, a_inh, b_inh, d_inh) * w_inh
-            )
+            duh[n, sv["r_exc"], sv["r_exc"], t] = -logistic_der(IE, a_exc, b_exc, d_exc) * w_exc
+            II = w_inh * (inh_current_baseline + ui[n, t]) + J_NMDA * se[n, t] - si[n, t]
+            duh[n, sv["r_inh"], sv["r_inh"], t] = -logistic_der(II, a_inh, b_inh, d_inh) * w_inh
     return duh
 
 
