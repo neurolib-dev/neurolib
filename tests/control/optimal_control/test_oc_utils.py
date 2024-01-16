@@ -37,12 +37,8 @@ ZERO_INPUT_1N_8 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_8 / 0.1, 1
 TEST_INPUT_1N_8 = ZERO_INPUT_1N_8.copy()
 INIT_INPUT_1N_8 = ZERO_INPUT_1N_8.copy()
 
-TEST_INPUT_1N_8[
-    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
-] = TEST_INPUT_1N_6
-INIT_INPUT_1N_8[
-    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
-] = INIT_INPUT_1N_6
+TEST_INPUT_1N_8[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = TEST_INPUT_1N_6
+INIT_INPUT_1N_8[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = INIT_INPUT_1N_6
 
 params.ZERO_INPUT_1N_8 = ZERO_INPUT_1N_8
 params.TEST_INPUT_1N_8 = TEST_INPUT_1N_8
@@ -53,12 +49,8 @@ ZERO_INPUT_1N_10 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_10 / 0.1,
 TEST_INPUT_1N_10 = ZERO_INPUT_1N_10.copy()
 INIT_INPUT_1N_10 = ZERO_INPUT_1N_10.copy()
 
-TEST_INPUT_1N_10[
-    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
-] = TEST_INPUT_1N_6
-INIT_INPUT_1N_10[
-    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
-] = INIT_INPUT_1N_6
+TEST_INPUT_1N_10[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = TEST_INPUT_1N_6
+INIT_INPUT_1N_10[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = INIT_INPUT_1N_6
 
 params.ZERO_INPUT_1N_10 = ZERO_INPUT_1N_10
 params.TEST_INPUT_1N_10 = TEST_INPUT_1N_10
@@ -69,12 +61,8 @@ ZERO_INPUT_1N_12 = np.zeros((1, 1 + int(np.around(params.TEST_DURATION_12 / 0.1,
 TEST_INPUT_1N_12 = ZERO_INPUT_1N_12.copy()
 INIT_INPUT_1N_12 = ZERO_INPUT_1N_12.copy()
 
-TEST_INPUT_1N_12[
-    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
-] = TEST_INPUT_1N_6
-INIT_INPUT_1N_12[
-    :, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))
-] = INIT_INPUT_1N_6
+TEST_INPUT_1N_12[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = TEST_INPUT_1N_6
+INIT_INPUT_1N_12[:, : 1 + int(np.around(params.TEST_DURATION_6 / 0.1, 1))] = INIT_INPUT_1N_6
 
 params.ZERO_INPUT_1N_12 = ZERO_INPUT_1N_12
 params.TEST_INPUT_1N_12 = TEST_INPUT_1N_12
