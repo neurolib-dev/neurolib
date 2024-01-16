@@ -62,9 +62,7 @@ def compute_gradient(
             for t in range(control_interval[0], control_interval[1]):
                 grad[n, v, t] = df_du[n, v, t]
                 for k in range(V):
-                    grad[n, v, t] += (
-                        control_matrix[n, v] * adjoint_state[n, k, t] * d_du[n, k, v, t]
-                    )
+                    grad[n, v, t] += control_matrix[n, v] * adjoint_state[n, k, t] * d_du[n, k, v, t]
     return grad
 
 
@@ -132,23 +130,15 @@ def solve_adjoint(
             for k in krange:
                 if dxdoth[n, k, k] == 0:
                     res = fx_fullstate[n, k, t + 1]
-                    res += adjoint_input(
-                        hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k
-                    )
-                    res += adjoint_nw_input(
-                        N, n, k, dmat_ndt, t, T, state_dim[1], adjoint_state, hx_nw
-                    )
+                    res += adjoint_input(hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k)
+                    res += adjoint_nw_input(N, n, k, dmat_ndt, t, T, state_dim[1], adjoint_state, hx_nw)
 
                     adjoint_state[n, k, t] = -res
 
                 elif dxdoth[n, k, k] == 1:
                     der = fx_fullstate[n, k, t + 1]
-                    der += adjoint_input(
-                        hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k
-                    )
-                    der += adjoint_nw_input(
-                        N, n, k, dmat_ndt, t, T - 1, state_dim[1], adjoint_state, hx_nw
-                    )
+                    der += adjoint_input(hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k)
+                    der += adjoint_nw_input(N, n, k, dmat_ndt, t, T - 1, state_dim[1], adjoint_state, hx_nw)
 
                     adjoint_state[n, k, t] = adjoint_state[n, k, t + 1] - dt * der
 
@@ -221,10 +211,7 @@ def adjoint_nw_input(N, n, k, dmat_ndt, t, T_lim, state_dim1, adj, hxnw):
     for n2 in range(N):  # iterate through connectivity of current node "n"
         if t + 1 + dmat_ndt[n2, n] < T_lim:
             for v in range(state_dim1):
-                result += (
-                    adj[n2, v, t + 1 + dmat_ndt[n2, n]]
-                    * hxnw[n2, n, t + 1 + dmat_ndt[n2, n], v, k]
-                )
+                result += adj[n2, v, t + 1 + dmat_ndt[n2, n]] * hxnw[n2, n, t + 1 + dmat_ndt[n2, n], v, k]
     return result
 
 
@@ -306,9 +293,7 @@ def convert_interval(interval, array_length):
     else:
         interval_1_new = interval_1
 
-    assert (
-        interval_0_new < interval_1_new
-    ), "Order of indices for interval is not valid."
+    assert interval_0_new < interval_1_new, "Order of indices for interval is not valid."
     assert interval_1_new <= array_length, "Interval is not specified in valid range."
 
     return interval_0_new, interval_1_new
@@ -379,9 +364,7 @@ class OC:
 
         if type(weights) != type(dict()):
             if weights is not None:
-                print(
-                    "Weights parameter must be dictionary, use default weights instead."
-                )
+                print("Weights parameter must be dictionary, use default weights instead.")
             self.weights = getdefaultweights()
         else:
             defaultweights = getdefaultweights()
@@ -399,12 +382,8 @@ class OC:
 
         self.N = self.model.params.N
         self.dt = self.model.params["dt"]  # maybe redundant but for now code clarity
-        self.duration = self.model.params[
-            "duration"
-        ]  # maybe redundant but for now code clarity
-        self.T = (
-            np.around(self.duration / self.dt, 0).astype(int) + 1
-        )  # Total number of time steps
+        self.duration = self.model.params["duration"]  # maybe redundant but for now code clarity
+        self.T = np.around(self.duration / self.dt, 0).astype(int) + 1  # Total number of time steps
 
         self.dim_vars = len(self.model.state_vars)
         self.dim_in = len(self.model.input_vars)
@@ -418,9 +397,7 @@ class OC:
         if self.N == 1:
             self.Dmat_ndt = np.zeros((self.N, self.N)).astype(int)
         else:
-            Dmat = computeDelayMatrix(
-                self.model.params.lengthMat, self.model.params.signalV
-            )
+            Dmat = computeDelayMatrix(self.model.params.lengthMat, self.model.params.signalV)
             if self.model.name != "aln":
                 Dmat[np.eye(len(Dmat)) == 1] = np.zeros(len(Dmat))
             else:
@@ -435,15 +412,11 @@ class OC:
 
         self.cost_matrix = cost_matrix
         if isinstance(self.cost_matrix, type(None)):
-            self.cost_matrix = np.ones(
-                (self.N, self.dim_out)
-            )  # default: measure precision in all variables and nodes
+            self.cost_matrix = np.ones((self.N, self.dim_out))  # default: measure precision in all variables and nodes
 
         self.control_matrix = control_matrix
         if isinstance(self.control_matrix, type(None)):
-            self.control_matrix = np.ones(
-                (self.N, self.dim_in)
-            )  # default: all channels and all nodes active
+            self.control_matrix = np.ones((self.N, self.dim_in))  # default: all channels and all nodes active
 
         self.M = max(1, M)
         self.M_validation = M_validation
@@ -466,9 +439,7 @@ class OC:
                     + 'If you want to study a deterministic system, please set model parameter "sigma_ou" to zero'
                 )
             if self.M > self.M_validation:
-                print(
-                    'Parameter "M_validation" should be chosen larger than parameter "M".'
-                )
+                print('Parameter "M_validation" should be chosen larger than parameter "M".')
         else:  # deterministic system
             if self.M > 1 or self.M_validation != 0 or validate_per_step:
                 print(
@@ -496,9 +467,7 @@ class OC:
 
         self.print_array = print_array
 
-        self.zero_step_encountered = (
-            False  # deterministic gradient descent cannot further improve
-        )
+        self.zero_step_encountered = False  # deterministic gradient descent cannot further improve
 
         self.cost_interval = convert_interval(cost_interval, self.T)
         self.control_interval = convert_interval(control_interval, self.T)
@@ -560,24 +529,17 @@ class OC:
         for init_var in self.model.init_vars:
             if "ou" in init_var:
                 continue
-            if (
-                init_var[:-5] not in self.model.output_vars
-                and init_var[:-6] not in self.model.output_vars
-            ):
+            if init_var[:-5] not in self.model.output_vars and init_var[:-6] not in self.model.output_vars:
                 continue
 
             iv = self.model.params[init_var]
-            self.model.params[init_var] = adjustArrayShape(
-                iv, np.ones((self.N, init_dur))
-            )
+            self.model.params[init_var] = adjustArrayShape(iv, np.ones((self.N, init_dur)))
 
     def adjust_input(self):
         """Adjust the shape of the array provided as input to the model. Use adjustArrayShape function from model_utils."""
         for input_var in self.model.input_vars:
             iv = self.model.params[input_var]
-            self.model.params[input_var] = adjustArrayShape(
-                iv, np.ones((self.N, self.T))
-            )
+            self.model.params[input_var] = adjustArrayShape(iv, np.ones((self.N, self.T)))
 
     def get_xs(self):
         """Extract the complete state of the dynamical system."""
@@ -585,10 +547,11 @@ class OC:
 
         for ind_ov, ov in enumerate(self.model.output_vars):
             xs[:, ind_ov, 1:] = self.model[ov]
-            for iv in self.model.init_vars:
-                if str(ov) + "_init" == str(iv):
-                    xs[:, ind_ov, 0] = self.model.params[iv][:, 0]
-                    continue
+            if self.model.name != "wongwang":
+                for iv in self.model.init_vars:
+                    if str(ov) + "_init" == str(iv):
+                        xs[:, ind_ov, 0] = self.model.params[iv][:, 0]
+                        continue
 
         return xs
 
@@ -662,9 +625,7 @@ class OC:
             self.dt,
             self.cost_interval,
         )
-        control_strenght_cost = cost_functions.control_strength_cost(
-            self.control, self.weights, self.dt
-        )
+        control_strenght_cost = cost_functions.control_strength_cost(self.control, self.weights, self.dt)
         return accuracy_cost + control_strenght_cost
 
     @abc.abstractmethod
@@ -679,9 +640,7 @@ class OC:
         :rtype:         np.ndarray of shape N x V x T
         """
         self.solve_adjoint()
-        df_du = cost_functions.derivative_control_strength_cost(
-            self.control, self.weights
-        )
+        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
         d_du = self.Duh()
 
         return compute_gradient(
@@ -772,9 +731,7 @@ class OC:
 
         counter = 0
 
-        while (
-            cost > cost0
-        ):  # Decrease the step size until first step size is found where cost is improved.
+        while cost > cost0:  # Decrease the step size until first step size is found where cost is improved.
             step *= factor_down  # Decrease step size.
             counter += 1
             # print(step, cost, cost0)
@@ -799,9 +756,7 @@ class OC:
             else:
                 cost = self.compute_total_cost()
 
-            if (
-                counter == self.count_step
-            ):  # Exit if the maximum search depth is reached without improvement of
+            if counter == self.count_step:  # Exit if the maximum search depth is reached without improvement of
                 # cost.
                 step = 0.0  # For later analysis only.
                 self.control = update_control_with_limit(
@@ -850,9 +805,7 @@ class OC:
         cost_prev = cost0
         counter = 0
 
-        while (
-            cost < cost_prev
-        ):  # Increase the step size as long as the cost is improving.
+        while cost < cost_prev:  # Increase the step size as long as the cost is improving.
             step *= factor_up
             counter += 1
 
@@ -869,9 +822,7 @@ class OC:
             self.update_input()
 
             self.simulate_forward()
-            if np.isnan(
-                self.get_xs()
-            ).any():  # Go back to last step (that was numerically stable and improved cost)
+            if np.isnan(self.get_xs()).any():  # Go back to last step (that was numerically stable and improved cost)
                 # and exit.
                 logging.info("Increasing step encountered NAN.")
                 step /= factor_up  # Undo the last step update by inverse operation.
@@ -893,9 +844,7 @@ class OC:
                 else:
                     cost = self.compute_total_cost()
 
-                if (
-                    cost > cost_prev
-                ):  # If the cost increases: go back to last step (that resulted in best cost until
+                if cost > cost_prev:  # If the cost increases: go back to last step (that resulted in best cost until
                     # then) and exit.
                     step /= factor_up  # Undo the last step update by inverse operation.
                     self.control = update_control_with_limit(
@@ -941,17 +890,11 @@ class OC:
                 self.compute_total_cost()
             )  # Current cost without updating the control according to the "cost_gradient".
 
-        step = (
-            self.step
-        )  # Load step size of last optimization-iteration as initial guess.
+        step = self.step  # Load step size of last optimization-iteration as initial guess.
 
-        control0 = (
-            self.control
-        )  # Memorize unchanged control throughout step-size computation.
+        control0 = self.control  # Memorize unchanged control throughout step-size computation.
 
-        while (
-            True
-        ):  # Reduce the step size, if numerical instability occurs in the forward-simulation.
+        while True:  # Reduce the step size, if numerical instability occurs in the forward-simulation.
             # inplace updating of models control bc. forward-sim relies on models parameters
             self.control = update_control_with_limit(
                 self.N,
@@ -967,12 +910,8 @@ class OC:
             # Input signal might be too high and produce diverging values in simulation.
             self.simulate_forward()
 
-            if np.isnan(
-                self.get_xs()
-            ).any():  # Detect numerical instability due to too large control update.
-                step *= (
-                    self.factor_down**2
-                )  # Double the step for faster search of stable region.
+            if np.isnan(self.get_xs()).any():  # Detect numerical instability due to too large control update.
+                step *= self.factor_down**2  # Double the step for faster search of stable region.
                 self.step = step
                 print(f"Diverging model output, decrease step size to {step}.")
             else:
@@ -988,18 +927,14 @@ class OC:
         if (
             cost > cost0
         ):  # If the cost choosing the first (stable) step size is no improvement, reduce step size by bisection.
-            step, counter = self.decrease_step(
-                cost, cost0, step, control0, self.factor_down, cost_gradient
-            )
+            step, counter = self.decrease_step(cost, cost0, step, control0, self.factor_down, cost_gradient)
 
         elif (
             cost < cost0
         ):  # If the cost is improved with the first (stable) step size, search for larger steps with even better
             # reduction of cost.
 
-            step, counter = self.increase_step(
-                cost, cost0, step, control0, self.factor_up, cost_gradient
-            )
+            step, counter = self.increase_step(cost, cost0, step, control0, self.factor_up, cost_gradient)
 
         else:  # Remark: might be included as part of adaptive search for further improvement.
             step = 0.0  # For later analysis only.
@@ -1035,9 +970,7 @@ class OC:
             np.zeros(self.control.shape),
             self.maximum_control_strength,
         )  # To avoid issues in repeated executions.
-        self.control = limit_control_to_interval(
-            self.N, self.dim_in, self.T, self.control, self.control_interval
-        )
+        self.control = limit_control_to_interval(self.N, self.dim_in, self.T, self.control, self.control_interval)
 
         if self.M == 1:
             print("Compute control for a deterministic system")
@@ -1058,9 +991,7 @@ class OC:
 
         cost = self.compute_total_cost()
         print(f"Cost in iteration 0: %s" % (cost))
-        if (
-            len(self.cost_history) == 0
-        ):  # add only if control model has not yet been optimized
+        if len(self.cost_history) == 0:  # add only if control model has not yet been optimized
             self.cost_history.append(cost)
 
         for i in range(1, n_max_iterations + 1):
@@ -1098,9 +1029,7 @@ class OC:
         if len(self.control_history) == 0:
             self.control_history.append(self.control)
 
-        if (
-            self.validate_per_step
-        ):  # if cost is computed for M_validation realizations in every step
+        if self.validate_per_step:  # if cost is computed for M_validation realizations in every step
             for m in range(self.M):
                 self.simulate_forward()
                 grad_m[m, :] = self.compute_gradient()
@@ -1135,16 +1064,12 @@ class OC:
                 print("Failed to improve further for noisy system.")
 
                 if consecutive_zero_step > 2:
-                    print(
-                        "Failed to improve further for noisy system three times in a row, stop optimization."
-                    )
+                    print("Failed to improve further for noisy system three times in a row, stop optimization.")
                     break
 
             self.control_history.append(self.control)
 
-            if (
-                self.validate_per_step
-            ):  # if cost is computed for M_validation realizations in every step
+            if self.validate_per_step:  # if cost is computed for M_validation realizations in every step
                 for m in range(self.M):
                     self.simulate_forward()
                     grad_m[m, :] = self.compute_gradient()
@@ -1170,10 +1095,7 @@ class OC:
         self.control = oc
         self.update_input()
         self.cost_validation = self.compute_cost_noisy(self.M_validation)
-        print(
-            f"Final cost validated with %s noise realizations : %s"
-            % (self.M_validation, self.cost_validation)
-        )
+        print(f"Final cost validated with %s noise realizations : %s" % (self.M_validation, self.cost_validation))
 
     def compute_cost_noisy(self, M):
         """Computes the average cost from 'M_validation' noise realizations.
