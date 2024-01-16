@@ -24,15 +24,11 @@ class TestWC(unittest.TestCase):
 
         for input_channel in [0, 1]:
             for measure_channel in [0, 1]:
-                print(
-                    "input_channel, measure_channel = ", input_channel, measure_channel
-                )
+                print("input_channel, measure_channel = ", input_channel, measure_channel)
 
                 cost_mat = np.zeros((model.params.N, len(model.output_vars)))
                 control_mat = np.zeros((model.params.N, len(model.state_vars)))
-                control_mat[
-                    0, input_channel
-                ] = 1.0  # only allow inputs to input_channel
+                control_mat[0, input_channel] = 1.0  # only allow inputs to input_channel
                 cost_mat[0, measure_channel] = 1.0  # only measure other channel
 
                 test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
@@ -60,10 +56,7 @@ class TestWC(unittest.TestCase):
                 for i in range(p.LOOPS):
                     model_controlled.optimize(p.ITERATIONS)
 
-                    c_diff = np.abs(
-                        model_controlled.control[0, input_channel, :]
-                        - p.TEST_INPUT_1N_6[0, :]
-                    )
+                    c_diff = np.abs(model_controlled.control[0, input_channel, :] - p.TEST_INPUT_1N_6[0, :])
 
                     if np.amax(c_diff) < p.LIMIT_DIFF:
                         control_coincide = True
@@ -172,16 +165,9 @@ class TestWC(unittest.TestCase):
             model_controlled.optimize(p.ITERATIONS)
 
             # last entries of adjoint_state[0,0,:] are zero
-            self.assertTrue(
-                np.amax(
-                    np.abs(model_controlled.adjoint_state[0, 0, -model.getMaxDelay() :])
-                )
-                == 0.0
-            )
+            self.assertTrue(np.amax(np.abs(model_controlled.adjoint_state[0, 0, -model.getMaxDelay() :])) == 0.0)
 
-            c_diff_max = np.amax(
-                np.abs(model_controlled.control[0, 0, :] - p.TEST_INPUT_2N_8[0, :])
-            )
+            c_diff_max = np.amax(np.abs(model_controlled.control[0, 0, :] - p.TEST_INPUT_2N_8[0, :]))
             if c_diff_max < p.LIMIT_DIFF:
                 control_coincide = True
                 break
