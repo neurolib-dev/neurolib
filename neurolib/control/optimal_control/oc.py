@@ -547,11 +547,10 @@ class OC:
 
         for ind_ov, ov in enumerate(self.model.output_vars):
             xs[:, ind_ov, 1:] = self.model[ov]
-            if self.model.name != "wongwang":
-                for iv in self.model.init_vars:
-                    if str(ov) + "_init" == str(iv):
-                        xs[:, ind_ov, 0] = self.model.params[iv][:, 0]
-                        continue
+            for iv in self.model.init_vars:
+                if str(ov) + "_init" == str(iv):
+                    xs[:, ind_ov, 0] = self.model.params[iv][:, 0]
+                    continue
 
         return xs
 
