@@ -21,6 +21,9 @@ class TestWW(unittest.TestCase):
         model = WWModel()
         test_oc_utils.setinitzero_1n(model)
         model.params["duration"] = p.TEST_DURATION_6
+        # decrease time scale of sigmoidal function
+        # model.params["d_exc"] = 1.0
+        # model.params["d_inh"] = 1.0
 
         for input_channel in [0, 1]:
             for measure_channel in range(4):
@@ -85,6 +88,10 @@ class TestWW(unittest.TestCase):
         model = WWModel(Cmat=cmat, Dmat=dmat)
         test_oc_utils.setinitzero_2n(model)
         model.params.duration = p.TEST_DURATION_10
+
+        # decrease time scale of sigmoidal function
+        # model.params["d_exc"] = 1.0
+        # model.params["d_inh"] = 1.0
 
         cost_mat = np.zeros((model.params.N, len(model.output_vars)))
         control_mat = np.zeros((model.params.N, len(model.state_vars)))

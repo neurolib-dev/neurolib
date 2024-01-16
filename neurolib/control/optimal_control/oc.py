@@ -82,6 +82,7 @@ def solve_adjoint(
     dxdoth,
     state_vars,
     output_vars,
+    model_name,
 ):
     """Backwards integration of the adjoint state.
 
@@ -122,9 +123,13 @@ def solve_adjoint(
             if sv == ov:
                 fx_fullstate[:, sv_ind, :] = fx[:, ov_ind, :]
 
+    krange = range(state_dim[1])
+    if model_name == "wongwang":
+        krange = range(state_dim[1] - 1, -1, -1)
+
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
         for n in range(N):  # iterate through nodes
-            for k in range(state_dim[1]):
+            for k in krange:
                 if dxdoth[n, k, k] == 0:
                     res = fx_fullstate[n, k, t + 1]
                     res += adjoint_input(
@@ -138,98 +143,6 @@ def solve_adjoint(
 
                 elif dxdoth[n, k, k] == 1:
                     der = fx_fullstate[n, k, t + 1]
-                    der += adjoint_input(
-                        hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k
-                    )
-                    der += adjoint_nw_input(
-                        N, n, k, dmat_ndt, t, T - 1, state_dim[1], adjoint_state, hx_nw
-                    )
-
-                    adjoint_state[n, k, t] = adjoint_state[n, k, t + 1] - dt * der
-
-                else:
-                    print("WARNING: Case dh_dxdot != 0 or 1 not implemented")
-                    raise NotImplementedError
-
-    return adjoint_state
-
-
-@numba.njit
-def solve_adjoint_ww(
-    hx_list,
-    del_list,
-    hx_nw,
-    fx,
-    state_dim,
-    dt,
-    N,
-    T,
-    dmat_ndt,
-    dxdoth,
-    state_vars,
-    output_vars,
-):
-    """Backwards integration of the adjoint state.
-
-    :param hx_list:     list of Jacobians of systems dynamics wrt. 'state_vars'
-    :type hx_list:      list of np.ndarray
-    :param del_list:    list of respective time delay integer
-    :type del_list:     list of int
-    :param hx_nw:       Jacobians for each time step for the network coupling.
-    :type hx_nw:        np.ndarray
-    :param fx: df/dx    Derivative of cost function wrt. systems dynamics.
-    :type fx:           np.ndarray
-    :param state_dim:   Dimensions of state (N, V, T).
-    :type state_dim:    tuple
-    :param dt:          Time resolution of integration.
-    :type dt:           float
-    :param N:           Number of nodes in the network.
-    :type N:            int
-    :param T:           Length of simulation (time dimension).
-    :type T:            int
-    :param dmat_ndt:    N x N delay matrix (discrete number of delayed time-intervals).
-    :type dmat_ndt:     np.ndarray
-    :param dxdoth:      derivative of system dynamics wrt x dot
-    :type dxdoth:       np.ndarray
-    :param state_vars:      list of state variables of model
-    :type state_vars:       list
-    :param output_vars:     list of output variables of model
-    :type output_vars:      list
-
-    :return:            Adjoint state.
-    :rtype:             np.ndarray of shape `state_dim`
-    """
-    # ToDo: generalize, not only precision cost
-    adjoint_state = np.zeros(state_dim)
-    fx_fullstate = np.zeros(state_dim)
-
-    for sv_ind, sv in enumerate(state_vars):
-        for ov_ind, ov in enumerate(output_vars):
-            if sv == ov:
-                fx_fullstate[:, sv_ind, :] = fx[:, ov_ind, :]
-
-    for t in range(T - 1, -1, -1):  # backwards iteration including 0th index
-        for n in range(N):  # iterate through nodes
-            adjoint_state[n, 2, t] = -fx_fullstate[n, 0, t] / hx_list[0][n, t, 2, 0]
-            adjoint_state[n, 3, t] = -fx_fullstate[n, 1, t] / hx_list[0][n, t, 3, 1]
-
-            for k in range(state_dim[1]):
-                if dxdoth[n, k, k] == 0:
-                    res = fx_fullstate[n, k, t + 1]
-                    res += adjoint_input(
-                        hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k
-                    )
-                    res += adjoint_nw_input(
-                        N, n, k, dmat_ndt, t, T, state_dim[1], adjoint_state, hx_nw
-                    )
-                    # if n == 0 and k == 0:
-                    #    print(t, n, k, res)
-                    #    print(adjoint_state[n,])
-
-                    adjoint_state[n, k, t] = -res
-
-                elif dxdoth[n, k, k] == 1:
-                    der = fx_fullstate[n, k, t]
                     der += adjoint_input(
                         hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k
                     )
@@ -275,9 +188,6 @@ def adjoint_input(hx_list, del_list, t, T_lim, state_dim1, adj, n, k):
         if t + 1 + int_delay < T_lim:
             for v in range(state_dim1):
                 result += adj[n, v, t + 1 + int_delay] * hx[n, t + 1 + int_delay, v, k]
-                if int_delay == -1 and v == 2 and k == 0:
-                    print("adjoint = ", adj[n, v, t + 1 + int_delay])
-                    print("hx = ", hx[n, t + 1 + int_delay, v, k])
     return result
 
 
@@ -817,7 +727,7 @@ class OC:
             self.cost_matrix,
             self.cost_interval,
         )
-        self.adjoint_state = solve_adjoint_ww(
+        self.adjoint_state = solve_adjoint(
             hx_list,
             del_list,
             hx_nw,
@@ -830,6 +740,7 @@ class OC:
             dxdoth,
             numba.typed.List(self.model.state_vars),
             numba.typed.List(self.model.output_vars),
+            self.model.name,
         )
 
     def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):

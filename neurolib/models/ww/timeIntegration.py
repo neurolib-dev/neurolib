@@ -108,13 +108,13 @@ def timeIntegration(params):
     # ------------------------------------------------------------------------
     # Set initial values
     # if initial values are just a Nx1 array
-    if np.shape(params["ses_init"])[1] == 1:
-        ses_init = np.dot(params["ses_init"], np.ones((1, startind)))
-        sis_init = np.dot(params["sis_init"], np.ones((1, startind)))
+    if np.shape(params["se_init"])[1] == 1:
+        ses_init = np.dot(params["se_init"], np.ones((1, startind)))
+        sis_init = np.dot(params["si_init"], np.ones((1, startind)))
     # if initial values are a Nxt array
     else:
-        ses_init = params["ses_init"][:, -startind:]
-        sis_init = params["sis_init"][:, -startind:]
+        ses_init = params["se_init"][:, -startind:]
+        sis_init = params["si_init"][:, -startind:]
 
     # xsd = np.zeros((N,N))  # delayed activity
     ses_input_d = np.zeros(N)  # delayed input to x
@@ -409,10 +409,10 @@ def jacobian_ww(
     jacobian[sv["r_inh"], sv["se"]] = -logistic_der(II, a_inh, b_inh, d_inh) * J_NMDA
     jacobian[sv["r_inh"], sv["si"]] = logistic_der(II, a_inh, b_inh, d_inh)
 
-    jacobian[sv["se"], sv["r_exc"]] = -(1.0 - se) * gamma_exc
+    # jacobian[sv["se"], sv["r_exc"]] = -(1.0 - se) * gamma_exc
     jacobian[sv["se"], sv["se"]] = 1.0 / tau_exc + gamma_exc * re
 
-    jacobian[sv["si"], sv["r_inh"]] = -1.0
+    # jacobian[sv["si"], sv["r_inh"]] = -1.0
     jacobian[sv["si"], sv["si"]] = 1.0 / tau_inh
     return jacobian
 

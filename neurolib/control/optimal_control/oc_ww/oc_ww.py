@@ -110,7 +110,7 @@ class OcWw(OC):
         """
         hx = self.compute_hx()
         hx_min1 = self.compute_hx_min1()
-        return numba.typed.List([hx]), numba.typed.List([0])
+        return numba.typed.List([hx, hx_min1]), numba.typed.List([0, -1])
 
     def compute_hx(self):
         """Jacobians of WwModel wrt. all variables.
