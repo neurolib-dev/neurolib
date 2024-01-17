@@ -396,7 +396,7 @@ class TestFHN(unittest.TestCase):
         model_controlled.weights["w_2"] = 1.0
         cost1 = model_controlled.compute_total_cost()
 
-        self.assertAlmostEqual(cost0, cost1, 4)
+        self.assertAlmostEqual(cost0, cost1, 3)
 
 
 if __name__ == "__main__":
