@@ -12,47 +12,15 @@ from neurolib.control.optimal_control.oc_wc import OcWc
 from neurolib.models.wc import WCModel
 from neurolib.utils.stimulus import ZeroInput
 
+import test_oc_utils as test_oc_utils
+
+p = test_oc_utils.params
+
 
 class TestOC(unittest.TestCase):
     """
     Test functions in neurolib/control/optimal_control/oc.py
     """
-
-    @staticmethod
-    def get_arbitrary_array_finite_values():
-        """2x2x10 array filled with arbitrary positive and negative values in range [-5.0, 5.0]."""
-        return np.array(
-            [
-                [
-                    [1.0, 2.0, 0.0, -1.5123, 2.35, 1.0, -1.0, 5.0, 0.0, 0.0],
-                    [-1.0, 3.0, 2.0, 0.5, -0.1, -0.2, 0.2, -0.2, 0.1, 0.5],
-                ],
-                [
-                    [-0.5, 0.5, 0.5, -0.1, -1.0, 2.05, 3.1, -4.0, -5.0, -0.7],
-                    [1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 2.5],
-                ],
-            ]
-        )
-
-    @staticmethod
-    def get_arbitrary_array():
-        """2x2x10 array filled with arbitrary positive and negative values and +/-np.inf. Besides +/-np.inf all values
-            fall in the range [-5., 5.].
-        :return: An array with arbitrary float and np.inf values.
-        :rtype:  np.ndarray of shape 2 x 2 x 10
-        """
-        return np.array(
-            [
-                [
-                    [1.0, 2.0, 0.0, -1.5123, 2.35, 1.0, -1.0, 0.0, 0.0, 0.0],
-                    [-1.0, 3.0, 2.0, 0.5, -np.inf, np.inf, 0.2, -0.2, 0.1, 5.0],
-                ],
-                [
-                    [-0.5, np.inf, 0.5, -0.1, -1.0, 2.5, 3.01, -4.0, -5.0, -0.7],
-                    [1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 2.5],
-                ],
-            ]
-        )
 
     @staticmethod
     def get_deterministic_wilson_cowan_test_setup():
@@ -64,23 +32,12 @@ class TestOC(unittest.TestCase):
         :rtype:  Tuple[neurolib.models.wc.model.WCModel, np.array]
         """
         model = WCModel()
-        dt = model.params["dt"]
-        duration = 5 * dt
-        model.params["duration"] = duration
+        model.params["duration"] = p.TEST_DURATION_6
         model.run()
 
-        target = np.concatenate(
-            (
-                np.concatenate((model.params["exc_init"], model.params["inh_init"]), axis=1)[:, :, np.newaxis],
-                np.stack((model.exc, model.inh), axis=1),
-            ),
-            axis=2,
-        )
-
+        target = test_oc_utils.gettarget_1n(model)
         target[0, 0, :] = target[0, 0, :] * 2.0
-
-        model.params["exc_ext"] = ZeroInput().generate_input(duration=duration + dt, dt=dt)
-        model.params["inh_ext"] = ZeroInput().generate_input(duration=duration + dt, dt=dt)
+        test_oc_utils.set_input(model, p.ZERO_INPUT_1N_6)
 
         return model, target
 
@@ -196,8 +153,27 @@ class TestOC(unittest.TestCase):
         for n in range(N):
             self.assertTrue(np.all(gadient[n, :, :] == result))
 
+    def test_update_input(self):
+        # Run the test with an instance of an arbitrarily derived class
+        # check update_input function
+        print("Tets update_input function.")
+
+        model, target = self.get_deterministic_wilson_cowan_test_setup()
+        model_controlled = OcWc(model, target)
+        model_controlled.control = np.concatenate(
+            (p.TEST_INPUT_1N_6[:, np.newaxis, :], p.TEST_INPUT_1N_6[:, np.newaxis, :]), axis=1
+        )
+
+        for iv in model.input_vars:
+            self.assertTrue((model_controlled.model.params[iv] == 0.0).all())
+
+        model_controlled.update_input()
+
+        for iv in model.input_vars:
+            self.assertTrue((model_controlled.model.params[iv] == p.TEST_INPUT_1N_6).all())
+
     def test_step_size(self):
-        # Run the test with an instance of an arbitrary derived class.
+        # Run the test with an instance of an arbitrarily derived class.
         # This test case is not specific to any step size algorithm or initial step size.
 
         print("Test step size is larger zero.")
@@ -214,7 +190,7 @@ class TestOC(unittest.TestCase):
         self.assertTrue(model_controlled.step_size(-model_controlled.compute_gradient()) > 0.0)
 
     def test_step_size_no_step(self):
-        # Run the test with an instance of an arbitrary derived class.
+        # Run the test with an instance of an arbitrarily derived class.
         # Checks that for a zero-gradient no step is performed (i.e. step-size=0).
 
         print("Test step size is zero if gradient is zero.")
@@ -235,16 +211,18 @@ class TestOC(unittest.TestCase):
 
         print("Test control update with and without strength limit.")
 
-        control = self.get_arbitrary_array_finite_values()
+        control = np.concatenate((p.TEST_INPUT_2N_6[:, np.newaxis, :], p.TEST_INPUT_2N_6[:, np.newaxis, :]), axis=1)
+        control[0, 0, -1] = np.inf
+        control[0, 1 - 1] = -np.inf
         step = 1.0
-        cost_gradient = self.get_arbitrary_array()
         (N, dim_in, T) = control.shape
+        cost_gradient = 4.0 * control
 
         u_max = None
         control_limited = update_control_with_limit(N, dim_in, T, control, step, cost_gradient, u_max)
         self.assertTrue(np.all(control_limited == control + step * cost_gradient))
 
-        u_max = 5.0
+        u_max = 0.1
         control_limited = update_control_with_limit(N, dim_in, T, control, step, cost_gradient, u_max)
         self.assertTrue(np.all(np.abs(control_limited) <= u_max))
 
@@ -253,23 +231,18 @@ class TestOC(unittest.TestCase):
 
         print("Test limit of control interval.")
 
-        control = self.get_arbitrary_array_finite_values()
+        control = np.concatenate((p.TEST_INPUT_2N_6[:, np.newaxis, :], p.TEST_INPUT_2N_6[:, np.newaxis, :]), axis=1)
         (N, dim_in, T) = control.shape
 
-        control_interval = (0, T)
-        control_limited = limit_control_to_interval(N, dim_in, T, control, control_interval)
-        self.assertTrue(np.all(control_limited == control))
+        c_int = (0, T)
+        control_lim = limit_control_to_interval(N, dim_in, T, control, c_int)
+        self.assertTrue(np.all(control_lim == control))
 
-        control_interval = (3, 7)
-        control_limited = limit_control_to_interval(N, dim_in, T, control, control_interval)
-        self.assertTrue(np.all(control_limited[:, :, : control_interval[0]]) == 0.0)
-        self.assertTrue(np.all(control_limited[:, :, control_interval[1] :]) == 0.0)
-        self.assertTrue(
-            np.all(
-                control_limited[:, :, control_interval[0] : control_interval[1]]
-                == control[:, :, control_interval[0] : control_interval[1]]
-            )
-        )
+        c_int = (4, 6)
+        control_lim = limit_control_to_interval(N, dim_in, T, control, c_int)
+        self.assertTrue(np.all(control_lim[:, :, : c_int[0]]) == 0.0)
+        self.assertTrue(np.all(control_lim[:, :, c_int[1] :]) == 0.0)
+        self.assertTrue(np.all(control_lim[:, :, c_int[0] : c_int[1]] == control[:, :, c_int[0] : c_int[1]]))
 
     def test_convert_interval_none(self):
         print("Test convert interval.")
@@ -290,7 +263,7 @@ class TestOC(unittest.TestCase):
         array_length = 10  # arbitrary
         interval = (-6, -2)
         interval_converted = convert_interval(interval, array_length)
-        self.assertTupleEqual(interval_converted, (4, 8))
+        self.assertTupleEqual(interval_converted, (array_length + interval[0], array_length + interval[1]))
 
     def test_convert_interval_unchanged(self):
         print("Test convert interval.")
