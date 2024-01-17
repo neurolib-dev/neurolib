@@ -80,7 +80,7 @@ def solve_adjoint(
     dxdoth,
     state_vars,
     output_vars,
-    model_name,
+    model_name=None,
 ):
     """Backwards integration of the adjoint state.
 
