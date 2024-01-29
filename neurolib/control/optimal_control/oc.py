@@ -17,7 +17,7 @@ def getdefaultweights():
     )
     weights["w_p"] = 1.0
     weights["w_2"] = 0.0
-    weights["w1D"] = 0.0
+    weights["w_1D"] = 0.0
 
     return weights
 
