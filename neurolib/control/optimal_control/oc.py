@@ -625,7 +625,7 @@ class OC:
         :rtype:         np.ndarray of shape N x V x T
         """
         self.solve_adjoint()
-        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights)
+        df_du = cost_functions.derivative_control_strength_cost(self.control, self.weights, self.dt)
         d_du = self.Duh()
 
         return compute_gradient(
