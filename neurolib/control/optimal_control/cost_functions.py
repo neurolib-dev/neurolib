@@ -166,13 +166,15 @@ def control_strength_cost(u, weights, dt):
 
 
 @numba.njit
-def derivative_control_strength_cost(u, weights):
+def derivative_control_strength_cost(u, weights, dt):
     """Derivative of the 'control_strength_cost' wrt. the control 'u'.
 
     :param u:           Control-dimensions x T array. Control signals.
     :type u:            np.ndarray
     :param weights:     Dictionary of weights.
     :type weights:      dictionary
+    :param dt:          Time step.
+    :type dt:           float
 
     :return:    Control-dimensions x T array of L2-cost gradients.
     :rtype:     np.ndarray
