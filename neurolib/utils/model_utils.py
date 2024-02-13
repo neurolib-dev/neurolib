@@ -65,36 +65,39 @@ def computeDelayMatrix(lengthMat, signalV, segmentLength=1):
     return Dmat
 
 
-import jax.numpy as jnp
+try:
+    import jax.numpy as jnp
+except ImportError:
+    pass
+else:
 
+    def adjustArrayShape_jax(original, target):
+        """
+        Tiles and then cuts an array (or list or float) such that
+        it has the same shape as target at the end.
+        This is used to make sure that any input parameter like external current has
+        the same shape as the rate array.
+        """
 
-def adjustArrayShape_jax(original, target):
-    """
-    Tiles and then cuts an array (or list or float) such that
-    it has the same shape as target at the end.
-    This is used to make sure that any input parameter like external current has
-    the same shape as the rate array.
-    """
+        if not hasattr(original, "__len__"):
+            original = [original]
+        original = jnp.array(original)
 
-    if not hasattr(original, "__len__"):
-        original = [original]
-    original = jnp.array(original)
+        if len(original.shape) == 1:
+            rep_y = target.shape[0]
+        elif target.shape[0] > original.shape[0]:
+            rep_y = int(target.shape[0] / original.shape[0]) + 1
+        else:
+            rep_y = 1
 
-    if len(original.shape) == 1:
-        rep_y = target.shape[0]
-    elif target.shape[0] > original.shape[0]:
-        rep_y = int(target.shape[0] / original.shape[0]) + 1
-    else:
-        rep_y = 1
+        original = jnp.tile(original, (rep_y, 1))
 
-    original = jnp.tile(original, (rep_y, 1))
+        if target.shape[1] > original.shape[1]:
+            rep_x = int(target.shape[1] / original.shape[1]) + 1
+        else:
+            rep_x = 1
+        original = jnp.tile(original, (1, rep_x))
 
-    if target.shape[1] > original.shape[1]:
-        rep_x = int(target.shape[1] / original.shape[1]) + 1
-    else:
-        rep_x = 1
-    original = jnp.tile(original, (1, rep_x))
+        original = original[: target.shape[0], -target.shape[1] :]
 
-    original = original[: target.shape[0], -target.shape[1] :]
-
-    return original
+        return original

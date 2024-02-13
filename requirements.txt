@@ -12,4 +12,3 @@ dill
 sympy
 jitcdde
 dpath
-jax
