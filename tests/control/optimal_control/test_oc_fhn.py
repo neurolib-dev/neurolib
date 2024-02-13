@@ -360,6 +360,44 @@ class TestFHN(unittest.TestCase):
                 for input_var0 in model.input_vars:
                     self.assertTrue(model_controlled.model.params[input_var0].shape == targetinputshape)
 
+    # tests if the cost is independent of the integration time step
+    def test_cost_dt(self):
+        print("Test cost independent of dt")
+        model = FHNModel()
+        model.params["duration"] = p.TEST_DURATION_6
+
+        model.params["dt"] = 1e-3
+        test_input = np.zeros((1, 1 + 100 * (p.TEST_INPUT_1N_6.shape[1] - 1)))
+        for t in range(p.TEST_INPUT_1N_6.shape[1]):
+            test_input[0, 100 * t : 100 * t + 100] = p.TEST_INPUT_1N_6[0, t]
+
+        test_oc_utils.set_input(model, test_input)
+        model.run()
+        target = test_oc_utils.gettarget_1n(model)
+        test_oc_utils.set_input(model, np.zeros((test_input.shape)))
+
+        model_controlled = oc_fhn.OcFhn(model, target)
+        model_controlled.weights["w_p"] = 1.0
+        model_controlled.weights["w_2"] = 1.0
+        cost0 = model_controlled.compute_total_cost()
+
+        model.params["dt"] = 1e-4
+        test_input = np.zeros((1, 1 + 1000 * (p.TEST_INPUT_1N_6.shape[1] - 1)))
+        for t in range(p.TEST_INPUT_1N_6.shape[1]):
+            test_input[0, 1000 * t : 1000 * t + 1000] = p.TEST_INPUT_1N_6[0, t]
+
+        test_oc_utils.set_input(model, test_input)
+        model.run()
+        target = test_oc_utils.gettarget_1n(model)
+        test_oc_utils.set_input(model, np.zeros((test_input.shape)))
+
+        model_controlled = oc_fhn.OcFhn(model, target)
+        model_controlled.weights["w_p"] = 1.0
+        model_controlled.weights["w_2"] = 1.0
+        cost1 = model_controlled.compute_total_cost()
+
+        self.assertAlmostEqual(cost0, cost1, 3)
+
 
 if __name__ == "__main__":
     unittest.main()
