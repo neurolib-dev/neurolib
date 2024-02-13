@@ -90,6 +90,9 @@ class OcHopf(OC):
         """
         return compute_hx(
             self.model_params,
+            self.model.params["K_gl"],
+            self.model.params["Cmat"],
+            self.model.params["coupling"],
             self.N,
             self.dim_vars,
             self.T,
@@ -106,7 +109,6 @@ class OcHopf(OC):
         return compute_hx_nw(
             self.model.params["K_gl"],
             self.model.params["Cmat"],
-            self.model.params["coupling"],
             self.N,
             self.dim_vars,
             self.T,

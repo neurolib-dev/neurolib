@@ -267,6 +267,9 @@ def jacobian_hopf(
 @numba.njit
 def compute_hx(
     model_params,
+    K_gl,
+    cmat,
+    coupling,
     N,
     V,
     T,
@@ -277,7 +280,13 @@ def compute_hx(
 
     :param model_params:    Ordered tuple of parameters in the Hopf Model in order
     :type model_params:     tuple of float
-    :param N:               Number of network nodes.
+    :param K_gl:            Model parameter of global coupling strength.
+    :type K_gl:             float
+    :param cmat:            Model parameter, connectivity matrix.
+    :type cmat:             ndarray
+    :param coupling:        Model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
+    :type coupling:         str
+    :param N:               Number of nodes in the network.
     :type N:                int
     :param V:               Number of state variables.
     :type V:                int
@@ -303,6 +312,10 @@ def compute_hx(
                 dyn_vars[n, sv["y"], t],
                 sv,
             )
+
+            if coupling == "diffusive":
+                for l in range(N):
+                    hx[n, t, sv["x"], sv["x"]] += K_gl * cmat[n, l]
     return hx
 
 
@@ -310,7 +323,6 @@ def compute_hx(
 def compute_hx_nw(
     K_gl,
     cmat,
-    coupling,
     N,
     V,
     T,
@@ -322,8 +334,6 @@ def compute_hx_nw(
     :type K_gl:         float
     :param cmat:        Model parameter, connectivity matrix.
     :type cmat:         ndarray
-    :param coupling:    Model parameter, which specifies the coupling type. E.g. "additive" or "diffusive".
-    :type coupling:     str
     :param N:           Number of nodes in the network.
     :type N:            int
     :param V:           Number of system variables.
@@ -340,9 +350,9 @@ def compute_hx_nw(
 
     for n1 in range(N):
         for n2 in range(N):
-            hx_nw[n1, n2, :, sv["x"], sv["x"]] = K_gl * cmat[n1, n2]  # term corresponding to additive coupling
-            if coupling == "diffusive":
-                hx_nw[n1, n1, :, sv["x"], sv["x"]] += -K_gl * cmat[n1, n2]
+            hx_nw[n1, n2, :, sv["x"], sv["x"]] = (
+                K_gl * cmat[n1, n2]
+            )  # corresponding to both diffusive and additive coupling
 
     return -hx_nw
 
