@@ -160,6 +160,30 @@ class TestCostFunctions(unittest.TestCase):
         desired_output = u
         self.assertTrue(np.all(cost_functions.derivative_L2_cost(u) == desired_output))
 
+    def test_L1D_cost(self):
+        print(" Test L1D cost")
+        dt = 0.1
+        reference_result = 2.0 * np.sum(np.sqrt(np.sum(p.TEST_INPUT_1N_6**2 * dt, axis=1)))
+        weights = getdefaultweights()
+        weights["w_1D"] = 1.0
+        u = np.concatenate([p.TEST_INPUT_1N_6[:, np.newaxis, :], p.TEST_INPUT_1N_6[:, np.newaxis, :]], axis=1)
+        L1D_cost = cost_functions.control_strength_cost(u, weights, dt)
+
+        self.assertAlmostEqual(L1D_cost, reference_result, places=8)
+
+    def test_derivative_L1D_cost(self):
+        print(" Test L1D cost derivative")
+        dt = 0.1
+        denominator = np.sqrt(np.sum(p.TEST_INPUT_1N_6**2 * dt, axis=1))
+
+        u = np.concatenate([p.TEST_INPUT_1N_6[:, np.newaxis, :], p.TEST_INPUT_1N_6[:, np.newaxis, :]], axis=1)
+        reference_result = np.zeros((u.shape))
+        for n in range(u.shape[0]):
+            for v in range(u.shape[1]):
+                reference_result[n, v, :] = u[n, v, :] / denominator[n]
+
+        self.assertTrue(np.all(cost_functions.derivative_L1D_cost(u, dt) == reference_result))
+
     def test_weights_dictionary(self):
         print("Test dictionary of cost weights")
         model = FHNModel()

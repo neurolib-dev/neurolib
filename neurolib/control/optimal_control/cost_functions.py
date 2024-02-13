@@ -19,7 +19,7 @@ def accuracy_cost(x, target_timeseries, weights, cost_matrix, dt, interval=(0, N
     :param interval:        (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                             dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:         tuple, optional
-    
+
     :return:                Accuracy cost.
     :rtype:                 float
     """
@@ -56,7 +56,7 @@ def derivative_accuracy_cost(x, target_timeseries, weights, cost_matrix, interva
     :param interval:        (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                             dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:         tuple, optional
-    
+
     :return:                Accuracy cost derivative.
     :rtype:                 ndarray
     """
@@ -84,7 +84,7 @@ def precision_cost(x_sim, x_target, cost_matrix, interval=(0, None)):
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                         dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:     tuple
-    
+
     :return:            Precision cost for time interval.
     :rtype:             float
     """
@@ -114,7 +114,7 @@ def derivative_precision_cost(x_sim, x_target, cost_matrix, interval):
     :param interval:    (t_start, t_end). Indices of start and end point of the slice (both inclusive) in time
                         dimension. Only 'int' positive index-notation allowed (i.e. no negative indices or 'None').
     :type interval:     tuple
-    
+
     :return:            Control-dimensions x T array of precision cost gradients.
     :rtype:             np.ndarray
     """
@@ -140,7 +140,7 @@ def control_strength_cost(u, weights, dt):
     :type weights:      dictionary
     :param dt:          Time step.
     :type dt:           float
-    
+
     :return:            control strength cost of the control.
     :rtype:             float
     """
@@ -159,17 +159,22 @@ def control_strength_cost(u, weights, dt):
                 for t in range(u.shape[2]):
                     cost += cost_timeseries[n, v, t] * dt
 
+    if weights["w_1D"] != 0.0:
+        cost += weights["w_1D"] * L1D_cost_integral(u, dt)
+
     return cost
 
 
 @numba.njit
-def derivative_control_strength_cost(u, weights):
+def derivative_control_strength_cost(u, weights, dt):
     """Derivative of the 'control_strength_cost' wrt. the control 'u'.
 
     :param u:           Control-dimensions x T array. Control signals.
     :type u:            np.ndarray
     :param weights:     Dictionary of weights.
     :type weights:      dictionary
+    :param dt:          Time step.
+    :type dt:           float
 
     :return:    Control-dimensions x T array of L2-cost gradients.
     :rtype:     np.ndarray
@@ -179,6 +184,8 @@ def derivative_control_strength_cost(u, weights):
 
     if weights["w_2"] != 0.0:
         der += weights["w_2"] * derivative_L2_cost(u)
+    if weights["w_1D"] != 0.0:
+        der += weights["w_1D"] * derivative_L1D_cost(u, dt)
 
     return der
 
@@ -189,7 +196,7 @@ def L2_cost(u):
 
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
-    
+
     :return:    L2 cost of the control.
     :rtype:     float
     """
@@ -203,8 +210,49 @@ def derivative_L2_cost(u):
 
     :param u:   Control-dimensions x T array. Control signals.
     :type u:    np.ndarray
-    
+
     :return:    Control-dimensions x T array of L2-cost gradients.
     :rtype:     np.ndarray
     """
     return u
+
+
+@numba.njit
+def L1D_cost_integral(
+    u,
+    dt,
+):
+    """'Directional sparsity' or 'L1D' cost integrated over time. Penalizes for control strength.
+    :param u:   Control-dimensions x T array. Control signals.
+    :type u:    np.ndarray
+    :param dt:  Time step.
+    :type dt:   float
+    :return:    L1D cost of the control.
+    :rtype:     float
+    """
+
+    return np.sum(np.sum(np.sqrt(np.sum(u**2, axis=2) * dt), axis=1), axis=0)
+
+
+@numba.njit
+def derivative_L1D_cost(
+    u,
+    dt,
+):
+    """
+    :param u:   Control-dimensions x T array. Control signals.
+    :type u:    np.ndarray
+    :param dt:  Time step.
+    :type dt:   float
+    :return :   Control-dimensions x T array of L1D-cost gradients.
+    :rtype:     np.ndarray
+    """
+
+    denominator = np.sqrt(np.sum(u**2, axis=2) * dt)
+    der = np.zeros((u.shape))
+    for n in range(der.shape[0]):
+        for v in range(der.shape[1]):
+            if denominator[n, v] != 0.0:
+                der[n, v, :] = u[n, v, :] / denominator[n, v]
+
+    return der
