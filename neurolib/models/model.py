@@ -265,8 +265,8 @@ class Model:
         """
         # run integration
         t, *variables = self.integration(self.params)
-        t = np.asarray(t)
-        variables = [np.asarray(variable) for variable in variables]
+        t = np.asarray(t).copy()
+        variables = [np.asarray(variable).copy() for variable in variables]
         self.storeOutputsAndStates(t, variables, append=append_outputs)
 
         # force bold if params['bold'] == True
