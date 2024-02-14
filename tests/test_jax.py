@@ -53,7 +53,7 @@ class TestWC_jax(unittest.TestCase):
 
         model_jax_different = WCModel_jax()
         model_jax_different.params["duration"] = 5.0 * 1000
-        model_jax_different.params["sigma_ou"] = 0.015
+        model_jax_different.params["sigma_ou"] = 0.02
 
         model_jax_different.run()
 
