@@ -313,20 +313,20 @@ def jacobian_wc(
 
     :param model_params:    Tuple of parameters in the WC Model in order
     :type model_params:     tuple of float
-    :param  nw_e:   N x T input of network into each node's 'exc'
-    :type  nw_e:    np.ndarray
-    :param e:       Value of the E-variable at specific time.
-    :type e:        float
-    :param i:       Value of the I-variable at specific time.
-    :type i:        float
-    :param ue:      N x T combined input of 'background' and 'control' into 'exc'.
-    :type ue:       np.ndarray
-    :param ui:      N x T combined input of 'background' and 'control' into 'inh'.
-    :type ui:       np.ndarray
-    :param V:       Number of system variables.
-    :type V:        int
-    :param sv:                  dictionary of state vars and respective indices
-    :type sv:                   dict
+    :param  nw_e:           N x T input of network into each node's 'exc'
+    :type  nw_e:            np.ndarray
+    :param e:               Value of the E-variable at specific time.
+    :type e:                float
+    :param i:               Value of the I-variable at specific time.
+    :type i:                float
+    :param ue:              Value of control input to into 'exc' at specific time.
+    :type ue:               float
+    :param ui:              Value of control input to into 'ihn' at specific time.
+    :type ui:               float
+    :param V:               Number of system variables.
+    :type V:                int
+    :param sv:              dictionary of state vars and respective indices
+    :type sv:               dict
 
     :return:        4 x 4 Jacobian matrix.
     :rtype:         np.ndarray
@@ -372,7 +372,7 @@ def compute_hx(
     V,
     T,
     dyn_vars,
-    dyn_vars_delay,
+    dyn_vars_delayed,
     control,
     sv,
 ):
@@ -394,8 +394,8 @@ def compute_hx(
     :type T:            int
     :param dyn_vars:    N x V x T array containing all values of 'exc' and 'inh'.
     :type dyn_vars:     np.ndarray
-    :param dyn_vars_delay:
-    :type dyn_vars_delay:     np.ndarray
+    :param dyn_vars_delayed:    N x V x T array containing all values of delayed 'exc' and 'inh'.
+    :type dyn_vars_delayed:     np.ndarray
     :param control:     N x 2 x T control inputs to 'exc' and 'inh'.
     :type control:      np.ndarray
     :param sv:                  dictionary of state vars and respective indices
@@ -405,7 +405,7 @@ def compute_hx(
     :rtype:             np.ndarray
     """
     hx = np.zeros((N, T, V, V))
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, dyn_vars_delay[:, sv["exc"], :])
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, dyn_vars_delayed[:, sv["exc"], :])
 
     for n in range(N):
         for t in range(T):
@@ -465,7 +465,7 @@ def compute_hx_nw(
     T,
     e,
     i,
-    e_delay,
+    e_delayed,
     ue,
     sv,
 ):
@@ -485,14 +485,16 @@ def compute_hx_nw(
     :type V:            int
     :param T:           Length of simulation (time dimension).
     :type T:            int
-    :param e:       Value of the E-variable at specific time.
-    :type e:        float
-    :param i:       Value of the I-variable at specific time.
-    :type i:        float
-    :param ue:      N x T array of the total input received by 'exc' population in every node at any time.
-    :type ue:       np.ndarray
-    :param sv:                  dictionary of state vars and respective indices
-    :type sv:                   dict
+    :param e:           Value of the E-variable at specific time.
+    :type e:            float
+    :param i:           Value of the I-variable at specific time.
+    :type i:            float
+    :param e_delayed:   Value of the delayed E-variable at specific time.
+    :type e_delayed:    float
+    :param ue:          N x T array of the total input received by 'exc' population in every node at any time.
+    :type ue:           np.ndarray
+    :param sv:          dictionary of state vars and respective indices
+    :type sv:           dict
 
     :return:         Jacobians for network connectivity in all time steps.
     :rtype:          np.ndarray of shape N x N x T x 4 x 4
@@ -513,17 +515,14 @@ def compute_hx_nw(
     ) = model_params
     hx_nw = np.zeros((N, N, T, V, V))
 
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, e_delay)
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, e_delayed)
     exc_input = c_excexc * e - c_inhexc * i + nw_e + exc_ext_baseline + ue
 
     for n1 in range(N):
         for n2 in range(N):
             for t in range(T - 1):
                 hx_nw[n1, n2, t, sv["exc"], sv["exc"]] = (
-                    (1.0 - e[n1, t])
-                    * logistic_der(exc_input[n1, t], a_exc, mu_exc)
-                    * K_gl
-                    * cmat[n1, n2]
+                    (1.0 - e[n1, t]) * logistic_der(exc_input[n1, t], a_exc, mu_exc) * K_gl * cmat[n1, n2]
                 ) / tau_exc
 
     return -hx_nw
@@ -543,7 +542,7 @@ def Duh(
     K_gl,
     cmat,
     dmat_ndt,
-    exc_values,
+    exc_delayed,
     sv,
 ):
     """Jacobian of systems dynamics wrt. external inputs (control signals).
@@ -574,8 +573,8 @@ def Duh(
     :type cmat:             np.ndarray
     :param dmat_ndt:        delay index matrix
     :type dmat_ndt:         np.ndarray
-    :param exc_values:      N x T array containing values of 'exc' of all nodes through time.
-    :type exc_values:       np.ndarray
+    :param exc_delayed:     N x T array containing values of 'exc' of all nodes through time incl. delay
+    :type exc_delayed:      np.ndarray
     :param sv:                  dictionary of state vars and respective indices
     :type sv:                   dict
 
@@ -597,7 +596,7 @@ def Duh(
         inh_ext_baseline,
     ) = model_params
 
-    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_values)
+    nw_e = compute_nw_input(N, T, K_gl, cmat, dmat_ndt, exc_delayed)
 
     duh = np.zeros((N, V_vars, V_in, T))
     for t in range(T):

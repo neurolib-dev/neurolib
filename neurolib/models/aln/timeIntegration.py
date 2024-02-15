@@ -732,8 +732,8 @@ def jacobian_aln(
     uri,
     nw_input,
     nw_input_sq,
-    re_del,
-    ri_del,
+    re_delayed,
+    ri_delayed,
     sv,
 ):
     """Jacobian of the ALN dynamical system.
@@ -754,10 +754,10 @@ def jacobian_aln(
     :type  nw_input:            float
     :param  nw_input_sq:        sum of all network inputs into current node at current time with squared prefactors
     :type  nw_input_sq:         float
-    :param re_del:              E rate delayed by de
-    :type re_del:               float
-    :param ri_del:              I rate delayed by di
-    :type ri_del:               float
+    :param re_delayed:              E rate delayed by de
+    :type re_delayed:               float
+    :param ri_delayed:              I rate delayed by di
+    :type ri_delayed:               float
     :param sv:                  dictionary of state vars and respective indices
     :type sv:                   dict
 
@@ -806,15 +806,15 @@ def jacobian_aln(
 
     jacobian = np.zeros((V, V))
 
-    z1ee = z1ee_f * re_del + nw_input + c_gl * Ke_gl * ure
-    z2ee = z2ee_f * re_del + nw_input_sq + c_gl**2 * Ke_gl * ure
-    z1ei = z1ei_f * ri_del
-    z2ei = z2ei_f * ri_del
+    z1ee = z1ee_f * re_delayed + nw_input + c_gl * Ke_gl * ure
+    z2ee = z2ee_f * re_delayed + nw_input_sq + c_gl**2 * Ke_gl * ure
+    z1ei = z1ei_f * ri_delayed
+    z2ei = z2ei_f * ri_delayed
 
-    z1ie = z1ie_f * re_del + c_gl * Ke_gl * uri
-    z2ie = z2ie_f * re_del + c_gl**2 * Ke_gl * uri
-    z1ii = z1ii_f * ri_del
-    z2ii = z2ii_f * ri_del
+    z1ie = z1ie_f * re_delayed + c_gl * Ke_gl * uri
+    z2ie = z2ie_f * re_delayed + c_gl**2 * Ke_gl * uri
+    z1ii = z1ii_f * ri_delayed
+    z2ii = z2ii_f * ri_delayed
 
     sig_ee_den = (1 + z1ee) * taum + tau_se
     sig_ei_den = (1 + z1ei) * taum + tau_si
@@ -1004,7 +1004,7 @@ def compute_hx(
             ui = control[n, sv["rates_inh"], t]
             ure = control[n, sv["mufe"], t]
             uri = control[n, sv["mufi"], t]
-            re_del, ri_del = dyn_vars[n, sv["rates_exc"], t - ndt_de], dyn_vars[n, sv["rates_inh"], t - ndt_di]
+            re_delayed, ri_delayed = dyn_vars[n, sv["rates_exc"], t - ndt_de], dyn_vars[n, sv["rates_inh"], t - ndt_di]
             hx[n, t, :, :] = jacobian_aln(
                 model_params,
                 precomp_factors,
@@ -1016,8 +1016,8 @@ def compute_hx(
                 uri,
                 nw_input[n, t],
                 nw_input_sq[n, t],
-                re_del,
-                ri_del,
+                re_delayed,
+                ri_delayed,
                 sv,
             )
 
@@ -1056,8 +1056,8 @@ def jacobian_de(
     ure,
     uri,
     nw_input,
-    re_del,
-    ri_del,
+    re_delayed,
+    ri_delayed,
     sv,
 ):
     """Jacobian of the ALN dynamical system wrt relations with delay de
@@ -1076,10 +1076,10 @@ def jacobian_de(
     :type ui:                   float
     :param  nw_input:           sum of all network inputs into current node at current time
     :type  nw_input:            float
-    :param re_del:              E rate delayed by de
-    :type re_del:               float
-    :param ri_del:              I rate delayed by di
-    :type ri_del:               float
+    :param re_delayed:          E rate delayed by de
+    :type re_delayed:           float
+    :param ri_delayed:          I rate delayed by di
+    :type ri_delayed:           float
     :param sv:                  dictionary of state vars and respective indices
     :type sv:                   dict
 
@@ -1127,10 +1127,10 @@ def jacobian_de(
 
     jacobian = np.zeros((V, V))
 
-    z1ee = z1ee_f * re_del + nw_input + c_gl * Ke_gl * ure  # factors 1e-3 are in z1ee_f and in ne_input
-    z1ei = z1ei_f * ri_del
-    z1ie = z1ie_f * re_del + c_gl * Ke_gl * uri
-    z1ii = z1ii_f * ri_del
+    z1ee = z1ee_f * re_delayed + nw_input + c_gl * Ke_gl * ure  # factors 1e-3 are in z1ee_f and in ne_input
+    z1ei = z1ei_f * ri_delayed
+    z1ie = z1ie_f * re_delayed + c_gl * Ke_gl * uri
+    z1ii = z1ii_f * ri_delayed
 
     sig_ee_den = (1 + z1ee) * taum + tau_se
     sig_ei_den = (1 + z1ei) * taum + tau_si
@@ -1283,7 +1283,7 @@ def compute_hx_de(
             ui = control[n, sv["rates_inh"], t]
             ure = control[n, sv["mufe"], t]
             uri = control[n, sv["mufi"], t]
-            re_del, ri_del = dyn_vars[n, sv["rates_exc"], t - ndt_de], dyn_vars[n, sv["rates_inh"], t - ndt_di]
+            re_delayed, ri_delayed = dyn_vars[n, sv["rates_exc"], t - ndt_de], dyn_vars[n, sv["rates_inh"], t - ndt_di]
             hx[n, t, :, :] = jacobian_de(
                 model_params,
                 precomp_factors,
@@ -1294,8 +1294,8 @@ def compute_hx_de(
                 ure,
                 uri,
                 nw_input[n, t],
-                re_del,
-                ri_del,
+                re_delayed,
+                ri_delayed,
                 sv,
             )
 
@@ -1313,8 +1313,8 @@ def jacobian_di(
     ure,
     uri,
     nw_input,
-    re_del,
-    ri_del,
+    re_delayed,
+    ri_delayed,
     sv,
 ):
     """Jacobian of the ALN dynamical system wrt relations with delay di
@@ -1332,10 +1332,10 @@ def jacobian_di(
     :type ui:                   float
     :param  nw_input:           sum of all network inputs into current node at current time
     :type  nw_input:            float
-    :param re_del:              E rate delayed by de
-    :type re_del:               float
-    :param ri_del:              I rate delayed by di
-    :type ri_del:               float
+    :param re_delayed:              E rate delayed by de
+    :type re_delayed:               float
+    :param ri_delayed:              I rate delayed by di
+    :type ri_delayed:               float
     :param sv:                  dictionary of state vars and respective indices
     :type sv:                   dict
 
@@ -1383,10 +1383,10 @@ def jacobian_di(
 
     jacobian = np.zeros((V, V))
 
-    z1ee = z1ee_f * re_del + nw_input + c_gl * Ke_gl * ure
-    z1ei = z1ei_f * ri_del
-    z1ie = z1ie_f * re_del + c_gl * Ke_gl * uri
-    z1ii = z1ii_f * ri_del
+    z1ee = z1ee_f * re_delayed + nw_input + c_gl * Ke_gl * ure
+    z1ei = z1ei_f * ri_delayed
+    z1ie = z1ie_f * re_delayed + c_gl * Ke_gl * uri
+    z1ii = z1ii_f * ri_delayed
 
     sig_ee_den = (1 + z1ee) * taum + tau_se
     sig_ei_den = (1 + z1ei) * taum + tau_si
@@ -1541,7 +1541,7 @@ def compute_hx_di(
             ui = control[n, sv["rates_inh"], t]
             ure = control[n, sv["mufe"], t]
             uri = control[n, sv["mufi"], t]
-            re_del, ri_del = dyn_vars[n, sv["rates_exc"], t - ndt_de], dyn_vars[n, sv["rates_inh"], t - ndt_di]
+            re_delayed, ri_delayed = dyn_vars[n, sv["rates_exc"], t - ndt_de], dyn_vars[n, sv["rates_inh"], t - ndt_di]
             hx[n, t, :, :] = jacobian_di(
                 model_params,
                 precomp_factors,
@@ -1552,8 +1552,8 @@ def compute_hx_di(
                 ure,
                 uri,
                 nw_input[n, t],
-                re_del,
-                ri_del,
+                re_delayed,
+                ri_delayed,
                 sv,
             )
 
@@ -1617,7 +1617,7 @@ def compute_hx_nw(
             if cmat[n1, n2] == 0.0:
                 continue
             for t in range(T):
-                re_del, ri_del = dyn_vars[n1, sv["rates_exc"], t - ndt_de], dyn_vars[n1, sv["rates_inh"], t - ndt_di]
+                re_delayed, ri_delayed = dyn_vars[n1, sv["rates_exc"], t - ndt_de], dyn_vars[n1, sv["rates_inh"], t - ndt_di]
                 ue = control[n1, sv["rates_exc"], t]
                 ure = control[n1, sv["mufe"], t]
                 hx_nw[n1, n2, t, :, :] = jacobian_nw(
@@ -1625,8 +1625,8 @@ def compute_hx_nw(
                     precomp_factors,
                     V,
                     dyn_vars[n1, :, t],
-                    re_del,
-                    ri_del,
+                    re_delayed,
+                    ri_delayed,
                     nw_input[n1, t],
                     cmat[n1, n2],
                     ue,
@@ -1643,8 +1643,8 @@ def jacobian_nw(
     precomp_factors,
     V,
     fullstate,
-    re_del,
-    ri_del,
+    re_delayed,
+    ri_delayed,
     nw_input,
     cmat_entry,
     ue,
@@ -1661,10 +1661,10 @@ def jacobian_nw(
     :type V:                    int
     :param fullstate:           Value of all V=16 dynamical variables at given time
     :type fullstate:            np.ndarray
-    :param re_del:              E rate delayed by de
-    :type re_del:               float
-    :param ri_del:              I rate delayed by di
-    :type ri_del:               float
+    :param re_delayed:              E rate delayed by de
+    :type re_delayed:               float
+    :param ri_delayed:              I rate delayed by di
+    :type ri_delayed:               float
     :param  nw_input:           sum of all network inputs into current node at current time
     :type  nw_input:            float
     :param cmat_entry:          Entry of the connectivity matrix at n1, n2
@@ -1719,8 +1719,8 @@ def jacobian_nw(
 
     jac_nw = np.zeros((V, V))
 
-    z1ee = z1ee_f * re_del + nw_input + c_gl * Ke_gl * ure
-    z1ei = z1ei_f * ri_del
+    z1ee = z1ee_f * re_delayed + nw_input + c_gl * Ke_gl * ure
+    z1ei = z1ei_f * ri_delayed
 
     sig_ee_den = (1 + z1ee) * taum + tau_se
     sig_ei_den = (1 + z1ei) * taum + tau_si

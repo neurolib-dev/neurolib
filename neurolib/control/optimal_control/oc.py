@@ -81,6 +81,7 @@ def solve_adjoint(
     dxdoth,
     state_vars,
     output_vars,
+    model_name=None,
 ):
     """Backwards integration of the adjoint state.
 
@@ -121,9 +122,13 @@ def solve_adjoint(
             if sv == ov:
                 fx_fullstate[:, sv_ind, :] = fx[:, ov_ind, :]
 
+    krange = range(state_dim[1])
+    if model_name == "wongwang":
+        krange = range(state_dim[1] - 1, -1, -1)
+
     for t in range(T - 2, -1, -1):  # backwards iteration including 0th index
         for n in range(N):  # iterate through nodes
-            for k in range(state_dim[1]):
+            for k in krange:
                 if dxdoth[n, k, k] == 0:
                     res = fx_fullstate[n, k, t + 1]
                     res += adjoint_input(hx_list, del_list, t, T, state_dim[1], adjoint_state, n, k)
@@ -368,7 +373,11 @@ class OC:
                 if k in weights.keys():
                     defaultweights[k] = weights[k]
                 else:
-                    print("Weight ", k, " not in provided weight dictionary. Use default value.")
+                    print(
+                        "Weight ",
+                        k,
+                        " not in provided weight dictionary. Use default value.",
+                    )
 
             self.weights = defaultweights
 
@@ -476,7 +485,13 @@ class OC:
         self.check_params()
 
         self.control = update_control_with_limit(
-            self.N, self.dim_in, self.T, control, 0.0, np.zeros(control.shape), self.maximum_control_strength
+            self.N,
+            self.dim_in,
+            self.T,
+            control,
+            0.0,
+            np.zeros(control.shape),
+            self.maximum_control_strength,
         )
 
         self.model_params = self.get_model_params()
@@ -540,7 +555,7 @@ class OC:
 
         return xs
 
-    def get_xs_delay(self):
+    def get_xs_delayed(self):
         """Extract the complete state of the delayed dynamical system."""
         maxdel = self.model.getMaxDelay()
         if maxdel == 0:
@@ -684,6 +699,7 @@ class OC:
             dxdoth,
             numba.typed.List(self.model.state_vars),
             numba.typed.List(self.model.output_vars),
+            self.model.name,
         )
 
     def decrease_step(self, cost, cost0, step, control0, factor_down, cost_gradient):
@@ -722,7 +738,13 @@ class OC:
 
             # Inplace updating of models control bc. forward-sim relies on models parameters.
             self.control = update_control_with_limit(
-                self.N, self.dim_in, self.T, control0, step, cost_gradient, self.maximum_control_strength
+                self.N,
+                self.dim_in,
+                self.T,
+                control0,
+                step,
+                cost_gradient,
+                self.maximum_control_strength,
             )
             self.update_input()
 
@@ -738,7 +760,13 @@ class OC:
                 # cost.
                 step = 0.0  # For later analysis only.
                 self.control = update_control_with_limit(
-                    self.N, self.dim_in, self.T, control0, 0.0, np.zeros(control0.shape), self.maximum_control_strength
+                    self.N,
+                    self.dim_in,
+                    self.T,
+                    control0,
+                    0.0,
+                    np.zeros(control0.shape),
+                    self.maximum_control_strength,
                 )
                 self.update_input()
 
@@ -783,7 +811,13 @@ class OC:
 
             # Inplace updating of models control bc. forward-sim relies on models parameters
             self.control = update_control_with_limit(
-                self.N, self.dim_in, self.T, control0, step, cost_gradient, self.maximum_control_strength
+                self.N,
+                self.dim_in,
+                self.T,
+                control0,
+                step,
+                cost_gradient,
+                self.maximum_control_strength,
             )
             self.update_input()
 
@@ -793,7 +827,13 @@ class OC:
                 logging.info("Increasing step encountered NAN.")
                 step /= factor_up  # Undo the last step update by inverse operation.
                 self.control = update_control_with_limit(
-                    self.N, self.dim_in, self.T, control0, step, cost_gradient, self.maximum_control_strength
+                    self.N,
+                    self.dim_in,
+                    self.T,
+                    control0,
+                    step,
+                    cost_gradient,
+                    self.maximum_control_strength,
                 )
                 self.update_input()
                 break
@@ -808,7 +848,13 @@ class OC:
                     # then) and exit.
                     step /= factor_up  # Undo the last step update by inverse operation.
                     self.control = update_control_with_limit(
-                        self.N, self.dim_in, self.T, control0, step, cost_gradient, self.maximum_control_strength
+                        self.N,
+                        self.dim_in,
+                        self.T,
+                        control0,
+                        step,
+                        cost_gradient,
+                        self.maximum_control_strength,
                     )
                     self.update_input()
                     break
@@ -851,7 +897,13 @@ class OC:
         while True:  # Reduce the step size, if numerical instability occurs in the forward-simulation.
             # inplace updating of models control bc. forward-sim relies on models parameters
             self.control = update_control_with_limit(
-                self.N, self.dim_in, self.T, control0, step, cost_gradient, self.maximum_control_strength
+                self.N,
+                self.dim_in,
+                self.T,
+                control0,
+                step,
+                cost_gradient,
+                self.maximum_control_strength,
             )
             self.update_input()
 
@@ -910,7 +962,13 @@ class OC:
         self.control_interval = convert_interval(self.control_interval, self.T)
 
         self.control = update_control_with_limit(
-            self.N, self.dim_in, self.T, self.control, 0.0, np.zeros(self.control.shape), self.maximum_control_strength
+            self.N,
+            self.dim_in,
+            self.T,
+            self.control,
+            0.0,
+            np.zeros(self.control.shape),
+            self.maximum_control_strength,
         )  # To avoid issues in repeated executions.
         self.control = limit_control_to_interval(self.N, self.dim_in, self.T, self.control, self.control_interval)
 
