@@ -233,9 +233,7 @@ class Model:
             # check if model is safe for chunkwise integration
             # and whether sampling_dt is compatible with duration and chunksize
             self.checkChunkwise(chunksize)
-            if bold and not self.boldInitialized:
-                logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
-                bold = False
+
             self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
 
         # check if there was a problem with the simulated data
