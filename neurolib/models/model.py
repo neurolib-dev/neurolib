@@ -596,11 +596,9 @@ class Model:
         assert len(timeDictKey) > 0, f"No time array found (starting with t) in output group {group}."
         t = outputDict[timeDictKey].copy()
         del outputDict[timeDictKey]
-        outputs = []
-        outputNames = []
-        for key, value in outputDict.items():
-            outputNames.append(key)
-            outputs.append(value)
+
+        outputNames, outputs = zip(*outputDict.items())
+        outputNames = list(outputNames)
 
         nNodes = outputs[0].shape[0]
         nodes = list(range(nNodes))
