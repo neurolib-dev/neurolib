@@ -222,9 +222,9 @@ class Model:
         chunkwise = chunkwise if chunksize is None else True
 
         if chunkwise is False:
-            self.integrate(append_outputs=append, simulate_bold=bold)
             if continue_run:
                 self.setInitialValuesToLastState()
+            self.integrate(append_outputs=append, simulate_bold=bold)
 
         else:
             if chunksize is None:
