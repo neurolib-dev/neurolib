@@ -203,7 +203,7 @@ class Model:
         :type chunksize: int, optional
         :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
         :type bold: bool, optional
-        :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False
         :type append: bool, optional
         :param continue_run: continue a simulation by using the initial values from a previous simulation
         :type continue_run: bool
@@ -256,7 +256,7 @@ class Model:
     def integrate(self, append_outputs=False, simulate_bold=False):
         """Calls each models `integration` function and saves the state and the outputs of the model.
 
-        :param append: append the chunkwise outputs to the outputs attribute, defaults to False, defaults to False
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False
         :type append: bool, optional
         """
         # run integration
