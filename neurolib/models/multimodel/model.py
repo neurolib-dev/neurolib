@@ -78,9 +78,7 @@ class MultiModel(Model):
         if isinstance(self.model_instance, Node):
             params.update({"N": 1, "Cmat": np.zeros((1, 1))})
         else:
-            params.update(
-                {"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(float)}
-            )
+            params.update({"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(float)})
         return params
 
     def _sync_model_params(self):
@@ -205,9 +203,6 @@ class MultiModel(Model):
             return_xarray=True,
         )
         self.storeOutputsAndStates(result, append=append_outputs)
-        # force bold if params['bold'] == True
-        if self.params.get("bold", False):
-            simulate_bold = True
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:

@@ -172,9 +172,6 @@ class Model:
         # check dt / sampling_dt
         self.setSamplingDt()
 
-        # force bold if params['bold'] == True
-        if self.params.get("bold"):
-            initializeBold = True
         # set up the bold model, if it didn't happen yet
         if initializeBold and not self.boldInitialized:
             self.initializeBold()
@@ -267,10 +264,6 @@ class Model:
         t, *variables = self.integration(self.params)
         self.storeOutputsAndStates(t, variables, append=append_outputs)
 
-        # force bold if params['bold'] == True
-        if self.params.get("bold"):
-            simulate_bold = True
-
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
             self.simulateBold(t, variables, append=True)
@@ -311,7 +304,7 @@ class Model:
         self.state = dotdict({})
         self.outputs = dotdict({})
         # reinitialize bold model
-        if self.params.get("bold"):
+        if self.boldInitialized:
             self.initializeBold()
 
     def storeOutputsAndStates(self, t, variables, append=False):
