@@ -70,41 +70,42 @@ class Model:
         """Gets the default output of the model and simulates the BOLD model.
         Adds the simulated BOLD signal to outputs.
         """
-        if self.boldInitialized:
-            # first we loop through all state variables
-            for svn, sv in zip(self.state_vars, variables):
-                # the default output is used as the input for the bold model
-                if svn == self.default_output:
-                    bold_input = sv[:, self.startindt :]
-                    # logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
-                    if bold_input.shape[1] >= self.boldModel.samplingRate_NDt:
-                        # only if the length of the output has a zero mod to the sampling rate,
-                        # the downsampled output from the boldModel can correctly appended to previous data
-                        # so: we are lazy here and simply disable appending in that case ...
-                        if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
-                            append = False
-                            logging.warn(
-                                f"Output size {bold_input.shape[1]} is not a multiple of BOLD sampling length { self.boldModel.samplingRate_NDt}, will not append data."
-                            )
-                        logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
-
-                        # transform bold input according to self.boldInputTransform
-                        if self.boldInputTransform:
-                            bold_input = self.boldInputTransform(bold_input)
-
-                        # simulate bold model
-                        self.boldModel.run(bold_input, append=append)
-
-                        t_BOLD = self.boldModel.t_BOLD
-                        BOLD = self.boldModel.BOLD
-                        self.setOutput("BOLD.t_BOLD", t_BOLD)
-                        self.setOutput("BOLD.BOLD", BOLD)
-                    else:
-                        logging.warn(
-                            f"Will not simulate BOLD if output {bold_input.shape[1]*self.params['dt']} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
-                        )
-        else:
+        if not self.boldInitialized:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
+            return
+
+        # first we loop through all state variables
+        for svn, sv in zip(self.state_vars, variables):
+            # the default output is used as the input for the bold model
+            if svn == self.default_output:
+                bold_input = sv[:, self.startindt :]
+                # logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
+                if bold_input.shape[1] >= self.boldModel.samplingRate_NDt:
+                    # only if the length of the output has a zero mod to the sampling rate,
+                    # the downsampled output from the boldModel can correctly appended to previous data
+                    # so: we are lazy here and simply disable appending in that case ...
+                    if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
+                        append = False
+                        logging.warn(
+                            f"Output size {bold_input.shape[1]} is not a multiple of BOLD sampling length { self.boldModel.samplingRate_NDt}, will not append data."
+                        )
+                    logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+
+                    # transform bold input according to self.boldInputTransform
+                    if self.boldInputTransform:
+                        bold_input = self.boldInputTransform(bold_input)
+
+                    # simulate bold model
+                    self.boldModel.run(bold_input, append=append)
+
+                    t_BOLD = self.boldModel.t_BOLD
+                    BOLD = self.boldModel.BOLD
+                    self.setOutput("BOLD.t_BOLD", t_BOLD)
+                    self.setOutput("BOLD.BOLD", BOLD)
+                else:
+                    logging.warn(
+                        f"Will not simulate BOLD if output {bold_input.shape[1]*self.params['dt']} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
+                    )
 
     def checkChunkwise(self, chunksize):
         """Checks if the model fulfills requirements for chunkwise simulation.
