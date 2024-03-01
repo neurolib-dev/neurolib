@@ -212,18 +212,18 @@ class Model:
         if append_outputs is not None:
             append = append_outputs
 
-        # if a previous run is not to be continued clear the model's state
-        if continue_run is False:
-            self.clearModelState()
-
         self.initializeRun(initializeBold=bold)
+
+        # if a previous run is not to be continued clear the model's state
+        if continue_run:
+            self.setInitialValuesToLastState()
+        else:
+            self.clearModelState()
 
         # enable chunkwise if chunksize is set
         chunkwise = chunkwise if chunksize is None else True
 
         if chunkwise is False:
-            if continue_run:
-                self.setInitialValuesToLastState()
             self.integrate(append_outputs=append, simulate_bold=bold)
 
         else:
