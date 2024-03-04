@@ -224,8 +224,12 @@ def timeIntegration_elementwise(
         inh_new = jnp.clip(inh_history[:, -1] + dt * inh_rhs, 0, 1)
 
         # Update Ornstein-Uhlenbeck process for noise
-        exc_ou = exc_ou + (exc_ou_mean - exc_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[:, i]  # mV/ms
-        inh_ou = inh_ou + (inh_ou_mean - inh_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[:, i]  # mV/ms
+        exc_ou = (
+            exc_ou + (exc_ou_mean - exc_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_exc[:, i - startind]
+        )  # mV/ms
+        inh_ou = (
+            inh_ou + (inh_ou_mean - inh_ou) * dt / tau_ou + sigma_ou * sqrt_dt * noise_inh[:, i - startind]
+        )  # mV/ms
 
         return (
             (
