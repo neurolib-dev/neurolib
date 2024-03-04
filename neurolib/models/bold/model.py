@@ -50,7 +50,6 @@ class BOLDModel:
         BOLD_chunk, self.X_BOLD, self.F_BOLD, self.Q_BOLD, self.V_BOLD = simulateBOLD(
             activity,
             self.dt * 1e-3,
-            10000 * np.ones((self.N,)),
             X=self.X_BOLD,
             F=self.F_BOLD,
             Q=self.Q_BOLD,

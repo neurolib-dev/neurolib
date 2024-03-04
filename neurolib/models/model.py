@@ -66,7 +66,7 @@ class Model:
         self.boldInitialized = True
         # logging.info(f"{self.name}: BOLD model initialized.")
 
-    def simulateBold(self, t, variables, append=False):
+    def simulateBold(self, variables, append=False):
         """Gets the default output of the model and simulates the BOLD model.
         Adds the simulated BOLD signal to outputs.
         """
@@ -265,7 +265,7 @@ class Model:
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
-            self.simulateBold(t, variables, append=append_outputs)
+            self.simulateBold(variables, append=append_outputs)
 
     def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
