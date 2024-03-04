@@ -64,7 +64,7 @@ def timeIntegration(params):
     else:
         # Interareal connection delays, Dmat(i,j) Connnection from jth node to ith (ms)
         Dmat = mu.computeDelayMatrix(lengthMat, signalV)
-        Dmat = jnp.where(jnp.eye(N) == 1, 0, Dmat)
+        Dmat = Dmat.at[jnp.diag_indices(N)].set(0)
     Dmat_ndt = jnp.around(Dmat / dt).astype(int)  # delay matrix in multiples of dt
 
     # ------------------------------------------------------------------------
@@ -76,8 +76,8 @@ def timeIntegration(params):
     startind = max_global_delay + 1  # timestep to start integration at
 
     # noise variable
-    exc_ou = params["exc_ou"].copy()
-    inh_ou = params["inh_ou"].copy()
+    exc_ou_init = params["exc_ou"].copy()
+    inh_ou_init = params["inh_ou"].copy()
 
     exc_ext_baseline = params["exc_ext_baseline"]
     inh_ext_baseline = params["inh_ext_baseline"]
@@ -122,8 +122,8 @@ def timeIntegration(params):
         c_excinh,
         c_inhexc,
         c_inhinh,
-        exc_ou,
-        inh_ou,
+        exc_ou_init,
+        inh_ou_init,
         exc_ou_mean,
         inh_ou_mean,
         tau_ou,
@@ -158,8 +158,8 @@ def timeIntegration_elementwise(
     c_excinh,
     c_inhexc,
     c_inhinh,
-    exc_ou,
-    inh_ou,
+    exc_ou_init,
+    inh_ou_init,
     exc_ou_mean,
     inh_ou_mean,
     tau_ou,
@@ -241,7 +241,7 @@ def timeIntegration_elementwise(
     # Iterating through time steps
     (exc_history, inh_history, exc_ou, inh_ou, i), (excs_new, inhs_new) = jax.lax.scan(
         update_step,
-        (exc_init, inh_init, exc_ou, inh_ou, startind),
+        (exc_init, inh_init, exc_ou_init, inh_ou_init, startind),
         xs=None,
         length=len(t),
     )
