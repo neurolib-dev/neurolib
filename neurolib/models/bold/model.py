@@ -36,12 +36,12 @@ class BOLDModel:
         self.V_BOLD = np.ones((N,))
         # Blood volume
 
-    def run(self, activity, append=False):
+    def run(self, activity):
         """Runs the Balloon-Windkessel BOLD simulation.
 
         Parameters:
             :param activity:     Neuronal firing rate in Hz
-        
+
         :param activity: Neuronal firing rate in Hz
         :type activity: numpy.ndarray
         """
@@ -67,19 +67,8 @@ class BOLDModel:
             * self.dt
         )
 
-        if self.BOLD.shape[1] == 0:
-            # add new data
-            self.t_BOLD = t_BOLD_resampled
-            self.BOLD = BOLD_resampled
-        elif append is True:
-            # append new data to old data
-            self.t_BOLD = np.hstack((self.t_BOLD, t_BOLD_resampled))
-            self.BOLD = np.hstack((self.BOLD, BOLD_resampled))
-        else:
-            # overwrite old data
-            self.t_BOLD = t_BOLD_resampled
-            self.BOLD = BOLD_resampled
-
+        self.t_BOLD = t_BOLD_resampled
+        self.BOLD = BOLD_resampled
         self.BOLD_chunk = BOLD_resampled
 
         self.idxLastT = self.idxLastT + activity.shape[1]

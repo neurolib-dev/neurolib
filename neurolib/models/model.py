@@ -93,19 +93,19 @@ class Model:
             logging.warn(
                 f"Output size {bold_input.shape[1]} is not a multiple of BOLD sampling length { self.boldModel.samplingRate_NDt}, will not append data."
             )
-        logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
+        logging.debug(f"Simulating BOLD: boldModel.run()")
 
         # transform bold input according to self.boldInputTransform
         if self.boldInputTransform:
             bold_input = self.boldInputTransform(bold_input)
 
         # simulate bold model
-        self.boldModel.run(bold_input, append=append)
+        self.boldModel.run(bold_input)
 
         t_BOLD = self.boldModel.t_BOLD
         BOLD = self.boldModel.BOLD
-        self.setOutput("BOLD.t_BOLD", t_BOLD)
-        self.setOutput("BOLD.BOLD", BOLD)
+        self.setOutput("BOLD.t_BOLD", t_BOLD, append=append)
+        self.setOutput("BOLD.BOLD", BOLD, append=append)
 
     def checkChunkwise(self, chunksize):
         """Checks if the model fulfills requirements for chunkwise simulation.
@@ -265,7 +265,7 @@ class Model:
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
-            self.simulateBold(t, variables, append=True)
+            self.simulateBold(t, variables, append=append_outputs)
 
     def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
@@ -466,25 +466,28 @@ class Model:
                 raise ValueError(f"Don't know how to truncate data of shape {data.shape}.")
 
         # subsample to sampling dt
-        if data.ndim == 1:
-            data = data[:: self.sample_every]
-        elif data.ndim == 2:
-            data = data[:, :: self.sample_every]
-        else:
-            raise ValueError(f"Don't know how to subsample data of shape {data.shape}.")
+        if data.shape[-1] >= self.params["duration"] - self.startindt:
+            if data.ndim == 1:
+                data = data[:: self.sample_every]
+            elif data.ndim == 2:
+                data = data[:, :: self.sample_every]
+            else:
+                raise ValueError(f"Don't know how to subsample data of shape {data.shape}.")
+
+        def save_leaf(node, name, data, append):
+            if name in node:
+                if data.ndim == 1 and name == "t":
+                    # special treatment for time data:
+                    # increment the time by the last recorded duration
+                    data += node[name][-1]
+                if append and data.shape[-1] != 0:
+                    data = np.hstack((node[name], data))
+            node[name] = data
+            return node
 
         # if the output is a single name (not dot.separated)
         if "." not in name:
-            # append data
-            if append and name in self.outputs:
-                # special treatment for time data:
-                # increment the time by the last recorded duration
-                if name == "t":
-                    data += self.outputs[name][-1]
-                self.outputs[name] = np.hstack((self.outputs[name], data))
-            else:
-                # save all data into output dict
-                self.outputs[name] = data
+            save_leaf(self.outputs, name, data, append)
             # set output as an attribute
             setattr(self, name, self.outputs[name])
         else:
@@ -495,18 +498,10 @@ class Model:
             for i, k in enumerate(keys):
                 # if it's the last iteration, store data
                 if i == len(keys) - 1:
-                    # TODO: this needs to be append-aware like above
-                    # if append:
-                    #     if k == "t":
-                    #         data += level[k][-1]
-                    #     level[k] = np.hstack((level[k], data))
-                    # else:
-                    #     level[k] = data
-                    level[k] = data
+                    level = save_leaf(level, k, data, append)
                 # if key is in outputs, then go deeper
                 elif k in level:
                     level = level[k]
-                    setattr(self, k, level)
                 # if it's a new key, create new nested dictionary, set attribute, then go deeper
                 else:
                     level[k] = dotdict({})
