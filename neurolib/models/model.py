@@ -180,12 +180,10 @@ class Model:
 
     def run(
         self,
-        inputs=None,
         chunkwise=False,
         chunksize=None,
         bold=False,
-        append=False,
-        append_outputs=None,
+        append_outputs=False,
         continue_run=False,
     ):
         """
@@ -204,15 +202,11 @@ class Model:
         :type chunksize: int, optional
         :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
         :type bold: bool, optional
-        :param append: append the chunkwise outputs to the outputs attribute, defaults to False. Note: BOLD outputs are always appended
-        :type append: bool, optional
+        :param append_outputs: append new and chunkwise outputs to the outputs attribute, defaults to False. Note: BOLD outputs are always appended
+        :type append_outputs: bool, optional
         :param continue_run: continue a simulation by using the initial values from a previous simulation
         :type continue_run: bool
         """
-        # TODO: legacy argument support
-        if append_outputs is not None:
-            append = append_outputs
-
         self.initializeRun(initializeBold=bold)
 
         # if a previous run is not to be continued clear the model's state
@@ -225,7 +219,7 @@ class Model:
         chunkwise = chunkwise if chunksize is None else True
 
         if chunkwise is False:
-            self.integrate(append_outputs=append, simulate_bold=bold)
+            self.integrate(append_outputs=append_outputs, simulate_bold=bold)
 
         else:
             if chunksize is None:
@@ -235,7 +229,7 @@ class Model:
             # and whether sampling_dt is compatible with duration and chunksize
             self.checkChunkwise(chunksize)
 
-            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
+            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append_outputs)
 
         # check if there was a problem with the simulated data
         self.checkOutputs()

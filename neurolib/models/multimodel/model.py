@@ -126,16 +126,11 @@ class MultiModel(Model):
         chunkwise=False,
         chunksize=None,
         bold=False,
-        append=False,
-        append_outputs=None,
+        append_outputs=False,
         continue_run=False,
         noise_input=None,
     ):
         self._update_model_params()
-
-        # TODO: legacy argument support
-        if append_outputs is not None:
-            append = append_outputs
 
         # if a previous run is not to be continued clear the model's state
         if continue_run:
@@ -146,7 +141,7 @@ class MultiModel(Model):
         self.initializeRun(initializeBold=bold)
 
         if chunkwise is False:
-            self.integrate(append_outputs=append, simulate_bold=bold, noise_input=noise_input)
+            self.integrate(append_outputs=append_outputs, simulate_bold=bold, noise_input=noise_input)
 
         else:
             if chunksize is None:
@@ -156,7 +151,7 @@ class MultiModel(Model):
             if bold and not self.boldInitialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
-            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
+            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append_outputs)
 
         # check if there was a problem with the simulated data
         self.checkOutputs()
