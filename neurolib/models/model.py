@@ -204,7 +204,7 @@ class Model:
         :type chunksize: int, optional
         :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
         :type bold: bool, optional
-        :param append: append the chunkwise outputs to the outputs attribute, defaults to False
+        :param append: append the chunkwise outputs to the outputs attribute, defaults to False. Note: BOLD outputs are always appended
         :type append: bool, optional
         :param continue_run: continue a simulation by using the initial values from a previous simulation
         :type continue_run: bool
@@ -267,7 +267,7 @@ class Model:
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
             bold_variable = self.get_bold_variable(variables)
-            self.simulateBold(bold_variable, append=append_outputs)
+            self.simulateBold(bold_variable, append=True)
 
     def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.

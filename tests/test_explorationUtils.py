@@ -41,7 +41,7 @@ class TestExplorationUtils(unittest.TestCase):
             model=model, parameterSpace=parameters, filename=f"test_exploration_utils_{randomString(20)}.hdf"
         )
 
-        search.run(chunkwise=True, bold=True, append_outputs=True)
+        search.run(chunkwise=True, bold=True)
 
         search.loadResults()
 
