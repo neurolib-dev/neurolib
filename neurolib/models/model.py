@@ -66,7 +66,11 @@ class Model:
         self.boldInitialized = True
         # logging.info(f"{self.name}: BOLD model initialized.")
 
-    def simulateBold(self, variables, append=False):
+    def get_bold_variable(self, variables):
+        default_index = self.state_vars.index(self.default_output)
+        return variables[default_index]
+
+    def simulateBold(self, bold_variable, append=False):
         """Gets the default output of the model and simulates the BOLD model.
         Adds the simulated BOLD signal to outputs.
         """
@@ -74,10 +78,7 @@ class Model:
             logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
             return
 
-        default_index = self.state_vars.index(self.default_output)
-        sv = variables[default_index]
-
-        bold_input = sv[:, self.startindt :]
+        bold_input = bold_variable[:, self.startindt :]
         # logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
         if not bold_input.shape[1] >= self.boldModel.samplingRate_NDt:
             logging.warn(
@@ -265,7 +266,8 @@ class Model:
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
-            self.simulateBold(variables, append=append_outputs)
+            bold_variable = self.get_bold_variable(variables)
+            self.simulateBold(bold_variable, append=append_outputs)
 
     def integrateChunkwise(self, chunksize, bold=False, append_outputs=False):
         """Repeatedly calls the chunkwise integration for the whole duration of the simulation.
@@ -327,6 +329,8 @@ class Model:
 
     def setInitialValuesToLastState(self):
         """Reads the last state of the model and sets the initial conditions to that state for continuing a simulation."""
+        if not hasattr(self, "t"):
+            raise ValueError("You tried using continue_run=True on the first run.")
         for iv, sv in zip(self.init_vars, self.state_vars):
             # if state variables are one-dimensional (in space only)
             if (self.state[sv].ndim == 0) or (self.state[sv].ndim == 1):
