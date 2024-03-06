@@ -2,7 +2,7 @@ import numpy as np
 import numba
 
 
-def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
+def simulateBOLD(Z, dt, voxelCounts=None, X=None, F=None, Q=None, V=None):
     """Simulate BOLD activity using the Balloon-Windkessel model.
     See Friston 2000, Friston 2003 and Deco 2013 for reference on how the BOLD signal is simulated.
     The returned BOLD signal should be downsampled to be comparable to a recorded fMRI signal.
@@ -11,7 +11,7 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
     :type Z: numpy.ndarray
     :param dt: dt of input activity in s
     :type dt: float
-    :param voxelCounts: Number of voxels in each region (not used yet!)
+    :param voxelCounts: Number of voxels in each region (not used yet!) # TODO
     :type voxelCounts: numpy.ndarray
     :param X: Initial values of Vasodilatory signal, defaults to None
     :type X: numpy.ndarray, optional
@@ -27,9 +27,6 @@ def simulateBOLD(Z, dt, voxelCounts, X=None, F=None, Q=None, V=None):
     """
 
     N = np.shape(Z)[0]
-
-    if "voxelCounts" not in globals():
-        voxelCounts = np.ones((N,))
 
     # Balloon-Windkessel model parameters (from Friston 2003):
     # Friston paper: Nonlinear responses in fMRI: The balloon model, Volterra kernels, and other hemodynamics

@@ -78,9 +78,7 @@ class MultiModel(Model):
         if isinstance(self.model_instance, Node):
             params.update({"N": 1, "Cmat": np.zeros((1, 1))})
         else:
-            params.update(
-                {"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(float)}
-            )
+            params.update({"N": len(self.model_instance.nodes), "Cmat": self.model_instance.connectivity.astype(float)})
         return params
 
     def _sync_model_params(self):
@@ -128,27 +126,22 @@ class MultiModel(Model):
         chunkwise=False,
         chunksize=None,
         bold=False,
-        append=False,
-        append_outputs=None,
+        append_outputs=False,
         continue_run=False,
         noise_input=None,
     ):
         self._update_model_params()
 
-        # TODO: legacy argument support
-        if append_outputs is not None:
-            append = append_outputs
-
         # if a previous run is not to be continued clear the model's state
-        if continue_run is False:
+        if continue_run:
+            self.setInitialValuesToLastState()
+        else:
             self.clearModelState()
 
         self.initializeRun(initializeBold=bold)
 
         if chunkwise is False:
-            self.integrate(append_outputs=append, simulate_bold=bold, noise_input=noise_input)
-            if continue_run:
-                self.setInitialValuesToLastState()
+            self.integrate(append_outputs=append_outputs, simulate_bold=bold, noise_input=noise_input)
 
         else:
             if chunksize is None:
@@ -158,7 +151,7 @@ class MultiModel(Model):
             if bold and not self.boldInitialized:
                 logging.warn(f"{self.name}: BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
                 bold = False
-            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append)
+            self.integrateChunkwise(chunksize=chunksize, bold=bold, append_outputs=append_outputs)
 
         # check if there was a problem with the simulated data
         self.checkOutputs()
@@ -205,15 +198,14 @@ class MultiModel(Model):
             return_xarray=True,
         )
         self.storeOutputsAndStates(result, append=append_outputs)
-        # force bold if params['bold'] == True
-        if self.params.get("bold", False):
-            simulate_bold = True
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
-            self.simulateBold(result[self.default_output].values.T, append=True)
+            self.simulateBold(result[self.default_output].values.T, append=append_outputs)
 
     def setInitialValuesToLastState(self):
+        if not hasattr(self, "t"):
+            raise ValueError("You tried using continue_run=True on the first run.")
         # set start t for next run for the last value now
         self.start_t = self.t[-1]
         new_initial_state = np.zeros((self.model_instance.initial_state.shape[0], self.maxDelay + 1))
@@ -236,44 +228,10 @@ class MultiModel(Model):
 
     def storeOutputsAndStates(self, results, append):
         # save time array
-        self.setOutput("t", results.time.values + self.start_t, append=append, removeICs=False)
-        self.setStateVariables("t", results.time.values + self.start_t)
+        self.setOutput("t", results.time.values, append=append, removeICs=False)
+        self.setStateVariables("t", results.time.values)
         # save outputs
         for variable in results:
             if variable in self.output_vars:
                 self.setOutput(variable, results[variable].values.T, append=append, removeICs=False)
             self.setStateVariables(variable, results[variable].values.T)
-
-    def simulateBold(self, bold_variable, append):
-        if self.boldInitialized:
-            bold_input = bold_variable[:, self.startindt :]
-            if bold_input.shape[1] >= self.boldModel.samplingRate_NDt:
-                # only if the length of the output has a zero mod to the sampling rate,
-                # the downsampled output from the boldModel can correctly appended to previous data
-                # so: we are lazy here and simply disable appending in that case ...
-                if not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
-                    append = False
-                    logging.warn(
-                        f"Output size {bold_input.shape[1]} is not a multiple of BOLD sample length "
-                        f"{ self.boldModel.samplingRate_NDt}, will not append data."
-                    )
-                logging.debug(f"Simulating BOLD: boldModel.run(append={append})")
-
-                # transform bold input according to self.boldInputTransform
-                if self.boldInputTransform:
-                    bold_input = self.boldInputTransform(bold_input)
-
-                # simulate bold model
-                self.boldModel.run(bold_input, append=append)
-
-                t_BOLD = self.boldModel.t_BOLD
-                BOLD = self.boldModel.BOLD
-                self.setOutput("BOLD.t_BOLD", t_BOLD)
-                self.setOutput("BOLD.BOLD", BOLD)
-            else:
-                logging.warn(
-                    f"Will not simulate BOLD if output {bold_input.shape[1]*self.params['dt']} not at least of duration"
-                    f" {self.boldModel.samplingRate_NDt*self.params['dt']}"
-                )
-        else:
-            logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
