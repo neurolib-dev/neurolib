@@ -57,7 +57,8 @@ def timeIntegration(params):
     lengthMat = params["lengthMat"]
     signalV = params["signalV"]
 
-    key = params["key"]
+    key, _ = jax.random.split(params["key"])
+    params["key"] = key
 
     if N == 1:
         Dmat = jnp.zeros((N, N))
