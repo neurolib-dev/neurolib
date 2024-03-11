@@ -192,7 +192,7 @@ class Model:
         The model can be run in three different ways:
         1) `model.run()` starts a new run.
         2) `model.run(chunkwise=True)` runs the simulation in chunks of length `chunksize`.
-        3) `mode.run(continue_run=True)` continues the simulation of a previous run.
+        3) `mode.run(continue_run=True)` continues the simulation of a previous run. This has no effect during the first run.
 
         :param inputs: list of inputs to the model, must have the same order as model.input_vars. Note: no sanity check is performed for performance reasons. Take care of the inputs yourself.
         :type inputs: list[np.ndarray|]
@@ -202,9 +202,9 @@ class Model:
         :type chunksize: int, optional
         :param bold: simulate BOLD signal (only for chunkwise integration), defaults to False
         :type bold: bool, optional
-        :param append_outputs: append new and chunkwise outputs to the outputs attribute, defaults to False. Note: BOLD outputs are always appended
+        :param append_outputs: append new and chunkwise outputs to the outputs attribute, defaults to False. Note: BOLD outputs are always appended.
         :type append_outputs: bool, optional
-        :param continue_run: continue a simulation by using the initial values from a previous simulation
+        :param continue_run: continue a simulation by using the initial values from a previous simulation. This has no effect during the first run.
         :type continue_run: bool
         """
         self.initializeRun(initializeBold=bold)
@@ -323,8 +323,11 @@ class Model:
 
     def setInitialValuesToLastState(self):
         """Reads the last state of the model and sets the initial conditions to that state for continuing a simulation."""
-        if not hasattr(self, "t"):
-            raise ValueError("You tried using continue_run=True on the first run.")
+        if not all([sv in self.state for sv in self.state_vars]):
+            logging.warning(
+                f"`setInitialValuesToLastState` was called, but the state dict is incomplete. This is probably caused by `continue_run=True` on the first model run."
+            )
+            return
         for iv, sv in zip(self.init_vars, self.state_vars):
             # if state variables are one-dimensional (in space only)
             if (self.state[sv].ndim == 0) or (self.state[sv].ndim == 1):
