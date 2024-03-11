@@ -30,7 +30,7 @@ def timeIntegration(params):
     a_inh = params["a_inh"]
     b_inh = params["b_inh"]
     d_inh = params["d_inh"]
-    tau_inh = params["tau_exc"]
+    tau_inh = params["tau_inh"]
     w_inh = params["w_inh"]
     inh_current_baseline = params["inh_current_baseline"]
 
