@@ -59,8 +59,6 @@ class MultiModel(Model):
         self.boldInitialized = False
         self.params["sampling_dt"] = self.params["sampling_dt"] or self.params["dt"]
 
-        self.start_t = 0.0
-
         logging.info(f"{self.name}: Model initialized.")
 
     def _set_model_params(self):
@@ -201,13 +199,11 @@ class MultiModel(Model):
 
         # bold simulation after integration
         if simulate_bold and self.boldInitialized:
-            self.simulateBold(result[self.default_output].values.T, append=append_outputs)
+            self.simulateBold(result[self.default_output].values.T, append=True)
 
     def setInitialValuesToLastState(self):
         if not hasattr(self, "t"):
             raise ValueError("You tried using continue_run=True on the first run.")
-        # set start t for next run for the last value now
-        self.start_t = self.t[-1]
         new_initial_state = np.zeros((self.model_instance.initial_state.shape[0], self.maxDelay + 1))
         total_vars_counter = 0
         for node_idx, node_vars in enumerate(self.state_vars):
@@ -216,12 +212,6 @@ class MultiModel(Model):
                 total_vars_counter += 1
         # set initial state
         self.model_instance.initial_state = new_initial_state
-
-    def clearModelState(self):
-        # set start_t to zero again
-        self.start_t = 0.0
-        # `clearModelState` as per base class
-        super().clearModelState()
 
     def integrateChunkwise(self, chunksize, bold, append_outputs):
         raise NotImplementedError("for now...")

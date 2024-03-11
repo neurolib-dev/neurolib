@@ -70,7 +70,7 @@ class Model:
         default_index = self.state_vars.index(self.default_output)
         return variables[default_index]
 
-    def simulateBold(self, bold_variable, append=False):
+    def simulateBold(self, bold_variable, append=True):
         """Gets the default output of the model and simulates the BOLD model.
         Adds the simulated BOLD signal to outputs.
         """
