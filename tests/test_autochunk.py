@@ -38,7 +38,7 @@ class AutochunkTests(unittest.TestCase):
                 # chunkwise run
                 m2 = model()
                 m2.params = pars_bak.copy()
-                m2.run(chunkwise=True, chunksize=chunksize, append=True)
+                m2.run(chunkwise=True, chunksize=chunksize, append_outputs=True)
                 # check
                 self.assertTupleEqual(m1.output.shape, m2.output.shape)
                 difference = np.sum(np.abs(m1.output - m2.output))
@@ -61,7 +61,7 @@ class AutochunkTests(unittest.TestCase):
                     # chunkwise run
                     m2 = model(Cmat=ds.Cmat, Dmat=ds.Dmat)
                     m2.params = pars_bak.copy()
-                    m2.run(chunkwise=True, chunksize=chunksize, append=True)
+                    m2.run(chunkwise=True, chunksize=chunksize, append_outputs=True)
                     # check
                     self.assertTupleEqual(m1.output.shape, m2.output.shape)
                     difference = np.sum(np.abs(m1.output - m2.output))
