@@ -203,9 +203,6 @@ class MultiModel(Model):
 
     def setInitialValuesToLastState(self):
         if not self.state:
-            logging.warning(
-                f"`setInitialValuesToLastState` was called, but the state dict is empty. This is probably caused by `continue_run=True` on the first model run."
-            )
             return
         new_initial_state = np.zeros((self.model_instance.initial_state.shape[0], self.maxDelay + 1))
         total_vars_counter = 0

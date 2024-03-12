@@ -324,9 +324,6 @@ class Model:
     def setInitialValuesToLastState(self):
         """Reads the last state of the model and sets the initial conditions to that state for continuing a simulation."""
         if not all([sv in self.state for sv in self.state_vars]):
-            logging.warning(
-                f"`setInitialValuesToLastState` was called, but the state dict is incomplete. This is probably caused by `continue_run=True` on the first model run."
-            )
             return
         for iv, sv in zip(self.init_vars, self.state_vars):
             # if state variables are one-dimensional (in space only)
