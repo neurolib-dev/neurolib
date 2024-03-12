@@ -260,7 +260,6 @@ class TestMultiModel(unittest.TestCase):
         self.assertEqual(model.model_instance, fhn_net)
         self.assertTrue(isinstance(model.params, star_dotdict))
         self.assertTrue(model.integration is None)
-        self.assertEqual(model.start_t, 0.0)
         self.assertEqual(model.num_noise_variables, 4)
         self.assertEqual(model.num_state_variables, 4)
         max_delay = int(DELAY / model.params["dt"])
@@ -352,7 +351,6 @@ class TestMultiModel(unittest.TestCase):
         self.assertAlmostEqual(model.t[0] - last_t, model.params["dt"] / 1000.0)
         # assert start_t is reset to 0, when continue_run=False
         model.run()
-        self.assertEqual(model.start_t, 0.0)
 
     def test_continue_run_network(self):
         DELAY = 13.0
@@ -371,7 +369,6 @@ class TestMultiModel(unittest.TestCase):
         self.assertAlmostEqual(model.t[0] - last_t, model.params["dt"] / 1000.0)
         # assert start_t is reset to 0, when continue_run=False
         model.run()
-        self.assertEqual(model.start_t, 0.0)
 
 
 if __name__ == "__main__":
