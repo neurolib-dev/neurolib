@@ -26,13 +26,14 @@ class WWModel(Model):
     name = "wongwang"
     description = "Wong-Wang neural mass model"
 
-    init_vars = ["r_exc", "r_inh", "ses_init", "sis_init", "exc_ou", "inh_ou"]
+    init_vars = ["r_exc_init", "r_inh_init", "se_init", "si_init", "exc_ou", "inh_ou"]
     state_vars = ["r_exc", "r_inh", "se", "si", "exc_ou", "inh_ou"]
     output_vars = ["r_exc", "r_inh", "se", "si"]
     default_output = "r_exc"
+    input_vars = ["exc_current", "inh_current"]
+    default_input = "exc_current"
 
     def __init__(self, params=None, Cmat=None, Dmat=None, seed=None):
-
         self.Cmat = Cmat
         self.Dmat = Dmat
         self.seed = seed

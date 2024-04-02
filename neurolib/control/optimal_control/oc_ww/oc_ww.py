@@ -1,16 +1,22 @@
 import numba
 
 from neurolib.control.optimal_control.oc import OC
-from neurolib.models.wc.timeIntegration import compute_hx, compute_hx_nw, Duh, Dxdoth
+from neurolib.models.ww.timeIntegration import (
+    compute_hx,
+    compute_hx_min1,
+    compute_hx_nw,
+    Duh,
+    Dxdoth,
+)
 
 
-class OcWc(OC):
-    """Class for optimal control specific to neurolib's implementation of the two-population Wilson-Cowan model
-            ("WCmodel").
+class OcWw(OC):
+    """Class for optimal control specific to neurolib's implementation of the two-population Wong-Wang model
+            ("WWmodel").
 
-    :param model: Instance of Wilson-Cowan model (can describe a single Wilson-Cowan node or a network of coupled
-                  Wilson-Cowan nodes.
-    :type model: neurolib.models.wc.model.WCModel
+    :param model: Instance of Wong-Wang model (can describe a single Wong-Wang node or a network of coupled
+                  Wong-Wang nodes.
+    :type model: neurolib.models.ww.model.WWModel
     """
 
     def __init__(
@@ -20,7 +26,6 @@ class OcWc(OC):
         weights=None,
         print_array=[],
         cost_interval=(None, None),
-        control_interval=(None, None),
         cost_matrix=None,
         control_matrix=None,
         M=1,
@@ -33,7 +38,6 @@ class OcWc(OC):
             weights=weights,
             print_array=print_array,
             cost_interval=cost_interval,
-            control_interval=control_interval,
             cost_matrix=cost_matrix,
             control_matrix=control_matrix,
             M=M,
@@ -41,7 +45,7 @@ class OcWc(OC):
             validate_per_step=validate_per_step,
         )
 
-        assert self.model.name == "wc"
+        assert self.model.name == "wongwang"
 
     def compute_dxdoth(self):
         """Derivative of systems dynamics wrt. change of systems variables."""
@@ -53,18 +57,22 @@ class OcWc(OC):
         :rtype:     tuple
         """
         return (
-            self.model.params.tau_exc,
-            self.model.params.tau_inh,
             self.model.params.a_exc,
+            self.model.params.b_exc,
+            self.model.params.d_exc,
+            self.model.params.tau_exc,
+            self.model.params.gamma_exc,
+            self.model.params.w_exc,
+            self.model.params.exc_current_baseline,
             self.model.params.a_inh,
-            self.model.params.mu_exc,
-            self.model.params.mu_inh,
-            self.model.params.c_excexc,
-            self.model.params.c_inhexc,
-            self.model.params.c_excinh,
-            self.model.params.c_inhinh,
-            self.model.params.exc_ext_baseline,
-            self.model.params.inh_ext_baseline,
+            self.model.params.b_inh,
+            self.model.params.d_inh,
+            self.model.params.tau_inh,
+            self.model.params.w_inh,
+            self.model.params.inh_current_baseline,
+            self.model.params.J_NMDA,
+            self.model.params.J_I,
+            self.model.params.w_ee,
         )
 
     def Duh(self):
@@ -83,14 +91,14 @@ class OcWc(OC):
             self.dim_in,
             self.dim_vars,
             self.T,
-            self.control[:, self.state_vars_dict["exc"], :],
-            self.control[:, self.state_vars_dict["inh"], :],
-            xs[:, self.state_vars_dict["exc"], :],
-            xs[:, self.state_vars_dict["inh"], :],
+            self.control[:, self.state_vars_dict["r_exc"], :],
+            self.control[:, self.state_vars_dict["r_inh"], :],
+            xs[:, self.state_vars_dict["se"], :],
+            xs[:, self.state_vars_dict["si"], :],
             self.model.params.K_gl,
             self.model.params.Cmat,
             self.Dmat_ndt,
-            xsd[:, self.state_vars_dict["exc"], :],
+            xsd[:, self.state_vars_dict["se"], :],
             self.state_vars_dict,
         )
 
@@ -101,12 +109,13 @@ class OcWc(OC):
         : rtype:        List of np.ndarray, List of integers
         """
         hx = self.compute_hx()
-        return numba.typed.List([hx]), numba.typed.List([0])
+        hx_min1 = self.compute_hx_min1()
+        return numba.typed.List([hx, hx_min1]), numba.typed.List([0, -1])
 
     def compute_hx(self):
-        """Jacobians of WCModel wrt. the 'e'- and 'i'-variable for each time step.
+        """Jacobians of WwModel wrt. all variables.
 
-        :return:    N x T x 4 x 4 Jacobians.
+        :return:    N x T x 6 x 6 Jacobians.
         :rtype:     np.ndarray
         """
         return compute_hx(
@@ -120,6 +129,22 @@ class OcWc(OC):
             self.get_xs(),
             self.get_xs_delayed(),
             self.control,
+            self.state_vars_dict,
+        )
+
+    def compute_hx_min1(self):
+        """Jacobians of WWModel dse/dre and dsi/dri.
+        Dependency is in same time step, so shift by -1 in time is required for OC computation.
+
+        :return:    N x T x 6 x 6 Jacobians.
+        :rtype:     np.ndarray
+        """
+        return compute_hx_min1(
+            self.model_params,
+            self.N,
+            self.dim_vars,
+            self.T,
+            self.get_xs(),
             self.state_vars_dict,
         )
 
@@ -140,9 +165,9 @@ class OcWc(OC):
             self.N,
             self.dim_vars,
             self.T,
-            xs[:, self.state_vars_dict["exc"], :],
-            xs[:, self.state_vars_dict["inh"], :],
-            self.get_xs_delayed()[:, self.state_vars_dict["exc"], :],
-            self.control[:, self.state_vars_dict["exc"], :],
+            xs[:, self.state_vars_dict["se"], :],
+            xs[:, self.state_vars_dict["se"], :],
+            self.get_xs_delayed()[:, self.state_vars_dict["se"], :],
+            self.control[:, self.state_vars_dict["r_exc"], :],
             self.state_vars_dict,
         )
