@@ -96,12 +96,12 @@ def integrateBOLD_numba(BOLD, X, Q, F, V, Z, dt, N, rho, alpha, V0, k1, k2, k3, 
     for i in range(len(Z[0, :])):  # loop over all timesteps
         # component-wise loop for compatibilty with numba
         for j in range(N):  # loop over all areas
+            F[j] = max(F[j], EPS)
+
             X[j] = X[j] + dt * (Z[j, i] - K[j] * X[j] - Gamma[j] * (F[j] - 1))
             Q[j] = Q[j] + dt / Tau[j] * (F[j] / rho * (1 - (1 - rho) ** (1 / F[j])) - Q[j] * V[j] ** (1 / alpha - 1))
             V[j] = V[j] + dt / Tau[j] * (F[j] - V[j] ** (1 / alpha))
             F[j] = F[j] + dt * X[j]
-
-            F[j] = max(F[j], EPS)
 
             BOLD[j, i] = V0 * (k1 * (1 - Q[j]) + k2 * (1 - Q[j] / V[j]) + k3 * (1 - V[j]))
     return BOLD, X, F, Q, V
