@@ -90,7 +90,6 @@ class TestExplorationBrainNetwork(unittest.TestCase):
         model = FHNModel(Cmat=ds.Cmat, Dmat=ds.Dmat)
         model.params.duration = 10 * 1000  # ms
         model.params.dt = 0.2
-        model.params.bold = True
         parameters = ParameterSpace(
             {
                 "x_ext": [np.ones((model.params["N"],)) * a for a in np.linspace(0, 2, 2)],
