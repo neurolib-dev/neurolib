@@ -8,6 +8,10 @@ from ....utils import model_utils as mu
 
 
 def timeIntegration(params):
+    return timeIntegration_elementwise(*timeIntegration_args(params))
+
+
+def timeIntegration_args(params):
     """Sets up the parameters for time integration
 
     Return:
@@ -208,7 +212,7 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
 
-    return timeIntegration_elementwise(
+    return (
         dt,
         duration,
         filter_sigma,

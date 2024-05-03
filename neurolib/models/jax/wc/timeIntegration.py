@@ -9,6 +9,10 @@ from ....utils import model_utils as mu
 
 
 def timeIntegration(params):
+    return timeIntegration_elementwise(*timeIntegration_args(params))
+
+
+def timeIntegration_args(params):
     """Sets up the parameters for time integration in a JAX-compatible manner.
 
     :param params: Parameter dictionary of the model
@@ -98,7 +102,7 @@ def timeIntegration(params):
 
     # ------------------------------------------------------------------------
 
-    return timeIntegration_elementwise(
+    return (
         startind,
         t,
         dt,
@@ -167,6 +171,91 @@ def timeIntegration_elementwise(
     sigma_ou,
     key,
 ):
+
+    update_step = get_update_step(
+        startind,
+        t,
+        dt,
+        sqrt_dt,
+        N,
+        Cmat,
+        K_gl,
+        Dmat_ndt,
+        exc_init,
+        inh_init,
+        exc_ext_baseline,
+        inh_ext_baseline,
+        exc_ext,
+        inh_ext,
+        tau_exc,
+        tau_inh,
+        a_exc,
+        a_inh,
+        mu_exc,
+        mu_inh,
+        c_excexc,
+        c_excinh,
+        c_inhexc,
+        c_inhinh,
+        exc_ou_init,
+        inh_ou_init,
+        exc_ou_mean,
+        inh_ou_mean,
+        tau_ou,
+        sigma_ou,
+        key,
+    )
+
+    # Iterating through time steps
+    (exc_history, inh_history, exc_ou, inh_ou, i), (excs_new, inhs_new) = jax.lax.scan(
+        update_step,
+        (exc_init, inh_init, exc_ou_init, inh_ou_init, startind),
+        xs=None,
+        length=len(t),
+    )
+
+    return (
+        t,
+        jnp.concatenate((exc_init, excs_new.T), axis=1),
+        jnp.concatenate((inh_init, inhs_new.T), axis=1),
+        exc_ou,
+        inh_ou,
+    )
+
+
+def get_update_step(
+    startind,
+    t,
+    dt,
+    sqrt_dt,
+    N,
+    Cmat,
+    K_gl,
+    Dmat_ndt,
+    exc_init,
+    inh_init,
+    exc_ext_baseline,
+    inh_ext_baseline,
+    exc_ext,
+    inh_ext,
+    tau_exc,
+    tau_inh,
+    a_exc,
+    a_inh,
+    mu_exc,
+    mu_inh,
+    c_excexc,
+    c_excinh,
+    c_inhexc,
+    c_inhinh,
+    exc_ou_init,
+    inh_ou_init,
+    exc_ou_mean,
+    inh_ou_mean,
+    tau_ou,
+    sigma_ou,
+    key,
+):
     key, subkey_exc = random.split(key)
     noise_exc = random.normal(subkey_exc, (N, len(t)))
     key, subkey_inh = random.split(key)
@@ -180,7 +269,6 @@ def timeIntegration_elementwise(
     def S_I(x):
         return 1.0 / (1.0 + jnp.exp(-a_inh * (x - mu_inh)))
 
-    ### integrate ODE system:
     def update_step(state, _):
         exc_history, inh_history, exc_ou, inh_ou, i = state
 
@@ -243,18 +331,4 @@ def timeIntegration_elementwise(
             (exc_new, inh_new),
         )
 
-    # Iterating through time steps
-    (exc_history, inh_history, exc_ou, inh_ou, i), (excs_new, inhs_new) = jax.lax.scan(
-        update_step,
-        (exc_init, inh_init, exc_ou_init, inh_ou_init, startind),
-        xs=None,
-        length=len(t),
-    )
-
-    return (
-        t,
-        jnp.concatenate((exc_init, excs_new.T), axis=1),
-        jnp.concatenate((inh_init, inhs_new.T), axis=1),
-        exc_ou,
-        inh_ou,
-    )
+    return update_step
