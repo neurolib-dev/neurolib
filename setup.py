@@ -9,6 +9,9 @@ with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
+with open("requirements_rl_control.txt") as f:
+    requirements_rl_control = f.read().splitlines()
+
 setuptools.setup(
     name="neurolib",
     version="0.6.1",
@@ -27,5 +30,8 @@ setuptools.setup(
     ],
     python_requires=">=3.6",
     install_requires=requirements,
+    extras_require={
+        'rl_control': requirements_rl_control
+    }
     include_package_data=True,
 )
