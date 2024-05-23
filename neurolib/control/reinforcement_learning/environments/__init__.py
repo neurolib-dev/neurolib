@@ -1,1 +1,2 @@
 from neurolib.control.reinforcement_learning.environments.state_switching import StateSwitchingEnv
+from neurolib.control.reinforcement_learning.environments.phase_shifting import PhaseShiftingEnv

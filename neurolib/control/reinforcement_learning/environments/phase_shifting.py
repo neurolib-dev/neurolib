@@ -1,6 +1,7 @@
 from neurolib.utils.stimulus import ZeroInput
 
 import numpy as np
+import scipy
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -8,43 +9,52 @@ from gymnasium import spaces
 from neurolib.models.wc import WCModel
 
 
-class StateSwitchingEnv(gym.Env):
+class PhaseShiftingEnv(gym.Env):
 
     def __init__(
         self,
-        duration=200,
+        duration=300,
         dt=0.1,
-        target="up",
-        exc_ext_baseline=2.9,
-        inh_ext_baseline=3.3,
+        target_shift=1 * np.pi,
+        exc_ext_baseline=2.8,
+        inh_ext_baseline=1.2,
+        x_init=0.04201540010391125,
+        y_init=0.1354067401509556,
+        sigma_ou=0.0,
+        c_inhexc=16,
+        c_excinh=10,
+        c_inhinh=1,
         control_strength_loss_scale=0.005,
     ):
         self.exc_ext_baseline = exc_ext_baseline
         self.inh_ext_baseline = inh_ext_baseline
-        self.compute_up_and_down_states()
 
         self.duration = duration
         self.dt = dt
-        self.target = target
+        self.target_shift = target_shift
+        self.x_init = x_init
+        self.y_init = y_init
         self.control_strength_loss_scale = control_strength_loss_scale
 
-        assert self.target in ("up", "down")
-        if self.target == "up":
-            self.targetstate = self.upstate
-            self.initstate = self.downstate
-        elif self.target == "down":
-            self.targetstate = self.downstate
-            self.initstate = self.upstate
+        assert 0 < self.target_shift < 2 * np.pi
 
         self.model = WCModel()
         self.model.params["dt"] = self.dt
+        self.model.params["sigma_ou"] = sigma_ou
         self.model.params["duration"] = self.dt  # one step at a time
-        self.model.params["exc_init"] = np.array([[self.initstate[0]]])
-        self.model.params["inh_init"] = np.array([[self.initstate[1]]])
+        self.model.params["exc_init"] = np.array([[x_init]])
+        self.model.params["inh_init"] = np.array([[y_init]])
         self.model.params["exc_ext_baseline"] = self.exc_ext_baseline
         self.model.params["inh_ext_baseline"] = self.inh_ext_baseline
 
+        self.model.params["c_inhexc"] = c_inhexc
+        self.model.params["c_excinh"] = c_excinh
+        self.model.params["c_inhinh"] = c_inhinh
+        self.params = self.model.params.copy()
+
         self.n_steps = round(self.duration / self.dt)
+
+        self.target = self.get_target()
 
         self.observation_space = spaces.Dict(
             {
@@ -60,25 +70,24 @@ class StateSwitchingEnv(gym.Env):
             )
         )
 
-    def compute_up_and_down_states(self):
-        model = WCModel()
+    def get_target(self):
+        wc = WCModel()
+        wc.params = self.model.params.copy()
+        wc.params["duration"] = self.duration + 100.0
+        wc.run()
 
-        dt = model.params["dt"]
-        duration = 500
-        model.params["duration"] = duration
+        peaks = scipy.signal.find_peaks(wc.exc[0, :])[0]
+        p_list = []
+        for i in range(3, len(peaks)):
+            p_list.append(peaks[i] - peaks[i - 1])
+        period = np.mean(p_list) * self.dt
+        self.period = period
 
-        zero_input = ZeroInput().generate_input(duration=duration + dt, dt=dt)
-        bi_control = zero_input.copy()
-        bi_control[0, :500] = -5.0
-        bi_control[0, 2500:3000] = +5.0
+        raw = np.stack((wc.exc, wc.inh), axis=1)[0]
+        index = np.round(self.target_shift * period / (2.0 * np.pi) / self.dt).astype(int)
+        target = raw[:, index : index + np.round(1 + self.duration / self.dt, 1).astype(int)]
 
-        model.params["exc_ext_baseline"] = self.exc_ext_baseline
-        model.params["inh_ext_baseline"] = self.inh_ext_baseline
-        model.params["exc_ext"] = bi_control
-        model.params["inh_ext"] = zero_input
-        model.run()
-        self.downstate = [model.exc[0, 2000], model.inh[0, 2000]]
-        self.upstate = [model.exc[0, -1], model.inh[0, -1]]
+        return target
 
     def _get_obs(self):
         return {"exc": self.model.exc[0], "inh": self.model.inh[0]}
@@ -91,17 +100,18 @@ class StateSwitchingEnv(gym.Env):
         self.t_i = 0
         self.model.clearModelState()
 
-        self.model.params["exc_init"] = np.array([[self.initstate[0]]])
-        self.model.params["inh_init"] = np.array([[self.initstate[1]]])
-        self.model.exc = np.array([[self.initstate[0]]])
-        self.model.inh = np.array([[self.initstate[1]]])
+        self.model.params = self.params.copy()
+        self.model.exc = np.array([[self.x_init]])
+        self.model.inh = np.array([[self.y_init]])
 
         observation = self._get_obs()
         info = self._get_info()
         return observation, info
 
     def _loss(self, obs, action):
-        control_loss = abs(self.targetstate[0] - obs["exc"].item()) + abs(self.targetstate[1] - obs["inh"].item())
+        control_loss = np.sqrt(
+            (self.target[0, self.t_i] - obs["exc"].item()) ** 2 + (self.target[1, self.t_i] - obs["inh"].item()) ** 2
+        )
         control_strength_loss = np.abs(action).sum() * self.control_strength_loss_scale
         return control_loss + control_strength_loss
 
