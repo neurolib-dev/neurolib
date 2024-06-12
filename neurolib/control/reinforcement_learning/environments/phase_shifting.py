@@ -15,6 +15,7 @@ class PhaseShiftingEnv(gym.Env):
         self,
         duration=300,
         dt=0.1,
+        random_target_shift=True,
         target_shift=1 * np.pi,
         exc_ext_baseline=2.8,
         inh_ext_baseline=1.2,
@@ -24,17 +25,20 @@ class PhaseShiftingEnv(gym.Env):
         c_inhexc=16,
         c_excinh=10,
         c_inhinh=1,
-        control_strength_loss_scale=0.005,
+        l1_control_strength_loss_scale=0.01,
+        l2_control_strength_loss_scale=0.01,
     ):
         self.exc_ext_baseline = exc_ext_baseline
         self.inh_ext_baseline = inh_ext_baseline
 
         self.duration = duration
         self.dt = dt
+        self.random_target_shift = random_target_shift
         self.target_shift = target_shift
         self.x_init = x_init
         self.y_init = y_init
-        self.control_strength_loss_scale = control_strength_loss_scale
+        self.l1_control_strength_loss_scale = l1_control_strength_loss_scale
+        self.l2_control_strength_loss_scale = l2_control_strength_loss_scale
 
         assert 0 < self.target_shift < 2 * np.pi
 
@@ -88,7 +92,11 @@ class PhaseShiftingEnv(gym.Env):
         self.period = period
 
         raw = np.stack((wc.exc, wc.inh), axis=1)[0]
-        index = np.round(self.target_shift * period / (2.0 * np.pi) / self.dt).astype(int)
+        if self.random_target_shift:
+            target_shift = np.random.random() * 2 * np.pi
+        else:
+            target_shift = self.target_shift
+        index = np.round(target_shift * period / (2.0 * np.pi) / self.dt).astype(int)
         target = raw[:, index : index + np.round(1 + self.duration / self.dt, 1).astype(int)]
         self.target_time = wc.t[index : index + target.shape[1]]
         self.target_phase = (self.target_time % self.period) / self.period * 2 * np.pi
@@ -131,7 +139,9 @@ class PhaseShiftingEnv(gym.Env):
         control_loss = np.sqrt(
             (self.target[0, self.t_i] - obs["exc"][-1]) ** 2 + (self.target[1, self.t_i] - obs["inh"][-1]) ** 2
         )
-        control_strength_loss = np.abs(action).sum() * self.control_strength_loss_scale
+        control_strength_loss = np.abs(action).sum() * self.l1_control_strength_loss_scale
+        control_strength_loss += np.sqrt(np.sum(np.square(action))) * self.l2_control_strength_loss_scale
+
         return control_loss + control_strength_loss
 
     def step(self, action):

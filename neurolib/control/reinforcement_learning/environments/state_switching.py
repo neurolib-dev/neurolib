@@ -17,7 +17,8 @@ class StateSwitchingEnv(gym.Env):
         target="up",
         exc_ext_baseline=2.9,
         inh_ext_baseline=3.3,
-        control_strength_loss_scale=0.005,
+        l1_control_strength_loss_scale=0.005,
+        l2_control_strength_loss_scale=0.005,
     ):
         self.exc_ext_baseline = exc_ext_baseline
         self.inh_ext_baseline = inh_ext_baseline
@@ -26,7 +27,8 @@ class StateSwitchingEnv(gym.Env):
         self.duration = duration
         self.dt = dt
         self.target = target
-        self.control_strength_loss_scale = control_strength_loss_scale
+        self.l1_control_strength_loss_scale = l1_control_strength_loss_scale
+        self.l2_control_strength_loss_scale = l2_control_strength_loss_scale
 
         assert self.target in ("up", "down")
         if self.target == "up":
@@ -102,7 +104,8 @@ class StateSwitchingEnv(gym.Env):
 
     def _loss(self, obs, action):
         control_loss = abs(self.targetstate[0] - obs["exc"].item()) + abs(self.targetstate[1] - obs["inh"].item())
-        control_strength_loss = np.abs(action).sum() * self.control_strength_loss_scale
+        control_strength_loss = np.abs(action).sum() * self.l1_control_strength_loss_scale
+        control_strength_loss += np.sqrt(np.sum(action**2)) * self.l2_control_strength_loss_scale
         return control_loss + control_strength_loss
 
     def step(self, action):
