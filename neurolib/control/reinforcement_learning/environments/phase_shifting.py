@@ -58,7 +58,7 @@ class PhaseShiftingEnv(gym.Env):
 
         self.n_steps = round(self.duration / self.dt)
 
-        self.target = self.get_target()
+        self.init_target()
 
         self.observation_space = spaces.Dict(
             {
@@ -75,7 +75,7 @@ class PhaseShiftingEnv(gym.Env):
             )
         )
 
-    def get_target(self):
+    def init_target(self):
         wc = WCModel()
         wc.params = self.model.params.copy()
         wc.params["duration"] = self.duration + 100.0
@@ -90,15 +90,17 @@ class PhaseShiftingEnv(gym.Env):
 
         period = np.mean(p_list) * self.dt
         self.period = period
+        self.raw_target = np.stack((wc.exc, wc.inh), axis=1)[0]
+        self.target_t = wc.t
 
-        raw = np.stack((wc.exc, wc.inh), axis=1)[0]
+    def get_target(self):
         if self.random_target_shift:
             target_shift = np.random.random() * 2 * np.pi
         else:
             target_shift = self.target_shift
-        index = np.round(target_shift * period / (2.0 * np.pi) / self.dt).astype(int)
-        target = raw[:, index : index + np.round(1 + self.duration / self.dt, 1).astype(int)]
-        self.target_time = wc.t[index : index + target.shape[1]]
+        index = np.round(target_shift * self.period / (2.0 * np.pi) / self.dt).astype(int)
+        target = self.raw_target[:, index : index + np.round(1 + self.duration / self.dt, 1).astype(int)]
+        self.target_time = self.target_t[index : index + target.shape[1]]
         self.target_phase = (self.target_time % self.period) / self.period * 2 * np.pi
 
         return target
@@ -115,6 +117,7 @@ class PhaseShiftingEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed, options=options)
+        self.target = self.get_target()
         self.t_i = 0
         self.model.clearModelState()
 
