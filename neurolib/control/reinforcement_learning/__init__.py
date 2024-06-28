@@ -9,3 +9,8 @@ register(
     id="PhaseShifting-v0",
     entry_point="neurolib.control.reinforcement_learning.environments.phase_shifting:PhaseShiftingEnv",
 )
+
+register(
+    id="Synchronization-v0",
+    entry_point="neurolib.control.reinforcement_learning.environments.synchronization:SynchronizationEnv",
+)
