@@ -450,7 +450,7 @@ def timeIntegration_elementwise(
         sigmae_f = sigmae
         sigmai_f = sigmai
 
-        xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe - IA_history[:, -2] / C)
+        xid1, yid1, dxid, dyid = fast_interp2_opt(sigmarange, ds, sigmae_f, Irange, dI, mufe - IA_history[:, -1] / C)
 
         rates_exc_new = interpolate_values(precalc_r, xid1, yid1, dxid, dyid) * 1e3
         Vmean_exc = interpolate_values(precalc_V, xid1, yid1, dxid, dyid)
