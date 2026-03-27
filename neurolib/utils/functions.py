@@ -161,7 +161,7 @@ def fcd(ts, windowsize=30, stepsize=5):
             f1i += 1
 
         return FCd
-    except:
+    except Exception:
         return 0
 
 
