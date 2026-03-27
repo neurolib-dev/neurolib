@@ -75,13 +75,13 @@ class Model:
         Adds the simulated BOLD signal to outputs.
         """
         if not self.boldInitialized:
-            logging.warn("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
+            logging.warning("BOLD model not initialized, not simulating BOLD. Use `run(bold=True)`")
             return
 
         bold_input = bold_variable[:, self.startindt :]
         # logging.debug(f"BOLD input `{svn}` of shape {bold_input.shape}")
         if not bold_input.shape[1] >= self.boldModel.samplingRate_NDt:
-            logging.warn(
+            logging.warning(
                 f"Will not simulate BOLD if output {bold_input.shape[1]*self.params['dt']} not at least of duration {self.boldModel.samplingRate_NDt*self.params['dt']}"
             )
             return
@@ -91,7 +91,7 @@ class Model:
         # so: we are lazy here and simply disable appending in that case ...
         if append and not bold_input.shape[1] % self.boldModel.samplingRate_NDt == 0:
             append = False
-            logging.warn(
+            logging.warning(
                 f"Output size {bold_input.shape[1]} is not a multiple of BOLD sampling length { self.boldModel.samplingRate_NDt}, will not append data."
             )
         logging.debug(f"Simulating BOLD: boldModel.run()")

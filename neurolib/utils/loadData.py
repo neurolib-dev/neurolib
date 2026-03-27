@@ -177,7 +177,7 @@ class Dataset:
         name,
         apply="single",
         apply_function=None,
-        apply_function_kwargs={},
+        apply_function_kwargs=None,
         normalizeCmats="max",
     ):
         """Load data of a certain kind for all users of the current dataset
@@ -193,6 +193,8 @@ class Dataset:
         :return: Subjectwise data, after function apply
         :rtype: list[np.ndarray]
         """
+        if apply_function_kwargs is None:
+            apply_function_kwargs = {}
         values = []
         for subject, value in self.data["subjects"].items():
             assert name in value, f"Data type {name} not found in dataset of subject {subject}."
@@ -317,7 +319,6 @@ class Dataset:
         elif type(matrix) is dict:
             raise ValueError(f"Object is still a dict. Here are the keys: {matrix.keys()}")
         return matrix
-        return 0
 
 
 def filterSubcortical(a, axis="both"):

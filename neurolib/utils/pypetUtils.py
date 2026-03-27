@@ -36,7 +36,7 @@ def loadPypetTrajectory(filename, trajectoryName):
     logging.info(f"Loading results from {filename}")
 
     # if trajectoryName is not specified, load the most recent trajectory
-    if trajectoryName == None:
+    if trajectoryName is None:
         trajectoryName = getTrajectorynamesInFile(filename)[-1]
     logging.info(f"Analyzing trajectory {trajectoryName}")
 

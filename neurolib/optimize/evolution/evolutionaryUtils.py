@@ -49,8 +49,8 @@ def saveToPypet(traj, pop, gIdx):
                 unpackOutputsAndStore(p.outputs, save_string=f"outputs.ind_{p.id:06d}")
 
         traj.f_store()
-    except:
-        logging.warn("Error: Write to pypet failed!")
+    except Exception:
+        logging.warning("Error: Write to pypet failed!")
     return pop
 
 
